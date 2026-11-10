@@ -1,4 +1,4 @@
--- The gamemode's manifest, gamemodes/sandcastle/sandcastle.txt, as GMod's
+-- The game's manifest, gamemodes/wetsands/wetsands.txt, as GMod's
 -- main menu reads it (wiki: Gamemode_Creation): its settings block offers
 -- convars when a server is started, and GMod creates them before the
 -- gamemode's Lua runs. So each must be well formed and default to what the
@@ -6,7 +6,7 @@
 -- cfg_defaults_test holds to the code), or the menu and the code disagree.
 local T = dofile("tests/harness.lua")
 
-local MANIFEST = "addons/sandcastle/gamemodes/sandcastle/sandcastle.txt"
+local MANIFEST = "addons/sandcastle/gamemodes/wetsands/wetsands.txt"
 local CFG = "addons/sandcastle/cfg/sandcastle_defaults.cfg"
 -- the setting types GMod's menu takes (case-sensitive)
 local TYPES = { Text = true, CheckBox = true, Numeric = true }
@@ -71,11 +71,11 @@ local function CfgValues()
 	return values
 end
 
-local manifest = KeyValues(ReadFile(MANIFEST)).sandcastle
+local manifest = KeyValues(ReadFile(MANIFEST)).wetsands
 
 T.test("the manifest names its base, title, maps, category and menu", function()
-	T.eq(manifest.base, "sandbox", "base")
-	T.eq(manifest.title, "Sandcastle", "title")
+	T.eq(manifest.base, "sandcastle", "base")
+	T.eq(manifest.title, "Wetsands", "title")
 	T.eq(manifest.category, "pvp", "category")
 	T.eq(manifest.menusystem, "1", "selectable from the menu")
 	T.eq(type(manifest.maps), "string", "a map filter")
@@ -84,7 +84,12 @@ end)
 T.test("every setting is well formed and defaults to what the code gives it", function()
 	local defaults, count = CfgValues(), 0
 	T.eq(type(manifest.settings), "table", "a settings block")
-	for index, s in pairs(manifest.settings) do
+	-- in the manifest's order, so a failure names the same setting every run
+	local indices = {}
+	for index in pairs(manifest.settings) do indices[#indices + 1] = index end
+	table.sort(indices, function(a, b) return (tonumber(a) or math.huge) < (tonumber(b) or math.huge) or (tonumber(a) == tonumber(b) and a < b) end)
+	for _, index in ipairs(indices) do
+		local s = manifest.settings[index]
 		count = count + 1
 		local where = "setting " .. index .. " (" .. tostring(s.name) .. ")"
 		T.eq(type(s.name) == "string" and type(s.text) == "string" and type(s.help) == "string", true, where .. ": name, text and help")

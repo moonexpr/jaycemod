@@ -499,11 +499,18 @@ end)
 -- Definitions name their event with a literal: Define("game_name", ...).
 T.test("no two event names defined anywhere in the addon share an id", function()
 	local names, byId = {}, {}
+	-- Sandbox's own code, forked in place in Sandcastle (tests/suites.lua's
+	-- gmod claims there), keeps its own net messages (the duplicator's)
+	local SANDCASTLE = "addons/sandcastle/gamemodes/sandcastle/"
+	local suites = dofile(".devtools/bin/suites.lua").New(dofile("tests/suites.lua"), {})
 	local files = io.popen("find addons/sandcastle addons/nextsoldier addons/wartactics -name '*.lua'")
 	for path in files:lines() do
-		local f = assert(io.open(path, "r"))
-		local text = f:read("*a")
-		f:close()
+		local text = ""
+		if not (path:sub(1, #SANDCASTLE) == SANDCASTLE and suites:GMod(path)) then
+			local f = assert(io.open(path, "r"))
+			text = f:read("*a")
+			f:close()
+		end
 		for name in text:gmatch("Define%(%s*\"([%w_]+)\"") do names[name] = path end
 	end
 	files:close()
@@ -521,11 +528,18 @@ end)
 -- somewhere (the registry would refuse it at run time, on some map).
 T.test("every event named in a Fire, Listen or Request is defined in the addon", function()
 	local defined, used = {}, {}
+	-- Sandbox's own code, forked in place in Sandcastle (tests/suites.lua's
+	-- gmod claims there), keeps its own net messages (the duplicator's)
+	local SANDCASTLE = "addons/sandcastle/gamemodes/sandcastle/"
+	local suites = dofile(".devtools/bin/suites.lua").New(dofile("tests/suites.lua"), {})
 	local files = io.popen("find addons/sandcastle addons/nextsoldier addons/wartactics -name '*.lua'")
 	for path in files:lines() do
-		local f = assert(io.open(path, "r"))
-		local text = f:read("*a")
-		f:close()
+		local text = ""
+		if not (path:sub(1, #SANDCASTLE) == SANDCASTLE and suites:GMod(path)) then
+			local f = assert(io.open(path, "r"))
+			text = f:read("*a")
+			f:close()
+		end
 		for name in text:gmatch("Define%(%s*\"([%w_]+)\"") do defined[name] = true end
 		for _, call in ipairs({ "Fire", "Listen", "Request" }) do
 			for name in text:gmatch("Events%." .. call .. "%(%s*\"([%w_]+)\"") do used[name] = path end
@@ -544,13 +558,20 @@ end)
 -- The library's two net messages are the only ones, for good: a feature
 -- defines events instead of registering its own.
 T.test("only the event adapter registers, starts or receives net messages", function()
-	local ADAPTER = "addons/sandcastle/gamemodes/sandcastle/gamemode/sh_events.lua"
+	local ADAPTER = "addons/sandcastle/gamemodes/wetsands/gamemode/sh_events.lua"
 	local registered = 0
+	-- Sandbox's own code, forked in place in Sandcastle (tests/suites.lua's
+	-- gmod claims there), keeps its own net messages (the duplicator's)
+	local SANDCASTLE = "addons/sandcastle/gamemodes/sandcastle/"
+	local suites = dofile(".devtools/bin/suites.lua").New(dofile("tests/suites.lua"), {})
 	local files = io.popen("find addons/sandcastle addons/nextsoldier addons/wartactics -name '*.lua'")
 	for path in files:lines() do
-		local f = assert(io.open(path, "r"))
-		local text = f:read("*a")
-		f:close()
+		local text = ""
+		if not (path:sub(1, #SANDCASTLE) == SANDCASTLE and suites:GMod(path)) then
+			local f = assert(io.open(path, "r"))
+			text = f:read("*a")
+			f:close()
+		end
 		for _ in text:gmatch("util%.AddNetworkString%(") do
 			T.eq(path, ADAPTER, "registers a net message")
 			registered = registered + 1

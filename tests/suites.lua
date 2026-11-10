@@ -6,8 +6,16 @@
 --   sources: the paths a group covers (a folder ending in /, or a path
 --            prefix), which `check_lua.sh --changed` maps a changed file
 --            through; the closest claim wins
-local G = "addons/sandcastle/gamemodes/sandcastle/gamemode/"
-local E = "addons/sandcastle/gamemodes/sandcastle/entities/"
+--   gmod:    paths claimed as sources are, in GMod's dialect (`!`, `!=`,
+--            `&&`, `||`): Sandbox's own code, forked in place, which LuaJIT
+--            never compiles or loads. What a test loads is plain Lua
+-- Wetsands holds foundation, the features, includes/ and the root modules;
+-- Sandcastle, Sandbox's code with its gameplay mode (rounds.lua, game_manager,
+-- round_manager, game_timer, gamerules/) and TF2's map entities.
+local G = "addons/sandcastle/gamemodes/wetsands/gamemode/"
+local E = "addons/sandcastle/gamemodes/wetsands/entities/"
+local S = "addons/sandcastle/gamemodes/sandcastle/gamemode/"
+local SE = "addons/sandcastle/gamemodes/sandcastle/entities/"
 
 return {
 	{
@@ -29,7 +37,7 @@ return {
 		},
 		sources = {
 			G .. "includes/gameplay/", G .. "includes/npc/", G .. "includes/system/",
-			G .. "includes/extensions/", E .. "entities/tf_projectile_", E .. "entities/ent_projectile_",
+			G .. "includes/extensions/", SE .. "entities/tf_projectile_", SE .. "entities/ent_projectile_",
 		},
 	},
 	{
@@ -66,11 +74,13 @@ return {
 			G .. "features/rounds/", G .. "features/world/", G .. "features/capture/", G .. "features/koth/", G .. "features/flag/",
 			G .. "features/payload/", G .. "features/arena/", G .. "features/mvm/", G .. "features/gamemode/",
 			"tests/fake_objective.lua", "tests/fake_points.lua",
-			E .. "entities/team_", E .. "entities/tf_logic_", E .. "entities/game_", E .. "entities/func_respawnroom",
-			E .. "entities/func_capturezone", E .. "entities/trigger_capture_area", E .. "entities/item_teamflag",
-			E .. "entities/info_observer_point", G .. "includes/modules/round_manager.lua", G .. "includes/modules/game_timer.lua",
-			E .. "entities/tf_gamerules", E .. "entities/ws_gamerules", E .. "entities/edit_",
+			SE .. "entities/team_", SE .. "entities/tf_logic_", SE .. "entities/game_", SE .. "entities/func_respawnroom",
+			SE .. "entities/func_capturezone", SE .. "entities/trigger_capture_area", SE .. "entities/item_teamflag",
+			SE .. "entities/info_observer_point", S .. "includes/modules/round_manager.lua", S .. "includes/modules/game_timer.lua",
+			SE .. "entities/tf_gamerules", SE .. "entities/ws_gamerules", E .. "entities/edit_",
 		},
+		-- Sandcastle's gamemode: Sandbox's code with the gameplay mode (teams, rounds, a match)
+		gmod = { S },
 	},
 	{
 		name = "features",
@@ -80,7 +90,12 @@ return {
 			"zombie", "fortune", "holiday_on_holiday", "spells_cast", "tag", "wheel", "trigger_ignite", "npc_*",
 			"ns_debug_panel", "nbdebug_contract", "fgd_sandcastle",
 		},
-		sources = { G .. "features/", G .. "vendor/", E, "tests/fake_actor.lua", "tests/fake_builder.lua", "tests/fake_combatant.lua", "tests/fake_caster.lua" },
+		sources = { G .. "features/", E, SE, "tests/fake_actor.lua", "tests/fake_builder.lua", "tests/fake_combatant.lua", "tests/fake_caster.lua" },
+		-- Sandbox's own entities, effects and tools, and the vendored GMod libraries
+		gmod = {
+			SE .. "effects/", SE .. "weapons/", SE .. "entities/gmod_", SE .. "entities/base_gmodentity.lua",
+			SE .. "entities/base_edit.lua", SE .. "entities/edit_", G .. "vendor/",
+		},
 	},
 	{
 		name = "ws",
@@ -92,7 +107,7 @@ return {
 			"nav_progress_replay", "demo_autorecord",
 		},
 		sources = {
-			G .. "cl_", G .. "sh_", G .. "sv_", G .. "logging.lua", G .. "gamerules/", G .. "includes/game_manager.lua",
+			G .. "cl_", G .. "sh_", G .. "sv_", G .. "logging.lua", S .. "gamerules/", S .. "includes/modules/game_manager.lua",
 			G .. "includes/admin_notices.lua", G .. "includes/demo_autorecord.lua", G .. "includes/factions.lua", G .. "includes/friendly_id.lua",
 			G .. "includes/kill_icons_sheet.lua", G .. "includes/localization.lua",
 			G .. "includes/nav_clearance.lua", G .. "includes/nav_progress.lua",

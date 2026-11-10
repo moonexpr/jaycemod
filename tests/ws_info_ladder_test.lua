@@ -1,6 +1,5 @@
 local T = dofile("tests/harness.lua")
 
-local ENTITY_ROOT = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 
 local function Load(path, entity, globals)
 	local env = { ENT = entity }
@@ -10,9 +9,9 @@ local function Load(path, entity, globals)
 	return env.ENT
 end
 
-local base = Load(ENTITY_ROOT .. "ws_inert_point.lua", {}, { TRANSMIT_NEVER = 7 })
+local base = Load(T.Entity("ws_inert_point.lua"), {}, { TRANSMIT_NEVER = 7 })
 local ladder = setmetatable({}, { __index = base })
-Load(ENTITY_ROOT .. "info_ladder.lua", ladder)
+Load(T.Entity("info_ladder.lua"), ladder)
 
 T.test("info_ladder inherits the inert point behavior and keeps BSP bounds", function()
 	T.eq(ladder.Type, "point", "entity type")

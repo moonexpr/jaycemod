@@ -6,7 +6,7 @@
 -- on disk: every module once, none missing, none that is not there.
 local T = dofile("tests/harness.lua")
 
-local ROOT = "addons/sandcastle/gamemodes/sandcastle/gamemode/"
+local ROOT = T.ROOT
 
 local function Source(path)
 	local f = assert(io.open(ROOT .. path))

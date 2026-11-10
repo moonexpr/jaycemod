@@ -127,7 +127,6 @@ T.test("the 15, 10 and 5 second marks fire nothing", function()
 end)
 
 -- Seam checks, read as text.
-local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 
 local function Read(path)
 	local f = assert(io.open(path, "rb"))
@@ -137,7 +136,7 @@ local function Read(path)
 end
 
 T.test("the tf_logic_cp_timer binding requires no foundation module", function()
-	T.eq(Read(ENTITIES .. "tf_logic_cp_timer.lua"):find('require("foundation.', 1, true), nil, "tf_logic_cp_timer")
+	T.eq(Read(T.Entity("tf_logic_cp_timer.lua")):find('require("foundation.', 1, true), nil, "tf_logic_cp_timer")
 end)
 
 T.test("the capture controller defines every method the binding calls", function()

@@ -1,5 +1,12 @@
 local T = dofile("tests/harness.lua")
 
+local function SortedKeys(set)
+	local keys = {}
+	for key in pairs(set) do keys[#keys + 1] = key end
+	table.sort(keys)
+	return keys
+end
+
 local ROOT = T.ROOT
 local WEAPON_HELPER = "player_class/simple_weapon_loadout.lua"
 local CLASS_FILES = {
@@ -154,8 +161,9 @@ T.test("default combatant, CS:S combatant, and Sandcastle use their weapon drive
 			local family = weapon:match("^(simple_[%w]+_)")
 			if family then families[family] = true end
 		end
-		for family in pairs(FAMILIES[path]) do T.eq(families[family], true, path .. " carries " .. family .. " weapons") end
-		for family in pairs(families) do T.eq(FAMILIES[path][family], true, path .. " carries no " .. family .. " weapons") end
+		-- in name order, so a failure names the same family every run
+		for _, family in ipairs(SortedKeys(FAMILIES[path])) do T.eq(families[family], true, path .. " carries " .. family .. " weapons") end
+		for _, family in ipairs(SortedKeys(families)) do T.eq(FAMILIES[path][family], true, path .. " carries no " .. family .. " weapons") end
 		T.eq(Contains(captured.weapons, "weapon_physgun"), path == "player_class/player_sandcastle.lua",
 			path .. " preserves its physgun policy")
 	end

@@ -2,7 +2,7 @@
 -- as GMod loads a folder entity, and helpers on them whose getters and setters
 -- read and write a plain table.
 local T = dofile("tests/harness.lua")
-local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/"
+local ENTITIES = T.ENTITY_ROOTS[1] -- Wetsands': the builder's helpers and its tools
 
 CLIENT, SERVER = false, true
 AddCSLuaFile = function() end

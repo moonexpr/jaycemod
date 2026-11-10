@@ -11,15 +11,16 @@ local FIRED_ELSEWHERE = {}
 for _, name in ipairs({
 	"AcceptInput", "CalcView", "CreateClientsideRagdoll", "CreateEntityRagdoll", "EntityFireBullets",
 	"EntityKeyValue", "EntityNetworkedVarChanged", "EntityRemoved", "EntityTakeDamage", "GetFallDamage",
-	"HUDPaint", "Initialize", "InitPostEntity", "KeyPress", "OnContextMenuOpen", "OnEntityCreated", "OnScreenSizeChanged",
+	"HUDDrawTargetID", "HUDPaint", "Initialize", "InitPostEntity", "InputMouseApply", "KeyPress", "OnContextMenuOpen", "OnEntityCreated", "OnScreenSizeChanged",
 	"PlayerBindPress", "PlayerCanPickupWeapon", "PlayerDeath", "PlayerDeathSound", "PlayerDeathThink", "PlayerDisconnected",
 	"PlayerEndVoice", "PlayerFootstep", "PlayerHurt", "PlayerInitialSpawn", "PlayerLoadout",
-	"PlayerRequestTeam", "PlayerSpawn", "PlayerStartVoice", "PlayerUse", "PopulateMenuBar", "PopulateToolMenu",
+	"PlayerRequestTeam", "PlayerSay", "PlayerSpawn", "PlayerStartVoice", "PlayerUse", "PopulateMenuBar", "PopulateToolMenu",
 	"PostCleanupMap", "PostDrawTranslucentRenderables", "PostEntityTakeDamage", "PostPlayerDeath",
-	"PostPlayerDraw", "PostRender", "PreCleanupMap", "PrePlayerDraw", "PreDrawHUD", "PreDrawViewModel", "PreRender",
+	"PostPlayerDraw", "PostRender", "PreCleanupMap", "PrePlayerDraw", "PreDrawHalos", "PreDrawHUD", "PreDrawViewModel", "PreRender",
 	"RenderScreenspaceEffects", "SetupMove", "SetupPlayerVisibility", "ShouldCollide", "ShowSpare2",
 	"ShowTeam", "ShutDown", "SpawnmenuIconMenuOpen", "StartCommand", "Think", "Tick", "TranslateActivity",
 	"UCLAuthed", -- ULib
+	"ULXLuaDevDescribe", -- ulx_luadev's overlay, run through a constant (addons/ulx_luadev)
 	"player_disconnect", -- a game event (gameevent.Listen)
 }) do
 	FIRED_ELSEWHERE[name] = true
@@ -40,11 +41,22 @@ local function Read(path)
 	return text
 end
 
+-- Sandbox's own code, forked in place in Sandcastle (tests/suites.lua's
+-- gmod claims there), listens on GMod's and Sandbox's hooks, not ours; what
+-- it runs by name is still fired.
+local SANDCASTLE = "addons/sandcastle/gamemodes/sandcastle/"
+local SUITES = dofile(".devtools/bin/suites.lua").New(dofile("tests/suites.lua"), {})
+local function Sandbox(path)
+	return path:sub(1, #SANDCASTLE) == SANDCASTLE and SUITES:GMod(path)
+end
+
 -- name -> the first file listening on it, and the names run by name.
 local listened, run = {}, {}
 for _, path in ipairs(Lines("find addons -name '*.lua' -not -path '*/vendor/*'")) do
 	local text = Read(path)
-	for name in text:gmatch('hook%.Add%(%s*"([^"]+)"') do listened[name] = listened[name] or path end
+	if not Sandbox(path) then
+		for name in text:gmatch('hook%.Add%(%s*"([^"]+)"') do listened[name] = listened[name] or path end
+	end
 	for name in text:gmatch('hook%.Run%(%s*"([^"]+)"') do run[name] = true end
 	for name in text:gmatch('hook%.Call%(%s*"([^"]+)"') do run[name] = true end
 end

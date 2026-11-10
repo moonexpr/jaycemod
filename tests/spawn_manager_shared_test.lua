@@ -32,7 +32,7 @@ local function load(lock, teamPlay)
 		OBS_MODE_NONE = OBS_MODE_NONE,
 		GetGlobal2String = function(_, default) return lock or default end,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sh_spawn_manager.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/wetsands/gamemode/sh_spawn_manager.lua")), env)()
 	return ws
 end
 

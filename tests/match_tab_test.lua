@@ -111,7 +111,7 @@ local function Load(opts)
 		xgui = xgui,
 		xlib = Xlib(s),
 	}, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/cl_admin_panels.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/wetsands/gamemode/cl_admin_panels.lua")), env)()
 	s.hooks.Initialize()
 	function s.Open() s.opened.ws_match_tab() end
 	function s.Order(name) order[#order + 1] = name end

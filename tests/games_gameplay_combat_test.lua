@@ -187,7 +187,6 @@ end)
 
 -- The combatant port contract
 
-local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 
 
 local function ReadFile(path)
@@ -208,7 +207,7 @@ T.test("the fake combatant implements every actor and combatant method", functio
 end)
 
 T.test("base_nextsoldier_combat defines every combatant method", function()
-	local text = ReadFile(ENTITIES .. "base_nextsoldier_combat.lua")
+	local text = ReadFile(T.Entity("base_nextsoldier_combat.lua"))
 	for _, name in ipairs(Combatant.METHODS) do
 		T.eq(text:find("function ENT:" .. name .. "(", 1, true) ~= nil, true, "base_nextsoldier_combat " .. name)
 	end
@@ -239,7 +238,7 @@ T.test("a top-level load is caught", function()
 end)
 
 T.test("the combat and holiday bindings load nothing at top level", function()
-	for _, path in ipairs({ ENTITIES .. "base_nextsoldier_combat.lua", ENTITIES .. "tf_logic_holiday.lua" }) do
+	for _, path in ipairs({ T.Entity("base_nextsoldier_combat.lua"), T.Entity("tf_logic_holiday.lua") }) do
 		local file = path:match("[^/]+$")
 		for line in ReadFile(path):gmatch("[^\n]+") do
 			T.eq(LoadsAtTopLevel(line), false, file .. ": " .. line)

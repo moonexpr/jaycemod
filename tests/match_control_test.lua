@@ -71,7 +71,7 @@ local function Load(players, opts)
 		RunConsoleCommand = function(...) s.ran[#s.ran + 1] = table.concat({ ... }, " ") end,
 		print = function() end,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sv_match_control.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/wetsands/gamemode/sv_match_control.lua")), env)()
 	function s.Run(name, ply, ...) s.commands[name](ply, name, { ... }) end
 	return s
 end

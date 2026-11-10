@@ -7,7 +7,7 @@
 -- order.
 local T = dofile("tests/harness.lua")
 
-local ROOT = "addons/sandcastle/gamemodes/sandcastle/gamemode/"
+local ROOT = T.ROOT
 
 local function listing(prefix)
 	local found = {}
@@ -31,9 +31,10 @@ local function clientOrder(failing)
 	local order, reported = {}, {}
 	local env
 	env = setmetatable({
-		GM = { FolderName = "sandcastle" },
+		GM = { FolderName = "wetsands" },
 		CLIENT = true, SERVER = false,
 		DeriveGamemode = function() end,
+		DEFINE_BASECLASS = function() end,
 		ErrorNoHaltWithStack = function(err) reported[#reported + 1] = err end,
 		file = { Find = function(pattern) return listing(pattern:match("gamemode/(%w+_)%*")) end },
 		include = function(path)

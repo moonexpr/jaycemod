@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
 
-local ROOT = "addons/sandcastle/gamemodes/sandcastle/gamemode/"
+local ROOT = T.ROOT
 
 -- logging.lua, then (on the server) the system feature's completion, in a
 -- realm whose developer convar is at developer.

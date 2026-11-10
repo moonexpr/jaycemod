@@ -8,7 +8,7 @@ local Fake = dofile("tests/fake_builder.lua")
 local Builder = Fake.Builder
 local Classes = Fake.classes
 
-local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/"
+local ENTITIES = T.ENTITY_ROOTS[1] -- Wetsands': the builder's helpers and its tools
 local TOOLS = { "build_spawn", "build_trolley", "build_point", "build_flag", "build_sign" }
 
 local function Load(path, global, value)
@@ -324,7 +324,7 @@ T.test("every tool is in the Gameplay category and clicks through the builder", 
 end)
 
 T.test("each tool's action is one the builder or the helper's class has", function()
-	local source = assert(io.open("addons/sandcastle/gamemodes/sandcastle/gamemode/features/builder/sv.lua")):read("*a")
+	local source = assert(io.open("addons/sandcastle/gamemodes/wetsands/gamemode/features/builder/sv.lua")):read("*a")
 	for _, name in ipairs(TOOLS) do
 		local text = assert(io.open(ENTITIES .. "weapons/gmod_tool/stools/" .. name .. ".lua")):read("*a")
 		for method in text:gmatch('Run%(self, "(%w+)"') do

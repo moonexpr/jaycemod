@@ -29,7 +29,7 @@ local environment = setmetatable({
 	CurTime = function() return clock end,
 	navmesh = { GetNearestNavArea = function() return nearest end },
 }, { __index = _G })
-setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/entities/entities/ws_bot_navigator.lua")), environment)()
+setfenv(assert(loadfile("addons/sandcastle/gamemodes/wetsands/entities/entities/ws_bot_navigator.lua")), environment)()
 
 local function Navigator(at, last)
 	local navigator = setmetatable({}, { __index = ENT })

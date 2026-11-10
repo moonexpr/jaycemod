@@ -791,7 +791,6 @@ end)
 
 -- The bindings
 
-local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 
 local function ReadFile(path)
 	local f = assert(io.open(path, "r"))
@@ -807,7 +806,7 @@ end
 
 T.test("the skeleton bindings load nothing at top level and shadow no engine method", function()
 	for _, file in ipairs({ "tf_zombie.lua", "tf_zombie_spawner.lua", "tf_projectile_spellspawnzombie.lua" }) do
-		local text = ReadFile(ENTITIES .. file)
+		local text = ReadFile(T.Entity(file))
 		for line in text:gmatch("[^\n]+") do
 			T.eq(LoadsAtTopLevel(line), false, file .. ": " .. line)
 		end

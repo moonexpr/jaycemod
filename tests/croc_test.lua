@@ -138,12 +138,11 @@ end)
 
 -- Package W8's bindings, all loaded lazily.
 
-local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 local W8_BINDINGS = {
 	"func_croc.lua",
 	"halloween_fortune_teller.lua",
 	"tf_point_weapon_mimic.lua",
-	"tf_projectile_pipe.lua",
+	"ent_projectile_pipe.lua",
 	"filter_tf_damaged_by_weapon_in_slot.lua",
 	"trigger_add_or_remove_tf_player_attributes.lua",
 	"merasmus.lua",
@@ -167,7 +166,7 @@ end
 
 T.test("the W8 bindings load nothing at top level", function()
 	for _, file in ipairs(W8_BINDINGS) do
-		for line in ReadFile(ENTITIES .. file):gmatch("[^\n]+") do
+		for line in ReadFile(T.Entity(file)):gmatch("[^\n]+") do
 			T.eq(LoadsAtTopLevel(line), false, file .. ": " .. line)
 		end
 	end

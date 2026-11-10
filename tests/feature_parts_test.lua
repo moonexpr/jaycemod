@@ -8,7 +8,7 @@
 local T = dofile("tests/harness.lua")
 local Features = system.features
 
-local FEATURES = "addons/sandcastle/gamemodes/sandcastle/gamemode/features"
+local FEATURES = T.ROOT .. "features"
 
 local function LastLine(path)
 	local last
@@ -97,7 +97,7 @@ local function Tree(gamemode, scan)
 	return tree
 end
 
-local GAMEMODE = Tree(T.ROOT, { T.ROOT, "addons/sandcastle/gamemodes/sandcastle/entities/" })
+local GAMEMODE = Tree(T.ROOT, { T.ROOT, T.ENTITY_ROOTS[1], T.ENTITY_ROOTS[2] })
 
 -- Lua source without its comments, so commented-out code is not counted.
 local function Code(text)

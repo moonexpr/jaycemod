@@ -2,7 +2,6 @@ local T = dofile("tests/harness.lua")
 local Base = nextsoldier.base
 
 local GAMEMODE = T.ROOT
-local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 local NEXTSOLDIER_ENTITIES = T.ADDON_TREES.nextsoldier .. "entities/"
 -- The war's soldier classes, on NextSoldier's base.
 local SOLDIER_CLASSES = { "npc_nextsoldier", "npc_path_probe" }
@@ -92,7 +91,7 @@ end)
 
 T.test("every hook the soldier defines on the base is declared", function()
 	local text = Read(GAMEMODE .. "sh_war_soldier.lua")
-	for _, name in ipairs(SOLDIER_CLASSES) do text = text .. Read(ENTITIES .. name .. ".lua") end
+	for _, name in ipairs(SOLDIER_CLASSES) do text = text .. Read(T.Entity(name .. ".lua")) end
 	for name in text:gmatch("function%s+ENT:([%w_]+)%s*%(") do
 		T.eq(Ours(name) or GMOD[name] == true or Base.HOOKS:Has(name), true, "ENT:" .. name .. " is a declared hook")
 	end
@@ -100,7 +99,7 @@ end)
 
 T.test("every setting the soldier classes and profiles give the base is declared", function()
 	for _, class in ipairs(SOLDIER_CLASSES) do
-		local path = ENTITIES .. class .. ".lua"
+		local path = T.Entity(class .. ".lua")
 		for name in Read(path):gmatch("\n%s*ENT%.([%w_]+)%s*=") do
 			T.eq(Ours(name) or GMOD[name] == true or Base.FIELDS:Has(name), true, path .. ": ENT." .. name .. " is a declared field")
 		end
@@ -114,7 +113,7 @@ end)
 
 T.test("war soldiers hate the opposing HL2 faction and default to hostility", function()
 	local base = Read(NEXTSOLDIER_ENTITIES .. "base_nextsoldier.lua")
-	local soldier = Read(ENTITIES .. "npc_nextsoldier.lua")
+	local soldier = Read(T.Entity("npc_nextsoldier.lua"))
 	T.eq(soldier:find("ENT.DefaultRelationship = D_HT", 1, true) ~= nil, true)
 	T.eq(base:find("local enemy = Host.current:FactionEnemy(faction)", 1, true) ~= nil, true)
 	T.eq(base:find("SetFaction(enemy, D_HT)", 1, true) ~= nil, true)
