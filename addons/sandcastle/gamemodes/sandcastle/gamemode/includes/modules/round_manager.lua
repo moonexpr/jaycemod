@@ -4,10 +4,9 @@
 -- a timer) calls RoundOutcome; that reaches the gamemode through its RoundWin
 -- hook, and a gamemode answering with Declare ends the round the coroutine is
 -- waiting on.
-local CreateConVar, FCVAR_ARCHIVE, FCVAR_NOTIFY, HUD_PRINTCENTER, PrintMessage, SetGlobal2Int =
-CreateConVar, FCVAR_ARCHIVE, FCVAR_NOTIFY, HUD_PRINTCENTER, PrintMessage, SetGlobal2Int
-local coroutine, debug, error, game, game_manager, game_timer, hook, ipairs, player, team =
-coroutine, debug, error, game, game_manager, game_timer, hook, ipairs, player, team
+local CreateConVar, FCVAR_ARCHIVE, FCVAR_NOTIFY, SetGlobal2Int = CreateConVar, FCVAR_ARCHIVE, FCVAR_NOTIFY, SetGlobal2Int
+local coroutine, debug, error, game, game_events, game_manager, game_timer, hook, ipairs, player, team =
+coroutine, debug, error, game, game_events, game_manager, game_timer, hook, ipairs, player, team
 local ROUND_WAITING, ROUND_PREPARE, ROUND_ACTIVE, ROUND_OVER =
 ROUND_WAITING, ROUND_PREPARE, ROUND_ACTIVE, ROUND_OVER
 local TEAM_RED, TEAM_BLUE, TF_TEAM_UNASSIGNED = TEAM_RED, TEAM_BLUE, TF_TEAM_UNASSIGNED
@@ -89,18 +88,38 @@ function AdjustTime (info)
 	hook.Run ("RoundTimeAdjusted", info)
 end
 
+-- The round is over, scored: each realm's listeners present it (the
+-- gamemode's RoundWinAnnounce on clients). TF2's teamplay_round_win.
+local function Announce (winner)
+	game_events.Fire ("teamplay_round_win",
+		{
+			team = winner or TF_TEAM_UNASSIGNED -- the team that won, TF_TEAM_UNASSIGNED for a stalemate
+		}
+	)
+end
+
+-- The round is over, scored: each realm's listeners present it (the
+-- gamemode's RoundWinAnnounce on clients). TF2's teamplay_round_win.
+local function Announce (winner)
+	game_events.Fire ("teamplay_round_win",
+		{
+			team = winner or TF_TEAM_UNASSIGNED -- the team that won, TF_TEAM_UNASSIGNED for a stalemate
+		}
+	)
+end
+
 -- Whether this round took the match.
 local function Finish (winner)
 	SetRound (ROUND_OVER, OVER_TIME)
 	if winner == TF_TEAM_UNASSIGNED then winner = nil end
 	game_manager.RunActive ("RoundEnd", winner)
 	if winner == nil then
-		PrintMessage (HUD_PRINTCENTER, "Stalemate")
+		Announce (nil)
 		coroutine.wait (OVER_TIME)
 		return false
 	end
 	AddTeamScore ({ team = winner, score = 1, event = "round_win" })
-	PrintMessage (HUD_PRINTCENTER, team.GetName (winner) .. " wins the round")
+	Announce (winner)
 	coroutine.wait (OVER_TIME)
 	return team.GetScore (winner) >= winlimit:GetInt ()
 end

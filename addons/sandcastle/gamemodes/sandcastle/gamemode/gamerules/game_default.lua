@@ -11,7 +11,7 @@ GAME.Requires = {}
 function GAME:Applies()
 	if #self.Requires == 0 then return false end
 	for _, kind in ipairs( self.Requires ) do
-		if ( !GAMEMODE:HasController( kind ) ) then return false end
+		if ( not GAMEMODE:HasController( kind ) ) then return false end
 	end
 	return true
 end

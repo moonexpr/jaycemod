@@ -1,5 +1,10 @@
 # Game events, version 2: local dispatch
 
+**Superseded (2026-11-10) by `docs/net2.md`:** net2, in the Sandcastle base
+gamemode, keeps v2's local dispatch and self-describing encoding and drops
+the stale-code check, the event kinds and the one-literal-site machinery.
+This document is kept as the record of what was weighed.
+
 **Status: target design, workshopped with the operator (2026-09-30); not
 built.** `docs/game-events.md` describes the code as it is today (`E.Define`
 schemas). This replaces it once built: game events are the last system

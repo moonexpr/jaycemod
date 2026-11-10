@@ -1,5 +1,10 @@
 # Game events v2: the plan
 
+**Superseded (2026-11-10) by `docs/net2.md`:** net2, in the Sandcastle base
+gamemode, keeps v2's local dispatch and self-describing encoding and drops
+the stale-code check, the event kinds and the one-literal-site machinery.
+This document is kept as the record of what was weighed.
+
 **Architect, 2026-10-08, main at 38eb752.** This plan turns
 `docs/game-events-v2.md` (the spec), `docs/game-events-v2-research.md` (the
 research) and the scholar's verdicts at the end of it into five phases, each
