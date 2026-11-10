@@ -5,14 +5,13 @@ names under `docs/`.
 
 ## Next: to the alpha playtest
 
-1. **Game events v2** (`docs/game-events-v2-plan.md`, design in
-   `docs/game-events-v2.md`). The last system before the playtest: local
-   dispatch, no stale netcode, one source of truth per event.
-   - [ ] Re-base phase A on today's `main` and run its codec test.
-   - [ ] Phase B: move each feature onto the library.
-   - [ ] Phase C: remove the old `Define` and events file.
-   - [ ] Phase D: move presentation (the announcer, the HUD's reactions) to client listeners.
-   - [ ] Phase E: the client sessions in game.
+1. **net2** (`docs/net2.md`, superseding game events v2). The last system
+   before the playtest: local dispatch, self-describing encoding, replicated
+   tables, calls, admission and rate limits, in the Sandcastle base gamemode.
+   - [x] The library and its tests; the round's end announced through it.
+   - [ ] Check it in game: the unreliable cap, the per-tick budget, prediction, the world and `NULL` entities.
+   - [ ] Move Wetsands' `WS.Events` onto net2 and retire v1's `includes/system/events.lua`.
+   - [ ] Move presentation (the announcer, the HUD's reactions) to client listeners.
 2. **Multi-file controllers, checked in game**
    (`docs/multi-file-controllers-plan.md`).
    - [ ] The client check after a `changelevel`, and the AI war's lazy loading.

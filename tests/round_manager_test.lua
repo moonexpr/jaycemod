@@ -2,12 +2,11 @@
 local T = dofile("tests/harness.lua")
 
 local RED = 2
-local order, teamScores, hookArgs
+local order, teamScores, hookArgs, fired
 local Rounds
 local now, globals = 100, {}
 
 ROUND_WAITING, ROUND_PREPARE, ROUND_ACTIVE, ROUND_OVER = 0, 1, 2, 3
-HUD_PRINTCENTER = "center"
 CurTime = function() return now end
 local function SetGlobal(name, value) globals[name] = value end
 SetGlobal2Int, SetGlobal2Float = SetGlobal, SetGlobal
@@ -15,7 +14,7 @@ GetGlobal2Float = function(name, default)
 	if globals[name] == nil then return default end
 	return globals[name]
 end
-PrintMessage = function() end
+net2 = { Fire = function(name, fields) fired[#fired + 1] = { name = name, fields = fields } end }
 player = { GetAll = function() return {} end }
 game = { CleanUpMap = function() end, LoadNextMap = function() end }
 function coroutine.wait(seconds)
@@ -57,7 +56,7 @@ Rounds = package.loaded.round_manager
 local Timer = package.loaded.game_timer
 
 local function Fresh()
-	order, teamScores, hookArgs = {}, {}, {}
+	order, teamScores, hookArgs, fired = {}, {}, {}, {}
 end
 
 -- As GM:Think does, a second at a time.
@@ -87,6 +86,8 @@ T.test("a round that runs out of time ends with nobody winning", function()
 	T.eq(hookArgs.winner, TF_TEAM_UNASSIGNED, "nobody")
 	T.eq(globals.SandcastleRoundState, ROUND_OVER, "over")
 	T.eq(next(teamScores), nil, "no score")
+	T.eq(fired[1].name, "teamplay_round_win", "announced")
+	T.eq(fired[1].fields.team, TF_TEAM_UNASSIGNED, "as a stalemate")
 end)
 
 T.test("a team's clock running out closes the round for it", function()
@@ -95,6 +96,8 @@ T.test("a team's clock running out closes the round for it", function()
 	Run(4)
 	T.eq(hookArgs.winner, RED, "RED")
 	T.eq(teamScores[RED], 1, "scored")
+	T.eq(#fired, 1, "announced once")
+	T.eq(fired[1].fields.team, RED, "RED's win")
 end)
 
 T.test("a new phase stops every clock of the last one", function()

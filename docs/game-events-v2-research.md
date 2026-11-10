@@ -1,5 +1,10 @@
 # Game events v2: research
 
+**Superseded (2026-11-10) by `docs/net2.md`:** net2, in the Sandcastle base
+gamemode, keeps v2's local dispatch and self-describing encoding and drops
+the stale-code check, the event kinds and the one-literal-site machinery.
+This document is kept as the record of what was weighed.
+
 **Researcher, 2026-10-08, main at 38eb752.** This file answers the six open
 questions in `docs/game-events-v2-handoff.md` §4 step 1, for the design in
 `docs/game-events-v2.md`. It gives facts and options only and chooses no

@@ -1,5 +1,10 @@
 # Handoff: building game events v2
 
+**Superseded (2026-11-10) by `docs/net2.md`:** net2, in the Sandcastle base
+gamemode, keeps v2's local dispatch and self-describing encoding and drops
+the stale-code check, the event kinds and the one-literal-site machinery.
+This document is kept as the record of what was weighed.
+
 **For a fresh session.** Game events v2 is the last system before the
 fine-tune to the alpha playtest (operator's roadmap). The design is agreed
 and written: `docs/game-events-v2.md`. This file says where things stand,
