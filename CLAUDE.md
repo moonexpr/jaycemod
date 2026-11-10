@@ -95,6 +95,45 @@ Searches are logged to `.devtools/artifacts/rag/questions.jsonl`; a question
 that found what mattered, or one the operator corrected, becomes a case in
 `.devtools/rag/eval.jsonl` (`dt rag/history eval`).
 
+## Lua style
+
+Write Lua by the `glua-style` skill (`.claude/skills/glua-style/`): its
+naming, GLua practices, comments and realms. Its layout gives way to
+notcake's, from [gcompute](https://github.com/notcake/gcompute) and
+[glib](https://github.com/notcake/glib), which
+`.devtools/bin/lua_format.py` writes:
+
+- Tabs indent, one per open block or bracket, counted from the line that
+  opened it: `hook.Add ("Think", "id", function ()` indents its body once.
+- A space between a callee and its parentheses, and before an index, in
+  calls and definitions alike: `self:Foo (x)`, `function self:Init ()`,
+  `foo ()`, `self.Map [key]`. No space inside `()` or `[]`.
+- Tables padded on one line, `{ a, b }`, and `{}` empty. A multiline table
+  opens on a line of its own, its last element without a comma, its `)`
+  on a line of its own:
+
+      GLib.Enum (
+          {
+              Local  = 1,
+              Remote = 2
+          }
+      )
+
+- Binary operators, `=` and `..` spaced; unary `-`, `#` tight; `not` a word.
+- Assignments or fields written as a run keep their `=` aligned; trailing
+  comments written aligned stay aligned. Otherwise one space.
+- Double quotes, `-- ` comments, at most one blank line, no `;` ending a
+  line, no parentheses around a whole `if`/`while` condition, no GMod
+  operators or comments.
+
+Run it on the Lua you change before checking it: `.devtools/bin/lua_format.py
+PATH...` (a folder takes every `.lua` under it; `--check` lists what it would
+change and exits 1, `--diff` shows it, `-` filters stdin). It never joins or
+wraps lines, so keep them under 120 yourself, and it refuses a file whose
+blocks do not balance. Where the skill's formatting disagrees (no space
+before `(`, `{5, {}}`, a trailing comma, `configs/stylua.toml`), this wins:
+neither StyLua nor glualint's pretty printer can write it, so run neither.
+
 ## Commits and pull requests
 
 Author and commit as John Chandara <john.chandara@icloud.com>. Never add
