@@ -1,0 +1,8 @@
+# Do not add `syntax` here: GLua parses only in the default `All` mode.
+# See the StyLua section in README.md.
+
+column_width = 120
+indent_type = "Tabs"
+quote_style = "ForceDouble"
+call_parentheses = "Always"
+collapse_simple_statement = "ConditionalOnly"
