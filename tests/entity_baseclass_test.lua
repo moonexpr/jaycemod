@@ -4,7 +4,8 @@
 local T = dofile("tests/harness.lua")
 
 local ROOTS = {
-	"addons/sandcastle/gamemodes/sandcastle/entities/entities/",
+	T.ENTITY_ROOTS[1] .. "entities/",
+	T.ENTITY_ROOTS[2] .. "entities/",
 	"addons/nextsoldier/lua/entities/",
 }
 

@@ -328,7 +328,7 @@ T.test("every Combine soldier line the rules speak is in the gamemode's voice pa
 	local count = 0
 	for path in text:gmatch('"(npc/combine_soldier/[^"]+)"') do
 		count = count + 1
-		local f = io.open("addons/sandcastle/gamemodes/sandcastle/content/sound/" .. path, "rb")
+		local f = io.open("addons/sandcastle/gamemodes/wetsands/content/sound/" .. path, "rb")
 		T.eq(f ~= nil, true, path)
 		if f then f:close() end
 	end

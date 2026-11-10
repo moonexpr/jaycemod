@@ -256,7 +256,7 @@ local function load(t)
 		IsValid = function(p) return p ~= nil end,
 		print = function(...) s.printed[#s.printed + 1] = table.concat({ ... }, " ") end,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sv_nav.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/wetsands/gamemode/sv_nav.lua")), env)()
 	-- one poll of its timer, a second on, the doors moving meanwhile
 	function s.Poll()
 		s.now = s.now + 1

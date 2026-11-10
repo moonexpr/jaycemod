@@ -49,7 +49,9 @@ groups: foundation, games, nextsoldier, war, rounds, features, ws, addons,
 tooling). Each compiles its group's files and runs its tests in both passes
 (Lua, then native twins). `tests/suites.lua` assigns every test to exactly
 one group and every source file to one (`tests/suites_test.lua`); a new
-test goes in its system's group. A change to a lower layer's interface
+test goes in its system's group. A group's `gmod` paths (Sandbox's own code
+in Sandcastle, the vendored libraries) are claimed in GMod's dialect (`!`,
+`!=`, `&&`, `||`) and never compiled; a file a test loads is plain Lua. A change to a lower layer's interface
 (foundation, games, nextsoldier) also runs the groups above it that use
 what changed. The whole suite (`check_lua.sh all`) is the operator's: the
 project's hook (`.devtools/bin/check_lua_gate.py`) refuses it to an agent

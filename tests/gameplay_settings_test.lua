@@ -6,7 +6,6 @@
 -- feature's methods.
 local T = dofile("tests/harness.lua")
 
-local DIR = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 local RED, BLUE = 2, 3
 
 local function Load(file, convars)
@@ -25,7 +24,7 @@ local function Load(file, convars)
 		SERVER = true,
 		CLIENT = false,
 	}, { __index = _G })
-	setfenv(assert(loadfile(DIR .. file)), env)()
+	setfenv(assert(loadfile(T.Entity(file))), env)()
 	return ENT
 end
 
@@ -97,7 +96,7 @@ local function Controller(convars)
 			}
 		end,
 	}, { __index = _G })
-	return setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/features/editors/sv.lua")), env)()
+	return setfenv(assert(loadfile("addons/sandcastle/gamemodes/wetsands/gamemode/features/editors/sv.lua")), env)()
 end
 
 T.test("a win condition reads and writes its convar", function()

@@ -3,7 +3,6 @@
 -- own and its base classes' that are TF2's, not garrysmod.fgd's) is read or fired by that entity.
 local T = dofile("tests/harness.lua")
 
-local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 
 local function Read(path)
 	local f = io.open(path, "r")
@@ -46,11 +45,11 @@ T.test("the FGD declares Sandcastle's own entities, and garrysmod.fgd's under th
 end)
 
 -- The engine's own classes the gamemode reads the keyvalues of, and where.
-local ENGINE = { info_player_teamspawn = "addons/sandcastle/gamemodes/sandcastle/gamemode/includes/gameplay/spawn.lua" }
+local ENGINE = { info_player_teamspawn = "addons/sandcastle/gamemodes/wetsands/gamemode/includes/gameplay/spawn.lua" }
 
 -- An entity's code with its bases' (ENT.Base), as far as the gamemode's go.
 local function Code(name)
-	local code = Read(ENTITIES .. name .. ".lua") or Read(ENTITIES .. name .. "/init.lua")
+	local code = Read(T.Entity(name .. ".lua")) or Read(T.Entity(name .. "/init.lua"))
 	if not code then return nil end
 	local base = code:match('ENT%.Base%s*=%s*"([%w_]+)"')
 	return code .. (base and Code(base) or "")

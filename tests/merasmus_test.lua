@@ -1401,7 +1401,6 @@ T.test("the fake implements every boss and Merasmus method, and none shadows ano
 	end
 end)
 
-local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 
 local function ReadFile(path)
 	local f = assert(io.open(path, "r"))
@@ -1411,7 +1410,7 @@ local function ReadFile(path)
 end
 
 T.test("the merasmus binding defines his port and forwards the props' events", function()
-	local text = ReadFile(ENTITIES .. "merasmus.lua")
+	local text = ReadFile(T.Entity("merasmus.lua"))
 	for _, name in ipairs(Merasmus.METHODS) do
 		T.eq(text:find("function ENT:" .. name .. "(", 1, true) ~= nil, true, "merasmus " .. name)
 	end
@@ -1424,7 +1423,7 @@ end)
 -- An entity file loads nothing at top level.
 T.test("the merasmus bindings load nothing at top level", function()
 	for _, file in ipairs({ "merasmus.lua", "tf_merasmus_trick_or_treat_prop.lua" }) do
-		for line in ReadFile(ENTITIES .. file):gmatch("[^\n]+") do
+		for line in ReadFile(T.Entity(file)):gmatch("[^\n]+") do
 			local top = not (line:match("^%s") or line:match("^function "))
 			local loads = line:find("WS.require", 1, true) ~= nil or line:find("WS.Feature", 1, true) ~= nil
 			T.eq(top and loads, false, file .. ": " .. line)

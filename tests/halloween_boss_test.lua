@@ -308,7 +308,6 @@ end)
 
 -- The bindings (read as text): each defines its port's methods as
 -- function ENT:<Name>(, and loads nothing at file top level.
-local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 
 local function ReadFile(path)
 	local f = assert(io.open(path, "r"))
@@ -318,7 +317,7 @@ local function ReadFile(path)
 end
 
 local function Defines(file, name)
-	return ReadFile(ENTITIES .. file):find("function ENT:" .. name .. "(", 1, true) ~= nil
+	return ReadFile(T.Entity(file)):find("function ENT:" .. name .. "(", 1, true) ~= nil
 end
 
 -- An entity file loads nothing at top level: every WS.require and
@@ -345,10 +344,10 @@ T.test("the boss bindings load nothing at top level", function()
 		"headless_hatman.lua",
 		"eyeball_boss.lua",
 		"teleport_vortex.lua",
-		"tf_projectile_rocket.lua",
+		"ent_projectile_rocket.lua",
 	}
 	for _, file in ipairs(files) do
-		for line in ReadFile(ENTITIES .. file):gmatch("[^\n]+") do
+		for line in ReadFile(T.Entity(file)):gmatch("[^\n]+") do
 			T.eq(LoadsAtTopLevel(line), false, file .. ": " .. line)
 		end
 	end

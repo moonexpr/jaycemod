@@ -541,8 +541,6 @@ end)
 -------------------------------------------------------------------------------
 -- The port and the bindings
 
-local ROOT = "addons/sandcastle/gamemodes/sandcastle/"
-
 local function ReadFile(path)
 	local f = assert(io.open(path, "r"))
 	local text = f:read("*a")
@@ -561,7 +559,7 @@ end)
 
 T.test("the wheel's entities load nothing at top level", function()
 	for _, file in ipairs({ "wheel_of_doom.lua", "merasmus_dancer.lua" }) do
-		for line in ReadFile(ROOT .. "entities/entities/" .. file):gmatch("[^\n]+") do
+		for line in ReadFile(T.Entity(file)):gmatch("[^\n]+") do
 			local top = not (line:match("^%s") or line:match("^function "))
 			local loads = line:find("WS.require", 1, true) ~= nil or line:find("WS.Feature", 1, true) ~= nil
 			T.eq(top and loads, false, file .. ": " .. line)

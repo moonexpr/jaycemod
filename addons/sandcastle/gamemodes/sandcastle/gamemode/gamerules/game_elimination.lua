@@ -18,8 +18,8 @@ end
 function GAME:RoundWinner()
 
 	local red, blue = Alive( TEAM_RED ), Alive( TEAM_BLUE )
-	if ( red == 0 && blue > 0 ) then return TEAM_BLUE end
-	if ( blue == 0 && red > 0 ) then return TEAM_RED end
+	if ( red == 0 and blue > 0 ) then return TEAM_BLUE end
+	if ( blue == 0 and red > 0 ) then return TEAM_RED end
 
 end
 

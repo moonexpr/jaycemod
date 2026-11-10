@@ -130,7 +130,7 @@ T.test("the shared path generator rejects areas and openings the agent's collisi
 end)
 
 T.test("the path follower stool sets what its selected followers answer", function()
-	local stool = ReadFile("addons/sandcastle/gamemodes/sandcastle/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
+	local stool = ReadFile("addons/sandcastle/gamemodes/wetsands/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
 	T.eq(stool:find("nextsoldier.behavior.YES_NO_QUERIES", 1, true) ~= nil, true, "a box for each yes-or-no query")
 	T.eq(stool:find("panel:CheckBox(", 1, true) ~= nil, true, "the boxes")
 	T.eq(stool:find("follower:NSRespond(name,", 1, true) ~= nil, true, "the boxes reach the follower")
@@ -138,7 +138,7 @@ T.test("the path follower stool sets what its selected followers answer", functi
 end)
 
 T.test("the path follower stool holds its followers' feet: each plans and shows its path instead", function()
-	local stool = ReadFile("addons/sandcastle/gamemodes/sandcastle/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
+	local stool = ReadFile("addons/sandcastle/gamemodes/wetsands/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
 	T.eq(stool:find("\"ns_pathfollower_hold\"", 1, true) ~= nil, true, "one box for every mode")
 	T.eq(stool:find("ent:NSHoldFeet(hold)", 1, true) ~= nil, true, "the box reaches the follower")
 	T.eq(pathfollower:find("NSShowPathOnly", 1, true), nil, "no path-only of its own: the war soldier's held feet")
@@ -148,7 +148,7 @@ T.test("the path follower stool holds its followers' feet: each plans and shows 
 end)
 
 T.test("one follower is driven by the stool's mode: its bench, its legs alone, or the war", function()
-	local stool = ReadFile("addons/sandcastle/gamemodes/sandcastle/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
+	local stool = ReadFile("addons/sandcastle/gamemodes/wetsands/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
 	T.eq(stool:find("follower:NSSetDriver(", 1, true) ~= nil, true, "the stool sets it")
 	T.eq(pathfollower:find("function ENT:NSSetDriver(driver)", 1, true) ~= nil, true, "the follower switches")
 	T.eq(pathfollower:find("nextsoldier.engine.End(self)", 1, true) ~= nil, true, "its tree ended")
@@ -232,7 +232,7 @@ T.test("what a head logged reaches the overlay beside the behaviour's lines", fu
 end)
 
 T.test("in the war, the stool sets the conditions its followers' orders meet", function()
-	local stool = ReadFile("addons/sandcastle/gamemodes/sandcastle/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
+	local stool = ReadFile("addons/sandcastle/gamemodes/wetsands/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
 	T.eq(stool:find("wartactics.fireteam.Report(", 1, true) ~= nil, true, "a contact reported as a member's sighting is")
 	T.eq(stool:find("fireTeam.lanesOff", 1, true) ~= nil, true, "lanes toggled on their squads")
 	T.eq(warSoldier:find("if self.NSFeetHeld then return self:NSShowHeldPath(enemy) end", 1, true) ~= nil, true,
@@ -240,7 +240,7 @@ T.test("in the war, the stool sets the conditions its followers' orders meet", f
 end)
 
 T.test("annotating, the stool marks the map through the war's and the builder's own calls", function()
-	local stool = ReadFile("addons/sandcastle/gamemodes/sandcastle/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
+	local stool = ReadFile("addons/sandcastle/gamemodes/wetsands/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
 	T.eq(stool:find('WS.Feature("builder"):Do("Place", ply, trace,', 1, true) ~= nil, true, "objectives placed as the Gameplay tools do")
 	T.eq(stool:find('WS.Feature("aiwar"):Mark(kind, PanelTeam(tool), at)', 1, true) ~= nil, true, "marks given to the war")
 	T.eq(stool:find("controller:GiveMission(fireTeam, kind, at)", 1, true) ~= nil, true, "a squad's mission by hand")

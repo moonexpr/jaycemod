@@ -165,16 +165,15 @@ T.test("the rounds controller defines every method other features call", functio
 end)
 
 T.test("the rounds bindings load the feature on first use, never at file top level", function()
-	local entities = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 	for _, file in ipairs({ "ws_gamerules", "tf_gamerules", "team_round_timer", "game_round_win", "tf_logic_competitive" }) do
-		local source = Read(entities .. file .. ".lua")
+		local source = Read(T.Entity(file .. ".lua"))
 		T.eq(source:find('require("foundation.', 1, true), nil, file .. " requires no model")
 		T.eq(source:find("\nlocal %w+ = WS%.Feature"), nil, file .. " loads nothing at top level")
 	end
 end)
 
 T.test("the ws_gamerules binding keeps the gamerules surface as forwards", function()
-	local source = Read("addons/sandcastle/gamemodes/sandcastle/entities/entities/ws_gamerules.lua")
+	local source = Read(T.Entity("ws_gamerules.lua"))
 	for _, name in ipairs({ "OnPlayerDeath", "Halt", "CleanUp", "BeginGame", "Halted", "RestartRound", "SetWinningTeam", "SetStalemate" }) do
 		T.eq(source:find("function ENT:" .. name .. "(", 1, true) ~= nil, true, name)
 	end
@@ -182,7 +181,7 @@ end)
 
 -- TF2's gamerules are Sandcastle's, running rounds from the start.
 T.test("tf_gamerules derive the surface from ws_gamerules and run rounds", function()
-	local source = Read("addons/sandcastle/gamemodes/sandcastle/entities/entities/tf_gamerules.lua")
+	local source = Read(T.Entity("tf_gamerules.lua"))
 	T.eq(source:find('ENT.Base = "ws_gamerules"', 1, true) ~= nil, true, "base")
 	T.eq(source:find("ENT.RunsRounds = true", 1, true) ~= nil, true, "runs rounds")
 end)

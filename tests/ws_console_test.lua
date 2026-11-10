@@ -2,7 +2,7 @@ local T = dofile("tests/harness.lua")
 
 local WS = {}
 local env = setmetatable({ WS = WS }, { __index = _G })
-local chunk = assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sh_console.lua"))
+local chunk = assert(loadfile("addons/sandcastle/gamemodes/wetsands/gamemode/sh_console.lua"))
 setfenv(chunk, env)()
 
 T.test("completion filters by the current word and preserves earlier arguments", function()

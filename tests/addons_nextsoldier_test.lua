@@ -57,11 +57,10 @@ T.test("the gamemode keeps no NextSoldier module", function()
 end)
 
 T.test("the soldier's base is the addon's; the gamemode's actors and combatants are the gamemode's", function()
-	local GAMEMODE_ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 	T.eq(Exists(ADDON .. "lua/entities/base_nextsoldier.lua"), true, "the base in the addon")
-	T.eq(Exists(GAMEMODE_ENTITIES .. "base_nextsoldier.lua"), false, "the base out of the gamemode")
+	T.eq(Exists(T.Entity("base_nextsoldier.lua")), false, "the base out of the gamemode")
 	for _, class in ipairs(GAMEMODE_BASES) do
-		T.eq(Exists(GAMEMODE_ENTITIES .. class .. ".lua"), true, class .. " in the gamemode")
+		T.eq(Exists(T.Entity(class .. ".lua")), true, class .. " in the gamemode")
 		T.eq(Exists(ADDON .. "lua/entities/" .. class .. ".lua"), false, class .. " out of the addon")
 	end
 end)

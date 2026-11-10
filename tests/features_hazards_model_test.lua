@@ -455,7 +455,6 @@ end)
 
 -- The bindings
 
-local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 local BINDINGS = {
 	"tf_pumpkin_bomb.lua",
 	"tf_generic_bomb.lua",
@@ -479,7 +478,7 @@ end
 
 T.test("the hazard and gift bindings load nothing at top level", function()
 	for _, file in ipairs(BINDINGS) do
-		for line in ReadFile(ENTITIES .. file):gmatch("[^\n]+") do
+		for line in ReadFile(T.Entity(file)):gmatch("[^\n]+") do
 			T.eq(LoadsAtTopLevel(line), false, file .. ": " .. line)
 		end
 	end

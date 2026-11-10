@@ -353,7 +353,6 @@ end)
 
 -- Seams --------------------------------------------------------------------------------
 
-local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 
 local function Read(path)
 	local f = assert(io.open(path, "rb"))
@@ -382,12 +381,12 @@ T.test("the payload controller defines every method other code calls", function(
 end)
 
 T.test("the payload bindings reach the controller, not the old globals", function()
-	local watcher = Read(ENTITIES .. "team_train_watcher.lua")
+	local watcher = Read(T.Entity("team_train_watcher.lua"))
 	for _, old in ipairs({ "WS.Payload", "WS.CartSpeedScale", "WS.HoldTimersForWatchers" }) do
 		T.eq(watcher:find(old, 1, true), nil, old)
 	end
 	T.eq(watcher:find(":BindWatcher(self)", 1, true) ~= nil, true, "the watcher binds")
-	T.eq(Read(ENTITIES .. "tf_logic_multiple_escort.lua"):find(":BindEscort(self)", 1, true) ~= nil, true, "the escort binds")
+	T.eq(Read(T.Entity("tf_logic_multiple_escort.lua")):find(":BindEscort(self)", 1, true) ~= nil, true, "the escort binds")
 end)
 
 T.test("the payload view reads only networked state", function()

@@ -37,7 +37,7 @@ local function Load(drawn)
 			end,
 		},
 	}, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/cl_loadout.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/wetsands/gamemode/cl_loadout.lua")), env)()
 	return env.WS
 end
 

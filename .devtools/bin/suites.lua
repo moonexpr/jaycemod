@@ -3,7 +3,10 @@
 -- paths it covers (a folder ending in /, or a path prefix). A test belongs
 -- to the group whose pattern names it most closely, an exact name before
 -- any prefix; a changed file to the groups whose sources claim it most
--- closely. check_lua.sh runs through it:
+-- closely. A group's gmod paths are claimed the same way but written in
+-- GMod's dialect (`!`, `!=`, `&&`, `||`, `//`, `continue`: Sandbox's own
+-- code, forked in place), which LuaJIT cannot parse: a file whose closest
+-- claim is one is never compiled. check_lua.sh runs through it:
 --
 --   luajit .devtools/bin/suites.lua list             the groups, a line each
 --   luajit .devtools/bin/suites.lua tests GROUP...   their test files
@@ -97,21 +100,43 @@ function Suites:Tests(names)
 	return paths
 end
 
+local NONE = {}
+
+-- The closest claim on path: its length, the groups making it (all of them
+-- on a tie), and whether every one of them is a gmod claim.
+function Suites:Closest(path)
+	local best, owners, gmod = nil, {}, true
+	for _, name in ipairs(self.order) do
+		local group = self.groups[name]
+		for _, list in ipairs({ group.sources, group.gmod or NONE }) do
+			local score = Best(list, path, Claim)
+			local dialect = list ~= group.sources
+			if score and (not best or score > best) then
+				best, owners, gmod = score, { name }, dialect
+			elseif score and score == best then
+				if owners[#owners] ~= name then owners[#owners + 1] = name end
+				gmod = gmod and dialect
+			end
+		end
+	end
+	return best, owners, best ~= nil and gmod
+end
+
 -- The groups that claim path: a test file its own group; any other file
--- the groups whose sources claim it most closely (all of them on a tie).
+-- the groups whose sources or gmod paths claim it most closely (all of
+-- them on a tie).
 function Suites:Owners(path)
 	local test = path:match("^tests/(.+)_test%.lua$")
 	if test and self.groupOf[test] then return { self.groupOf[test] } end
-	local best, owners = nil, {}
-	for _, name in ipairs(self.order) do
-		local score = Best(self.groups[name].sources, path, Claim)
-		if score and (not best or score > best) then
-			best, owners = score, { name }
-		elseif score and score == best then
-			owners[#owners + 1] = name
-		end
-	end
+	local _, owners = self:Closest(path)
 	return owners
+end
+
+-- Whether path is in GMod's dialect: its closest claim a gmod one, so
+-- LuaJIT neither compiles nor loads it.
+function Suites:GMod(path)
+	local _, _, gmod = self:Closest(path)
+	return gmod
 end
 
 -- The groups the changed paths touch, in the manifest's order.
@@ -148,7 +173,8 @@ local function Print(list)
 	for _, line in ipairs(list) do print(line) end
 end
 
--- The Lua files the named groups own: their sources' and their tests'.
+-- The Lua files the named groups own: their sources' and their tests',
+-- leaving out those in GMod's dialect.
 function Suites:Files(names)
 	self:Check(names)
 	local wanted, files, seen = {}, {}, {}
@@ -158,7 +184,7 @@ function Suites:Files(names)
 			local command = source:sub(-1) == "/" and ("find " .. source .. " -name '*.lua'")
 				or ("ls -d " .. source .. "* 2>/dev/null")
 			for _, path in ipairs(Lines(command)) do
-				if path:match("%.lua$") and not seen[path] then
+				if path:match("%.lua$") and not seen[path] and not self:GMod(path) then
 					for _, owner in ipairs(self:Owners(path)) do
 						if wanted[owner] then
 							seen[path] = true

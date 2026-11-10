@@ -421,7 +421,6 @@ T.test("a win fires the master's and round's OnWonByTeam output", function()
 	T.eq(Master.WinOutput(BLU), "OnWonByTeam2")
 end)
 
-local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 
 local function Read(path)
 	local f = assert(io.open(path, "rb"))
@@ -432,7 +431,7 @@ end
 
 T.test("the capture bindings require no foundation module", function()
 	for _, name in ipairs({ "trigger_capture_area", "team_control_point_master", "team_control_point_round" }) do
-		T.eq(Read(ENTITIES .. name .. ".lua"):find('require("foundation.', 1, true), nil, name)
+		T.eq(Read(T.Entity(name .. ".lua")):find('require("foundation.', 1, true), nil, name)
 	end
 end)
 

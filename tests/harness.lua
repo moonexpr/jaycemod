@@ -4,13 +4,40 @@
 local T = { passed = 0, failed = 0 }
 
 T.ROOT = "addons/sandcastle/gamemodes/wetsands/gamemode/"
+-- Sandcastle's gamemode folder, the base Wetsands derives from: Sandbox's
+-- code, in GMod's dialect but for what a test loads (tests/suites.lua's gmod).
+T.SANDCASTLE = "addons/sandcastle/gamemodes/sandcastle/gamemode/"
+-- The entities/ folders an entity class is looked up in, as GMod looks a
+-- class up: the derived gamemode's first, then its base's.
+T.ENTITY_ROOTS = {
+	"addons/sandcastle/gamemodes/wetsands/entities/",
+	"addons/sandcastle/gamemodes/sandcastle/entities/",
+}
+
+-- An entities/-relative path ("entities/tf_zombie.lua", "weapons/x.lua") as
+-- a repo path: under the first root that holds it, else the first root's.
+function T.EntityFile(path)
+	for _, root in ipairs(T.ENTITY_ROOTS) do
+		local f = io.open(root .. path, "r")
+		if f then
+			f:close()
+			return root .. path
+		end
+	end
+	return T.ENTITY_ROOTS[1] .. path
+end
+
+-- A file of entities/entities/ (a class's file, or a file of its folder).
+function T.Entity(path)
+	return T.EntityFile("entities/" .. path)
+end
 
 -- Sandcastle's, which the game's models read.
 TEAM_RED, TEAM_BLUE, TF_TEAM_UNASSIGNED = 2, 3, 0
 baseclass = baseclass or { Set = function() end }
-dofile("addons/sandcastle/gamemodes/sandcastle/gamemode/includes/modules/game_manager.lua")
-dofile("addons/sandcastle/gamemodes/sandcastle/gamemode/gamerules/game_default.lua")
-dofile("addons/sandcastle/gamemodes/sandcastle/gamemode/gamerules/game_ctf.lua")
+dofile(T.SANDCASTLE .. "includes/modules/game_manager.lua")
+dofile(T.SANDCASTLE .. "gamerules/game_default.lua")
+dofile(T.SANDCASTLE .. "gamerules/game_ctf.lua")
 
 -- Lua 5.1's require for a module(...) file under T.ROOT, as WS.require
 -- does in the game: once, calling the chunk with its dotted name. Above its

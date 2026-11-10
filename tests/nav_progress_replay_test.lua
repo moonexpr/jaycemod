@@ -6,7 +6,7 @@
 local T = dofile("tests/harness.lua")
 local P = T.require("includes.nav_progress")
 
-local SOURCE = "addons/sandcastle/gamemodes/sandcastle/gamemode/sh_nav_progress.lua"
+local SOURCE = "addons/sandcastle/gamemodes/wetsands/gamemode/sh_nav_progress.lua"
 
 local function Run(s)
 	local env = setmetatable({ WS = s.ws, SERVER = true }, { __index = _G })

@@ -4,6 +4,14 @@
 local T = dofile("tests/harness.lua")
 
 local ADDON = "addons/sandcastle"
+-- Sandbox's own code, forked in place in Sandcastle (tests/suites.lua's
+-- gmod claims there), creates Sandbox's convars (its tools' among them),
+-- not the addon's.
+local SANDCASTLE = "addons/sandcastle/gamemodes/sandcastle/"
+local SUITES = dofile(".devtools/bin/suites.lua").New(dofile("tests/suites.lua"), {})
+local function Sandbox(path)
+	return path:sub(1, #SANDCASTLE) == SANDCASTLE and SUITES:GMod(path)
+end
 local CFG = ADDON .. "/cfg/sandcastle_defaults.cfg"
 
 local function ReadFile(path)
@@ -32,7 +40,7 @@ local function CodeDefaults()
 	local defaults, indirect = {}, 0
 	local list = assert(io.popen("find " .. ADDON .. " -name '*.lua'"))
 	for path in list:lines() do
-		local text = ReadFile(path)
+		local text = Sandbox(path) and "" or ReadFile(path)
 		for call in text:gmatch("[%w_]*ConVar%w*%b()") do
 			if call:match("^CreateConVar") or call:match("^CreateClientConVar") or call:match("^ConVarOrCreate") then
 				local name, value = call:match('^[%w_]+%(%s*"([%w_]+)",%s*"([^"]*)"')
@@ -64,19 +72,21 @@ end
 -- zombie cap, the flag cap limit, MvM's setup time, the soldiers' difficulty, the node graph cap, the war's team size,
 -- the overlay's parts;
 -- the rounds' helper ConVarOrCreate, its definition and its CreateConVar;
--- and sh_core's replicating CreateConVar and the client's copy of a server
--- convar (system_server_convars), which create none of their own.
-local INDIRECT_CALLS = 12
+-- sh_core's replicating CreateConVar and the client's copy of a server
+-- convar (system_server_convars); and Wetsands' shared.lua, which holds
+-- Sandcastle's sandcastle_gameplay off: these create none of their own.
+local INDIRECT_CALLS = 13
 
 T.test("every convar the code creates is in the cfg at its default", function()
 	local defaults, indirect = CodeDefaults()
 	T.eq(indirect, INDIRECT_CALLS, "no convar created another way the test does not resolve")
 	IndirectDefaults(defaults)
-	local values, count = CfgValues(), 0
-	for name, default in pairs(defaults) do
-		count = count + 1
-		T.eq(values[name], default, name)
-	end
+	local values, names = CfgValues(), {}
+	for name in pairs(defaults) do names[#names + 1] = name end
+	-- in name order, so a failure names the same convar every run
+	table.sort(names)
+	local count = #names
+	for _, name in ipairs(names) do T.eq(values[name], defaults[name], name) end
 	T.eq(count >= 40, true, "the convars were found: " .. count)
 end)
 

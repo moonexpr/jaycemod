@@ -47,7 +47,15 @@ T.test("a part loads under its system and nests in the system's table", function
 end)
 
 T.test("gamemode root is the gamemode folder", function()
-	T.eq(T.ROOT, "addons/sandcastle/gamemodes/sandcastle/gamemode/", "root")
+	T.eq(T.ROOT, "addons/sandcastle/gamemodes/wetsands/gamemode/", "Wetsands' gamemode folder")
+	T.eq(T.SANDCASTLE, "addons/sandcastle/gamemodes/sandcastle/gamemode/", "Sandcastle's, its base")
+end)
+
+T.test("an entity's file is looked up in the derived gamemode first, then its base", function()
+	T.eq(T.Entity("info_ladder.lua"), "addons/sandcastle/gamemodes/wetsands/entities/entities/info_ladder.lua", "Wetsands'")
+	T.eq(T.Entity("team_round_timer.lua"), "addons/sandcastle/gamemodes/sandcastle/entities/entities/team_round_timer.lua", "Sandcastle's")
+	T.eq(T.EntityFile("weapons/tf_weapon_spellbook.lua"), "addons/sandcastle/gamemodes/wetsands/entities/weapons/tf_weapon_spellbook.lua", "a weapon")
+	T.eq(T.Entity("nope.lua"), "addons/sandcastle/gamemodes/wetsands/entities/entities/nope.lua", "neither: the derived one's")
 end)
 
 T.finish()

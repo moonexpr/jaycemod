@@ -49,6 +49,21 @@ T.test("a changed file picks the groups that claim it most closely", function()
 	T.eq(table.concat(suites:Changed({ "README.md" }), " "), "", "nothing claims it")
 end)
 
+T.test("a gmod path is claimed as a source is, and its files are never compiled", function()
+	local manifest = {
+		{ name = "base", about = "", tests = { "core_*" }, sources = { "lib/", "fork/plain.lua" }, gmod = { "fork/" } },
+		{ name = "game", about = "", tests = { "games_*" }, sources = { "game/" }, gmod = { "lib/sandbox_" } },
+	}
+	local suites = Suites.New(manifest, { "core_class", "games_rounds" })
+	T.eq(table.concat(suites:Changed({ "fork/init.lua" }), " "), "base", "claimed")
+	T.eq(suites:GMod("fork/init.lua"), true, "in GMod's dialect")
+	T.eq(suites:GMod("fork/plain.lua"), false, "a closer source claim is plain Lua")
+	T.eq(table.concat(suites:Changed({ "lib/sandbox_tool.lua" }), " "), "game", "the closer claim, gmod or not")
+	T.eq(suites:GMod("lib/sandbox_tool.lua"), true, "under a plain folder")
+	T.eq(suites:GMod("lib/x.lua"), false, "plain")
+	T.eq(suites:GMod("README.md"), false, "nothing claims it")
+end)
+
 local MANIFEST = dofile("tests/suites.lua")
 local TESTS = {}
 for _, path in ipairs(Lines("ls tests/*_test.lua")) do TESTS[#TESTS + 1] = path:match("^tests/(.+)_test%.lua$") end
@@ -71,7 +86,10 @@ end)
 
 T.test("every path a group claims names something: a folder, a file, or a prefix of one", function()
 	for _, group in ipairs(MANIFEST) do
-		for _, source in ipairs(group.sources) do
+		local claims = {}
+		for _, source in ipairs(group.sources) do claims[#claims + 1] = source end
+		for _, source in ipairs(group.gmod or {}) do claims[#claims + 1] = source end
+		for _, source in ipairs(claims) do
 			local named = source:sub(-1) == "/" and Lines("test -d '" .. source .. "' && echo yes") or Lines("ls -d '" .. source .. "'* 2>/dev/null")
 			T.eq(#named > 0, true, group.name .. " claims " .. source)
 		end
