@@ -799,6 +799,59 @@ T.test("a client sends nothing from predicted code: the server runs its own", fu
 	T.eq(#server, 0, "nothing reached the server")
 end)
 
+-- The debug layer
+
+T.test("a trace sees each message a realm sends and takes", function()
+	local w = World()
+	local _, client = w:Ready(1, 2)
+	local seen = {}
+	w.server:SetDebug({
+		trace = function(way, name, bytes) seen[#seen + 1] = way .. ":" .. name .. ":" .. (bytes > 0 and "n" or "0") end,
+	})
+	w.server:Accept("up", { count = 5, seconds = 1 })
+	w:Step()
+	seen = {}
+	w.server:Send("down", { n = 1 })
+	client:Send("up", { n = 2 })
+	w:Step()
+	T.eq(table.concat(seen, ","), "out:down:n,in:up:n", "both ways, with their sizes")
+	w.server:SetDebug(nil)
+	w.server:Send("down", { n = 1 })
+	T.eq(#seen, 2, "off again")
+end)
+
+T.test("a delay holds every message that long, in order", function()
+	local w = World()
+	local _, client = w:Ready(1, 2)
+	local heard = Hear(client, "e")
+	w.server:SetDebug({ delay = 0.1 })
+	w.server:Send("e", { n = 1 })
+	w:Step()
+	w.server:Send("e", { n = 2 })
+	w:Step(3)
+	T.eq(#heard, 0, "held")
+	w:Step(6)
+	T.eq(#heard, 2, "let go once the delay has passed")
+	T.eq(heard[1].fields.n, 1, "in order")
+end)
+
+T.test("loss drops unreliable messages only", function()
+	local w = World()
+	local _, client = w:Ready(1, 2)
+	local snaps, events = Hear(client, "snap"), Hear(client, "e")
+	local draws = { 0.1, 0.9 }
+	w.server:SetDebug({ loss = 0.5, random = function() return table.remove(draws, 1) end })
+	w.server:Send("snap", { n = 1 }, { unreliable = true })
+	w.server:Send("e", { n = 1 })
+	w:Step()
+	w.server:Send("snap", { n = 2 }, { unreliable = true })
+	w:Step()
+	T.eq(#snaps, 1, "one of two lost")
+	T.eq(snaps[1].fields.n, 2, "the second, whose draw was over the loss")
+	T.eq(#events, 1, "the reliable one arrives regardless")
+	Raises(function() w.server:SetDebug({ lag = 1 }) end, "bad_options")
+end)
+
 -- Connections
 
 T.test("a player who leaves is forgotten", function()

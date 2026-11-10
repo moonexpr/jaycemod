@@ -38,6 +38,7 @@ TF_TEAM_UNASSIGNED, TF_TEAM_SPECTATOR = 0, 1
 
 include( "includes/modules/net2.lua" )
 include( "includes/modules/game_events.lua" )
+include( "includes/modules/hit_audit.lua" )
 include( "includes/modules/game_manager.lua" )
 include( "includes/modules/game_timer.lua" )
 include( "controllers.lua" )

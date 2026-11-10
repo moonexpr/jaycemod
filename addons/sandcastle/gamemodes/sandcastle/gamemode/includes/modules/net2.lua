@@ -21,6 +21,8 @@
 --   net2.OnReady(id, fn)                 fn([ply]) as a connection becomes
 --                                        ready, and at once for one that is
 --   net2.SetVersion(n), net2.Stats()
+--   net2.SetDebug(options)               for testing: trace, delay and loss
+--                                        (the net2_debug_* convars)
 --
 -- A name is any string, made up where it is used: nothing registers it
 -- (no util.AddNetworkString, no precache at load), on either realm, at any
@@ -86,6 +88,7 @@ RESERVED = "net2_"
 KICK_MESSAGE = "This server runs net2 wire %d, version %d; your game has wire %s, version %s. Reconnect to update."
 
 local STATS_LINE = "%-40s sends %6d  sent %6d  bytes %9d  received %6d  refused %4d"
+local MILLISECONDS = 1000
 local CALLER = 3 -- an error's level from a realm's public method: the code calling net2
 local INT_LIMIT = 2 ^ 52
 local CLIENT_SLACK = 16 * 1024 -- what a frame adds to a client's event
@@ -103,6 +106,12 @@ local OPTION = {
 	to = true,
 	unreliable = true,
 	predicted = true,
+}
+local DEBUG_OPTION = {
+	trace = true,
+	delay = true,
+	loss = true,
+	random = true,
 }
 local NO_OPTIONS = {}
 local NOBODY = {}
@@ -390,6 +399,7 @@ function New(host)
 		server = host.server and true or false,
 		version = 0,
 		receivers = {},
+		held = {},
 		readyFns = {},
 		watchers = {},
 		tables = {},
@@ -677,12 +687,72 @@ function Realm:Queue(peer, queue, body)
 	end
 end
 
-function Realm:Transmit(peer, data, unreliable)
+function Realm:Deliver(peer, data, unreliable)
 	if self.server then
 		self.host.Send(data, { peer.ply }, unreliable)
 	else
 		self.host.Send(data, nil, unreliable)
 	end
+end
+
+-- A message to the wire, through the debug layer: lost, held, or sent.
+function Realm:Transmit(peer, data, unreliable)
+	local debugging = self.debugging
+	if not debugging then return self:Deliver(peer, data, unreliable) end
+	if unreliable and debugging.loss and debugging.random() < debugging.loss then return end
+	if not debugging.delay then return self:Deliver(peer, data, unreliable) end
+
+	local held = self.held
+	held[#held + 1] = { at = self.host.Now() + debugging.delay, peer = peer, data = data, unreliable = unreliable }
+end
+
+-- What the debug layer held and is now due, in the order sent.
+function Realm:Release(now)
+	local held = self.held
+	local due = 0
+	while held[due + 1] and held[due + 1].at <= now do due = due + 1 end
+	if due == 0 then return end
+
+	local rest = {}
+	for i = due + 1, #held do rest[#rest + 1] = held[i] end
+	self.held = rest
+	for i = 1, due do
+		local message = held[i]
+		local gone = self.server and self.peers[message.peer.ply] ~= message.peer
+		if not gone then self:Deliver(message.peer, message.data, message.unreliable) end
+	end
+end
+
+-- For testing, on this realm: trace(way, name, bytes, ply) sees each
+-- message sent ("out") and taken ("in"); delay holds everything sent that
+-- many seconds; loss is the share of unreliable messages dropped (random:
+-- the draw, 0..1). nil turns it all off.
+function Realm:SetDebug(options)
+	if options == nil then
+		self.debugging = nil
+
+		return
+	end
+
+	local shaped = type(options) == "table"
+	for key in pairs(shaped and options or {}) do
+		shaped = shaped and DEBUG_OPTION[key] == true
+	end
+	if not shaped then
+		raise({ net2 = "bad_options", message = "SetDebug takes trace, delay, loss and random" }, CALLER)
+	end
+
+	self.debugging = {
+		trace = options.trace,
+		delay = options.delay,
+		loss = options.loss,
+		random = options.random or math.random,
+	}
+end
+
+function Realm:Trace(way, name, bytes, ply)
+	local debugging = self.debugging
+	if debugging and debugging.trace then debugging.trace(way, name, bytes, ply) end
 end
 
 -- What one peer may be sent a tick.
@@ -840,6 +910,7 @@ function Realm:Route(ev, peers, unreliable, first)
 	stat.sent = stat.sent + #peers
 	stat.bytes = stat.bytes + ev.size * #peers
 	for _, peer in ipairs(peers) do
+		self:Trace("out", ev.name, ev.size, peer.ply)
 		local list = unreliable and peer.unreliable or peer.pending
 		if first then
 			table.insert(list, 1, ev)
@@ -940,6 +1011,7 @@ function Realm:Incoming(data, ply)
 		local last = lastSeq[ev.name]
 		if ev.seq == 0 or not last or ev.seq > last then
 			if ev.seq > 0 then lastSeq[ev.name] = ev.seq end
+			self:Trace("in", ev.name, ev.size, peer.ply)
 			self:Arrive(peer, ev.name, ev.fields)
 		end
 	end
@@ -1101,11 +1173,12 @@ function Realm:Decode(peer, content)
 	if n > remaining(r) then malformed("more events than bytes") end
 	local events = {}
 	for i = 1, n do
+		local from = r.pos
 		local name = nameOf(readVarint(r)) or malformed("an event of a name not defined")
 		local seq = readVarint(r)
 		local fields, isTable = self:Read(r, shapeOf, limit, 0)
 		if not isTable then malformed(name .. ": fields not a table") end
-		events[i] = { name = name, seq = seq, fields = fields }
+		events[i] = { name = name, seq = seq, fields = fields, size = r.pos - from }
 	end
 	if remaining(r) ~= 0 then malformed("bytes after the last event") end
 
@@ -1505,6 +1578,7 @@ end
 -- The tick: what changed and what was fired goes out.
 function Realm:Tick()
 	local now = self.host.Now()
+	self:Release(now)
 	if self.server then
 		self:FlushTables()
 		self:RunJobs(now)
@@ -1614,6 +1688,31 @@ local function install()
 			MsgN(format(STATS_LINE, name, s.sends, s.sent, s.bytes, s.received, s.refused))
 		end
 	end, nil, "net2: what each name cost this realm")
+
+	-- The debug layer, this realm's: set on the server's console for what it
+	-- sends, on a client's for what that client sends.
+	local traceHelp = "net2: print each message this realm sends and takes"
+	local delayHelp = "net2: hold what this realm sends this many milliseconds"
+	local lossHelp = "net2: the share (0 to 1) of unreliable messages dropped"
+	local trace = CreateConVar("net2_debug_trace", "0", FCVAR_NONE, traceHelp)
+	local delay = CreateConVar("net2_debug_delay", "0", FCVAR_NONE, delayHelp)
+	local loss = CreateConVar("net2_debug_loss", "0", FCVAR_NONE, lossHelp)
+	local function applyDebug()
+		local seconds, share = delay:GetFloat() / MILLISECONDS, loss:GetFloat()
+		if not trace:GetBool() and seconds <= 0 and share <= 0 then return realm:SetDebug(nil) end
+
+		realm:SetDebug({
+			trace = trace:GetBool() and function(way, name, bytes, ply)
+				MsgN(format("net2 %-3s %-40s %6d bytes  %s", way, name, bytes, ply and tostring(ply) or ""))
+			end or nil,
+			delay = seconds > 0 and seconds or nil,
+			loss = share > 0 and share or nil,
+		})
+	end
+	for _, name in ipairs({ "net2_debug_trace", "net2_debug_delay", "net2_debug_loss" }) do
+		cvars.AddChangeCallback(name, applyDebug, "sandcastle/net2/debug")
+	end
+	applyDebug()
 end
 
 -- The module's functions, on this realm's net2 (none under plain LuaJIT).
@@ -1621,7 +1720,19 @@ local function pass(...)
 	return ...
 end
 
-local METHODS = { "Send", "Receive", "Accept", "Serve", "Call", "Table", "OnChange", "OnReady", "Stats", "SetVersion" }
+local METHODS = {
+	"Send",
+	"Receive",
+	"Accept",
+	"Serve",
+	"Call",
+	"Table",
+	"OnChange",
+	"OnReady",
+	"Stats",
+	"SetVersion",
+	"SetDebug",
+}
 
 for _, method in ipairs(METHODS) do
 	_M[method] = function(...)
