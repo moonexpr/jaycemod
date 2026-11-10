@@ -60,7 +60,7 @@ local ceil, floor, frexp, huge, ldexp, min = math.ceil, math.floor, math.frexp, 
 module("net2", package.seeall)
 
 WIRE_VERSION = 1 -- the wire's own; SetVersion is the game's
-NET_MESSAGE = "sandcastle/net2/message"
+NET_MESSAGE = "N2/message"
 MESSAGE_BYTES = 60000 -- one net message's payload (GMod's limit is 65533)
 UNRELIABLE_BYTES = 1000 -- one unreliable frame; under Source's datagram, unmeasured
 TRANSFER_BYTES = 16 * 1024 * 1024 -- a frame from the server, whole
