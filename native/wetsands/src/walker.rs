@@ -90,6 +90,8 @@ pub struct Step {
     pub so_far: f64,
     pub area_id: u32,
     pub penalized: bool,
+    /// The move climbs a nav ladder: no way for a walker that climbs none.
+    pub ladder: bool,
 }
 
 impl Walker {
@@ -116,6 +118,9 @@ impl Walker {
 
     fn base(&self, step: &Step) -> f64 {
         if self.attribute_rule && self.uncrossable(step.attributes) {
+            return IMPASSABLE;
+        }
+        if step.ladder && !self.limits.ladders {
             return IMPASSABLE;
         }
         if !step.traversable || self.rooms.as_ref().is_some_and(|rooms| rooms.closes(step.room)) {
@@ -155,12 +160,21 @@ mod tests {
     }
 
     fn step() -> Step {
-        Step { traversable: true, room: NO_ROOM, attributes: 0, distance: 100.0, rise: 0.0, so_far: 50.0, area_id: 7, penalized: false }
+        Step { traversable: true, room: NO_ROOM, attributes: 0, distance: 100.0, rise: 0.0, so_far: 50.0, area_id: 7, penalized: false, ladder: false }
     }
 
     #[test]
     fn a_flat_step_costs_its_distance_on_top_of_the_way_so_far() {
         assert_eq!(soldier().price(&step()), 150.0);
+    }
+
+    #[test]
+    fn a_ladder_is_climbed_only_by_a_walker_whose_limits_say_ladders() {
+        let climber = Walker { limits: Limits { ladders: true, ..soldier().limits }, ..soldier() };
+        let grounded = Walker { limits: Limits { ladders: false, ..soldier().limits }, ..soldier() };
+        assert_eq!(climber.price(&Step { ladder: true, ..step() }), 150.0);
+        assert_eq!(grounded.price(&Step { ladder: true, ..step() }), IMPASSABLE);
+        assert_eq!(grounded.price(&step()), 150.0);
     }
 
     #[test]

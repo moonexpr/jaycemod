@@ -6,7 +6,10 @@
 --   Mesh() -> a mesh to fill: mesh:Area(id, x, y, z, attributes) for every
 --     area, then mesh:Link(from, to, distance, rise) for each area's floor
 --     links in GetAdjacentAreas' order (the distance between centres, and
---     ComputeAdjacentConnectionHeightChange), then mesh:Seal();
+--     ComputeAdjacentConnectionHeightChange) and mesh:Ladder(from, to,
+--     length) for each nav ladder between two areas no link joins that way
+--     (one already linked is refused), then mesh:Seal(). A ladder is a way
+--     only for a walker whose limits say ladders, as long as it is tall;
 --     mesh:Sealed() -> whether it is, mesh:Areas() -> how many areas a
 --     sealed mesh has
 --   New(mesh, strategy, limits, bot, start, goal, goalPos, maxExpanded[,
@@ -82,6 +85,17 @@ function MeshClass:Link (from, to, distance, rise)
 	self.links [from] [to] = { distance = distance, rise = rise }
 end
 
+-- A nav ladder from one area to another, as tall as length: a way for a walker whose limits say
+-- ladders, and none for any other. One way, as a link is: a ladder climbed both ways is laid twice.
+function MeshClass:Ladder (from, to, length)
+	Unsealed (self)
+	local neighbors = self.neighbors [from]
+	if not neighbors then error ("no area " .. tostring (from) .. " in the mesh", 2) end
+	if self.links [from] [to] then error ("area " .. tostring (from) .. " is already linked to " .. tostring (to), 2) end
+	neighbors [#neighbors + 1] = to
+	self.links [from] [to] = { distance = length, rise = 0, ladder = true }
+end
+
 function MeshClass:Seal ()
 	Unsealed (self)
 	for from, neighbors in pairs (self.neighbors) do
@@ -150,7 +164,9 @@ end
 function Graph:Cost (from, to, costSoFar)
 	if not self:Crossable (from, to) then return Path.IMPASSABLE end
 	local link, step = self.mesh.links [from] [to], self.step
+	if link.ladder and not self.limits.ladders then return Path.IMPASSABLE end
 	step.traversable = self:Traversable (to)
+	step.ladderLength = link.ladder and link.distance or nil
 	step.length = link.distance
 	step.centerDistance = link.distance
 	step.heightChange = link.rise
@@ -202,7 +218,8 @@ function Distances (mesh, starts, limit, limits, told)
 		local edges, refused, links = {}, uncrossable and uncrossable [id], mesh.links [id]
 		for _, to in ipairs (mesh.neighbors [id]) do
 			local link = links [to]
-			if Path.Walkable (link.rise, limits) and not (refused and refused [to]) then
+			local climbed = not link.ladder or limits.ladders
+			if climbed and Path.Walkable (link.rise, limits) and not (refused and refused [to]) then
 				edges [#edges + 1] = { node = to, cost = link.distance }
 			end
 		end

@@ -158,6 +158,7 @@ impl Calculator {
             so_far,
             area_id: to,
             penalized: self.penalized.get(index).copied().unwrap_or(false),
+            ladder: matches!(step, Move::Ladder { .. }),
         }))
     }
 }

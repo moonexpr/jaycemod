@@ -2,6 +2,8 @@
 //! centre and NAV_MESH_* attributes, and its floor links in
 //! GetAdjacentAreas' order, each with the distance between centres and the
 //! height change (ComputeAdjacentConnectionHeightChange) the engine gives.
+//! A nav ladder between two areas is a link too, as long as the ladder is
+//! tall and with no height change, which only a walker that climbs follows.
 //! Areas are numbered 0..n inside; ids are the engine's.
 
 use foundation::graph::{Builder, Graph, GraphError};
@@ -11,6 +13,7 @@ use std::collections::HashMap;
 pub enum MeshError {
     DuplicateArea(u32),
     NoSuchArea(u32),
+    AlreadyLinked(u32, u32),
     Graph(String),
 }
 
@@ -19,6 +22,7 @@ impl std::fmt::Display for MeshError {
         match self {
             MeshError::DuplicateArea(id) => write!(f, "area {id} added twice"),
             MeshError::NoSuchArea(id) => write!(f, "no area {id} in the mesh"),
+            MeshError::AlreadyLinked(from, to) => write!(f, "area {from} is already linked to {to}"),
             MeshError::Graph(why) => write!(f, "{why}"),
         }
     }
@@ -38,12 +42,14 @@ pub struct NavMesh {
     graph: Graph,
     distances: Vec<f64>,
     rises: Vec<f64>,
+    ladders: Vec<bool>,
 }
 
 struct Link {
     to: u32,
     distance: f64,
     rise: f64,
+    ladder: bool,
 }
 
 /// Builds a mesh: every area, then each area's links in order.
@@ -73,13 +79,26 @@ impl MeshBuilder {
     /// (added before `finish`).
     pub fn link(&mut self, from: u32, to: u32, distance: f64, rise: f64) -> Result<(), MeshError> {
         let &from = self.index.get(&from).ok_or(MeshError::NoSuchArea(from))?;
-        self.links[from as usize].push(Link { to, distance, rise });
+        self.links[from as usize].push(Link { to, distance, rise, ladder: false });
+        Ok(())
+    }
+
+    /// Adds a nav ladder from area `from` (already added) to area `to`
+    /// (added before `finish`), `length` tall: one way, as a link is.
+    /// Refused where a link already joins them that way.
+    pub fn ladder(&mut self, from: u32, to: u32, length: f64) -> Result<(), MeshError> {
+        let &index = self.index.get(&from).ok_or(MeshError::NoSuchArea(from))?;
+        let links = &mut self.links[index as usize];
+        if links.iter().any(|link| link.to == to) {
+            return Err(MeshError::AlreadyLinked(from, to));
+        }
+        links.push(Link { to, distance: length, rise: 0.0, ladder: true });
         Ok(())
     }
 
     pub fn finish(self) -> Result<NavMesh, MeshError> {
         let mut builder = Builder::default();
-        let (mut distances, mut rises) = (Vec::new(), Vec::new());
+        let (mut distances, mut rises, mut ladders) = (Vec::new(), Vec::new(), Vec::new());
         for links in &self.links {
             builder.node();
             for link in links {
@@ -87,6 +106,7 @@ impl MeshBuilder {
                 builder.link(to)?;
                 distances.push(link.distance);
                 rises.push(link.rise);
+                ladders.push(link.ladder);
             }
         }
         Ok(NavMesh {
@@ -97,6 +117,7 @@ impl MeshBuilder {
             attributes: self.attributes,
             distances,
             rises,
+            ladders,
         })
     }
 }
@@ -135,6 +156,11 @@ impl NavMesh {
         self.rises[link]
     }
 
+    /// Whether the link is a nav ladder: its distance is the ladder's length.
+    pub fn ladder(&self, link: usize) -> bool {
+        self.ladders[link]
+    }
+
     /// The link from `from` to `to` (inside numbers), if there is one.
     pub fn link_between(&self, from: u32, to: u32) -> Option<usize> {
         self.graph.links_of(from).find(|&link| self.graph.target(link) == to)
@@ -171,5 +197,31 @@ mod tests {
         assert_eq!(b.link(5, 1, 1.0, 0.0), Err(MeshError::NoSuchArea(5)));
         b.area(1, [0.0; 3], 0).unwrap();
         assert_eq!(b.area(1, [0.0; 3], 0), Err(MeshError::DuplicateArea(1)));
+    }
+
+    #[test]
+    fn a_ladder_is_a_link_as_long_as_it_is_tall_one_way() {
+        let mut b = MeshBuilder::default();
+        b.area(1, [0.0; 3], 0).unwrap();
+        b.area(2, [0.0, 0.0, 200.0], 0).unwrap();
+        b.ladder(1, 2, 200.0).unwrap();
+        let mesh = b.finish().unwrap();
+        let (low, high) = (mesh.index_of(1).unwrap(), mesh.index_of(2).unwrap());
+        let link = mesh.link_between(low, high).unwrap();
+        assert!(mesh.ladder(link));
+        assert_eq!((mesh.distance(link), mesh.rise(link)), (200.0, 0.0));
+        assert_eq!(mesh.link_between(high, low), None);
+    }
+
+    #[test]
+    fn refuses_a_ladder_where_a_link_already_goes_or_from_no_area() {
+        let mut b = MeshBuilder::default();
+        b.area(1, [0.0; 3], 0).unwrap();
+        b.area(2, [0.0; 3], 0).unwrap();
+        b.link(1, 2, 10.0, 0.0).unwrap();
+        assert_eq!(b.ladder(1, 2, 50.0), Err(MeshError::AlreadyLinked(1, 2)));
+        assert_eq!(b.ladder(9, 2, 50.0), Err(MeshError::NoSuchArea(9)));
+        let floor = b.finish().unwrap();
+        assert!(!floor.ladder(floor.link_between(0, 1).unwrap()));
     }
 }

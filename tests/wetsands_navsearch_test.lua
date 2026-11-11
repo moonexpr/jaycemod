@@ -39,6 +39,25 @@ local function Mesh (NavSearch, attributes)
 	return mesh
 end
 
+-- The same mesh with a ladder from 1 straight up to 4, shorter than the walk round.
+local LADDER = CELL / 2
+
+local function LadderMesh (NavSearch)
+	local mesh = NavSearch.Mesh ()
+	for _, a in ipairs (AREAS) do mesh:Area (a [1], a [2], a [3], 0, 0) end
+	for _, a in ipairs (AREAS) do
+		for _, link in ipairs (a [4]) do mesh:Link (a [1], link [1], link [2], 0) end
+	end
+	mesh:Ladder (1, 4, LADDER)
+	mesh:Seal ()
+	return mesh
+end
+
+-- A player's body, which climbs ladders or does not.
+local function Climber (ladders)
+	return { stepHeight = 18, jumpHeight = 72, deathDropHeight = 300, ladders = ladders }
+end
+
 local function Bot ()
 	return { entIndex = 12, now = 30, team = RED, route = TFBot.FASTEST_ROUTE, miniBoss = false, roundWon = false, winningTeam = 0, penalized = {} }
 end
@@ -313,6 +332,34 @@ local CASES =
 	end },
 	{ "distances refuse a start the mesh lacks", function (N)
 		return { (pcall (N.Distances, Mesh (N), { 9 }, math.huge, HL2.SOLDIER_LIMITS)) }
+	end },
+	{ "a ladder is a way only for a walker that climbs, as long as it is tall", function (N)
+		local climber = Run (Search (N, { mesh = LadderMesh (N), strategy = TFBot, limits = Climber (true) }))
+		local walker = Run (Search (N, { mesh = LadderMesh (N), strategy = TFBot, limits = Climber (false) }))
+		return { climber.status, Joined (climber:Route ()), climber:CostSoFar (4), walker.status, Joined (walker:Route ()) }
+	end },
+	{ "a ladder goes one way, as it was laid: up it is no way down", function (N)
+		local down = Run (Search (N, { mesh = LadderMesh (N), strategy = TFBot, limits = Climber (true), start = 4, goal = 1,
+			goalPos = { x = 0, y = 0, z = 0 } }))
+		return { down.status, Joined (down:Route ()) }
+	end },
+	{ "a ladder told uncrossable is not climbed", function (N)
+		local s = Run (Search (N, { mesh = LadderMesh (N), strategy = TFBot, limits = Climber (true),
+			told = { uncrossable = { [1] = { [4] = true } } } }))
+		return { s.status, Joined (s:Route ()) }
+	end },
+	{ "distances climb a ladder only for a walker that climbs", function (N)
+		return { Walks (N.Distances (LadderMesh (N), { 1 }, math.huge, Climber (true))),
+			Walks (N.Distances (LadderMesh (N), { 1 }, math.huge, Climber (false))) }
+	end },
+	{ "a ladder is laid between areas of the mesh, before it is sealed", function (N)
+		local mesh = N.Mesh ()
+		mesh:Area (1, 0, 0, 0, 0)
+		local noFrom = pcall (mesh.Ladder, mesh, 7, 1, LADDER)
+		mesh:Ladder (1, 9, LADDER)
+		local noTo = pcall (mesh.Seal, mesh)
+		local sealed = Mesh (N)
+		return { noFrom, noTo, (pcall (sealed.Ladder, sealed, 1, 4, LADDER)) }
 	end }
 }
 
@@ -341,8 +388,13 @@ T.test ("the two implementations agree on every case", function ()
 end)
 
 T.test ("the Lua implementation's answers are the expected ones", function ()
-	T.eq (seen ["walks the mesh to the goal by the cheapest way"].lua, "found | 1 2 3 4 | 3 | 4", "straight")
-	T.eq (seen ["a closed area sends the route the long way round"].lua, "found | 1 5 3 4", "round")
+	T.eq (seen ["walks the mesh to the goal by the cheapest way"].lua,   "found | 1 2 3 4 | 3 | 4", "straight")
+	T.eq (seen ["a closed area sends the route the long way round"].lua, "found | 1 5 3 4",         "round")
+	T.eq (seen ["a ladder is a way only for a walker that climbs, as long as it is tall"].lua,
+		"found | 1 4 | " .. LADDER .. " | found | 1 2 3 4", "the ladder for the climber, the walk for the other")
+	T.eq (seen ["a ladder goes one way, as it was laid: up it is no way down"].lua, "found | 4 3 2 1", "the walk back")
+	T.eq (seen ["a ladder told uncrossable is not climbed"].lua, "found | 1 2 3 4", "the walk")
+	T.eq (seen ["a ladder is laid between areas of the mesh, before it is sealed"].lua, "false | false | false", "refused")
 	T.eq (seen ["an uncrossable link is closed one way only"].lua, "failed | 1 2 3 | found", "one way")
 	T.eq (seen ["an enemy spawn room is closed until the round is won"].lua, "1 5 3 4 | 1 2 3 4", "rooms")
 	T.eq (seen ["rules are asked once an area and a link, and refuse"].lua, "failed | 1 2 | true | true", "rules")

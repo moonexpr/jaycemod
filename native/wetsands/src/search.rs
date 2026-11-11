@@ -140,6 +140,7 @@ impl<R: Rules> Costs for Pricing<'_, R> {
             so_far,
             area_id: self.mesh.id(to),
             penalized: self.penalized.get(to as usize).copied().unwrap_or(false),
+            ladder: self.mesh.ladder(link),
         })
     }
 

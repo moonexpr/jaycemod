@@ -51,6 +51,7 @@ impl Native for Mesh {
     const METHODS: &'static [(&'static CStr, CFunction)] = &[
         (c"Area", mesh_area),
         (c"Link", mesh_link),
+        (c"Ladder", mesh_ladder),
         (c"Seal", mesh_seal),
         (c"Sealed", mesh_sealed),
         (c"Areas", mesh_areas),
@@ -135,6 +136,17 @@ unsafe extern "C-unwind" fn mesh_link(l: L) -> c_int {
     let (from, to) = (check_whole(l, 2), check_whole(l, 3));
     let (distance, rise) = ((api.checknumber)(l, 4), (api.checknumber)(l, 5));
     if let Err(e) = building(l).link(from, to, distance, rise) {
+        raise_owned(l, e.to_string());
+    }
+    0
+}
+
+/// mesh:Ladder(fromId, toId, length): a nav ladder from one area to another.
+unsafe extern "C-unwind" fn mesh_ladder(l: L) -> c_int {
+    let api = api();
+    let (from, to) = (check_whole(l, 2), check_whole(l, 3));
+    let length = (api.checknumber)(l, 4);
+    if let Err(e) = building(l).ladder(from, to, length) {
         raise_owned(l, e.to_string());
     }
     0
@@ -230,6 +242,7 @@ unsafe extern "C-unwind" fn walker_price(l: L) -> c_int {
         so_far: (api.checknumber)(l, 7),
         area_id: check_whole(l, 8),
         penalized: (api.toboolean)(l, 9) != 0,
+        ladder: false,
     };
     let cost = userdata::check::<WalkerHandle>(l, 1).0.price(&step);
     number(l, cost)
@@ -534,7 +547,8 @@ unsafe fn whole_at(l: L, index: c_int) -> Option<u32> {
 
 /// The walks Distances answers, (area id, walk), read from its arguments:
 /// the mesh (1), starts (2), told (`told`, a table index, if any).
-unsafe fn walks_of(l: L, limit: f64, jump: f64, drop: f64, told: Option<c_int>) -> Result<Vec<(u32, f64)>, String> {
+unsafe fn walks_of(l: L, limit: f64, limits: (f64, f64, bool), told: Option<c_int>) -> Result<Vec<(u32, f64)>, String> {
+    let (jump, drop, ladders) = limits;
     let api = api();
     let mesh = match userdata::check::<Mesh>(l, 1) {
         Mesh::Sealed(mesh) => Arc::clone(mesh),
@@ -569,7 +583,9 @@ unsafe fn walks_of(l: L, limit: f64, jump: f64, drop: f64, told: Option<c_int>) 
         });
         (api.settop)(l, -2);
     }
-    let walks = crate::walks::distances(&mesh, &starts, limit, |rise| rise < jump && rise >= -drop, |link| !refused[link]);
+    // a ladder is a way only for a walker whose limits say ladders
+    let crossable = |link: usize| !refused[link] && (ladders || !mesh.ladder(link));
+    let walks = crate::walks::distances(&mesh, &starts, limit, |rise| rise < jump && rise >= -drop, crossable);
     Ok(walks.iter().enumerate().filter_map(|(area, walk)| walk.map(|walk| (mesh.id(area as u32), walk))).collect())
 }
 
@@ -583,7 +599,8 @@ unsafe extern "C-unwind" fn distances(l: L) -> c_int {
     let jump = field_number(l, 4, c"jumpHeight").unwrap_or_else(|| raise(l, c"limits need a number jumpHeight"));
     let drop = field_number(l, 4, c"deathDropHeight").unwrap_or_else(|| raise(l, c"limits need a number deathDropHeight"));
     let told = ((api.type_of)(l, 5) == TTABLE).then_some(5);
-    let walks = match walks_of(l, limit, jump, drop, told) {
+    let ladders = field_truthy(l, 4, c"ladders");
+    let walks = match walks_of(l, limit, (jump, drop, ladders), told) {
         Ok(walks) => walks,
         Err(message) => raise_owned(l, message),
     };
