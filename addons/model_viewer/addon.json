@@ -1,6 +1,6 @@
 {
-	"title": "Model Viewer",
+	"title": "Simple Model Viewer",
 	"type": "tool",
-	"tags": [ "build" ],
+	"tags": [ "build", "scenic" ],
 	"ignore": []
 }
