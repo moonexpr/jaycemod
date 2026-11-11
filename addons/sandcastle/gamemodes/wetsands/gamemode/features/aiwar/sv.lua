@@ -81,7 +81,7 @@ local Controller =
 	-- tuner = nil, -- the tactics tuner of ns_tactics_*, made when first used
 	-- probes = nil, -- path probes walking the lanes, with their findings (ProbeLanes)
 	-- probeReport = nil, -- the last probe run's report, as lines (StepProbes)
-	-- botSerial = nil, -- how many bots it has made, for their names (AddBot)
+	-- botSerial = nil, -- how many bots it has named, for a name once system.names's are taken (BotName)
 	-- nextQuota = nil, -- when the quota is next kept (MaintainBotQuota)
 }
 

@@ -135,13 +135,20 @@ function Controller:Population ()
 	}
 end
 
+-- A name no player has (system.names), or its faction's and a number once they are all taken.
+function Controller:BotName (team)
+	local taken = {}
+	for _, ply in ipairs (player.GetAll ()) do taken [ply:Nick ()] = true end
+	self.botSerial = (self.botSerial or 0) + 1
+	return system.names.Pick (taken, math.random) or string.format ("%s %d", self:FactionName (team), self.botSerial)
+end
+
 function Controller:AddBot ()
 	local counts = self:TeamCounts ()
 	local team = Quota.TeamToJoin ({ [RED] = counts [RED].players, [BLUE] = counts [BLUE].players }, self:Sizes ())
-	self.botSerial = (self.botSerial or 0) + 1
 	-- a NextSoldier where the binary is bound, whose orders the engine runs (BotBehavior)
 	local create = player.CreateNextSoldier or player.CreateNextBot
-	local bot = create (string.format ("%s %d", self:FactionName (team), self.botSerial))
+	local bot = create (self:BotName (team))
 	if not IsValid (bot) then return end
 	self.bots [bot] = true
 	if player.CreateNextSoldier then nextsoldier.behavior.group_identity.Give (bot, nextsoldier.engine, bot) end

@@ -100,8 +100,10 @@ nearby starts and goals, is the next step if that hitch shows.
 - Their route cost is a plain distance with a jump penalty; TF2's bots'
   (`path/tfbot`: spread over routes, the safest route when retreating) is
   not used yet.
-- Names are the faction's at join time: after the sides trade, a bot
-  called Combine fights for the Resistance.
+- Names come from `system.names` (Undertale, Deltarune, Steven Universe,
+  TF2, L4D2, Stardew Valley, Code Lyoko), one no player has; only once
+  every one is taken is a bot named for its faction at join time, and
+  then after the sides trade a bot called Combine fights for the Resistance.
 - TF NextBot monsters are not in their sight.
 - Ladders and doors that open by +use alone are untested.
 - `Drive` allocates a few tables a tick: a weapon record per weapon and a

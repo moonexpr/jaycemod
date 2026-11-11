@@ -115,6 +115,7 @@ local GAMES = {
 	["system/permissions"] = "formalisms",
 	["system/local_player"] = "formalisms",
 	["system/local_player"] = "formalisms",
+	["system/names"] = "formalisms",
 
 	["gameplay/players"] = "gameplay",
 	["gameplay/players/attributes"] = "gameplay",
