@@ -26,6 +26,8 @@ These rules target beginner-level output and AI agents; experienced developers m
 
 ## Formatting
 
+In Sandcastle, layout is notcake's (gcompute, glib), written by `.devtools/bin/lua_format.py`; where a rule below disagrees with it (space before `(`, table braces, trailing commas), the formatter and CLAUDE.md's "Lua style" win.
+
 - Indent with tabs (4-space tab stop). Never use spaces for indentation.
 - You may use an extra indentation level to visually group code between paired calls (e.g. `cam_Start3D`/`cam_End3D`, `render.PushRenderTarget`/`render.PopRenderTarget`).
 - Put spaces around binary operators: `a + b`, never `a+b`.
