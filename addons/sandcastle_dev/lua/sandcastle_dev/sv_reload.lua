@@ -56,7 +56,8 @@ end
 local SOURCE_PREFIX = "gamemodes/" -- how CompileFile names a gamemode file
 local REPO_GAMEMODES = "addons/sandcastle/gamemodes/" -- a repo path's prefix before the LUA path
 local REPO_ADDON_LUA = "^addons/[%w_]+/lua/" -- an addon's, before its LUA path (NextSoldier's)
-local ADOPT_FROM = "\nlocal Controller = {"
+-- a pattern: the brace on the declaration's line or, as the formatter lays a table, the next
+local ADOPT_FROM = "\nlocal Controller =%s*{"
 local ADOPT_TO = "\nlocal Controller = __dev_adopt {"
 local CLEANUP_SETTLE = 0.1 -- s: the map's entities made again before the state goes back
 
