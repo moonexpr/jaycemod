@@ -267,9 +267,9 @@ function TOOL:DrawHUD ()
 		surface.DrawLine (Reye.x + 1, Reye.y - 1, x + 1, y - 1)
 
 		surface.SetDrawColor (0, 255, 0, 255)
-		surface.DrawLine (Leye.x, Leye.y, x, y)
+		surface.DrawLine (Leye.x, Leye.y,     x, y)
 		surface.DrawLine (Leye.x, Leye.y - 1, x, y - 1)
-		surface.DrawLine (Reye.x, Reye.y, x, y)
+		surface.DrawLine (Reye.x, Reye.y,     x, y)
 		surface.DrawLine (Reye.x, Reye.y - 1, x, y - 1)
 
 	end

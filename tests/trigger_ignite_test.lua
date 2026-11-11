@@ -70,7 +70,7 @@ end
 
 T.test ("the defaults are CTriggerIgnite's", function ()
 	local ignite = Ignite.New ({}, FakePlayers ())
-	T.eq (Ignite.BURN_DURATION_DEFAULT, 1, "burn_duration")
+	T.eq (Ignite.BURN_DURATION_DEFAULT,  1,  "burn_duration")
 	T.eq (Ignite.DAMAGE_PERCENT_DEFAULT, 10, "damage_percent_per_second")
 	T.defined (Ignite.BURN_INTERVAL, "BURN_INTERVAL")
 	T.eq (ignite:NextBurn (), nil, "idle until touched")
@@ -84,7 +84,7 @@ T.test ("a player walking in catches fire, then burns by his max health every in
 	T.near (lava:NextBurn (), START + STEP, 1e-9, "BurnThink armed")
 	T.eq (Describe (lava:Think (START + STEP / 2)), "", "not due yet")
 	-- an interval's worth of LAVA_PERCENT of his max health, and he is already burning
-	T.eq (Describe (lava:Think (START + STEP)), Damaged ("scout", BurnOver (STEP, SCOUT_HEALTH)), "the first burn")
+	T.eq (Describe (lava:Think (START + STEP)),     Damaged ("scout", BurnOver (STEP, SCOUT_HEALTH)), "the first burn")
 	T.eq (Describe (lava:Think (START + 2 * STEP)), Damaged ("scout", BurnOver (STEP, SCOUT_HEALTH)), "the second")
 end)
 
@@ -105,7 +105,7 @@ T.test ("a player whose fire went out is ignited again before the burn", functio
 	port:Apply (lava:StartTouch (START, "scout"))
 	port.conds.scout [COND.BURNING] = nil
 	T.eq (Describe (port:Apply (lava:Think (START + STEP))), Ignited ("scout", LAVA_BURN) .. "," .. Damaged ("scout", BurnOver (STEP, SCOUT_HEALTH)), "ignite, then damage")
-	T.eq (Describe (lava:Think (START + 2 * STEP)), Damaged ("scout", BurnOver (STEP, SCOUT_HEALTH)), "burning: damage only")
+	T.eq (Describe (lava:Think (START + 2 * STEP)),          Damaged ("scout", BurnOver (STEP, SCOUT_HEALTH)),                                        "burning: damage only")
 end)
 
 T.test ("an invulnerable player gets the effects, no fire, and still the damage", function ()
@@ -114,8 +114,8 @@ T.test ("an invulnerable player gets the effects, no fire, and still the damage"
 		port:Add ("medic", SCOUT_HEALTH)
 		port.conds.medic [cond] = true
 		local lava = Lava (port)
-		T.eq (Describe (port:Apply (lava:StartTouch (START, "medic"))), Ignited ("medic", nil), "effects only, cond " .. cond)
-		T.eq (Describe (lava:Think (START + STEP)), Damaged ("medic", BurnOver (STEP, SCOUT_HEALTH)), "TakeDamage regardless, cond " .. cond)
+		T.eq (Describe (port:Apply (lava:StartTouch (START, "medic"))), Ignited ("medic", nil),                           "effects only, cond " .. cond)
+		T.eq (Describe (lava:Think (START + STEP)),                     Damaged ("medic", BurnOver (STEP, SCOUT_HEALTH)), "TakeDamage regardless, cond " .. cond)
 	end
 end)
 
@@ -129,7 +129,7 @@ end)
 
 T.test ("everyone burns in the order they walked in", function ()
 	local port = FakePlayers ()
-	port:Add ("scout", SCOUT_HEALTH)
+	port:Add ("scout",   SCOUT_HEALTH)
 	port:Add ("soldier", SOLDIER_HEALTH)
 	local lava = Lava (port)
 	port:Apply (lava:StartTouch (START, "soldier"))
@@ -144,16 +144,16 @@ T.test ("the last player leaving stops the burn; walking back in starts afresh",
 	port:Apply (lava:StartTouch (START, "scout"))
 	lava:Think (START + STEP)
 	lava:EndTouch ("scout")
-	T.eq (Describe (lava:Think (START + 2 * STEP)), "", "nobody to burn")
-	T.eq (lava:NextBurn (), nil, "BurnThink stopped")
+	T.eq (Describe (lava:Think (START + 2 * STEP)), "",  "nobody to burn")
+	T.eq (lava:NextBurn (),                         nil, "BurnThink stopped")
 	port.conds.scout [COND.BURNING] = nil
 	T.eq (Describe (port:Apply (lava:StartTouch (START + 10, "scout"))), Ignited ("scout", LAVA_BURN), "ignited again")
-	T.eq (Describe (lava:Think (START + 10 + STEP)), Damaged ("scout", BurnOver (STEP, SCOUT_HEALTH)), "no damage for the time away")
+	T.eq (Describe (lava:Think (START + 10 + STEP)),                     Damaged ("scout", BurnOver (STEP, SCOUT_HEALTH)), "no damage for the time away")
 end)
 
 T.test ("one of two leaving keeps the other burning", function ()
 	local port = FakePlayers ()
-	port:Add ("scout", SCOUT_HEALTH)
+	port:Add ("scout",   SCOUT_HEALTH)
 	port:Add ("soldier", SOLDIER_HEALTH)
 	local lava = Lava (port)
 	port:Apply (lava:StartTouch (START, "scout"))

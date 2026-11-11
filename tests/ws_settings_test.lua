@@ -7,8 +7,8 @@ local AiWar = T.require ("features.aiwar.model")
 local Slots = T.require ("features.aiwar.slots")
 
 T.test ("a value in range is accepted as the convar's text", function ()
-	T.eq (Settings.Parse ("mp_aiwar_team_size", "6"), "6")
-	T.eq (Settings.Parse ("ws_aiwar_debug_full", "1"), "1")
+	T.eq (Settings.Parse ("mp_aiwar_team_size", "6"),        "6")
+	T.eq (Settings.Parse ("ws_aiwar_debug_full", "1"),       "1")
 	T.eq (Settings.Parse ("ws_nodegraph_max_nodes", "2048"), "2048")
 end)
 
@@ -18,26 +18,26 @@ end)
 
 T.test ("a value outside the menu's range is refused, naming the range", function ()
 	local value, why = Settings.Parse ("mp_aiwar_team_size", tostring (AiWar.TEAM_SIZE_MAX + 1))
-	T.eq (value, nil)
-	T.eq (why, "mp_aiwar_team_size takes -1 to " .. AiWar.TEAM_SIZE_MAX)
+	T.eq (value,                                         nil)
+	T.eq (why,                                           "mp_aiwar_team_size takes -1 to " .. AiWar.TEAM_SIZE_MAX)
 	T.eq ((Settings.Parse ("mp_aiwar_team_size", "-2")), nil)
 end)
 
 T.test ("the team size may be the slot list's, -1, and the sides may be empty", function ()
 	T.eq (Settings.Parse ("mp_aiwar_team_size", tostring (Slots.CUSTOM_SIZE)), "-1", "the slot list's")
-	T.eq (Settings.Parse ("mp_aiwar_team_size", "0"), "0", "nobody")
+	T.eq (Settings.Parse ("mp_aiwar_team_size", "0"),                          "0",  "nobody")
 end)
 
 T.test ("text that is not a number is refused", function ()
 	local value, why = Settings.Parse ("mp_aiwar_team_size", "eight")
 	T.eq (value, nil)
-	T.eq (why, "mp_aiwar_team_size takes a number, not \"eight\"")
+	T.eq (why,   "mp_aiwar_team_size takes a number, not \"eight\"")
 end)
 
 T.test ("a convar not on the list is refused, so the command sets nothing else", function ()
 	local value, why = Settings.Parse ("rcon_password", "x")
 	T.eq (value, nil)
-	T.eq (why, "rcon_password is not one of the settings the menus may change")
+	T.eq (why,   "rcon_password is not one of the settings the menus may change")
 end)
 
 T.test ("each setting's range is what its menu control offers", function ()
@@ -52,18 +52,18 @@ T.test ("every setting names the privilege that may change it", function ()
 	for _, p in ipairs (Permissions.PRIVILEGES) do known [p.name] = true end
 	for name, s in Settings.SETTINGS () do T.eq (known [s.guard], true, name) end
 	T.eq (Settings.SETTINGS.mp_aiwar_team_size.guard, Permissions.NEXTSOLDIER)
-	T.eq (Settings.SETTINGS.mp_winlimit.guard, Permissions.RULES)
-	T.eq (Settings.SETTINGS.mp_economy_enabled.guard, Permissions.ECONOMY, "a superadmin toggle")
+	T.eq (Settings.SETTINGS.mp_winlimit.guard,        Permissions.RULES)
+	T.eq (Settings.SETTINGS.mp_economy_enabled.guard,  Permissions.ECONOMY,  "a superadmin toggle")
 	T.eq (Settings.SETTINGS.tf_weapon_criticals.guard, Permissions.GAMEPLAY, "a superadmin toggle")
 end)
 
 T.test ("GMod's host-only NPCs and Server menu options are settings, behind server_options", function ()
 	local Permissions = system.permissions
 	for _, name in ipairs (Settings.PROXIED) do
-		T.eq (Settings.SETTINGS [name] ~= nil, true, name)
-		T.eq (Settings.SETTINGS [name].guard, Permissions.SERVER_OPTIONS, name)
-		T.eq (Settings.SETTINGS [name].min, 0, name .. " is a switch")
-		T.eq (Settings.SETTINGS [name].max, 1, name .. " is a switch")
+		T.eq (Settings.SETTINGS [name] ~= nil, true,                       name)
+		T.eq (Settings.SETTINGS [name].guard,  Permissions.SERVER_OPTIONS, name)
+		T.eq (Settings.SETTINGS [name].min,    0,                          name .. " is a switch")
+		T.eq (Settings.SETTINGS [name].max,    1,                          name .. " is a switch")
 	end
 	T.eq (#Settings.PROXIED, 11, "the NPCs menu's four and the Server menu's seven")
 end)
@@ -76,7 +76,7 @@ T.test ("Allowed says whether a holder of privileges may change a setting", func
 		return function (n) return held [n] == true end
 	end
 	T.eq (Settings.Allowed ("mp_economy_enabled", Holds (Permissions.ECONOMY)), true)
-	T.eq (Settings.Allowed ("mp_economy_enabled", Holds (Permissions.RULES)), false)
+	T.eq (Settings.Allowed ("mp_economy_enabled", Holds (Permissions.RULES)),   false)
 	T.eq (Settings.Allowed ("rcon_password", Holds (Permissions.RULES)), false, "not a setting")
 end)
 

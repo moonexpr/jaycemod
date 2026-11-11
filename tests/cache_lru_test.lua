@@ -33,15 +33,15 @@ T.test ("past capacity the least recently used goes, and is released", function 
 	cache:Put ("b", 2)
 	cache:Get ("a")
 	cache:Put ("c", 3)
-	T.eq (Joined (evicted), "b:" .. Cache.EVICTED, "not the one just read")
-	T.eq (Joined (cache:Keys ()), "c a", "kept")
+	T.eq (Joined (evicted),       "b:" .. Cache.EVICTED, "not the one just read")
+	T.eq (Joined (cache:Keys ()), "c a",                 "kept")
 end)
 
 T.test ("Peek reads without making the entry recent", function ()
 	local cache = Lru.New ({ capacity = 2 })
 	cache:Put ("a", 1)
 	cache:Put ("b", 2)
-	T.eq (cache:Peek ("a"), 1, "read")
+	T.eq (cache:Peek ("a"),       1,     "read")
 	T.eq (Joined (cache:Keys ()), "b a", "order kept")
 end)
 
@@ -50,8 +50,8 @@ T.test ("reading an LRU cache by field is a use", function ()
 	cache.a = 1
 	cache.b = 2
 	local _ = cache.a
-	T.eq (Joined (cache:Keys ()), "a b", "a read is a use")
-	T.eq (tostring (cache), "lru cache: 2 of 2", "it says what it is")
+	T.eq (Joined (cache:Keys ()), "a b",               "a read is a use")
+	T.eq (tostring (cache),       "lru cache: 2 of 2", "it says what it is")
 end)
 
 T.test ("an LRU cache is bounded", function ()

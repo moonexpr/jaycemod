@@ -65,9 +65,9 @@ end
 
 function GM:CreateTeams ()
 
-	team.SetUp (TEAM_RED, "RED", Color (184, 56, 59))
+	team.SetUp (TEAM_RED,  "RED", Color (184, 56, 59))
 	team.SetUp (TEAM_BLUE, "BLU", Color (88, 133, 162))
-	team.SetSpawnPoint (TEAM_RED, { "info_player_terrorist", "info_player_rebel", "info_player_teamspawn" })
+	team.SetSpawnPoint (TEAM_RED,  { "info_player_terrorist", "info_player_rebel", "info_player_teamspawn" })
 	team.SetSpawnPoint (TEAM_BLUE, { "info_player_counterterrorist", "info_player_combine", "info_player_teamspawn" })
 
 end
@@ -202,7 +202,7 @@ function GM:PhysgunPickup (ply, ent)
 	if SERVER then
 
 		ply:SendHint ("PhysgunFreeze", 2)
-		ply:SendHint ("PhysgunUse", 8)
+		ply:SendHint ("PhysgunUse",    8)
 
 	end
 
@@ -359,11 +359,11 @@ function GM:PlayerDriveAnimate (ply)
 		AimAng.p = AimAng.p - 360
 	end
 
-	ply:SetPoseParameter ("aim_yaw", 0)
-	ply:SetPoseParameter ("aim_pitch", AimAng.p)
-	ply:SetPoseParameter ("move_x", 0)
-	ply:SetPoseParameter ("move_y", 0)
-	ply:SetPoseParameter ("move_yaw", 0)
+	ply:SetPoseParameter ("aim_yaw",    0)
+	ply:SetPoseParameter ("aim_pitch",  AimAng.p)
+	ply:SetPoseParameter ("move_x",     0)
+	ply:SetPoseParameter ("move_y",     0)
+	ply:SetPoseParameter ("move_yaw",   0)
 	ply:SetPoseParameter ("move_scale", 0)
 
 	AimAng.p = 0

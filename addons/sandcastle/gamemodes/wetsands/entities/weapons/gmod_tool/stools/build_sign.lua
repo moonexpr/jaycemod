@@ -14,10 +14,10 @@ TOOL.Information =
 }
 
 if CLIENT then
-	language.Add ("tool.build_sign.name", "Signage")
-	language.Add ("tool.build_sign.desc", "Place signs pointing toward the objective")
-	language.Add ("tool.build_sign.left", "Place a sign on a wall or the ground")
-	language.Add ("tool.build_sign.right", "Flip the arrow of the sign you are looking at")
+	language.Add ("tool.build_sign.name",   "Signage")
+	language.Add ("tool.build_sign.desc",   "Place signs pointing toward the objective")
+	language.Add ("tool.build_sign.left",   "Place a sign on a wall or the ground")
+	language.Add ("tool.build_sign.right",  "Flip the arrow of the sign you are looking at")
 	language.Add ("tool.build_sign.reload", "Remove the piece you are looking at")
 end
 

@@ -11,12 +11,12 @@ local MODEL = Model ("models/maxofs2d/light_tubular.mdl")
 --
 function ENT:SetupDataTables ()
 
-	self:NetworkVar ("Bool", 0, "On", { KeyName = "on", Edit = { type = "Boolean", order = 1, title = "#entedit.enabled" } })
-	self:NetworkVar ("Bool", 1, "Toggle", { KeyName = "tg", Edit = { type = "Boolean", order = 2, title = "#tool.light.toggle" } })
-	self:NetworkVar ("Float", 1, "LightSize", { KeyName = "sz", Edit = { type = "Float", order = 3, min = 0, max = 1024, title = "#tool.light.size" } })
+	self:NetworkVar ("Bool",  0, "On",         { KeyName = "on", Edit = { type = "Boolean", order = 1, title = "#entedit.enabled" } })
+	self:NetworkVar ("Bool",  1, "Toggle",     { KeyName = "tg", Edit = { type = "Boolean", order = 2, title = "#tool.light.toggle" } })
+	self:NetworkVar ("Float", 1, "LightSize",  { KeyName = "sz", Edit = { type = "Float", order = 3, min = 0, max = 1024, title = "#tool.light.size" } })
 	self:NetworkVar ("Float", 2, "Brightness", { KeyName = "br", Edit = { type = "Int", order = 4, min = 0, max = 6, title = "#tool.light.brightness" } })
 
-	self:NetworkVar ("Bool", 2, "LightWorld", { KeyName = "world", Edit = { type = "Boolean", order = 5, title = "#tool.light.noworld", category = "#entedit.advanced" } })
+	self:NetworkVar ("Bool", 2, "LightWorld",  { KeyName = "world", Edit = { type = "Boolean", order = 5, title = "#tool.light.noworld", category = "#entedit.advanced" } })
 	self:NetworkVar ("Bool", 3, "LightModels", { KeyName = "models", Edit = { type = "Boolean", order = 6, title = "#tool.light.nomodels", category = "#entedit.advanced" } })
 
 end
@@ -114,9 +114,9 @@ function ENT:DrawEffects ()
 	tubeCol.a = 255 * Visible
 
 	render.SetMaterial (matLight)
-	render.DrawSprite (LightPos - up * 2, 8, 8, tubeCol)
-	render.DrawSprite (LightPos - up * 4, 8, 8, tubeCol)
-	render.DrawSprite (LightPos - up * 6, 8, 8, tubeCol)
+	render.DrawSprite (LightPos - up * 2, 8,  8,  tubeCol)
+	render.DrawSprite (LightPos - up * 4, 8,  8,  tubeCol)
+	render.DrawSprite (LightPos - up * 6, 8,  8,  tubeCol)
 	render.DrawSprite (LightPos - up * 5, 64, 64, Color (c.r, c.g, c.b, 64))
 
 end

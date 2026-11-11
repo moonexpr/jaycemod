@@ -6,7 +6,7 @@ ENT.PrintName = "Wheel"
 -- Set up our data table
 function ENT:SetupDataTables ()
 
-	self:NetworkVar ("Bool", 0, "Toggle")
+	self:NetworkVar ("Bool",  0, "Toggle")
 	self:NetworkVar ("Float", 0, "Direction")
 
 end

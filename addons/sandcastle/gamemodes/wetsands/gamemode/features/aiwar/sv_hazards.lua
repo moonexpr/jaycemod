@@ -247,7 +247,7 @@ hook.Add ("PlayerDeath", "ws_aiwar_hazards", function (victim, _, attacker) Died
 hook.Add ("OnNPCKilled", "ws_aiwar_hazards", function (npc, attacker) Died (npc, attacker) end)
 
 local function Save () Controller:SaveHazards () end
-hook.Add ("ShutDown", "ws_aiwar_hazards", Save)
+hook.Add ("ShutDown",      "ws_aiwar_hazards", Save)
 hook.Add ("WSChangeLevel", "ws_aiwar_hazards", Save)
 
 -- Inspecting them ------------------------------------------------------------------------

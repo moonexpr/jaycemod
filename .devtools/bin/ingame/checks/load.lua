@@ -18,7 +18,7 @@ return function (t)
 		t:Check ("starts in Sandbox mode: sv_gameplay_enabled 0", GetConVar ("sv_gameplay_enabled"):GetInt () == 0,
 			GetConVar ("sv_gameplay_enabled"):GetString ())
 		t:Check ("Sandbox mode halts the rounds", WS.GameplayStopped (), tostring (WS.GameplayStopped ()))
-		t:Check ("rounds wait in BETWEEN_RNDS", halted ~= nil, WS_TESTS.StateName (WS.State ()))
+		t:Check ("rounds wait in BETWEEN_RNDS",   halted ~= nil,         WS_TESTS.StateName (WS.State ()))
 	else
 		t:Check ("no rounds on this map", not WS.Active (), tostring (WS.Active ()))
 	end
@@ -44,8 +44,8 @@ return function (t)
 
 	local count = collectgarbage ("count")
 	collectgarbage ("collect")
-	t:Info ("lua_memory_kb", math.floor (count))
+	t:Info ("lua_memory_kb",               math.floor (count))
 	t:Info ("lua_memory_kb_after_collect", math.floor (collectgarbage ("count")))
-	t:Info ("ws_memory", WS.FeatureLoader:MemoryReport (count, collectgarbage ("count")))
-	t:Info ("navmesh", navmesh.IsLoaded () and navmesh.GetNavAreaCount () or 0)
+	t:Info ("ws_memory",                   WS.FeatureLoader:MemoryReport (count, collectgarbage ("count")))
+	t:Info ("navmesh",                     navmesh.IsLoaded () and navmesh.GetNavAreaCount () or 0)
 end

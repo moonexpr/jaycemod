@@ -8,7 +8,7 @@ local Noise = nextsoldier.body.noise
 local GRAVITY = 600
 
 T.test ("a short drop is fallen as it is", function ()
-	T.eq (Locomotion.RappelDescent (0, 100, GRAVITY), 0, "off a ledge 100 up: no rappel")
+	T.eq (Locomotion.RappelDescent (0, 100, GRAVITY),  0,   "off a ledge 100 up: no rappel")
 	T.eq (Locomotion.RappelDescent (200, 50, GRAVITY), 200, "falling, near the floor: as it falls")
 end)
 
@@ -32,8 +32,8 @@ T.test ("once rappelling, it keeps to RAPPEL_SPEED down to the floor", function 
 	local speed, rappelling = Locomotion.RappelDescent (Locomotion.RAPPEL_SPEED * 2, deadly, GRAVITY, false)
 	T.eq (rappelling, true, "it starts")
 	speed, rappelling = Locomotion.RappelDescent (Locomotion.RAPPEL_SPEED + 10, 20, GRAVITY, rappelling)
-	T.eq (speed, Locomotion.RAPPEL_SPEED, "held near the floor too")
-	T.eq (rappelling, true, "still")
+	T.eq (speed,      Locomotion.RAPPEL_SPEED, "held near the floor too")
+	T.eq (rappelling, true,                    "still")
 	local _, falling = Locomotion.RappelDescent (200, 50, GRAVITY, false)
 	T.eq (falling, false, "a short fall is no rappel")
 end)
@@ -45,7 +45,7 @@ end)
 T.test ("Rappels tells a drop that would kill a player", function ()
 	local safe = Noise.FATAL_FALL_SPEED ^ 2 / (2 * GRAVITY)
 	T.eq (Locomotion.Rappels (safe - 1, GRAVITY), false, "one it survives")
-	T.eq (Locomotion.Rappels (safe + 1, GRAVITY), true, "past it")
+	T.eq (Locomotion.Rappels (safe + 1, GRAVITY), true,  "past it")
 end)
 
 T.test ("the tuning is defined", function ()

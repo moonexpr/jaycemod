@@ -90,8 +90,8 @@ T.test ("nav clearance accepts an ordinary entity and checks its collision hull"
 	local area = Area (1, 0, 0, 100, 100, 0)
 	T.eq (clearance:Area (area), true)
 	T.eq (clearance:Area (area), true, "cached for this path search")
-	T.eq (#calls, 1)
-	T.eq (calls [1].mask, 7)
+	T.eq (#calls,           1)
+	T.eq (calls [1].mask,   7)
 	T.eq (calls [1].mins.x, -10)
 	T.eq (calls [1].mins.z, nextsoldier.world.nav_gaps.STEP_HEIGHT)
 	T.eq (calls [1].maxs.y, 8)
@@ -101,7 +101,7 @@ T.test ("nav clearance accepts an ordinary entity and checks its collision hull"
 	local door = { IsWorld = function () return false end, GetClass = function () return "func_door" end }
 	T.eq (calls [1].filter (world), true)
 	T.eq (calls [1].filter (brush), true)
-	T.eq (calls [1].filter (door), false)
+	T.eq (calls [1].filter (door),  false)
 end)
 
 T.test ("nav clearance results are reused across repaths for the same hull and reset with the mesh", function ()
@@ -116,14 +116,14 @@ T.test ("nav clearance results are reused across repaths for the same hull and r
 	local from, to = Area (41, 0, 0, 100, 100, 0), Area (42, 100, 0, 200, 100, 0)
 	from.sides [1], to.sides [3] = to, from
 	local first = Clearance.New (agent, 7, trace, V)
-	T.eq (first:Area (area), true)
+	T.eq (first:Area (area),     true)
 	T.eq (first:Link (from, to), true)
 	local afterFirstSearch = calls
 	local second = Clearance.New (agent, 7, trace, V)
-	T.eq (second, first, "same hull shares its spatial cache")
-	T.eq (second:Area (area), true, "area clearance is reused after repathing")
-	T.eq (second:Link (from, to), true, "link clearance is reused after repathing")
-	T.eq (calls, afterFirstSearch, "no additional traces")
+	T.eq (second,                 first,            "same hull shares its spatial cache")
+	T.eq (second:Area (area),     true,             "area clearance is reused after repathing")
+	T.eq (second:Link (from, to), true,             "link clearance is reused after repathing")
+	T.eq (calls,                  afterFirstSearch, "no additional traces")
 	local crouching = Clearance.New (Agent (V (-10, -8, 0), V (10, 8, 36)), 7, trace, V)
 	T.eq (crouching == first, false, "a changed collision hull gets its own cache")
 	T.eq (crouching:Area (area), true)
@@ -170,7 +170,7 @@ T.test ("nav clearance uses each entity's hull to admit a link opening", functio
 	end
 	local small = NewClearance (Agent (V (-10, -8, 0), V (10, 8, 64)), Trace)
 	local large = NewClearance (Agent (V (-10, -16, 0), V (10, 16, 64)), Trace)
-	T.eq (small:Link (from, to), true, "the small body clears the opening")
+	T.eq (small:Link (from, to), true,  "the small body clears the opening")
 	T.eq (large:Link (from, to), false, "the larger body cannot fit")
 	T.eq (large:Link (to, from), false, "the reverse link is checked separately")
 end)
@@ -184,8 +184,8 @@ T.test ("nav clearance preserves each entity's overhead clearance", function ()
 	end
 	local standing = NewClearance (Agent (V (-10, -8, 0), V (10, 8, 64)), Trace)
 	local crouching = NewClearance (Agent (V (-10, -8, 0), V (10, 8, 36)), Trace)
-	T.eq (standing:Link (from, to), false, "the standing hull does not fit")
-	T.eq (crouching:Link (from, to), true, "the crouching hull fits")
+	T.eq (standing:Link (from, to),  false, "the standing hull does not fit")
+	T.eq (crouching:Link (from, to), true,  "the crouching hull fits")
 end)
 
 local NAV_MESH_CROUCH = T.require ("foundation.wetsands.path.hl2").NAV_MESH_CROUCH
@@ -206,7 +206,7 @@ T.test ("a body that crouches is measured crouched in a crouch area, standing el
 	local clearance = NewClearance (Crouching (V (-10, -10, 0), V (10, 10, 72)), LowCeiling)
 	local low, open = Area (9, 0, 0, 100, 100, 0), Area (10, 0, 0, 100, 100, 0)
 	low.attributes = NAV_MESH_CROUCH
-	T.eq (clearance:Area (low), true, "it crouches under the ceiling")
+	T.eq (clearance:Area (low),  true,  "it crouches under the ceiling")
 	T.eq (clearance:Area (open), false, "with no crouch flag it stands")
 end)
 
@@ -222,8 +222,8 @@ T.test ("a link into or out of a crouch area is measured crouched", function ()
 	local open, low, far = Area (12, 0, 0, 100, 100, 0), Area (13, 100, 0, 200, 100, 0), Area (14, 200, 0, 300, 100, 0)
 	low.attributes = NAV_MESH_CROUCH
 	open.sides [1], low.sides [3], low.sides [1], far.sides [3] = low, open, far, low
-	T.eq (clearance:Link (open, low), true, "ducking in")
-	T.eq (clearance:Link (low, open), true, "and out")
+	T.eq (clearance:Link (open, low), true,  "ducking in")
+	T.eq (clearance:Link (low, open), true,  "and out")
 	T.eq (clearance:Link (far, open), false, "neither end low, it stands")
 end)
 
@@ -251,14 +251,14 @@ do
 	T.test ("a body fits on and at the foot of a stair, whose steps it rides up", function ()
 		local clearance = NewClearance (Agent (TF2_MINS, TF2_MAXS), Room (STEP + 8, 1000))
 		T.eq (clearance:Area (Area (1, 0, 0, 100, 100, 0)), true, "the area")
-		T.eq (clearance:Link (Linked ()), true, "the link")
+		T.eq (clearance:Link (Linked ()),                   true, "the link")
 	end)
 
 	T.test ("a body riding a step still needs room for its head", function ()
 		local ceiling = TF2_MAXS.z + STEP / 2
 		local clearance = NewClearance (Agent (TF2_MINS, TF2_MAXS), Room (STEP + 8, ceiling))
 		T.eq (clearance:Area (Area (1, 0, 0, 100, 100, 0)), false, "the area")
-		T.eq (clearance:Link (Linked ()), false, "the link")
+		T.eq (clearance:Link (Linked ()),                   false, "the link")
 	end)
 end
 
@@ -267,7 +267,7 @@ T.test ("nav clearance sweeps height-changing links at the higher floor", functi
 	lower.sides [1] = upper
 	upper.sides [3] = lower
 	local function Trace (data)
-		T.eq (data.start.z, 25, "start at the higher floor")
+		T.eq (data.start.z,  25, "start at the higher floor")
 		T.eq (data.endpos.z, 25, "keep the hull level while crossing")
 		return { Hit = false, StartSolid = false }
 	end
@@ -369,7 +369,7 @@ do
 		local clearance = NewClearance (Body (SOLDIER), CrateFloor (112, crate))
 		local from, to = Linked ()
 		T.eq (clearance:Link (from, to), false, "the crossing onto it")
-		T.eq (clearance:Area (to), true, "though a body fits on top of it")
+		T.eq (clearance:Area (to),       true,  "though a body fits on top of it")
 	end)
 
 	T.test ("a body steps up what rises no more than a step ahead of it", function ()
@@ -490,17 +490,17 @@ do
 		for _, body in ipairs ({ "merasmus", "tank" }) do
 			local clearance = Measure (body)
 			T.eq (clearance:Area (areas [GORGE_WEST]), true, body .. " in the gorge west of the bridge")
-			T.eq (clearance:Area (areas [DECK]), true, body .. " on the deck")
+			T.eq (clearance:Area (areas [DECK]),       true, body .. " on the deck")
 		end
 	end)
 
 	T.test ("the bridge: a body too big for the gap crosses over the deck, never under it", function ()
 		for _, body in ipairs ({ "hatman", "tank" }) do
 			local reached = Reached (body)
-			T.eq (reached [GORGE_WEST], true, body .. " reaches the gorge's far side")
-			T.eq (reached [DECK], true, body .. " by the deck")
-			T.eq (reached [UNDER_NORTH], nil, body .. " stays out of the north span")
-			T.eq (reached [UNDER_SOUTH], nil, body .. " stays out of the south span")
+			T.eq (reached [GORGE_WEST],  true, body .. " reaches the gorge's far side")
+			T.eq (reached [DECK],        true, body .. " by the deck")
+			T.eq (reached [UNDER_NORTH], nil,  body .. " stays out of the north span")
+			T.eq (reached [UNDER_SOUTH], nil,  body .. " stays out of the south span")
 		end
 	end)
 
@@ -515,7 +515,7 @@ do
 		local reached = Reached ("scout")
 		T.eq (reached [UNDER_NORTH], true)
 		T.eq (reached [UNDER_SOUTH], true)
-		T.eq (reached [GORGE_WEST], true)
+		T.eq (reached [GORGE_WEST],  true)
 	end)
 end
 

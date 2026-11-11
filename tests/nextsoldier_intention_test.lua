@@ -22,8 +22,8 @@ T.test ("it attacks only an enemy it sees: in melee reach with a melee weapon, e
 	T.eq (Intention.Attack (40, RANGES, true, false), Intention.RANGED, "a gun at close quarters fires")
 	T.eq (Intention.Attack (900, RANGES, true, false), Intention.RANGED)
 	T.eq (Intention.Attack (2000, RANGES, true, false), nil, "out of range")
-	T.eq (Intention.Attack (40, RANGES, false, true), nil, "not seen")
-	T.eq (Intention.Attack (900, RANGES, true, true), nil, "a melee weapon out of reach")
+	T.eq (Intention.Attack (40, RANGES, false, true),   nil, "not seen")
+	T.eq (Intention.Attack (900, RANGES, true, true),   nil, "a melee weapon out of reach")
 end)
 
 T.test ("the more dangerous threat: the class's answer first", function ()
@@ -43,7 +43,7 @@ T.test ("no answer: the higher priority, then the nearer", function ()
 end)
 
 T.test ("ranges are made once, refused missing a part or not a number", function ()
-	T.eq (pcall (Intention.Ranges, { reach = 600 }), false)
+	T.eq (pcall (Intention.Ranges, { reach = 600 }),                                       false)
 	T.eq (pcall (Intention.Ranges, { reach = 600, avoid = 0, range = "far", melee = 60 }), false)
 end)
 

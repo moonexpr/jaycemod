@@ -187,12 +187,12 @@ function TOOL.BuildCPanel (CPanel)
 
 end
 
-list.Set ("ButtonModels", "models/maxofs2d/button_01.mdl", {})
-list.Set ("ButtonModels", "models/maxofs2d/button_02.mdl", {})
-list.Set ("ButtonModels", "models/maxofs2d/button_03.mdl", {})
-list.Set ("ButtonModels", "models/maxofs2d/button_04.mdl", {})
-list.Set ("ButtonModels", "models/maxofs2d/button_05.mdl", {})
-list.Set ("ButtonModels", "models/maxofs2d/button_06.mdl", {})
+list.Set ("ButtonModels", "models/maxofs2d/button_01.mdl",     {})
+list.Set ("ButtonModels", "models/maxofs2d/button_02.mdl",     {})
+list.Set ("ButtonModels", "models/maxofs2d/button_03.mdl",     {})
+list.Set ("ButtonModels", "models/maxofs2d/button_04.mdl",     {})
+list.Set ("ButtonModels", "models/maxofs2d/button_05.mdl",     {})
+list.Set ("ButtonModels", "models/maxofs2d/button_06.mdl",     {})
 list.Set ("ButtonModels", "models/maxofs2d/button_slider.mdl", {})
 
 -- list.Set( "ButtonModels", "models/dav0r/buttons/button.mdl", {} )

@@ -19,7 +19,7 @@ return function (t)
 	local spawners = ents.FindByClass ("tf_zombie_spawner")
 	local names = {}
 	for _, s in ipairs (spawners) do names [#names + 1] = s:GetName () end
-	t:Info ("spawners", names)
+	t:Info ("spawners",      names)
 	t:Info ("navmesh_areas", navmesh.IsLoaded () and navmesh.GetNavAreaCount () or 0)
 	t:Check ("the map has tf_zombie_spawners", #spawners > 0, #spawners .. " spawners")
 	if #spawners == 0 then return end

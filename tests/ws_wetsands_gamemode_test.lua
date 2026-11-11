@@ -27,9 +27,9 @@ end)
 
 T.test ("the server sends clients its files and runs the shared one", function ()
 	local init = Source ("gamemode/init.lua")
-	Has (init, 'AddCSLuaFile ("shared.lua")', "shared.lua sent")
+	Has (init, 'AddCSLuaFile ("shared.lua")',  "shared.lua sent")
 	Has (init, 'AddCSLuaFile ("cl_init.lua")', "cl_init.lua sent")
-	Has (init, 'include ("shared.lua")', "shared.lua run")
+	Has (init, 'include ("shared.lua")',       "shared.lua run")
 end)
 
 T.test ("clients run the shared file", function ()

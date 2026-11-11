@@ -151,7 +151,7 @@ end
 -- across world up); looking straight up or down, -y.
 function Frustum (eye, forward, hfov, vfov, range, cols, rows)
 	Count (cols, "a frustum's columns", 2)
-	Count (rows, "a frustum's rows", 2)
+	Count (rows, "a frustum's rows",    2)
 	local ahead = Normalize (forward)
 	if not ahead then error ("a frustum's forward has no direction", 2) end
 	local right = Normalize (Cross (ahead, { x = 0, y = 0, z = 1 })) or { x = 0, y = -1, z = 0 }

@@ -165,12 +165,12 @@ hook.Add ("PostRender", "RenderDupeIcon", function ()
 	render.ClearDepth ()
 
 	-- Set up the lighting. This is over-bright on purpose - to make the ents pop
-	render.SetModelLighting (0, 0, 0, 0)
-	render.SetModelLighting (1, 2, 2, 2)
-	render.SetModelLighting (2, 3, 2, 0)
+	render.SetModelLighting (0, 0,   0,   0)
+	render.SetModelLighting (1, 2,   2,   2)
+	render.SetModelLighting (2, 3,   2,   0)
 	render.SetModelLighting (3, 0.5, 2.0, 2.5)
-	render.SetModelLighting (4, 3, 3, 3) -- top
-	render.SetModelLighting (5, 0, 0, 0)
+	render.SetModelLighting (4, 3,   3,   3) -- top
+	render.SetModelLighting (5, 0,   0,   0)
 	render.MaterialOverride (nil)
 
 	view.origin = CamPos

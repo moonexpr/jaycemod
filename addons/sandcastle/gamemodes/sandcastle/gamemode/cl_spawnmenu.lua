@@ -19,7 +19,7 @@ end
 
 function GM:SpawnMenuOpened ()
 	self:SuppressHint ("OpeningMenu")
-	self:AddHint ("OpeningContext", 20)
+	self:AddHint ("OpeningContext",    20)
 	self:AddHint ("EditingSpawnlists", 5)
 end
 
@@ -81,7 +81,7 @@ end
 function GM:AddGamemodeToolMenuTabs ()
 
 	-- This is named like this to force it to be the first tab
-	spawnmenu.AddToolTab ("Main", "#spawnmenu.tools_tab", "icon16/wrench.png")
+	spawnmenu.AddToolTab ("Main",      "#spawnmenu.tools_tab",     "icon16/wrench.png")
 	spawnmenu.AddToolTab ("Utilities", "#spawnmenu.utilities_tab", "icon16/page_white_wrench.png")
 
 end
@@ -100,10 +100,10 @@ end
 -----------------------------------------------------------]]
 function GM:AddGamemodeToolMenuCategories ()
 
-	spawnmenu.AddToolCategory ("Main", "Constraints", "#spawnmenu.tools.constraints")
+	spawnmenu.AddToolCategory ("Main", "Constraints",  "#spawnmenu.tools.constraints")
 	spawnmenu.AddToolCategory ("Main", "Construction", "#spawnmenu.tools.construction")
-	spawnmenu.AddToolCategory ("Main", "Poser", "#spawnmenu.tools.posing")
-	spawnmenu.AddToolCategory ("Main", "Render", "#spawnmenu.tools.render")
+	spawnmenu.AddToolCategory ("Main", "Poser",        "#spawnmenu.tools.posing")
+	spawnmenu.AddToolCategory ("Main", "Render",       "#spawnmenu.tools.render")
 
 end
 

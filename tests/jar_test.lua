@@ -19,7 +19,7 @@ end
 
 -- JarExplode
 T.test ("a jar drenches every living enemy within its radius with nothing solid between", function ()
-	T.defined (Jar.RADIUS, "JAR_EXPLODE_RADIUS")
+	T.defined (Jar.RADIUS,     "JAR_EXPLODE_RADIUS")
 	T.defined (Jar.URINE_TIME, "Jar.URINE_TIME")
 	T.eq (Jar.Drenches (Near (), Teams.UNASSIGNED), true, "the wheel's jar is nobody's: everyone")
 	T.eq (Jar.Drenches (Near ({ team = Teams.BLUE }), Teams.RED), true, "an enemy")
@@ -33,9 +33,9 @@ T.test ("a jar drenches every living enemy within its radius with nothing solid 
 end)
 
 T.test ("the jar's look and sound are TF2's", function ()
-	T.eq (Jar.MODEL, "models/weapons/c_models/urinejar.mdl", "TF_WEAPON_PEEJAR_MODEL")
-	T.eq (Jar.IMPACT_PARTICLE, "peejar_impact", "the splash")
-	T.eq (Jar.EXPLODE_SOUND, "Jar.Explode", "the smash")
+	T.eq (Jar.MODEL,           "models/weapons/c_models/urinejar.mdl", "TF_WEAPON_PEEJAR_MODEL")
+	T.eq (Jar.IMPACT_PARTICLE, "peejar_impact",                        "the splash")
+	T.eq (Jar.EXPLODE_SOUND,   "Jar.Explode",                          "the smash")
 end)
 
 T.finish ()

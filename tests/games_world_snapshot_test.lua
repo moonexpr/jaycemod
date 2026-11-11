@@ -45,18 +45,18 @@ end
 
 local function Raises (fn, pattern, what)
 	local ok, err = pcall (fn)
-	T.eq (ok, false, what .. " raises")
-	T.eq (tostring (err):find (pattern, 1, true) ~= nil, true, what .. " names " .. pattern .. ": " .. tostring (err))
+	T.eq (ok,                                            false, what .. " raises")
+	T.eq (tostring (err):find (pattern, 1, true) ~= nil, true,  what .. " names " .. pattern .. ": " .. tostring (err))
 end
 
 T.test ("times are taken as seconds from now and put back from the new now", function ()
 	local thing = NewThing (100)
 	local snap = Snapshot.Take (thing, SPEC, 100)
-	T.eq (snap.dueAt, 5, "due in 5 s")
+	T.eq (snap.dueAt,     5, "due in 5 s")
 	T.eq (snap.waves [2], 1, "wave in 1 s")
 	local other = NewThing (0)
 	Snapshot.Apply (other, snap, SPEC, 1000)
-	T.eq (other.dueAt, 1005, "due 5 s after the new now")
+	T.eq (other.dueAt,     1005, "due 5 s after the new now")
 	T.eq (other.waves [3], 1002, "wave 2 s after the new now")
 end)
 
@@ -137,9 +137,9 @@ T.test ("refs encode and decode values and keys that are not plain data", functi
 	local snap = Snapshot.Take (thing, SPEC, 0, refs)
 	local other = NewThing (0)
 	Snapshot.Apply (other, snap, SPEC, 0, refs)
-	T.eq (other.owner, a, "a value decoded")
+	T.eq (other.owner,        a,    "a value decoded")
 	T.eq (other.touching [a], true, "a key decoded")
-	T.eq (other.touching [b], 3, "another key decoded")
+	T.eq (other.touching [b], 3,    "another key decoded")
 end)
 
 T.test ("a time path reaches through a table keyed by refs", function ()
@@ -160,7 +160,7 @@ T.test ("a time path reaches through a table keyed by refs", function ()
 	local other = { byEnt = {} }
 	Snapshot.Apply (other, snap, spec, 1000, refs)
 	T.eq (other.byEnt [a].unlockAt, 1030, "30 s to go, from the new now")
-	T.eq (model.byEnt [a].unlockAt, 130, "the model taken is untouched")
+	T.eq (model.byEnt [a].unlockAt, 130,  "the model taken is untouched")
 end)
 
 T.test ("a ref that no longer resolves is refused with its path", function ()
@@ -217,17 +217,17 @@ T.test ("a weak table is data: its contents are copied and its mode comes back",
 	local snap = Snapshot.Take (model, spec, 0)
 	local other = {}
 	Snapshot.Apply (other, snap, spec, 0)
-	T.eq (other.seen.a, 1, "contents")
-	T.eq (getmetatable (other.seen).__mode, "k", "mode")
-	T.eq (other.seen ~= model.seen, true, "a copy")
+	T.eq (other.seen.a,                     1,    "contents")
+	T.eq (getmetatable (other.seen).__mode, "k",  "mode")
+	T.eq (other.seen ~= model.seen,         true, "a copy")
 end)
 
 T.test ("a table whose metatable holds more than a mode is not data", function ()
 	local spec = Snapshot.Spec ({ name = "classy" })
 	local model = { obj = setmetatable ({}, { __mode = "k", __index = {} }) }
 	local ok, err = pcall (Snapshot.Take, model, spec, 0)
-	T.eq (ok, false, "refused without refs")
-	T.eq (tostring (err):find ("classy.obj", 1, true) ~= nil, true, "names the path: " .. tostring (err))
+	T.eq (ok,                                                 false, "refused without refs")
+	T.eq (tostring (err):find ("classy.obj", 1, true) ~= nil, true,  "names the path: " .. tostring (err))
 end)
 
 T.test ("a cycle is refused with its path", function ()
@@ -237,8 +237,8 @@ T.test ("a cycle is refused with its path", function ()
 end)
 
 T.test ("a spec naming a time or machine twice, or nothing, is refused", function ()
-	Raises (function () Snapshot.Spec ({ name = "x", times = { "a", "a" } }) end, "a", "a repeat")
-	Raises (function () Snapshot.Spec ({}) end, "name", "no name")
+	Raises (function () Snapshot.Spec ({ name = "x", times = { "a", "a" } }) end, "a",    "a repeat")
+	Raises (function () Snapshot.Spec ({}) end,                                   "name", "no name")
 end)
 
 T.finish ()

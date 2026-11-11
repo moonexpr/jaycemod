@@ -37,7 +37,7 @@ function Cast (caster)
 	caster:Push (owner, caster:Vector (0, 0, LIFT))
 	local origin, team = caster:Origin (owner), caster:TeamOf (owner)
 	caster:Particle (DEBRIS, origin)
-	caster:Particle (RING, origin)
+	caster:Particle (RING,   origin)
 	caster:AttachParticle (SMOKE, owner)
 	caster:Heal (owner, HEAL)
 	for _, target in ipairs (caster:EntitiesInSphere (origin, RADIUS)) do

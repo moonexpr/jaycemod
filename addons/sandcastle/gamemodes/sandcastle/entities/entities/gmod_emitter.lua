@@ -6,10 +6,10 @@ ENT.Editable = true
 
 function ENT:SetupDataTables ()
 
-	self:NetworkVar ("Bool", 1, "On", { KeyName = "on", Edit = { type = "Boolean", order = 1, title = "#entedit.enabled" } })
-	self:NetworkVar ("Bool", 0, "Toggle", { KeyName = "tg", Edit = { type = "Boolean", order = 1, title = "#tool.emitter.toggle" } })
-	self:NetworkVar ("Float", 0, "Delay", { KeyName = "dl", Edit = { type = "Float", order = 1, min = 0.01, max = 2, title = "#tool.emitter.delay" } })
-	self:NetworkVar ("Float", 1, "Scale", { KeyName = "sc", Edit = { type = "Float", order = 1, min = 0, max = 6, title = "#tool.emitter.scale" } })
+	self:NetworkVar ("Bool",  1, "On",     { KeyName = "on", Edit = { type = "Boolean", order = 1, title = "#entedit.enabled" } })
+	self:NetworkVar ("Bool",  0, "Toggle", { KeyName = "tg", Edit = { type = "Boolean", order = 1, title = "#tool.emitter.toggle" } })
+	self:NetworkVar ("Float", 0, "Delay",  { KeyName = "dl", Edit = { type = "Float", order = 1, min = 0.01, max = 2, title = "#tool.emitter.delay" } })
+	self:NetworkVar ("Float", 1, "Scale",  { KeyName = "sc", Edit = { type = "Float", order = 1, min = 0, max = 6, title = "#tool.emitter.scale" } })
 	self:NetworkVar ("String", 0, "Effect")
 
 end

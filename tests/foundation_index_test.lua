@@ -119,7 +119,7 @@ T.test ("the loader names every index on disk, and only those", function ()
 	local named = {}
 	for _, path in ipairs (LoaderIndexes ()) do
 		T.eq (onDisk [path], true, path .. " is on disk")
-		T.eq (named [path], nil, path .. " is named once")
+		T.eq (named [path],  nil,  path .. " is named once")
 		named [path] = true
 	end
 	for path in pairs (onDisk) do T.eq (named [path], true, path .. " is named in shared_loader.lua") end
@@ -166,7 +166,7 @@ T.test ("a nextsoldier or wartactics module required by name is the one at its g
 	for _, root in ipairs ({ "nextsoldier", "wartactics" }) do
 		for _, key in ipairs (ModulesIn (root .. "/")) do
 			local name = root .. "." .. key
-			T.eq (T.require (name), _G [root] [key], name)
+			T.eq (T.require (name),        _G [root] [key],       name)
 			T.eq (rawget (_G [root], key), package.loaded [name], name .. " is kept")
 		end
 	end
@@ -175,18 +175,18 @@ end)
 T.test ("the defaults the indexes extend are kept", function ()
 	local globals = Globals ()
 	RunIndexes (globals)
-	T.eq (globals.math.random, math.random, "Lua's math.random")
-	T.eq (type (globals.list.Get), "function", "GMod's list.Get")
-	T.eq (type (globals.file.Read), "function", "GMod's file.Read")
-	T.eq (type (globals.timer.Simple), "function", "GMod's timer.Simple")
+	T.eq (globals.math.random,         math.random, "Lua's math.random")
+	T.eq (type (globals.list.Get),     "function",  "GMod's list.Get")
+	T.eq (type (globals.file.Read),    "function",  "GMod's file.Read")
+	T.eq (type (globals.timer.Simple), "function",  "GMod's timer.Simple")
 end)
 
 T.test ("running the indexes again, as a reload does, is not refused", function ()
 	local globals = Globals ()
 	RunIndexes (globals)
 	RunIndexes (globals)
-	T.eq (globals.list.queue, package.loaded ["foundation.list.queue"], "list.queue: the Lua twin, as no binary module put one first")
-	T.eq (globals.list.drawlist, _G.list.drawlist, "list.drawlist")
+	T.eq (globals.list.queue,    package.loaded ["foundation.list.queue"], "list.queue: the Lua twin, as no binary module put one first")
+	T.eq (globals.list.drawlist, _G.list.drawlist,                         "list.drawlist")
 end)
 
 T.test ("a published foundation module uses only foundation", function ()

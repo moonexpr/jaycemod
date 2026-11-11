@@ -43,7 +43,7 @@ function Cast (caster)
 			if caster:TeamOf (target) == team then
 				caster:Heal (target, HEAL)
 				caster:AddCond (target, SpellSet.COND.INVULNERABLE_USER_BUFF, INVULNERABLE_TIME)
-				caster:AddCond (target, SpellSet.COND.HALLOWEEN_QUICK_HEAL, QUICK_HEAL_TIME)
+				caster:AddCond (target, SpellSet.COND.HALLOWEEN_QUICK_HEAL,   QUICK_HEAL_TIME)
 			else
 				caster:Push (target, (caster:Center (target) - origin):GetNormalized () * PUSH)
 			end

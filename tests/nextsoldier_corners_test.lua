@@ -8,7 +8,7 @@ local T = dofile ("tests/harness.lua")
 local Locomotion = nextsoldier.locomotion
 
 T.defined (Locomotion.CORNER_TURN_DOT, "TURN_DOT")
-T.defined (Locomotion.CORNER_STEP, "STEP")
+T.defined (Locomotion.CORNER_STEP,     "STEP")
 T.defined (Locomotion.CORNER_PUSH_MAX, "PUSH_MAX")
 
 local function P (x, y) return { x = x, y = y, z = 0 } end
@@ -50,10 +50,10 @@ T.test ("a turn the body cannot pass is pushed outward until both legs are clear
 	local rounded = Locomotion.RoundCorner (START, HUGGING, NEXT, CORRIDOR)
 	T.eq (#rounded, 1, "one point")
 	local p = rounded [1]
-	T.eq (CORRIDOR (START, p), true, "the leg in is clear")
-	T.eq (CORRIDOR (p, NEXT), true, "the leg out is clear")
-	T.eq (p.x < HUGGING.x and p.y > HUGGING.y, true, "out, away from the inside of the turn")
-	T.eq (p.z, HUGGING.z, "at the point's height")
+	T.eq (CORRIDOR (START, p),                 true,      "the leg in is clear")
+	T.eq (CORRIDOR (p, NEXT),                  true,      "the leg out is clear")
+	T.eq (p.x < HUGGING.x and p.y > HUGGING.y, true,      "out, away from the inside of the turn")
+	T.eq (p.z,                                 HUGGING.z, "at the point's height")
 end)
 
 T.test ("it is pushed no farther than it needs, in STEPs", function ()
@@ -82,7 +82,7 @@ T.test ("a turn no push within PUSH_MAX clears is left as planned, and said so",
 	local nowhere = function () return false end
 	local rounded, cleared = Locomotion.RoundCorner (START, HUGGING, NEXT, nowhere)
 	T.eq (rounded [1], HUGGING, "as planned")
-	T.eq (cleared, false, "not cleared")
+	T.eq (cleared,     false,   "not cleared")
 	local _, ok = Locomotion.RoundCorner (START, HUGGING, NEXT, CORRIDOR)
 	T.eq (ok, true, "a cleared turn says so")
 end)
@@ -94,27 +94,27 @@ local HAIRPIN = World ({ { -1000, 12, 88, 48 } })
 T.test ("a turn sharper than a right angle becomes two points, each leg clear", function ()
 	local start, tip, finish = P (0, 0), P (90, 30), P (0, 60)
 	local rounded, cleared = Locomotion.RoundCorner (start, tip, finish, HAIRPIN)
-	T.eq (#rounded, 2, "two points")
-	T.eq (cleared, true, "cleared")
+	T.eq (#rounded, 2,    "two points")
+	T.eq (cleared,  true, "cleared")
 	local a, b = rounded [1], rounded [2]
-	T.eq (HAIRPIN (start, a), true, "in to the first")
-	T.eq (HAIRPIN (a, b), true, "between them")
+	T.eq (HAIRPIN (start, a),  true, "in to the first")
+	T.eq (HAIRPIN (a, b),      true, "between them")
 	T.eq (HAIRPIN (b, finish), true, "out of the second")
 end)
 
 T.test ("a route's every turn is rounded, each from the point before it as rounded", function ()
 	local route = { START, HUGGING, NEXT, P (300, 400) }
 	local rounded = Locomotion.RoundCorners (route, CORRIDOR)
-	T.eq (rounded [1], START, "the start stays")
-	T.eq (rounded [#rounded], route [4], "the end stays")
-	T.eq (CORRIDOR (rounded [1], rounded [2]), true, "the first leg")
-	T.eq (CORRIDOR (rounded [2], rounded [3]), true, "round the corner")
+	T.eq (rounded [1],                         START,     "the start stays")
+	T.eq (rounded [#rounded],                  route [4], "the end stays")
+	T.eq (CORRIDOR (rounded [1], rounded [2]), true,      "the first leg")
+	T.eq (CORRIDOR (rounded [2], rounded [3]), true,      "round the corner")
 end)
 
 T.test ("a route of two points or fewer is as it was", function ()
 	local two = { P (0, 0), P (10, 0) }
 	T.eq (#Locomotion.RoundCorners (two, CORRIDOR), 2, "two")
-	T.eq (#Locomotion.RoundCorners ({}, CORRIDOR), 0, "none")
+	T.eq (#Locomotion.RoundCorners ({}, CORRIDOR),  0, "none")
 end)
 
 T.finish ()

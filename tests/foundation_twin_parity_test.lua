@@ -204,7 +204,7 @@ end
 
 local function Mesh (NavSearch)
 	local mesh = NavSearch.Mesh ()
-	mesh:Area (1, 0, 0, 0, 0)
+	mesh:Area (1, 0,   0, 0, 0)
 	mesh:Area (2, 100, 0, 0, 0)
 	mesh:Link (1, 2, 100, 0)
 	mesh:Link (2, 1, 100, 0)

@@ -21,7 +21,7 @@ local function Largest ()
 end
 
 -- a round won would change the map under it
-RunConsoleCommand ("mp_winlimit", "0")
+RunConsoleCommand ("mp_winlimit",  "0")
 RunConsoleCommand ("mp_timelimit", "0")
 RunConsoleCommand ("mp_maxrounds", "0")
 

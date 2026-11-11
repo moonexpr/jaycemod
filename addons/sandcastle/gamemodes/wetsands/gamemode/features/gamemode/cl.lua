@@ -174,8 +174,8 @@ function View:DrawMvM (panel, players, w, h)
 		local red = Tournament.PulseRedness (RealTime ())
 		color = Color (Lerp (red, TAN_LIGHT.r, RED_SOLID.r), Lerp (red, TAN_LIGHT.g, RED_SOLID.g), Lerp (red, TAN_LIGHT.b, RED_SOLID.b))
 	end
-	draw.SimpleText (panel.instructions, font, layout.shadow.x, layout.shadow.y, color_black, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-	draw.SimpleText (panel.instructions, font, layout.instructions.x, layout.instructions.y, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText (panel.instructions, font, layout.shadow.x,       layout.shadow.y,       color_black, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText (panel.instructions, font, layout.instructions.x, layout.instructions.y, color,       TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end
 
 function View:Hint (panel)

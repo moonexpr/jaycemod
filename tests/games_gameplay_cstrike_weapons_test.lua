@@ -55,16 +55,16 @@ end
 T.test ("all CS:S weapons are terminal SWEP definitions with grouped stats", function ()
 	for _, class in ipairs (CLASSES) do
 		local definition = Definition (class)
-		T.eq (definition.CStrikeWeapon, true, class .. " identifies its damage behavior")
-		T.eq (definition.PrintName ~= nil, true, class .. " has a display name")
-		T.eq (definition.ViewModel.precached ~= nil, true, class .. " precaches its view model")
-		T.eq (definition.WorldModel.precached ~= nil, true, class .. " precaches its world model")
-		T.eq (definition.CSS, nil, class .. " has no local CSS table")
-		T.eq (definition.NextSoldier, nil, class .. " has no NextSoldier stats table")
-		T.eq (definition.Arms, nil, class .. " has no AI stats table")
-		T.eq (definition.Grenade, nil, class .. " has no grenade stats table")
-		T.eq (type (definition.Primary), "table", class .. " uses the standard SWEP Primary table")
-		T.eq (type (definition.Secondary), "table", class .. " uses the standard SWEP Secondary table")
+		T.eq (definition.CStrikeWeapon,               true,    class .. " identifies its damage behavior")
+		T.eq (definition.PrintName ~= nil,            true,    class .. " has a display name")
+		T.eq (definition.ViewModel.precached ~= nil,  true,    class .. " precaches its view model")
+		T.eq (definition.WorldModel.precached ~= nil, true,    class .. " precaches its world model")
+		T.eq (definition.CSS,                         nil,     class .. " has no local CSS table")
+		T.eq (definition.NextSoldier,                 nil,     class .. " has no NextSoldier stats table")
+		T.eq (definition.Arms,                        nil,     class .. " has no AI stats table")
+		T.eq (definition.Grenade,                     nil,     class .. " has no grenade stats table")
+		T.eq (type (definition.Primary),              "table", class .. " uses the standard SWEP Primary table")
+		T.eq (type (definition.Secondary),            "table", class .. " uses the standard SWEP Secondary table")
 		for key, value in pairs (definition) do
 			if type (value) == "table" and key ~= "Primary" and key ~= "Secondary"
 				and key ~= "ViewModel" and key ~= "WorldModel" and key ~= "Stats" then
@@ -72,19 +72,19 @@ T.test ("all CS:S weapons are terminal SWEP definitions with grouped stats", fun
 			end
 		end
 		if definition.CStrikeType == "Knife" then
-			T.eq (definition.Base, "base_cstrike_melee", "knife shares melee behavior")
-			T.eq (definition.SlashDamage, 15, "slash damage")
-			T.eq (definition.StabDamage, 65, "stab damage")
+			T.eq (definition.Base,        "base_cstrike_melee", "knife shares melee behavior")
+			T.eq (definition.SlashDamage, 15,                   "slash damage")
+			T.eq (definition.StabDamage,  65,                   "stab damage")
 		elseif definition.CStrikeType == "Grenade" then
-			T.eq (definition.Base, "base_cstrike_grenade", class .. " shares grenade behavior")
-			T.eq (type (definition.GrenadeFuse), "number", class .. " owns its fuse")
-			T.eq (type (definition.GrenadeProjectile), "string", class .. " owns its projectile class")
+			T.eq (definition.Base,                     "base_cstrike_grenade", class .. " shares grenade behavior")
+			T.eq (type (definition.GrenadeFuse),       "number",               class .. " owns its fuse")
+			T.eq (type (definition.GrenadeProjectile), "string",               class .. " owns its projectile class")
 		else
-			T.eq (definition.Base, "base_cstrike", class .. " shares firearm behavior")
-			T.eq (type (definition.Stats.Ballistics.Damage), "number", class .. " owns its damage")
-			T.eq (type (definition.Stats.Accuracy.Stand), "number", class .. " owns its accuracy")
-			T.eq (type (definition.SoldierDamage), "number", class .. " owns soldier damage")
-			T.eq (type (definition.AIReach), "number", class .. " owns AI reach")
+			T.eq (definition.Base,                           "base_cstrike", class .. " shares firearm behavior")
+			T.eq (type (definition.Stats.Ballistics.Damage), "number",       class .. " owns its damage")
+			T.eq (type (definition.Stats.Accuracy.Stand),    "number",       class .. " owns its accuracy")
+			T.eq (type (definition.SoldierDamage),           "number",       class .. " owns soldier damage")
+			T.eq (type (definition.AIReach),                 "number",       class .. " owns AI reach")
 		end
 	end
 end)
@@ -92,20 +92,20 @@ end)
 T.test ("terminal SWEPs group firearm modes and stats", function ()
 	local ak = Definition ("weapon_ak47")
 	T.eq (ak.Stats.Ballistics.Damage, 36)
-	T.eq (ak.Primary.ClipSize, 30)
-	T.eq (ak.Stats.Accuracy.Stand, 0.00916)
-	T.eq (ak.Stats.Kick.UpBase, 1)
+	T.eq (ak.Primary.ClipSize,        30)
+	T.eq (ak.Stats.Accuracy.Stand,    0.00916)
+	T.eq (ak.Stats.Kick.UpBase,       1)
 
 	local m4 = Definition ("weapon_m4a1")
 	T.eq (m4.Stats.Mode.Type, "silencer")
 	T.eq (m4.SpecialSound1 ~= nil, true, "silenced shot sound")
 
 	local glock = Definition ("weapon_glock")
-	T.eq (glock.Stats.Mode.Type, "burst")
+	T.eq (glock.Stats.Mode.Type,         "burst")
 	T.eq (glock.Stats.Mode.Burst.Rounds, 3)
 
 	local awp = Definition ("weapon_awp")
-	T.eq (awp.Stats.Mode.Type, "scope")
+	T.eq (awp.Stats.Mode.Type,    "scope")
 	T.eq (awp.Stats.Mode.FOV [1], 40)
 end)
 
@@ -166,32 +166,32 @@ T.test ("the firearm base calculates damage, movement inaccuracy and spray", fun
 		}, { __index = base })
 	function weapon:Mode () return nil end
 	function weapon:UsesSecondAccuracy () return false end
-	T.near (weapon:DamageAt (0, 1), 144, 1e-9, "head damage")
+	T.near (weapon:DamageAt (0, 1),   144,       1e-9, "head damage")
 	T.near (weapon:DamageAt (500, 2), 36 * 0.98, 1e-9, "range falloff")
 	T.eq (weapon:DamageAt (9000, 2), 0, "out of range")
 	function weapon:UsesSecondAccuracy () return true end
 	weapon.Stats.AlternateAccuracy = { Fire = 0.02 }
-	T.eq (weapon:AccuracyValue ("Fire"), 0.02, "alternate accuracy override")
+	T.eq (weapon:AccuracyValue ("Fire"),  0.02,    "alternate accuracy override")
 	T.eq (weapon:AccuracyValue ("Stand"), 0.00916, "alternate accuracy fallback")
 	function weapon:UsesSecondAccuracy () return false end
-	T.near (weapon:Inaccuracy ({ penalty = 0, speed = 0, onGround = true }), 0, 1e-9)
+	T.near (weapon:Inaccuracy ({ penalty = 0, speed = 0, onGround = true }),   0,       1e-9)
 	T.near (weapon:Inaccuracy ({ penalty = 0, speed = 221, onGround = true }), 0.09222, 1e-9)
-	T.near (weapon:Inaccuracy ({ penalty = 0, speed = 0, onGround = false }), 0.43044, 1e-9)
+	T.near (weapon:Inaccuracy ({ penalty = 0, speed = 0, onGround = false }),  0.43044, 1e-9)
 	T.eq (#weapon:Spray (0.05), 3)
 end)
 
 T.test ("knife and grenade stats live on their terminal SWEPs", function ()
 	local knife = Definition ("weapon_knife")
-	T.eq (knife.SlashFirstDamage, 20)
-	T.eq (knife.SlashFreshWindow, 0.4)
+	T.eq (knife.SlashFirstDamage,   20)
+	T.eq (knife.SlashFreshWindow,   0.4)
 	T.eq (knife.BackstabMultiplier, 3)
-	T.eq (knife.BackstabDot, 0.8)
+	T.eq (knife.BackstabDot,        0.8)
 	local flash = Definition ("weapon_flashbang")
-	T.eq (flash.GrenadeBlind, 4.9)
+	T.eq (flash.GrenadeBlind,  4.9)
 	T.eq (flash.GrenadeRadius, 1500)
 	local he = Definition ("weapon_hegrenade")
 	T.eq (he.GrenadeDamage, 100)
-	T.eq (he.GrenadeFuse, 1.5)
+	T.eq (he.GrenadeFuse,   1.5)
 	T.eq (he.GrenadeRadius, 350)
 end)
 

@@ -42,8 +42,8 @@ end
 
 -- Every layer off, the selection cleared, and no soldier traced.
 local function ClearAll ()
-	RunConsoleCommand ("ws_nb_debug", "OFF")
-	RunConsoleCommand ("ws_nb_select", "0")
+	RunConsoleCommand ("ws_nb_debug",    "OFF")
+	RunConsoleCommand ("ws_nb_select",   "0")
 	RunConsoleCommand ("ws_aiwar_trace", "0")
 end
 
@@ -72,16 +72,16 @@ local function BuildPanel (panel)
 	end
 
 	panel:Help ("Console reports, while the war runs")
-	panel:Button ("Print Soldiers", "ws_aiwar_report")
-	panel:Button ("Print Squads", "ns_squads_print")
-	panel:Button ("Print Lanes", "ns_lanes_print")
+	panel:Button ("Print Soldiers",     "ws_aiwar_report")
+	panel:Button ("Print Squads",       "ns_squads_print")
+	panel:Button ("Print Lanes",        "ns_lanes_print")
 	panel:Button ("Print Battle Lines", "ns_battlelines_print")
 
 	panel:Help ("Refining: ns_tactics_tune <name> <value> changes a tactics constant until the map changes; "
 		.. "ns_tactics_list <word> lists those named like it.")
 	panel:Button ("Print Tactics Constants", "ns_tactics_list")
 	panel:Button ("Reset Tactics Constants", "ns_tactics_reset")
-	panel:Button ("Plan Lanes Again", "ns_lanes_replan")
+	panel:Button ("Plan Lanes Again",        "ns_lanes_replan")
 end
 
 hook.Add ("PopulateToolMenu", "ws_ns_debug", function ()

@@ -5,9 +5,9 @@ local Factions = T.require ("includes.factions")
 local Teams = gameplay.teams
 
 T.test ("each playing team has a faction of its own, named as the team", function ()
-	T.eq (Factions.Of (Teams.RED), Factions.RED, "RED")
-	T.eq (Factions.Of (Teams.BLUE), Factions.BLU, "BLU")
-	T.eq (Factions.RED ~= Factions.BLU, true, "two factions")
+	T.eq (Factions.Of (Teams.RED),      Factions.RED, "RED")
+	T.eq (Factions.Of (Teams.BLUE),     Factions.BLU, "BLU")
+	T.eq (Factions.RED ~= Factions.BLU, true,         "two factions")
 	T.eq (Factions.LABEL [Factions.RED], "Team RED")
 	T.eq (Factions.LABEL [Factions.BLU], "Team BLU")
 end)
@@ -27,7 +27,7 @@ T.test ("joining a team leaves the other team's faction and joins its own", func
 	local leave, join = Factions.Change (Teams.RED)
 	T.eq (#leave, 1)
 	T.eq (leave [1], Factions.BLU, "leaves BLU")
-	T.eq (join, Factions.RED, "joins RED")
+	T.eq (join,      Factions.RED, "joins RED")
 end)
 
 T.test ("leaving the playing teams leaves both factions and joins none", function ()
@@ -38,10 +38,10 @@ end)
 
 T.test ("every playing team's faction, for relating to each", function ()
 	local all = Factions.ALL
-	T.eq (#all, 2)
-	T.eq (all [1].team, Teams.RED)
+	T.eq (#all,            2)
+	T.eq (all [1].team,    Teams.RED)
 	T.eq (all [1].faction, Factions.RED)
-	T.eq (all [2].team, Teams.BLUE)
+	T.eq (all [2].team,    Teams.BLUE)
 	T.eq (all [2].faction, Factions.BLU)
 end)
 

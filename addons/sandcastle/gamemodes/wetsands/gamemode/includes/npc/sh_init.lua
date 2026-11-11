@@ -3,7 +3,7 @@
 -- mesh is foundation.wetsands').
 -- One line a module, never a loop: docs/foundation-game-split-plan.md.
 local npc = Namespace ("npc")
-Defer (npc, "nextbot", "games.npc.nextbot")
-Defer (npc, "actor", "games.npc.actor")
+Defer (npc, "nextbot",   "games.npc.nextbot")
+Defer (npc, "actor",     "games.npc.actor")
 Defer (npc, "combatant", "games.npc.combatant")
 Defer (npc, "targeting", "games.npc.targeting")

@@ -57,9 +57,9 @@ if CLIENT then
 	local RING_STEPS = 32
 
 	local function Cross (at, color)
-		render.DrawLine (at - Vector (CROSS_SIZE, 0, 0), at + Vector (CROSS_SIZE, 0, 0), color)
-		render.DrawLine (at - Vector (0, CROSS_SIZE, 0), at + Vector (0, CROSS_SIZE, 0), color)
-		render.DrawLine (at, at + Vector (0, 0, CROSS_SIZE * 2), color)
+		render.DrawLine (at - Vector (CROSS_SIZE, 0, 0), at + Vector (CROSS_SIZE, 0, 0),     color)
+		render.DrawLine (at - Vector (0, CROSS_SIZE, 0), at + Vector (0, CROSS_SIZE, 0),     color)
+		render.DrawLine (at,                             at + Vector (0, 0, CROSS_SIZE * 2), color)
 	end
 
 	local function Ring (center, radius, color)
@@ -114,9 +114,9 @@ if CLIENT then
 			direction:Normalize ()
 			local tip = origin + direction * 80
 			local side = Vector (-direction.y, direction.x, 0) * 9
-			DrawLine (origin, tip, COMMAND_COLOR, 6)
-			DrawLine (tip, tip - direction * 16 + side, COMMAND_COLOR, 6)
-			DrawLine (tip, tip - direction * 16 - side, COMMAND_COLOR, 6)
+			DrawLine (origin, tip,                         COMMAND_COLOR, 6)
+			DrawLine (tip,    tip - direction * 16 + side, COMMAND_COLOR, 6)
+			DrawLine (tip,    tip - direction * 16 - side, COMMAND_COLOR, 6)
 		end
 
 		if self:GetNW2String ("NSPathFollowerBehavior", "Idle") == "Travel" then
@@ -376,7 +376,7 @@ function ENT:NSSetBehavior (name)
 		self.nsLaneRoute = nil
 		self.nsLaneIndex = nil
 		self.NSPathCost = nil
-		self:SetNW2Vector ("NSPathFollowerGoal", vector_origin)
+		self:SetNW2Vector ("NSPathFollowerGoal",    vector_origin)
 		self:SetNW2Vector ("NSPathFollowerCommand", vector_origin)
 		self.nsDebugLanePoints = {}
 		SendLaneDebug (self)

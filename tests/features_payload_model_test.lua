@@ -27,7 +27,7 @@ end)
 
 T.test ("a blocked cart stops unless it is on a downhill", function ()
 	T.eq (Speed (P.CAPPERS_BLOCKED, P.HILL_NONE, 0.55, false), 0)
-	T.eq (Speed (P.CAPPERS_BLOCKED, P.HILL_UP, 0.55, false), 0)
+	T.eq (Speed (P.CAPPERS_BLOCKED, P.HILL_UP, 0.55, false),   0)
 	T.eq (Speed (P.CAPPERS_BLOCKED, P.HILL_DOWN, 0.55, false), 1.0)
 end)
 
@@ -41,13 +41,13 @@ T.test ("an unpushed cart rolls back down an uphill at full speed", function ()
 end)
 
 T.test ("a receding cart resumes its slow recede", function ()
-	T.eq (Speed (0, P.HILL_NONE, 0, true), -0.1)
+	T.eq (Speed (0, P.HILL_NONE, 0, true),  -0.1)
 	T.eq (Speed (0, P.HILL_NONE, 0, false), 0)
 end)
 
 T.test ("starting to recede sets -0.1 and the receding flag", function ()
 	local speed, receding = Speed (0, P.HILL_NONE, 0, false, true)
-	T.eq (speed, -0.1)
+	T.eq (speed,    -0.1)
 	T.eq (receding, true)
 end)
 
@@ -62,7 +62,7 @@ end)
 
 T.test ("a forward speed clears receding even with nobody pushing", function ()
 	local speed, receding = Speed (P.CAPPERS_BLOCKED, P.HILL_DOWN, -0.1, true)
-	T.eq (speed, 1.0)
+	T.eq (speed,    1.0)
 	T.eq (receding, false)
 end)
 
@@ -71,8 +71,8 @@ end)
 local LEVELS = { 1, 60, 80 }
 
 T.test ("speed levels split at hud_min_speed_level_1..3", function ()
-	T.eq (P.SpeedLevel (0, 0, LEVELS), 0)
-	T.eq (P.SpeedLevel (1, 1, LEVELS), 0)
+	T.eq (P.SpeedLevel (0, 0, LEVELS),   0)
+	T.eq (P.SpeedLevel (1, 1, LEVELS),   0)
 	T.eq (P.SpeedLevel (30, 30, LEVELS), 1)
 	T.eq (P.SpeedLevel (60, 60, LEVELS), 1)
 	T.eq (P.SpeedLevel (70, 70, LEVELS), 2)
@@ -81,15 +81,15 @@ end)
 
 T.test ("moving backwards is the backwards level, unless stopped at a dead end", function ()
 	T.eq (P.SpeedLevel (-20, -20, LEVELS), P.SPEED_LEVEL_BACKWARDS)
-	T.eq (P.SpeedLevel (-20, 0, LEVELS), 0)
+	T.eq (P.SpeedLevel (-20, 0, LEVELS),   0)
 end)
 
 -- Recede timing -------------------------------------------------------------------
 
 T.test ("recede delay: overtime length, map's train_recede_time, else the convar", function ()
-	T.eq (P.RecedeDelay (true, 12, 30, 5), 5)
+	T.eq (P.RecedeDelay (true, 12, 30, 5),  5)
 	T.eq (P.RecedeDelay (false, 12, 30, 5), 12)
-	T.eq (P.RecedeDelay (false, 0, 30, 5), 30)
+	T.eq (P.RecedeDelay (false, 0, 30, 5),  30)
 end)
 
 T.test ("overtime shortens a longer pending recede to the overtime length", function ()
@@ -100,14 +100,14 @@ end)
 -- Progress along the path ----------------------------------------------------------
 
 T.test ("the node the train heads for: the next one, or its own when reversing", function ()
-	T.eq (P.TargetIndex (2, 10, 5), 3)
-	T.eq (P.TargetIndex (2, 0, 5), 3)
+	T.eq (P.TargetIndex (2, 10, 5),  3)
+	T.eq (P.TargetIndex (2, 0, 5),   3)
 	T.eq (P.TargetIndex (2, -10, 5), 2)
-	T.eq (P.TargetIndex (5, 10, 5), 5)
+	T.eq (P.TargetIndex (5, 10, 5),  5)
 end)
 
 T.test ("passing a node forward makes it current; backward, the one before it", function ()
-	T.eq (P.PassedIndex (4, 10), 4)
+	T.eq (P.PassedIndex (4, 10),  4)
 	T.eq (P.PassedIndex (4, -10), 3)
 	T.eq (P.PassedIndex (1, -10), 1)
 end)
@@ -117,7 +117,7 @@ T.test ("distance to goal is to the target node, then along the path", function 
 	T.eq (P.DistanceToGoal (400, distanceAt, 3, 40), 40 + 150)
 	T.near (P.Progress (400, 190), 1 - 190 / 400)
 	T.eq (P.Progress (400, 500), 0)
-	T.eq (P.Progress (400, 0), 1)
+	T.eq (P.Progress (400, 0),   1)
 end)
 
 -- Approach alerts ----------------------------------------------------------------------
@@ -132,8 +132,8 @@ T.test ("an alert plays once the train comes within 750 of a checkpoint", functi
 	local links = Links (2000)
 	T.eq (#P.AlertsDue (links, 1000, true), 0)
 	local due = P.AlertsDue (links, 1300, true)
-	T.eq (#due, 1)
-	T.eq (due [1], 1)
+	T.eq (#due,                             1)
+	T.eq (due [1],                          1)
 	T.eq (#P.AlertsDue (links, 1400, true), 0)
 end)
 
@@ -181,7 +181,7 @@ T.test ("the alarm stops when the round is not running and does not restart", fu
 	P.AlarmStep (a, 150, true, true, true, 0)
 	T.eq (Actions (P.AlarmStep (a, 150, false, true, true, 1)), "stop")
 	T.eq (Actions (P.AlarmStep (a, 150, false, true, true, 2)), "")
-	T.eq (Actions (P.AlarmStep (a, 150, true, true, true, 3)), "")
+	T.eq (Actions (P.AlarmStep (a, 150, true, true, true, 3)),  "")
 end)
 
 T.test ("a receding train keeps the loop playing past 18s", function ()
@@ -193,14 +193,14 @@ end)
 T.test ("a train that cannot recede loops 18s, then plays a single every 8s", function ()
 	local a = P.NewAlarm ()
 	P.AlarmStep (a, 150, true, false, true, 0)
-	T.eq (Actions (P.AlarmStep (a, 150, true, false, true, 18)), "")
+	T.eq (Actions (P.AlarmStep (a, 150, true, false, true, 18)),   "")
 	T.eq (Actions (P.AlarmStep (a, 150, true, false, true, 18.1)), "stop")
-	T.eq (Actions (P.AlarmStep (a, 150, true, false, true, 20)), "")
+	T.eq (Actions (P.AlarmStep (a, 150, true, false, true, 20)),   "")
 	T.eq (Actions (P.AlarmStep (a, 150, true, false, true, 26.1)), "single")
-	T.eq (Actions (P.AlarmStep (a, 150, true, false, true, 30)), "")
+	T.eq (Actions (P.AlarmStep (a, 150, true, false, true, 30)),   "")
 	T.eq (Actions (P.AlarmStep (a, 150, true, false, true, 34.1)), "single")
-	T.eq (Actions (P.AlarmStep (a, 250, true, false, true, 35)), "stop")
-	T.eq (Actions (P.AlarmStep (a, 250, true, false, true, 50)), "")
+	T.eq (Actions (P.AlarmStep (a, 250, true, false, true, 35)),   "stop")
+	T.eq (Actions (P.AlarmStep (a, 250, true, false, true, 50)),   "")
 end)
 
 T.test ("StopAlarm stops a playing loop and pending singles, and is quiet otherwise", function ()
@@ -208,8 +208,8 @@ T.test ("StopAlarm stops a playing loop and pending singles, and is quiet otherw
 	T.eq (Actions (P.StopAlarm (a)), "")
 	P.AlarmStep (a, 150, true, true, true, 0)
 	T.eq (Actions (P.StopAlarm (a)), "stop")
-	T.eq (a.playing, false)
-	T.eq (a.played, true)
+	T.eq (a.playing,                 false)
+	T.eq (a.played,                  true)
 end)
 
 -- Hill data for the HUD (WatcherActivate) --------------------------------------------
@@ -233,7 +233,7 @@ T.test ("an uphill run is reported from its first node to the node before it end
 	local hills = P.HillSegments (Nodes ({ FLAT, FLAT, UP, UP, FLAT, FLAT }), 500)
 	T.eq (#hills, 1)
 	T.near (hills [1].from, 200 / 500 + 0.005)
-	T.near (hills [1].to, 300 / 500 - 0.005)
+	T.near (hills [1].to,   300 / 500 - 0.005)
 	T.eq (hills [1].down, false)
 end)
 
@@ -241,7 +241,7 @@ T.test ("a single hill node reaches to the next node", function ()
 	local hills = P.HillSegments (Nodes ({ FLAT, DOWN, FLAT, FLAT }), 300)
 	T.eq (#hills, 1)
 	T.near (hills [1].from, 100 / 300 + 0.005)
-	T.near (hills [1].to, 200 / 300 - 0.005)
+	T.near (hills [1].to,   200 / 300 - 0.005)
 	T.eq (hills [1].down, true)
 end)
 
@@ -253,7 +253,7 @@ end)
 
 T.test ("an uphill straight into a downhill makes two hills", function ()
 	local hills = P.HillSegments (Nodes ({ FLAT, UP, UP, DOWN, DOWN, FLAT }), 500)
-	T.eq (#hills, 2)
+	T.eq (#hills,         2)
 	T.eq (hills [1].down, false)
 	T.eq (hills [2].down, true)
 	T.near (hills [2].from, 300 / 500 + 0.005)
@@ -355,10 +355,10 @@ T.test ("a round is unplayable once a team that may win it owns every point", fu
 	local function Playable (set, restrict)
 		return NewMaster ({ Round ("r", 0, restrict, set:Ids ()) }):NumPlayable (set) == 1
 	end
-	T.eq (Playable (Points (RED, RED), RED), true)
-	T.eq (Playable (Points (BLU, BLU), RED), false)
+	T.eq (Playable (Points (RED, RED), RED),     true)
+	T.eq (Playable (Points (BLU, BLU), RED),     false)
 	T.eq (Playable (Points (BLU, BLU), NEITHER), true)
-	T.eq (Playable (Points (BLU, RED), NOBODY), true)
+	T.eq (Playable (Points (BLU, RED), NOBODY),  true)
 end)
 
 T.test ("final point without mini-rounds: capturing it would win", function ()
@@ -375,8 +375,8 @@ T.test ("final point with mini-rounds: only in the last playable round", functio
 			Round ("c", 1, RED, { "p3" })
 		}
 	)
-	T.eq (master:RoundActivate (set, NO_HISTORY, first), "b", "round b plays")
-	T.eq (master:FinalPoint (set, "p2", { BLU }), false, "round c is still playable")
+	T.eq (master:RoundActivate (set, NO_HISTORY, first), "b",   "round b plays")
+	T.eq (master:FinalPoint (set, "p2", { BLU }),        false, "round c is still playable")
 	set:SetOwner ("p3", BLU, Capture.CAUSE_FORCE)
 	T.eq (master:FinalPoint (set, "p2", { BLU }), true, "the last playable round")
 end)
@@ -385,9 +385,9 @@ end)
 
 T.test ("the next checkpoint is the first one past the cart", function ()
 	local links = { { distance = 0, index = 1 }, { distance = 800, index = 6 }, { distance = 2000, index = 14 } }
-	T.eq (P.NextCheckpoint (links, 100).index, 6, "the second")
-	T.eq (P.NextCheckpoint (links, 800).index, 14, "a cart sitting on one goes on to the next")
-	T.eq (P.NextCheckpoint (links, 2000), nil, "none past the last")
+	T.eq (P.NextCheckpoint (links, 100).index, 6,   "the second")
+	T.eq (P.NextCheckpoint (links, 800).index, 14,  "a cart sitting on one goes on to the next")
+	T.eq (P.NextCheckpoint (links, 2000),      nil, "none past the last")
 end)
 
 -- The Game Rules editor's retract: a cart within RETRACT_NEAR past the
@@ -397,31 +397,31 @@ T.test ("retracting just past a point gives it back and returns the cart to the 
 	local links = { { distance = 800, index = 6 }, { distance = 2000, index = 14 }, { distance = 3000, index = 20 } }
 	local plan = P.RetractPlan (links, 2000 + P.RETRACT_NEAR)
 	T.eq (plan.uncap, links [2], "the point just taken")
-	T.eq (plan.to, links [1], "the checkpoint before it")
+	T.eq (plan.to,    links [1], "the checkpoint before it")
 	plan = P.RetractPlan (links, 900)
 	T.eq (plan.uncap, links [1], "the first point")
-	T.eq (plan.to, nil, "back to the start")
+	T.eq (plan.to,    nil,       "back to the start")
 end)
 
 T.test ("retracting farther past a point only returns the cart to it", function ()
 	local links = { { distance = 800, index = 6 }, { distance = 2000, index = 14 } }
 	local plan = P.RetractPlan (links, 2000 + P.RETRACT_NEAR + 1)
-	T.eq (plan.uncap, nil, "nothing given back")
-	T.eq (plan.to, links [2], "back to the last point taken")
+	T.eq (plan.uncap, nil,       "nothing given back")
+	T.eq (plan.to,    links [2], "back to the last point taken")
 end)
 
 T.test ("a cart that has taken no point goes back to the start", function ()
 	local plan = P.RetractPlan ({ { distance = 800, index = 6 } }, 300)
 	T.eq (plan.uncap, nil)
-	T.eq (plan.to, nil)
+	T.eq (plan.to,    nil)
 	T.defined (P.RETRACT_SLACK, "the attackers get five minutes for a point given back")
 end)
 
 -- Bug: on pl_goldrush (handle_train_movement 0: the map drives its cart from
 -- the capture area's cappers) the editor's advance and retract refused.
 T.test ("the watcher drives a map-driven cart only while an admin advances it", function ()
-	T.eq (P.WatcherDrives (true, false), true, "handle_train_movement: always")
-	T.eq (P.WatcherDrives (false, true), true, "the map's cart, advancing")
+	T.eq (P.WatcherDrives (true, false),  true,  "handle_train_movement: always")
+	T.eq (P.WatcherDrives (false, true),  true,  "the map's cart, advancing")
 	T.eq (P.WatcherDrives (false, false), false, "the map's cart, otherwise")
 end)
 
@@ -439,21 +439,21 @@ end)
 -- it rolls the last stretch at the map's speed, through the checkpoint's
 -- OnPass (the map's stop, capture relay and lift).
 T.test ("an advance teleports the cart to the node before the checkpoint", function ()
-	T.eq (P.AdvanceFrom (1, 24), 23)
+	T.eq (P.AdvanceFrom (1, 24),  23)
 	T.eq (P.AdvanceFrom (22, 24), 23)
 	T.eq (P.AdvanceFrom (23, 24), nil, "already on the last stretch: it only rolls on")
 end)
 
 T.test ("an advancing cart does not recede", function ()
 	T.eq (P.MayRecede (false), true)
-	T.eq (P.MayRecede (true), false)
+	T.eq (P.MayRecede (true),  false)
 end)
 
 T.test ("the cart's top speed is the map's times the admin's scale", function ()
-	T.eq (P.MaxSpeed (90, 1), 90, "the map's")
-	T.eq (P.MaxSpeed (90, 2), 180, "doubled")
+	T.eq (P.MaxSpeed (90, 1),                     90,                    "the map's")
+	T.eq (P.MaxSpeed (90, 2),                     180,                   "doubled")
 	T.eq (P.MaxSpeed (90, P.CART_SPEED_MAX * 10), 90 * P.CART_SPEED_MAX, "scale clamped high")
-	T.eq (P.MaxSpeed (90, 0), 90 * P.CART_SPEED_MIN, "scale clamped low")
+	T.eq (P.MaxSpeed (90, 0),                     90 * P.CART_SPEED_MIN, "scale clamped low")
 end)
 
 -- WatcherThink's concepts, on a change of speed level: the cart stopping
@@ -473,26 +473,26 @@ end
 T.test ("the cart stopping has everyone speak", function ()
 	local said, next = Concepts (2, 0, 50, 10)
 	T.eq (said, P.CONCEPT_CART_STOP .. "/" .. P.AUDIENCE_ALL, "a stop")
-	T.eq (next, 0, "the pushers may speak at once when it goes again")
+	T.eq (next, 0,                                            "the pushers may speak at once when it goes again")
 end)
 
 T.test ("the cart starting back has everyone speak", function ()
 	local said, next = Concepts (0, P.SPEED_LEVEL_BACKWARDS, 50, 10)
 	T.eq (said, P.CONCEPT_CART_MOVING_BACKWARD .. "/" .. P.AUDIENCE_ALL, "backwards")
-	T.eq (next, 0, "reset")
+	T.eq (next, 0,                                                       "reset")
 end)
 
 T.test ("a cart going forward has its pushers speak, then not until the interval", function ()
 	local said, next = Concepts (0, 1, 0, 10)
-	T.eq (said, P.CONCEPT_CART_MOVING_FORWARD .. "/" .. P.AUDIENCE_PUSHERS, "forward")
-	T.eq (next, 10 + P.FORWARD_CONCEPT_INTERVAL, "the next time")
+	T.eq (said,                                P.CONCEPT_CART_MOVING_FORWARD .. "/" .. P.AUDIENCE_PUSHERS, "forward")
+	T.eq (next,                                10 + P.FORWARD_CONCEPT_INTERVAL, "the next time")
 	T.eq ((Concepts (1, 2, next, next - 0.1)), "", "faster, but too soon")
-	T.eq ((Concepts (2, 2, next, next)), "", "at the time itself, not yet")
+	T.eq ((Concepts (2, 2, next, next)),       "", "at the time itself, not yet")
 	T.eq ((Concepts (2, 2, next, next + 0.1)), P.CONCEPT_CART_MOVING_FORWARD .. "/" .. P.AUDIENCE_PUSHERS, "after it")
 end)
 
 T.test ("a cart standing still, or rolling back on, says nothing new", function ()
-	T.eq ((Concepts (0, 0, 0, 10)), "", "still")
+	T.eq ((Concepts (0, 0, 0, 10)),                                             "", "still")
 	T.eq ((Concepts (P.SPEED_LEVEL_BACKWARDS, P.SPEED_LEVEL_BACKWARDS, 0, 10)), "", "still going back")
 end)
 
@@ -521,9 +521,9 @@ T.test ("a watcher's checkpoints are its linked path_track and control point pai
 			linked_pathtrack_3 = "Track_A_50"
 		}
 	))
-	T.eq (#links, 2, "two whole pairs")
-	T.eq (links [1].track .. " " .. links [1].cp, "Track_A_24 CP_A_1", "first")
-	T.eq (links [2].track .. " " .. links [2].cp, "Track_A_42 CP_A_2", "second")
+	T.eq (#links,                                                                      2, "two whole pairs")
+	T.eq (links [1].track .. " " .. links [1].cp,                                      "Track_A_24 CP_A_1", "first")
+	T.eq (links [2].track .. " " .. links [2].cp,                                      "Track_A_42 CP_A_2", "second")
 	T.eq (#P.Checkpoints (Keys ({ linked_pathtrack_1 = "", linked_cp_1 = "CP_A_1" })), 0, "an empty name is none")
 end)
 

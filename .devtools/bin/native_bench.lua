@@ -95,7 +95,7 @@ local CASES =
 			for i = 1, 6000 do
 				local _, key = heap:Pop ()
 				key = key or 0
-				heap:Push (key + KEYS [i] % 97, entry)
+				heap:Push (key + KEYS [i] % 97,     entry)
 				heap:Push (key + KEYS [i + 1] % 89, entry)
 				heap:Push (key + KEYS [i + 2] % 83, entry)
 			end

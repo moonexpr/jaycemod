@@ -5,9 +5,9 @@
 local T = dofile ("tests/harness.lua")
 local Walk = nextsoldier.locomotion.route_walk
 
-T.defined (Walk.RADIUS, "RADIUS")
+T.defined (Walk.RADIUS,    "RADIUS")
 T.defined (Walk.LOOKAHEAD, "LOOKAHEAD")
-T.defined (Walk.ON, "ON")
+T.defined (Walk.ON,        "ON")
 
 local function P (x) return { x = x, y = 0, z = 0 } end
 local STEP = Walk.RADIUS * 4
@@ -26,9 +26,9 @@ end)
 
 T.test ("it makes for the first waypoint, and passes each it has reached", function ()
 	local walk = Walk.New (ROUTE)
-	T.eq (walk:Next (P (0), NEVER), ROUTE [1], "the first")
+	T.eq (walk:Next (P (0), NEVER),              ROUTE [1], "the first")
 	T.eq (walk:Next (P (STEP - Walk.ON), NEVER), ROUTE [2], "standing on the first: the second")
-	T.eq (walk:Next (P (STEP), NEVER), ROUTE [2], "it never goes back")
+	T.eq (walk:Next (P (STEP), NEVER),           ROUTE [2], "it never goes back")
 end)
 
 -- Standing on a waypoint is judged across the ground, as the body arrives
@@ -59,7 +59,7 @@ T.test ("a waypoint round a corner is passed only once it stands on it", functio
 	local onlySecond = function (q) return q == ROUTE [2] end
 	T.eq (walk:Next (nearFirst, onlySecond), ROUTE [2], "near the first with the second in a clear line: on")
 	local cornered = Walk.New (ROUTE)
-	T.eq (cornered:Next (nearFirst, NEVER), ROUTE [1], "the second round a corner: still the first")
+	T.eq (cornered:Next (nearFirst, NEVER),              ROUTE [1], "the second round a corner: still the first")
 	T.eq (cornered:Next (P (STEP - Walk.ON + 1), NEVER), ROUTE [2], "standing on the first: on round the corner")
 end)
 
@@ -73,15 +73,15 @@ end)
 T.test ("the last waypoint is held until reached, then the walk is over", function ()
 	local walk = Walk.New (ROUTE)
 	T.eq (walk:Next (P (4 * STEP - Walk.RADIUS - 1), ALWAYS), ROUTE [4], "the last")
-	T.eq (walk:Done (), false, "not over")
-	T.eq (walk:Next (P (4 * STEP), ALWAYS), nil, "reached: nothing more")
-	T.eq (walk:Done (), true, "over")
+	T.eq (walk:Done (),                                       false,     "not over")
+	T.eq (walk:Next (P (4 * STEP), ALWAYS),                   nil,       "reached: nothing more")
+	T.eq (walk:Done (),                                       true,      "over")
 end)
 
 T.test ("an empty route is walked at once", function ()
 	local walk = Walk.New ({})
-	T.eq (walk:Next (P (0), ALWAYS), nil, "nothing to make for")
-	T.eq (walk:Done (), true, "over")
+	T.eq (walk:Next (P (0), ALWAYS), nil,  "nothing to make for")
+	T.eq (walk:Done (),              true, "over")
 end)
 
 -- Where the floor under a straight walk is looked for: points along the
@@ -89,7 +89,7 @@ end)
 -- out (one stands on the start; the end is the waypoint's own floor), each
 -- at the line's height there.
 T.defined (Walk.FOOTING_SPACING, "FOOTING_SPACING")
-T.defined (Walk.FOOTING_MAX, "FOOTING_MAX")
+T.defined (Walk.FOOTING_MAX,     "FOOTING_MAX")
 
 T.test ("the floor is looked for along the line, evenly, the ends left out", function ()
 	local from, to = { x = 0, y = 0, z = 0 }, { x = Walk.FOOTING_SPACING * 4, y = 0, z = 40 }
@@ -97,7 +97,7 @@ T.test ("the floor is looked for along the line, evenly, the ends left out", fun
 	T.eq (#points, 3, "between the ends")
 	for i, p in ipairs (points) do
 		T.near (p.x, Walk.FOOTING_SPACING * i, 1e-9, "spaced " .. i)
-		T.near (p.z, 10 * i, 1e-9, "at the line's height " .. i)
+		T.near (p.z, 10 * i,                   1e-9, "at the line's height " .. i)
 	end
 end)
 
@@ -110,7 +110,7 @@ T.test ("a long walk is looked at no more than FOOTING_MAX times, still evenly",
 	local points = Walk.Footing ({ x = 0, y = 0, z = 0 }, far)
 	T.eq (#points, Walk.FOOTING_MAX, "capped")
 	local step = far.x / (Walk.FOOTING_MAX + 1)
-	T.near (points [1].x, step, 1e-9, "first")
+	T.near (points [1].x,       step,         1e-9, "first")
 	T.near (points [#points].x, far.x - step, 1e-9, "last")
 end)
 
@@ -126,7 +126,7 @@ T.test ("off a line it cannot cut back across, it is led along the route's line"
 	local beside = { x = STEP + 100, y = 40, z = 0 }
 	local lead = walk:Next (beside, NEVER)
 	T.near (lead.x, STEP + 100 + Walk.LINE_LEAD, 1e-9, "ahead of it along the line")
-	T.near (lead.y, 0, 1e-9, "on the line")
+	T.near (lead.y, 0,                           1e-9, "on the line")
 	T.eq (walk.index, 2, "the waypoint is still the second")
 end)
 
@@ -146,7 +146,7 @@ end)
 
 -- Stalled: no nearer its waypoint by PROGRESS in STALL_TIME seconds (fallen
 -- off a log beneath its route, wedged); the caller plans its route anew.
-T.defined (Walk.PROGRESS, "PROGRESS")
+T.defined (Walk.PROGRESS,   "PROGRESS")
 T.defined (Walk.STALL_TIME, "STALL_TIME")
 
 T.test ("a walk getting nearer its waypoint is not stalled", function ()
@@ -160,17 +160,17 @@ end)
 
 T.test ("a walk no nearer its waypoint for STALL_TIME is stalled", function ()
 	local walk = Walk.New (ROUTE)
-	T.eq (walk:Stalled (P (0), 0), false, "begun")
+	T.eq (walk:Stalled (P (0), 0),                                   false, "begun")
 	T.eq (walk:Stalled (P (Walk.PROGRESS / 2), Walk.STALL_TIME / 2), false, "a little nearer: not yet")
-	T.eq (walk:Stalled (P (Walk.PROGRESS / 2), Walk.STALL_TIME), true, "no nearer for STALL_TIME")
+	T.eq (walk:Stalled (P (Walk.PROGRESS / 2), Walk.STALL_TIME),     true,  "no nearer for STALL_TIME")
 end)
 
 T.test ("a new waypoint is a new start", function ()
 	local walk = Walk.New (ROUTE)
 	walk:Stalled (P (0), 0)
 	walk:Next (P (STEP), NEVER)
-	T.eq (walk:Stalled (P (STEP), Walk.STALL_TIME), false, "the second just begun")
-	T.eq (walk:Stalled (P (STEP), 2 * Walk.STALL_TIME), true, "and stalled after")
+	T.eq (walk:Stalled (P (STEP), Walk.STALL_TIME),     false, "the second just begun")
+	T.eq (walk:Stalled (P (STEP), 2 * Walk.STALL_TIME), true,  "and stalled after")
 end)
 
 T.finish ()

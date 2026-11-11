@@ -417,7 +417,7 @@ end
 -- rounds begin, so its first round's hooks (RoundStateChanged, RoundStart:
 -- features/rounds/sv_effects.lua) come after it.
 function Controller:Begin ()
-	team.SetScore (WS.TEAM_RED, 0)
+	team.SetScore (WS.TEAM_RED,  0)
 	team.SetScore (WS.TEAM_BLUE, 0)
 	for _, ply in ipairs (player.GetAll ()) do
 		if WS.TeamOf (ply) == WS.TEAM_UNASSIGNED and ply:Team () ~= WS.TEAM_SPECTATOR then

@@ -12,10 +12,10 @@ end
 T.test ("rebels speak by their model's sex", function ()
 	local male = Voices.For ("models/player/group03/male_04.mdl")
 	T.eq (Has (male.pain, "vo/npc/male01/pain01.wav"), true, "a man's pain")
-	T.eq (#male.death > 0, true, "and his death")
+	T.eq (#male.death > 0,                             true, "and his death")
 	local female = Voices.For ("models/player/group03/female_02.mdl")
-	T.eq (Has (female.pain, "vo/npc/female01/pain05.wav"), true, "a woman's pain")
-	T.eq (Has (female.pain, "vo/npc/male01/pain05.wav"), false, "not a man's")
+	T.eq (Has (female.pain, "vo/npc/female01/pain05.wav"), true,  "a woman's pain")
+	T.eq (Has (female.pain, "vo/npc/male01/pain05.wav"),   false, "not a man's")
 end)
 
 T.test ("Alyx, the Combine, metrocops and vortigaunts have their own", function ()
@@ -51,8 +51,8 @@ T.test ("every voice has a name, grunts and a fall cry", function ()
 		"models/player/combine_soldier.mdl", "models/player/police.mdl", "models/vortigaunt.mdl" }) do
 			local voice = Voices.For (model)
 			T.eq (type (voice.name), "string", model .. ": a name")
-			T.eq (#voice.grunt > 0, true, model .. ": grunts")
-			T.eq (#voice.fall > 0, true, model .. ": a fall cry")
+			T.eq (#voice.grunt > 0,  true,     model .. ": grunts")
+			T.eq (#voice.fall > 0,   true,     model .. ": a fall cry")
 		end
 	T.eq (Voices.For ("models/player/group03/male_04.mdl").name ~= Voices.For ("models/player/combine_soldier.mdl").name, true, "names differ")
 end)
@@ -62,11 +62,11 @@ end)
 -- the metrocops' own death sounds), after a soldier's cry; a metrocop's
 -- death is that radio alone. A rebel's scream is its own signature, bigger
 -- than any other sound: layered, louder, a little deeper.
-T.defined (Voices.DEATH_LEVEL, "DEATH_LEVEL")
+T.defined (Voices.DEATH_LEVEL,         "DEATH_LEVEL")
 T.defined (Voices.DEATH_CONFIRM_DELAY, "DEATH_CONFIRM_DELAY")
-T.defined (Voices.SCREAM_LEVEL, "SCREAM_LEVEL")
-T.defined (Voices.SCREAM_LAYERS, "SCREAM_LAYERS")
-T.defined (Voices.SCREAM_PITCH, "SCREAM_PITCH")
+T.defined (Voices.SCREAM_LEVEL,        "SCREAM_LEVEL")
+T.defined (Voices.SCREAM_LAYERS,       "SCREAM_LAYERS")
+T.defined (Voices.SCREAM_PITCH,        "SCREAM_PITCH")
 
 local function First () return 1 end
 local function Last (n) return n end
@@ -76,22 +76,22 @@ local RADIO = { "npc/overwatch/radiovoice/die1.wav", "npc/overwatch/radiovoice/d
 T.test ("a Combine soldier's death is a loud cry, then the radio's flatline beeps", function ()
 	local voice = Voices.For ("models/player/combine_soldier.mdl")
 	local sounds = Voices.Death (voice, First)
-	T.eq (#sounds, 2, "a cry and the radio")
-	T.eq (sounds [1].sound, voice.death [1], "its own cry")
-	T.eq (sounds [1].level, Voices.DEATH_LEVEL, "loud")
-	T.eq (sounds [1].delay, 0, "at once")
-	T.eq (sounds [2].sound, RADIO [1], "Overwatch's radio, squelch and flatline")
-	T.eq (sounds [2].level, Voices.DEATH_LEVEL, "as loud")
-	T.eq (sounds [2].delay, Voices.DEATH_CONFIRM_DELAY, "after the cry")
-	T.eq (Voices.Death (voice, Last) [2].sound, RADIO [3], "any of the three")
+	T.eq (#sounds,                              2,                          "a cry and the radio")
+	T.eq (sounds [1].sound,                     voice.death [1],            "its own cry")
+	T.eq (sounds [1].level,                     Voices.DEATH_LEVEL,         "loud")
+	T.eq (sounds [1].delay,                     0,                          "at once")
+	T.eq (sounds [2].sound,                     RADIO [1],                  "Overwatch's radio, squelch and flatline")
+	T.eq (sounds [2].level,                     Voices.DEATH_LEVEL,         "as loud")
+	T.eq (sounds [2].delay,                     Voices.DEATH_CONFIRM_DELAY, "after the cry")
+	T.eq (Voices.Death (voice, Last) [2].sound, RADIO [3],                  "any of the three")
 end)
 
 T.test ("a metrocop's death is the radio's flatline itself, nothing over it", function ()
 	local voice = Voices.For ("models/player/police.mdl")
 	local sounds = Voices.Death (voice, First)
-	T.eq (#sounds, 1, "one sound")
+	T.eq (#sounds,          1,                          "one sound")
 	T.eq (sounds [1].sound, "npc/metropolice/die1.wav", "HL2's metrocop death: Overwatch's radio")
-	T.eq (sounds [1].level, Voices.DEATH_LEVEL, "loud")
+	T.eq (sounds [1].level, Voices.DEATH_LEVEL,         "loud")
 end)
 
 T.test ("a rebel's scream is layered, louder and deeper than any other death", function ()
@@ -100,16 +100,16 @@ T.test ("a rebel's scream is layered, louder and deeper than any other death", f
 		local sounds = Voices.Death (voice, First)
 		T.eq (#sounds, Voices.SCREAM_LAYERS, model .. ": one copy a layer")
 		for _, s in ipairs (sounds) do
-			T.eq (s.sound, voice.death [1], model .. ": the same cry")
+			T.eq (s.sound, voice.death [1],     model .. ": the same cry")
 			T.eq (s.level, Voices.SCREAM_LEVEL, model .. ": at the scream's level")
 			T.eq (s.pitch, Voices.SCREAM_PITCH, model .. ": deeper")
-			T.eq (s.delay, 0, model .. ": together")
+			T.eq (s.delay, 0,                   model .. ": together")
 		end
 	end
-	T.eq (Voices.SCREAM_LAYERS >= 2, true, "layered: louder than one sound can play")
+	T.eq (Voices.SCREAM_LAYERS >= 2,                true, "layered: louder than one sound can play")
 	T.eq (Voices.SCREAM_LEVEL > Voices.DEATH_LEVEL, true, "carries farther than the Combine's")
-	T.eq (Voices.SCREAM_PITCH < 100, true, "below the recording's pitch")
-	T.eq (Voices.DEATH_LEVEL > 75, true, "a death louder than a soldier's grunt (SNDLVL_NORM)")
+	T.eq (Voices.SCREAM_PITCH < 100,                true, "below the recording's pitch")
+	T.eq (Voices.DEATH_LEVEL > 75,                  true, "a death louder than a soldier's grunt (SNDLVL_NORM)")
 end)
 
 T.test ("a death not a scream plays at the recording's own pitch", function ()
@@ -120,7 +120,7 @@ end)
 -- (NPC_CombineS.RunFootstepLeft/Right: gear1, 3, 5 on the left foot, 2, 4, 6
 -- on the right; a metrocop's its own), but quietly: under its footsteps.
 T.defined (Voices.GEAR_VOLUME, "GEAR_VOLUME")
-T.defined (Voices.GEAR_LEVEL, "GEAR_LEVEL")
+T.defined (Voices.GEAR_LEVEL,  "GEAR_LEVEL")
 
 T.test ("a Combine soldier's gear rattles on each running step, by foot", function ()
 	local voice = Voices.For ("models/player/combine_soldier.mdl")
@@ -144,13 +144,13 @@ end)
 
 -- A hit of PAIN_SHARE of the soldier's health or more is a cry of pain; a
 -- lighter one, a grunt.
-T.defined (Voices.PAIN_SHARE, "PAIN_SHARE")
+T.defined (Voices.PAIN_SHARE,        "PAIN_SHARE")
 T.defined (Voices.FEEDBACK_COOLDOWN, "FEEDBACK_COOLDOWN")
 
 T.test ("a heavy hit is a cry of pain, a light one a grunt", function ()
-	T.eq (Voices.Feedback (100 * Voices.PAIN_SHARE, 100), "pain", "heavy")
-	T.eq (Voices.Feedback (100 * Voices.PAIN_SHARE - 1, 100), "grunt", "light")
-	T.eq (Voices.Feedback (30, 300), Voices.Feedback (10, 100), "a share of its own health")
+	T.eq (Voices.Feedback (100 * Voices.PAIN_SHARE, 100),     "pain",                    "heavy")
+	T.eq (Voices.Feedback (100 * Voices.PAIN_SHARE - 1, 100), "grunt",                   "light")
+	T.eq (Voices.Feedback (30, 300),                          Voices.Feedback (10, 100), "a share of its own health")
 end)
 
 -- A voice's affiliation, which the speech rules answer by first
@@ -158,12 +158,12 @@ end)
 T.test ("each voice belongs to the Combine or the rebels", function ()
 	T.eq (type (Voices.COMBINE) == "string" and type (Voices.REBEL) == "string" and Voices.COMBINE ~= Voices.REBEL, true, "two sides")
 	local function Of (model) return Voices.For (model).affiliation end
-	T.eq (Of ("models/player/combine_soldier.mdl"), Voices.COMBINE, "a Combine soldier")
-	T.eq (Of ("models/player/police.mdl"), Voices.COMBINE, "a metrocop")
-	T.eq (Of ("models/player/group03/male_04.mdl"), Voices.REBEL, "a rebel")
-	T.eq (Of ("models/player/group03/female_02.mdl"), Voices.REBEL, "a rebel woman")
-	T.eq (Of ("models/player/alyx.mdl"), Voices.REBEL, "Alyx")
-	T.eq (Of ("models/vortigaunt.mdl"), Voices.REBEL, "a vortigaunt fights with the rebels")
+	T.eq (Of ("models/player/combine_soldier.mdl"),   Voices.COMBINE, "a Combine soldier")
+	T.eq (Of ("models/player/police.mdl"),            Voices.COMBINE, "a metrocop")
+	T.eq (Of ("models/player/group03/male_04.mdl"),   Voices.REBEL,   "a rebel")
+	T.eq (Of ("models/player/group03/female_02.mdl"), Voices.REBEL,   "a rebel woman")
+	T.eq (Of ("models/player/alyx.mdl"),              Voices.REBEL,   "Alyx")
+	T.eq (Of ("models/vortigaunt.mdl"),               Voices.REBEL,   "a vortigaunt fights with the rebels")
 end)
 
 T.finish ()

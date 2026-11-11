@@ -175,7 +175,7 @@ local function AddSearchProvider (listname, ctype, stype)
 	end, stype)
 end
 
-AddSearchProvider ("SpawnableEntities", "entity", "entities")
-AddSearchProvider ("Vehicles", "vehicle", "vehicles")
-AddSearchProvider ("NPC", "npc", "npcs")
-AddSearchProvider ("Weapon", "weapon", "weapons")
+AddSearchProvider ("SpawnableEntities", "entity",  "entities")
+AddSearchProvider ("Vehicles",          "vehicle", "vehicles")
+AddSearchProvider ("NPC",               "npc",     "npcs")
+AddSearchProvider ("Weapon",            "weapon",  "weapons")

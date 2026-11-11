@@ -28,5 +28,5 @@ local function Sync ()
 	if built or not on then RunConsoleCommand ("spawnmenu_reload") end
 end
 
-hook.Add ("InitPostEntity", "ws_economy_tabs", Sync)
+hook.Add ("InitPostEntity",          "ws_economy_tabs", Sync)
 hook.Add ("WSServerSettingsChanged", "ws_economy_tabs", Sync)

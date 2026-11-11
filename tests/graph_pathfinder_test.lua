@@ -69,8 +69,8 @@ T.test ("a search that expands more nodes than its limit gives up", function ()
 		nodes ["n" .. i] = { i, 0 }
 		if i > 1 then edges [#edges + 1] = { "n" .. (i - 1), "n" .. i } end
 	end
-	T.eq (Pathfinder.Find (Graph (nodes, edges), "n1", "n50", 10), nil, "limited")
-	T.eq (#Pathfinder.Find (Graph (nodes, edges), "n1", "n50", 100), 50, "unlimited enough")
+	T.eq (Pathfinder.Find (Graph (nodes, edges), "n1", "n50", 10),   nil, "limited")
+	T.eq (#Pathfinder.Find (Graph (nodes, edges), "n1", "n50", 100), 50,  "unlimited enough")
 end)
 
 T.test ("a cheaper way to a node found later replaces the first", function ()
@@ -99,7 +99,7 @@ end)
 T.test ("a failed search still gives the route to the node that came closest to the goal", function ()
 	local graph = Graph (RING.nodes, RING.edges, { bc = true, ef = true })
 	local route, closest = Pathfinder.Find (graph, "a", "c")
-	T.eq (route, nil, "no route")
+	T.eq (route,            nil,   "no route")
 	T.eq (Joined (closest), "a b", "b is nearest c")
 end)
 
@@ -113,9 +113,9 @@ T.test ("a search run a few expansions at a time finds what one run does", funct
 	local search = Pathfinder.New (graph, "a", "c")
 	local steps = 0
 	while search:Step (1) == Pathfinder.RUNNING do steps = steps + 1 end
-	T.eq (search.status, Pathfinder.FOUND, "found")
-	T.eq (Joined (search:Route ()), "a d e f c", "same route")
-	T.eq (steps > 2, true, "it took several steps")
+	T.eq (search.status,            Pathfinder.FOUND, "found")
+	T.eq (Joined (search:Route ()), "a d e f c",      "same route")
+	T.eq (steps > 2,                true,             "it took several steps")
 end)
 
 T.test ("a cost below the parent's is raised just above it, so every step costs something", function ()
@@ -155,18 +155,18 @@ end)
 
 T.test ("a search runs a budget of expansions at a time, counting them", function ()
 	local search = Pathfinder.New (Graph (RING.nodes, RING.edges), "a", "c")
-	T.eq (search:Step (1), Pathfinder.RUNNING, "one expansion")
-	T.eq (search.expanded, 1, "counted")
-	T.eq (search:Step (100), Pathfinder.FOUND, "the rest")
-	T.eq (search.expanded, 2, "a and b expanded; c is the goal")
-	T.eq (search.start .. search.goal .. search.closest, "acc", "its ends, and the goal as the closest")
+	T.eq (search:Step (1),                               Pathfinder.RUNNING, "one expansion")
+	T.eq (search.expanded,                               1,                  "counted")
+	T.eq (search:Step (100),                             Pathfinder.FOUND,   "the rest")
+	T.eq (search.expanded,                               2,                  "a and b expanded; c is the goal")
+	T.eq (search.start .. search.goal .. search.closest, "acc",              "its ends, and the goal as the closest")
 end)
 
 T.test ("a search that reaches its expansion cap fails, routing to the closest it reached", function ()
 	local search = Pathfinder.New (Graph (RING.nodes, RING.edges, { bc = true }), "a", "c", 2)
-	T.eq (search:Step (100), Pathfinder.FAILED, "capped")
-	T.eq (search.expanded, 2, "no further")
-	T.eq (search.maxExpanded, 2, "its cap")
+	T.eq (search:Step (100),                                                     Pathfinder.FAILED,       "capped")
+	T.eq (search.expanded,                                                       2,                       "no further")
+	T.eq (search.maxExpanded,                                                    2,                       "its cap")
 	T.eq (Pathfinder.New (Graph (RING.nodes, RING.edges), "a", "c").maxExpanded, Pathfinder.MAX_EXPANDED, "the default cap")
 end)
 
@@ -174,10 +174,10 @@ T.test ("the parents and costs so far say how each node was reached", function (
 	local search = Pathfinder.New (Graph (RING.nodes, RING.edges), "a", "f")
 	while search:Step (1) == Pathfinder.RUNNING do end
 	T.eq (search.parent.f .. search.parent.c .. search.parent.b, "cba", "f from c, c from b, b from a: the tie goes by the neighbour listed first")
-	T.eq (search.parent.a, nil, "the start from nothing")
-	T.eq (search:CostSoFar ("a"), 0, "the start costs nothing")
+	T.eq (search.parent.a,                                       nil,   "the start from nothing")
+	T.eq (search:CostSoFar ("a"),                                0,     "the start costs nothing")
 	T.near (search:CostSoFar ("f"), 3, 1e-9, "three unit steps")
-	T.eq (search:CostSoFar ("zz"), nil, "a node never reached")
+	T.eq (search:CostSoFar ("zz"),     nil,   "a node never reached")
 	T.eq (Joined (search:Route ("d")), "a d", "a route to any node reached")
 end)
 
@@ -190,7 +190,7 @@ T.test ("nodes are any values usable as keys: numbers and tables alike", functio
 		Estimate = function (_, node) return node == c and 0 or 1 end
 	}
 	local route = Pathfinder.Find (graph, a, c)
-	T.eq (route and #route, 3, "found")
+	T.eq (route and #route,                                     3,    "found")
 	T.eq (route [1] == a and route [2] == b and route [3] == c, true, "the very values given")
 	local numbers = { Neighbors = function (_, n) return { n + 1 } end, Cost = function (_, _, _, so) return so + 1 end, Estimate = function (_, n, goal) return goal - n end }
 	T.eq (Joined (Pathfinder.Find (numbers, 1, 4)), "1 2 3 4", "numbers")
@@ -200,8 +200,8 @@ T.test ("an error in the graph's port reaches the caller", function ()
 	local graph = Graph (RING.nodes, RING.edges)
 	function graph:Cost () error ("no cost here") end
 	local ok, err = pcall (Pathfinder.Find, graph, "a", "c")
-	T.eq (ok, false, "raised")
-	T.eq (tostring (err):find ("no cost here", 1, true) ~= nil, true, "its message: " .. tostring (err))
+	T.eq (ok,                                                   false, "raised")
+	T.eq (tostring (err):find ("no cost here", 1, true) ~= nil, true,  "its message: " .. tostring (err))
 end)
 
 T.test ("NAN_COST is the engine's clamp", function ()

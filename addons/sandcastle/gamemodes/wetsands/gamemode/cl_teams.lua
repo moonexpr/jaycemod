@@ -24,7 +24,7 @@ local function CreateFonts ()
 	local s = ScrH () / UNIT
 	surface.CreateFont ("Sandcastle.TeamMenu.Title", { font = "Coolvetica", size = math.Round (26 * s) })
 	surface.CreateFont ("Sandcastle.TeamMenu.Count", { font = "Coolvetica", size = math.Round (34 * s) })
-	surface.CreateFont ("Sandcastle.TeamMenu.Name", { font = "Coolvetica", size = math.Round (30 * s) })
+	surface.CreateFont ("Sandcastle.TeamMenu.Name",  { font = "Coolvetica", size = math.Round (30 * s) })
 	surface.CreateFont ("Sandcastle.TeamMenu.Label", { font = "Coolvetica", size = math.Round (16 * s) })
 	surface.CreateFont ("Sandcastle.TeamMenu.Small", { font = "Roboto", size = math.Round (9 * s), weight = 800 })
 end
@@ -80,12 +80,12 @@ end
 function CHOICE:DrawDoor (w, h, top)
 	local s, color = self.scale, self:BodyColor ()
 	local inset, body = 6 * s, h - top
-	Rect (Scale (color, 0.45), 0, top, w, body)
-	Rect (color, inset, top + inset, w - 2 * inset, body - 2 * inset)
+	Rect (Scale (color, 0.45), 0,     top,         w,             body)
+	Rect (color,               inset, top + inset, w - 2 * inset, body - 2 * inset)
 	local panel = Scale (color, 0.8)
-	Rect (panel, 2 * inset, top + 2 * inset, w - 4 * inset, body * 0.34)
-	Rect (panel, 2 * inset, top + body * 0.42, w - 4 * inset, body * 0.34)
-	Rect (Scale (color, 0.5), w - 5 * inset, top + body * 0.5, 2 * inset, 2 * inset) -- the knob
+	Rect (panel,              2 * inset,     top + 2 * inset,   w - 4 * inset, body * 0.34)
+	Rect (panel,              2 * inset,     top + body * 0.42, w - 4 * inset, body * 0.34)
+	Rect (Scale (color, 0.5), w - 5 * inset, top + body * 0.5,  2 * inset,     2 * inset) -- the knob
 	self:DrawHotkey (2 * inset, top + 2 * inset)
 end
 
@@ -123,8 +123,8 @@ function PAINT.spectate (self, w, h)
 	local c, s = self.choice, self.scale
 	local box, inset = BOX_H * s, 5 * s
 	local color = self:BodyColor ()
-	Rect (Scale (color, 0.45), 0, 0, w, box)
-	Rect (color, inset, inset, w - 2 * inset, box - 2 * inset)
+	Rect (Scale (color, 0.45), 0,     0,     w,             box)
+	Rect (color,               inset, inset, w - 2 * inset, box - 2 * inset)
 	draw.SimpleText (c.count, "Sandcastle.TeamMenu.Label", w / 2, box / 2, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	self:DrawHotkey (inset, inset)
 	draw.SimpleText (c.label, "Sandcastle.TeamMenu.Label", w / 2, box + BOX_LABEL * s / 2, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
@@ -261,8 +261,8 @@ end
 
 function MENU:Paint (w, h)
 	local s = h / UNIT
-	Rect (BACKDROP, 0, 0, w, h)
-	Rect (BAR, 0, h - BAR_H * s, w, BAR_H * s)
+	Rect (BACKDROP, 0, 0,             w, h)
+	Rect (BAR,      0, h - BAR_H * s, w, BAR_H * s)
 	draw.SimpleText (self.config.title, "Sandcastle.TeamMenu.Title", 30 * s, h - BAR_H / 2 * s, TEXT, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
 end
 

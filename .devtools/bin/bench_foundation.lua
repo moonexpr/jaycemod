@@ -61,7 +61,7 @@ end
 for _, n in ipairs ({ 16, 128, 2000 }) do
 	local points, here = Points (n, 8000), { x = 4000, y = 4000, z = 50 }
 	local iterations = n >= 2000 and 400 or 20000
-	Time ("Nearest n=" .. n .. " old loop", function () return OldNearest (points, here) end, iterations)
+	Time ("Nearest n=" .. n .. " old loop",       function () return OldNearest (points, here) end,     iterations)
 	Time ("Nearest n=" .. n .. " Select.Nearest", function () return Select.Nearest (points, here) end, iterations)
 end
 
@@ -78,7 +78,7 @@ do
 	end
 	local function Dist (c) return c.dist end
 	local function Alive (c) return c.alive end
-	Time ("Lowest n=128 old loop", OldLowest, 20000)
+	Time ("Lowest n=128 old loop",      OldLowest,                                                 20000)
 	Time ("Lowest n=128 Select.Lowest", function () return Select.Lowest (items, Dist, Alive) end, 20000)
 end
 
@@ -124,10 +124,10 @@ do
 		end
 		return picked
 	end
-	Time ("spread 300 pts, 24 posts old loop", function () return OldSpread (candidates, limit) end, 2000)
+	Time ("spread 300 pts, 24 posts old loop",    function () return OldSpread (candidates, limit) end,            2000)
 	Time ("spread 300 pts, 24 posts Grid.Spread", function () return Grid.Spread (candidates, spacing, limit) end, 2000)
 	local many = Points (2000, 12000)
-	Time ("spread 2000 pts, unlimited old loop", function () return OldSpread (many, math.huge) end, 30)
+	Time ("spread 2000 pts, unlimited old loop",    function () return OldSpread (many, math.huge) end, 30)
 	Time ("spread 2000 pts, unlimited Grid.Spread", function () return Grid.Spread (many, spacing) end, 30)
 	local areas = Points (150, 4000)
 	Time ("isolated 150 old pairwise loop", function ()
@@ -257,7 +257,7 @@ do
 	local c, d = { x = 5, y = 5, z = 5 }, { x = 15, y = 15, z = 15 }
 	local v = 0.5
 	Time ("scalar clamp inline min/max", function () return math.min (1, math.max (0, v)) end, 500000)
-	Time ("scalar Saturate", function () return math.scalar.Saturate (v) end, 500000)
+	Time ("scalar Saturate",             function () return math.scalar.Saturate (v) end,      500000)
 	Time ("box overlap inline compare", function ()
 		return a.x <= d.x and c.x <= b.x and a.y <= d.y and c.y <= b.y and a.z <= d.z and c.z <= b.z
 	end, 500000)

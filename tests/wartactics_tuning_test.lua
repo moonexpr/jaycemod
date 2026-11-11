@@ -23,9 +23,9 @@ T.test ("every tunable is a number its module has, within the range it may take"
 	T.eq (#Tuning.TUNABLES >= 20, true, "the tactics' constants are listed")
 	for _, tunable in ipairs (Tuning.TUNABLES) do
 		local value = MODULES [tunable.module] [tunable.key]
-		T.eq (type (value), "number", tunable.name)
+		T.eq (type (value),                                  "number", tunable.name)
 		T.eq (value >= tunable.min and value <= tunable.max, true, tunable.name .. " in range")
-		T.eq (tunable.name, tunable.module .. "." .. tunable.key, "named module.KEY")
+		T.eq (tunable.name,                                  tunable.module .. "." .. tunable.key, "named module.KEY")
 	end
 end)
 
@@ -35,15 +35,15 @@ T.test ("a value set takes effect at the next call, and reset puts the default b
 	local ok = tuner:Set ("tactics.FLANK_OFFSET", "100")
 	T.eq (ok, true, "set")
 	local flank = Tactics.FlankPoint ({ x = 0, y = 0 }, { x = 1000, y = 0, z = 0 }, 1)
-	T.eq (flank.y, 100, "the flank point is 100 beside the enemy now")
-	T.eq (tuner:Reset ("tactics.FLANK_OFFSET"), true, "reset")
-	T.eq (Tactics.FLANK_OFFSET, default, "back to its default")
+	T.eq (flank.y,                              100,     "the flank point is 100 beside the enemy now")
+	T.eq (tuner:Reset ("tactics.FLANK_OFFSET"), true,    "reset")
+	T.eq (Tactics.FLANK_OFFSET,                 default, "back to its default")
 end)
 
 T.test ("names are found whatever their case", function ()
 	local tuner = Tuning.Tuner.New (MODULES)
 	T.eq (tuner:Set ("lanes.flank_radius", "250"), true, "lower case")
-	T.eq (Lanes.FLANK_RADIUS, 250, "set")
+	T.eq (Lanes.FLANK_RADIUS,                      250,  "set")
 	local left = Lanes.FixedFlanks ({ x = 0, y = 0, z = 0 }, { x = 1000, y = 0, z = 0 })
 	T.eq (left.y, 250, "a fixed flank stands 250 beside the objective now")
 	tuner:ResetAll ()
@@ -84,7 +84,7 @@ T.test ("the listing shows each value and its default, the changed ones first, a
 end)
 
 T.test ("changing a lanes constant asks for new lanes; the others do not", function ()
-	T.eq (Tuning.Replans (Tuning.Find ("lanes.LANE_PENALTY")), true, "lanes")
+	T.eq (Tuning.Replans (Tuning.Find ("lanes.LANE_PENALTY")), true,  "lanes")
 	T.eq (Tuning.Replans (Tuning.Find ("tactics.BOUND_TIME")), false, "tactics")
 end)
 

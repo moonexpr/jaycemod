@@ -35,7 +35,7 @@ end
 -- SetHalloweenEffectStatus and ClearHalloweenEffectStatus.
 function Controller:SetEffectStatus (skin, duration)
 	SetGlobal2Int (EFFECT, skin)
-	SetGlobal2Float (EFFECT_START, CurTime ())
+	SetGlobal2Float (EFFECT_START,    CurTime ())
 	SetGlobal2Float (EFFECT_DURATION, duration)
 end
 

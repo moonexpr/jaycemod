@@ -29,10 +29,10 @@ T.test ("each hint is placed in the room it stands in; more than one in a room, 
 			Hints.Hint ({ name = "again", pos = At (2) }),
 			Hints.Hint ({ name = "outside", pos = At (50) })
 		}, RoomAt)
-	T.eq (placed [a].name, "one", "the first in its room")
-	T.eq (placed [b].name, "two", "another room's")
-	T.eq (trouble [1], "again: a second hint in the room of one", "a second told, the first kept")
-	T.eq (trouble [2], "outside: in no room", "one in no room told")
+	T.eq (placed [a].name, "one",                                     "the first in its room")
+	T.eq (placed [b].name, "two",                                     "another room's")
+	T.eq (trouble [1],     "again: a second hint in the room of one", "a second told, the first kept")
+	T.eq (trouble [2],     "outside: in no room",                     "one in no room told")
 end)
 
 T.test ("a hint's class and holder stand over the war's own; its label goes with the room", function ()
@@ -44,11 +44,11 @@ T.test ("a hint's class and holder stand over the war's own; its label goes with
 	}
 	local placed = { [hall] = Hints.Hint ({ name = "hall", label = "Great hall", class = "stronghold", team = 3, pos = At (1) }) }
 	local out = Hints.Override (classed, placed, function () return nil end)
-	T.eq (out [hall].cls, Classes.STRONGHOLD, "its class")
-	T.eq (out [hall].team, 3, "its holder")
-	T.eq (out [hall].label, "Great hall", "its label")
-	T.eq (out [yard], classed [yard], "a room with no hint as the war found it")
-	T.eq (classed [hall].cls, Classes.COMMONS, "the war's own left as it was")
+	T.eq (out [hall].cls,     Classes.STRONGHOLD, "its class")
+	T.eq (out [hall].team,    3,                  "its holder")
+	T.eq (out [hall].label,   "Great hall",       "its label")
+	T.eq (out [yard],         classed [yard],     "a room with no hint as the war found it")
+	T.eq (classed [hall].cls, Classes.COMMONS,    "the war's own left as it was")
 end)
 
 T.test ("tied to a control point, a room is held by the point's owner, none while it has none", function ()
@@ -59,8 +59,8 @@ T.test ("tied to a control point, a room is held by the point's owner, none whil
 	local function Owner (point) return owners [point] end
 	T.eq (Hints.Override (classed, placed, Owner) [hall].team, 3, "the point's owner over the map's team")
 	owners.cp_mid = nil
-	T.eq (Hints.Override (classed, placed, Owner) [hall].team, nil, "the point neutral: held by none")
-	T.eq (Hints.Override (classed, placed, Owner) [hall].cls, Classes.COMMONS, "its class the war's while none is given")
+	T.eq (Hints.Override (classed, placed, Owner) [hall].team, nil,             "the point neutral: held by none")
+	T.eq (Hints.Override (classed, placed, Owner) [hall].cls,  Classes.COMMONS, "its class the war's while none is given")
 end)
 
 T.finish ()

@@ -75,7 +75,7 @@ local function SamePlay (original, copy, from, steps, what)
 	for i = 1, steps do
 		local t = from + i
 		T.eq (Kinds (copy:Think (LATER + t, World ())), Kinds (original:Think (T0 + t, World ())), what .. " at +" .. t)
-		T.eq (copy:State (), original:State (), what .. " state at +" .. t)
+		T.eq (copy:State (),                            original:State (), what .. " state at +" .. t)
 	end
 end
 
@@ -97,7 +97,7 @@ end)
 
 T.test ("a round taken running wins, celebrates and restarts as the original does", function ()
 	local original = Fresh ()
-	original:Think (T0, World ())
+	original:Think (T0,                               World ())
 	original:Think (T0 + 1 + Rounds.PREROUND_SECONDS, World ())
 	local at = 2 + Rounds.PREROUND_SECONDS
 	local copy = Copy (original, at)
@@ -116,7 +116,7 @@ end)
 
 T.test ("respawn waves due are kept as time to go", function ()
 	local original = Fresh ()
-	original:Think (T0, World ())
+	original:Think (T0,                               World ())
 	original:Think (T0 + 1 + Rounds.PREROUND_SECONDS, World ())
 	local at = 2 + Rounds.PREROUND_SECONDS
 	original:SetTeamWaveTime (RED, 20)

@@ -125,8 +125,8 @@ end)
 -- end (a client hung at "Lua Started!").
 T.test ("cl_init.lua never includes itself among the cl_ modules", function ()
 	local order = clientOrder ()
-	T.eq (indexOf (order, "cl_init.lua"), nil, "not among the modules it loads")
-	T.eq (#order > 10, true, "the cl_ modules were found: " .. #order)
+	T.eq (indexOf (order, "cl_init.lua"), nil,  "not among the modules it loads")
+	T.eq (#order > 10,                    true, "the cl_ modules were found: " .. #order)
 end)
 
 T.finish ()

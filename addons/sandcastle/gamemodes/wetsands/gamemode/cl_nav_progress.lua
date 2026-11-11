@@ -39,8 +39,8 @@ local fontsFor
 local function Fonts (unit)
 	if fontsFor == unit then return end
 	surface.CreateFont (TITLE_FONT, { font = "TF2 Build", size = math.Round (TITLE_TALL * unit), weight = 500 })
-	surface.CreateFont (BODY_FONT, { font = "TF2 Secondary", size = math.Round (BODY_TALL * unit), weight = 500 })
-	surface.CreateFont (NOTE_FONT, { font = "TF2 Secondary", size = math.Round (NOTE_TALL * unit), weight = 500 })
+	surface.CreateFont (BODY_FONT,  { font = "TF2 Secondary", size = math.Round (BODY_TALL * unit), weight = 500 })
+	surface.CreateFont (NOTE_FONT,  { font = "TF2 Secondary", size = math.Round (NOTE_TALL * unit), weight = 500 })
 	fontsFor = unit
 end
 
@@ -135,7 +135,7 @@ WS.UI.Define ("NavProgress", "DPanel",
 			local unit = h / TALL
 			Fonts (unit)
 			local pad, corner = PAD * unit, CORNER * unit
-			draw.RoundedBox (corner, 0, 0, w, h, TAN_DARK)
+			draw.RoundedBox (corner, 0,    0,    w,            h,            TAN_DARK)
 			draw.RoundedBox (corner, unit, unit, w - 2 * unit, h - 2 * unit, DARK_BROWN)
 			draw.SimpleText (string.upper (P.TITLE), TITLE_FONT, pad, pad, TAN_LIGHT)
 			local y = pad + (TITLE_TALL + GAP) * unit

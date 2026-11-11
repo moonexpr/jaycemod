@@ -361,7 +361,7 @@ local function DrawCentrePanel (w, h, title, winner, rows)
 		local blue = t == WS.TEAM_BLUE
 		local score, name = panel.scores [t], panel.names [t]
 		Shadowed (tostring (team.GetScore (t)), scoreFont, score.x, score.y, blue and TEXT_ALIGN_RIGHT or TEXT_ALIGN_LEFT)
-		Shadowed (WS.TeamName [t], nameFont, name.x, name.y, blue and TEXT_ALIGN_LEFT or TEXT_ALIGN_RIGHT)
+		Shadowed (WS.TeamName [t],              nameFont,  name.x, name.y, blue and TEXT_ALIGN_LEFT or TEXT_ALIGN_RIGHT)
 	end
 	DrawPanel (Hud.PanelImage (winner), panel.border, unit)
 	Shadowed (title, nameFont, panel.title.x, panel.title.y, TEXT_ALIGN_CENTER)

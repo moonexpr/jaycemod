@@ -39,13 +39,13 @@ T.test ("only a MASK_ALL trace, the right-click's, hits it", function ()
 	T.eq (hit ~= nil, true, "the right-click")
 	T.eq (hit.HitPos.x, 50)
 	T.eq (hit.Fraction, 0.5)
-	T.eq (proxy:TestCollision (start, delta, false, nil, MASK_SHOT), nil, "bullets pass")
+	T.eq (proxy:TestCollision (start, delta, false, nil, MASK_SHOT),       nil, "bullets pass")
 	T.eq (proxy:TestCollision (start, delta, true, nil, MASK_PLAYERSOLID), nil, "players pass")
 end)
 
 T.test ("it is no spawnable thing and takes no tools", function ()
 	local ENT = Load ()
-	T.eq (ENT.Spawnable, false)
+	T.eq (ENT.Spawnable,       false)
 	T.eq (ENT.PhysgunDisabled, true)
 	T.eq (next (ENT.m_tblToolsAllowed), nil, "no tool works on it")
 end)
@@ -81,9 +81,9 @@ T.test ("the cart's entries show on a cart's proxy, by its kind, and nowhere els
 	local added = LoadCart ()
 	for _, name in ipairs ({ "ws_retract_cart", "ws_advance_cart" }) do
 		local match = added [name].match
-		T.eq (match (Ent ("ws_proxy", "cart")), true, name)
+		T.eq (match (Ent ("ws_proxy", "cart")),  true,  name)
 		T.eq (match (Ent ("ws_proxy", "point")), false, name .. ": a point's proxy")
-		T.eq (match (Ent ("func_tracktrain")), false, name .. ": not a proxy")
+		T.eq (match (Ent ("func_tracktrain")),   false, name .. ": not a proxy")
 	end
 end)
 
@@ -96,8 +96,8 @@ T.test ("the cart's entries also show on the train and the props riding it", fun
 	local train = Ent ("func_tracktrain", nil, nil, { proxy })
 	local prop = Ent ("prop_physics", nil, train)
 	local match = added.ws_advance_cart.match
-	T.eq (match (train), true, "the train")
-	T.eq (match (prop), true, "a prop riding it")
+	T.eq (match (train),                                              true,  "the train")
+	T.eq (match (prop),                                               true,  "a prop riding it")
 	T.eq (match (Ent ("prop_physics", nil, Ent ("func_tracktrain"))), false, "a train with no cart proxy")
 end)
 
@@ -108,8 +108,8 @@ T.test ("the cart's entries show on the body tied to the train, which names the 
 	local added = LoadCart ()
 	local proxy = Ent ("ws_proxy", "cart")
 	local match = added.ws_retract_cart.match
-	T.eq (match (Ent ("prop_physics", nil, nil, nil, proxy)), true, "the cart's body")
-	T.eq (match (Ent ("prop_physics")), false, "another prop")
+	T.eq (match (Ent ("prop_physics", nil, nil, nil, proxy)), true,  "the cart's body")
+	T.eq (match (Ent ("prop_physics")),                       false, "another prop")
 end)
 
 T.finish ()

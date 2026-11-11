@@ -15,10 +15,10 @@ TOOL.Information =
 }
 
 if CLIENT then
-	language.Add ("tool.build_spawn.name", "Spawn")
-	language.Add ("tool.build_spawn.desc", "Place a team's spawners, spawn room and resupply closets")
-	language.Add ("tool.build_spawn.left", "Place a spawner (double-click one to give it these settings)")
-	language.Add ("tool.build_spawn.right", "Spawn room: click one corner, then the opposite corner")
+	language.Add ("tool.build_spawn.name",   "Spawn")
+	language.Add ("tool.build_spawn.desc",   "Place a team's spawners, spawn room and resupply closets")
+	language.Add ("tool.build_spawn.left",   "Place a spawner (double-click one to give it these settings)")
+	language.Add ("tool.build_spawn.right",  "Spawn room: click one corner, then the opposite corner")
 	language.Add ("tool.build_spawn.reload", "Make a resupply closet on the nearest wall, or remove the piece you are looking at")
 end
 

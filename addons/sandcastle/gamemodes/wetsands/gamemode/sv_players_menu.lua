@@ -63,8 +63,8 @@ E.Listen ("game_money_transfer", "ws_players_menu", function (fields, ply)
 	local target = Target (ply, fields.target)
 	if not target then return end
 	if not Try (ply, function () WS.TransferMoney (ply, target, fields.amount) end) then return end
-	Say (ply, "You gave " .. target:Nick () .. " " .. Money (fields.amount) .. ".", false)
-	Say (target, ply:Nick () .. " gave you " .. Money (fields.amount) .. ".", false)
+	Say (ply,    "You gave " .. target:Nick () .. " " .. Money (fields.amount) .. ".", false)
+	Say (target, ply:Nick () .. " gave you " .. Money (fields.amount) .. ".",          false)
 end)
 
 local ADMIN =

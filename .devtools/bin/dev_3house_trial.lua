@@ -110,7 +110,7 @@ local function Follower (spot, team, kit, name)
 end
 
 local function Clear ()
-	hook.Remove ("Think", "dev_3house_trial")
+	hook.Remove ("Think",            "dev_3house_trial")
 	hook.Remove ("EntityTakeDamage", "dev_3house_trial")
 	for _, side in ipairs ({ T.red or {}, T.blue or {} }) do
 		for _, member in ipairs (side) do
@@ -328,7 +328,7 @@ local function Step ()
 		if T.outcome == nil then Occupation (now) end
 		return
 	end
-	Calls (T.order, "red")
+	Calls (T.order,     "red")
 	Calls (T.blueOrder, "blue")
 	local order = T.order
 	for key in pairs (T.dead) do

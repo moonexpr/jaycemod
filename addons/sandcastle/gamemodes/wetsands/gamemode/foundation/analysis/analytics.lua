@@ -264,9 +264,9 @@ end
 
 function FormatSamples (report)
 	local lines = { format ("samples: %d", report.samples) }
-	Section (lines, "-- VM state", report.states)
+	Section (lines, "-- VM state",                    report.states)
 	Section (lines, "-- self (the function running)", report.self)
-	Section (lines, "-- inclusive (on the stack)", report.inclusive)
-	Section (lines, "-- stacks", report.stacks)
+	Section (lines, "-- inclusive (on the stack)",    report.inclusive)
+	Section (lines, "-- stacks",                      report.stacks)
 	return lines
 end

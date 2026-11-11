@@ -38,9 +38,9 @@ T.test ("an entry lasts its term from when it was written", function ()
 	clock.now = TERM
 	T.eq (cache:Get ("a"), 1, "to the end of its term")
 	clock.now = TERM + 1
-	T.eq (cache:Get ("a"), nil, "and no longer")
-	T.eq (Joined (log), "a:" .. Cache.EXPIRED, "released as expired")
-	T.eq (cache:Size (), 0, "gone")
+	T.eq (cache:Get ("a"), nil,                   "and no longer")
+	T.eq (Joined (log),    "a:" .. Cache.EXPIRED, "released as expired")
+	T.eq (cache:Size (),   0,                     "gone")
 end)
 
 T.test ("writing an entry again starts its term again; reading does not", function ()
@@ -74,8 +74,8 @@ T.test ("Prune drops every expired entry, the oldest first", function ()
 	cache:Put ("c", 3)
 	clock.now = TERM + 1.5
 	cache:Prune ()
-	T.eq (Joined (log), "a:" .. Cache.EXPIRED .. " b:" .. Cache.EXPIRED, "both past their term")
-	T.eq (Joined (cache:Keys ()), "c", "the rest")
+	T.eq (Joined (log),           "a:" .. Cache.EXPIRED .. " b:" .. Cache.EXPIRED, "both past their term")
+	T.eq (Joined (cache:Keys ()), "c",                                             "the rest")
 end)
 
 T.test ("Keys lists only entries still within their term", function ()
@@ -98,12 +98,12 @@ T.test ("walking an expiring cache passes over the expired", function ()
 	local seen = {}
 	for key in cache () do seen [#seen + 1] = key end
 	T.eq (Joined (seen), "b", "a expired")
-	T.eq (cache.a, nil, "and reads as gone")
+	T.eq (cache.a,       nil, "and reads as gone")
 end)
 
 T.test ("an expiring cache needs a clock and a term", function ()
-	T.eq (pcall (Expiring.New, { term = TERM }), false, "no clock")
-	T.eq (pcall (Expiring.New, { clock = Clock () }), false, "no term")
+	T.eq (pcall (Expiring.New, { term = TERM }),                 false, "no clock")
+	T.eq (pcall (Expiring.New, { clock = Clock () }),            false, "no term")
 	T.eq (pcall (Expiring.New, { clock = Clock (), term = -1 }), false, "a negative term")
 end)
 

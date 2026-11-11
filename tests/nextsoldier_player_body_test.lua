@@ -66,13 +66,13 @@ end)
 T.test ("it aims at its enemy whichever way it moves", function ()
 	local body = Body.New ()
 	local cmd = Run (body, 0, 1, { target = EAST, aim = NORTH, aimRadius = 16 })
-	T.near (cmd.moveYaw, 0, 1e-6, "moving east")
-	T.near (cmd.yaw, 90, 1e-6, "aiming north")
+	T.near (cmd.moveYaw, 0,  1e-6, "moving east")
+	T.near (cmd.yaw,     90, 1e-6, "aiming north")
 end)
 
 T.test ("with no enemy it faces where it is told to look, else the way it goes", function ()
 	local body = Body.New ()
-	T.near (Run (body, 0, 1, { look = NORTH }).yaw, 90, 1e-6, "standing, looking north")
+	T.near (Run (body, 0, 1, { look = NORTH }).yaw,                         90,  1e-6, "standing, looking north")
 	T.near (Run (body, 1, 1, { target = { x = -1000, y = 0, z = 0 } }).yaw, 180, 1e-6, "moving west, facing west")
 end)
 
@@ -80,7 +80,7 @@ T.test ("it turns no faster than its turn rate", function ()
 	local body = Body.New ()
 	local cmd = body:Command (0, TICK, Sense ({ aim = { x = -1000, y = 1, z = 64 }, aimRadius = 16 }))
 	T.near (math.abs (cmd.yaw), Body.TURN_RATE * TICK, 1e-6, "one tick's turn toward the enemy behind")
-	T.near (cmd.pitch, 0, 1e-6, "level")
+	T.near (cmd.pitch,          0,                     1e-6, "level")
 end)
 
 T.test ("it aims up and down at an enemy above or below its eyes", function ()
@@ -113,9 +113,9 @@ T.test ("a semi-automatic's trigger is pressed again for each shot; an automatic
 	local a = body:Command (0, TICK, sense).attack
 	local b = body:Command (TICK, TICK, sense).attack
 	local c = body:Command (2 * TICK, TICK, sense).attack
-	T.eq (a, true, "pressed")
+	T.eq (a, true,  "pressed")
 	T.eq (b, false, "released")
-	T.eq (c, true, "pressed again")
+	T.eq (c, true,  "pressed again")
 	body = Body.New ()
 	sense.weapon = GUN
 	T.eq (body:Command (0, TICK, sense).attack and body:Command (TICK, TICK, sense).attack, true, "held")
@@ -132,7 +132,7 @@ T.test ("an empty gun is reloaded, not fired", function ()
 	}
 	local cmd = Body.New ():Command (0, TICK, Sense ({ aim = EAST, aimRadius = 16, weapon = empty }))
 	T.eq (cmd.attack, false, "no shot")
-	T.eq (cmd.reload, true, "reloads")
+	T.eq (cmd.reload, true,  "reloads")
 	empty.reserve = 0
 	cmd = Body.New ():Command (0, TICK, Sense ({ aim = EAST, aimRadius = 16, weapon = empty }))
 	T.eq (cmd.reload, false, "nothing to reload with")
@@ -148,8 +148,8 @@ T.test ("a melee weapon strikes only within its reach", function ()
 		reserve = 0
 	}
 	local near, far = { x = 40, y = 0, z = 64 }, { x = 200, y = 0, z = 64 }
-	T.eq (Body.New ():Command (0, TICK, Sense ({ aim = near, aimRadius = 16, weapon = crowbar })).attack, true, "in reach")
-	T.eq (Body.New ():Command (0, TICK, Sense ({ aim = far, aimRadius = 16, weapon = crowbar })).attack, false, "out of reach")
+	T.eq (Body.New ():Command (0, TICK, Sense ({ aim = near, aimRadius = 16, weapon = crowbar })).attack, true,  "in reach")
+	T.eq (Body.New ():Command (0, TICK, Sense ({ aim = far, aimRadius = 16, weapon = crowbar })).attack,  false, "out of reach")
 end)
 
 T.test ("stuck while trying to move, it crouch-jumps once, then waits to be stuck again", function ()
@@ -161,21 +161,21 @@ T.test ("stuck while trying to move, it crouch-jumps once, then waits to be stuc
 	T.eq (cmd.jump, true, "jumps")
 	cmd = body:Command (Body.STUCK_TIME + 2 * TICK, TICK, Sense ({ target = EAST, speed = 0, onGround = false }))
 	T.eq (cmd.jump, false, "the jump is let go")
-	T.eq (cmd.duck, true, "ducks in the air: a crouch jump")
+	T.eq (cmd.duck, true,  "ducks in the air: a crouch jump")
 	cmd = body:Command (Body.STUCK_TIME + Body.CROUCH_JUMP_TIME + 0.1, TICK, Sense ({ target = EAST, speed = 0 }))
-	T.eq (cmd.duck, false, "stands again on landing")
-	T.eq (cmd.jump, false, "and waits to be stuck again")
+	T.eq (cmd.duck,                                                            false, "stands again on landing")
+	T.eq (cmd.jump,                                                            false, "and waits to be stuck again")
 	T.eq (Run (Body.New (), 0, Body.STUCK_TIME + 0.1, { target = EAST }).jump, false, "a soldier on the move never jumps")
-	T.eq (Run (Body.New (), 0, Body.STUCK_TIME + 0.1, { speed = 0 }).jump, false, "nor one standing by choice")
+	T.eq (Run (Body.New (), 0, Body.STUCK_TIME + 0.1, { speed = 0 }).jump,     false, "nor one standing by choice")
 end)
 
 T.test ("it ducks where the nav mesh says crouch, and jumps once where it says jump", function ()
 	local body = Body.New ()
-	T.eq (body:Command (0, TICK, Sense ({ target = EAST, crouchArea = true })).duck, true, "crouch area")
-	T.eq (body:Command (TICK, TICK, Sense ({ target = EAST, jumpArea = true })).jump, true, "jump area")
+	T.eq (body:Command (0, TICK, Sense ({ target = EAST, crouchArea = true })).duck,      true,  "crouch area")
+	T.eq (body:Command (TICK, TICK, Sense ({ target = EAST, jumpArea = true })).jump,     true,  "jump area")
 	T.eq (body:Command (2 * TICK, TICK, Sense ({ target = EAST, jumpArea = true })).jump, false, "once, not held")
-	T.eq (body:Command (3 * TICK, TICK, Sense ({ target = EAST })).jump, false, "left it")
-	T.eq (body:Command (4 * TICK, TICK, Sense ({ target = EAST, jumpArea = true })).jump, true, "a jump area again")
+	T.eq (body:Command (3 * TICK, TICK, Sense ({ target = EAST })).jump,                  false, "left it")
+	T.eq (body:Command (4 * TICK, TICK, Sense ({ target = EAST, jumpArea = true })).jump, true,  "a jump area again")
 end)
 
 T.test ("sent nowhere, it closes on an enemy past its weapon's chase range, backs off inside its avoid range, holds between", function ()
@@ -190,7 +190,7 @@ T.test ("sent nowhere, it closes on an enemy past its weapon's chase range, back
 			}
 		))
 	end
-	T.near (Engage (ranges.chase + 100).moveYaw, 0, 1e-6, "closes in")
+	T.near (Engage (ranges.chase + 100).moveYaw,            0,   1e-6, "closes in")
 	T.near (math.abs (Engage (ranges.avoid - 100).moveYaw), 180, 1e-6, "backs off")
 	T.eq (Engage ((ranges.chase + ranges.avoid) / 2).moveYaw, nil, "holds")
 	local sent = Body.New ():Command (0, TICK, Sense ({ target = NORTH, aim = { x = 5000, y = 0, z = 64 }, aimRadius = 16, chase = ranges.chase, avoid = ranges.avoid }))
@@ -202,7 +202,7 @@ T.test ("a low obstacle ahead is jumped, one at head height ducked under, a door
 	local low = Body.New ():Command (0, TICK, Sense ({ target = EAST, lowBlocked = true }))
 	T.eq (low.jump, true, "jumps the low obstacle")
 	local head = Body.New ():Command (0, TICK, Sense ({ target = EAST, headBlocked = true }))
-	T.eq (head.duck, true, "ducks under the high one")
+	T.eq (head.duck, true,  "ducks under the high one")
 	T.eq (head.jump, false, "and does not jump into it")
 	local wall = Body.New ():Command (0, TICK, Sense ({ target = EAST, lowBlocked = true, headBlocked = true }))
 	T.eq (wall.jump or wall.duck, false, "a wall is neither: being stuck deals with it")
@@ -210,8 +210,8 @@ T.test ("a low obstacle ahead is jumped, one at head height ducked under, a door
 	local body = Body.New ()
 	local door = { x = 100, y = 0, z = 64 }
 	local focused = { target = EAST, doorAhead = true, look = door, lookPriority = true }
-	T.eq (body:Command (0, TICK, Sense (focused)).use, true, "uses the door while looking at it")
-	T.eq (body:Command (TICK, TICK, Sense (focused)).use, false, "once, not held")
+	T.eq (body:Command (0, TICK, Sense (focused)).use,                        true, "uses the door while looking at it")
+	T.eq (body:Command (TICK, TICK, Sense (focused)).use,                     false, "once, not held")
 	T.eq (body:Command (Body.USE_INTERVAL - TICK, TICK, Sense (focused)).use, false, "not again while it swings")
 	T.eq (body:Command (Body.USE_INTERVAL + TICK, TICK, Sense (focused)).use, true, "again when it stayed shut")
 end)
@@ -229,8 +229,8 @@ T.test ("door focus takes priority over an enemy until the body can use it", fun
 		aimRadius = 16
 	}
 	local first = body:Command (0, TICK, Sense (fields))
-	T.eq (first.use, false, "does not use before turning")
-	T.eq (first.yaw > 0, true, "turns toward the door instead of the enemy")
+	T.eq (first.use,     false, "does not use before turning")
+	T.eq (first.yaw > 0, true,  "turns toward the door instead of the enemy")
 	fields.eye = { pitch = 0, yaw = 90 }
 	local command = body:Command (1, TICK, Sense (fields))
 	T.near (command.yaw, 90, 1e-6, "looks directly at the door")

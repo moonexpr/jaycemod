@@ -42,9 +42,9 @@ end)
 
 T.test ("a hostage's look is drawn from all models by a number the caller gives", function ()
 	local all = Models.All ()
-	T.eq (Models.Pick (1), all [1], "the first")
-	T.eq (Models.Pick (#all), all [#all], "the last")
-	T.eq (Models.Pick (#all + 1), all [1], "it wraps")
+	T.eq (Models.Pick (1),        all [1],    "the first")
+	T.eq (Models.Pick (#all),     all [#all], "the last")
+	T.eq (Models.Pick (#all + 1), all [1],    "it wraps")
 end)
 
 T.test ("the feature preloads exactly its models", function ()

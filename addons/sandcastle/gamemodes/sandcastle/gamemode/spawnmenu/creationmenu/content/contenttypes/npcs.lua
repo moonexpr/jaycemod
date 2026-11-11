@@ -52,9 +52,9 @@ function PANEL:Init ()
 	self:SetOpenSize (150)
 	self:DockPadding (15, 10, 15, 10)
 
-	self:AddCheckbox ("#menubar.npcs.disableai", "ai_disabled")
-	self:AddCheckbox ("#menubar.npcs.ignoreplayers", "ai_ignoreplayers")
-	self:AddCheckbox ("#menubar.npcs.keepcorpses", "ai_serverragdolls")
+	self:AddCheckbox ("#menubar.npcs.disableai",       "ai_disabled")
+	self:AddCheckbox ("#menubar.npcs.ignoreplayers",   "ai_ignoreplayers")
+	self:AddCheckbox ("#menubar.npcs.keepcorpses",     "ai_serverragdolls")
 	self:AddCheckbox ("#menubar.npcs.autoplayersquad", "npc_citizen_auto_player_squad")
 
 	local label = vgui.Create ("DLabel", self)
@@ -69,8 +69,8 @@ function PANEL:Init ()
 	DComboBox:SetConVar ("gmod_npcweapon")
 	DComboBox:SetSortItems (false)
 
-	DComboBox:AddChoice ("#menubar.npcs.defaultweapon", "", false, "icon16/gun.png")
-	DComboBox:AddChoice ("#menubar.npcs.noweapon", "none", false, "icon16/cross.png")
+	DComboBox:AddChoice ("#menubar.npcs.defaultweapon", "",     false, "icon16/gun.png")
+	DComboBox:AddChoice ("#menubar.npcs.noweapon",      "none", false, "icon16/cross.png")
 
 	local CustomIcons = list.Get ("ContentCategoryIcons")
 	-- Sort the items by name, and group by category

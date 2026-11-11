@@ -62,7 +62,7 @@ end
 -- Two 10 x 10 halls, side by side, ten cells apart (cols 0-9 and 20-29).
 local function TwoHalls ()
 	local mesh = Mesh ()
-	mesh:Block (0, 0, 10, 10)
+	mesh:Block (0,  0, 10, 10)
 	mesh:Block (20, 0, 10, 10)
 	return mesh
 end
@@ -87,9 +87,9 @@ T.test ("the tuning is defined", function ()
 			T.defined (Rooms [name], name)
 		end
 	T.eq (Rooms.STOREY_RISE * 1.5 / 11 / CELL > Rooms.STAIR_SLOPE, true, "the fixtures' stairs: steeper than a stair")
-	T.eq (Rooms.STOREY_RISE / 2 / 11 / CELL < Rooms.STAIR_SLOPE, true, "their ramps: gentler")
-	T.eq (Rooms.DOOR_WIDTH, 96, "settled with the operator")
-	T.eq (Rooms.CORRIDOR_WIDTH > Rooms.DOOR_WIDTH, true, "a corridor is wider than a door")
+	T.eq (Rooms.STOREY_RISE / 2 / 11 / CELL < Rooms.STAIR_SLOPE,   true, "their ramps: gentler")
+	T.eq (Rooms.DOOR_WIDTH,                                        96,   "settled with the operator")
+	T.eq (Rooms.CORRIDOR_WIDTH > Rooms.DOOR_WIDTH,                 true, "a corridor is wider than a door")
 end)
 
 T.test ("two halls joined by a corridor are two rooms, the corridor a passage between them and in neither", function ()
@@ -106,9 +106,9 @@ T.test ("two halls joined by a corridor are two rooms, the corridor a passage be
 	for c = 11, 18 do T.eq (Rooms.RoomOf (p, mesh:Id (c, 5)), nil, "the corridor, in no room: " .. c) end
 	local corridor = Rooms.PassageOf (p, mesh:Id (14, 5))
 	T.eq (corridor.kind, Rooms.CORRIDOR)
-	T.eq (Rooms.PassageOf (p, mesh:Id (18, 5)), corridor, "one passage, end to end")
-	T.eq (table.concat (corridor.joins, ","), a.id .. "," .. b.id, "joining the two")
-	T.eq (Rooms.PassageOf (p, mesh:Id (5, 5)), nil, "a room's area is in no passage")
+	T.eq (Rooms.PassageOf (p, mesh:Id (18, 5)), corridor,            "one passage, end to end")
+	T.eq (table.concat (corridor.joins, ","),   a.id .. "," .. b.id, "joining the two")
+	T.eq (Rooms.PassageOf (p, mesh:Id (5, 5)),  nil,                 "a room's area is in no passage")
 	T.eq (#a.doors, 1)
 	T.eq (a.doors [1].leads [1], b.id, "the door leads on through the corridor to the other")
 	T.eq (a.doors [1].passage, corridor.id, "through it")
@@ -141,11 +141,11 @@ T.test ("a hallway wider than a door but narrower than a corridor's width is a c
 	local across = math.floor (Rooms.CORRIDOR_WIDTH / CELL) -- cells
 	T.eq (across * CELL > Rooms.DOOR_WIDTH, true, "the fixture: wider than a door")
 	local length = math.ceil (4 * Rooms.ROOM_MIN_FLOOR / (across * CELL * CELL))
-	mesh:Block (0, 0, 10, 10)
-	mesh:Block (10, 0, length, across)
-	mesh:Block (10 + length, 0, 10, 10)
+	mesh:Block (0,           0, 10,     10)
+	mesh:Block (10,          0, length, across)
+	mesh:Block (10 + length, 0, 10,     10)
 	for r = 0, across - 1 do
-		mesh:Join (mesh:Id (9, r), mesh:Id (10, r))
+		mesh:Join (mesh:Id (9, r),          mesh:Id (10, r))
 		mesh:Join (mesh:Id (9 + length, r), mesh:Id (10 + length, r))
 	end
 	local p = Rooms.Partition (mesh:Graph ())
@@ -156,16 +156,16 @@ end)
 
 T.test ("a short gap between two halls is a door between their rooms, in the gap", function ()
 	local mesh = Mesh ()
-	mesh:Block (0, 0, 10, 10)
+	mesh:Block (0,  0, 10, 10)
 	mesh:Block (11, 0, 10, 10)
 	mesh:Cell (10, 5)
-	mesh:Join (mesh:Id (9, 5), mesh:Id (10, 5))
+	mesh:Join (mesh:Id (9, 5),  mesh:Id (10, 5))
 	mesh:Join (mesh:Id (10, 5), mesh:Id (11, 5))
 	local p = Rooms.Partition (mesh:Graph ())
 	T.eq (#p.rooms, 2)
 	T.eq (#p.passages, 0, "no passage")
 	local a, b = Rooms.RoomOf (p, mesh:Id (0, 0)), Rooms.RoomOf (p, mesh:Id (20, 9))
-	T.eq (#a.doors, 1)
+	T.eq (#a.doors,              1)
 	T.eq (a.doors [1].leads [1], b.id)
 	local x = a.doors [1].pos.x
 	T.eq (x >= 9.5 * CELL and x <= 10.5 * CELL, true, "in the gap: " .. x)
@@ -184,7 +184,7 @@ T.test ("a stairwell climbing a storey between two halls is a room of its own", 
 	T.eq (Rooms.PassageOf (p, mesh:Id (14, 5)), nil, "no passage")
 	local a = Rooms.RoomOf (p, mesh:Id (0, 0))
 	T.eq (a.doors [1].leads [1], stairs.id, "the hall's door leads into it")
-	T.eq (#stairs.doors, 2, "a door at each end")
+	T.eq (#stairs.doors,         2,         "a door at each end")
 end)
 
 T.test ("a stairwell's flights and the landing between them are one stairwell, climbing a storey together", function ()
@@ -202,7 +202,7 @@ T.test ("a stairwell's flights and the landing between them are one stairwell, c
 	T.eq (stairs and stairs.kind, Rooms.STAIRWELL)
 	T.eq (Rooms.RoomOf (p, mesh:Id (14, 5)), stairs, "the landing in it")
 	T.eq (Rooms.RoomOf (p, mesh:Id (18, 5)), stairs, "and the flight above")
-	T.eq (#stairs.doors, 2, "a doorway at the foot and one at the top")
+	T.eq (#stairs.doors,                     2,      "a doorway at the foot and one at the top")
 end)
 
 T.test ("a landing several areas long still joins the flights at either end into one stairwell", function ()
@@ -232,13 +232,13 @@ T.test ("a stairwell open along its side to a yard is still indoors, under its r
 	local p = Rooms.Partition (mesh:Graph ())
 	local stairs = Rooms.RoomOf (p, mesh:Id (14, 5))
 	T.eq (stairs and stairs.kind, Rooms.STAIRWELL)
-	T.eq (stairs.outdoor, false)
+	T.eq (stairs.outdoor,         false)
 end)
 
 T.test ("sloping ground outdoors, however far it climbs, is no stairwell", function ()
 	local mesh = Mesh ()
 	local rise = Rooms.STOREY_RISE * 1.5
-	mesh:Block (0, 0, 10, 10, 0, true)
+	mesh:Block (0,  0, 10, 10, 0,    true)
 	mesh:Block (20, 0, 10, 10, rise, true)
 	Corridor (mesh, 5, rise)
 	for c = 10, 19 do mesh.graph [mesh:Id (c, 5)].outdoor = true end
@@ -250,45 +250,45 @@ T.test ("rooms storeys apart are on levels numbered from the ground up; a stairw
 	local mesh = Mesh ()
 	local rise = Rooms.STOREY_RISE * 1.5
 	mesh:Block (0, 0, 10, 10)
-	mesh:Block (20, 0, 10, 10, rise)
-	mesh:Block (0, 20, 10, 10, Rooms.LEVEL_GAP) -- a hall raised as much as a level's gap: the ground floor still
+	mesh:Block (20, 0,  10, 10, rise)
+	mesh:Block (0,  20, 10, 10, Rooms.LEVEL_GAP) -- a hall raised as much as a level's gap: the ground floor still
 	Corridor (mesh, 5, rise)
 	local p = Rooms.Partition (mesh:Graph ())
 	T.eq (#p.levels, 2, "two levels")
 	local low, high, raised = Rooms.RoomOf (p, mesh:Id (0, 0)), Rooms.RoomOf (p, mesh:Id (29, 9)), Rooms.RoomOf (p, mesh:Id (0, 25))
-	T.eq (low.level, 1, "the ground floor")
+	T.eq (low.level,    1, "the ground floor")
 	T.eq (raised.level, 1, "raised by no more than LEVEL_GAP is the same floor")
-	T.eq (high.level, 2, "the floor above")
-	T.eq (low.top, 1, "a room on one level reaches no other")
+	T.eq (high.level,   2, "the floor above")
+	T.eq (low.top,      1, "a room on one level reaches no other")
 	local stairs = Rooms.RoomOf (p, mesh:Id (14, 5))
-	T.eq (stairs.level, 1, "the stairwell's foot")
-	T.eq (stairs.top, 2, "its head")
+	T.eq (stairs.level,                           1,                  "the stairwell's foot")
+	T.eq (stairs.top,                             2,                  "its head")
 	T.eq (table.concat (p.levels [2].rooms, ","), tostring (high.id), "each level's rooms, the stairwell in neither")
 end)
 
 T.test ("a ledge a drop above the yard beside it is a room of its own on the level above, the drop its door", function ()
 	local mesh = Mesh ()
 	local drop = Rooms.LEVEL_GAP * 3
-	mesh:Block (0, 0, 10, 10, 0, true)
+	mesh:Block (0,  0, 10, 10, 0,    true)
 	mesh:Block (10, 0, 10, 10, drop, true) -- the ledge, its edge over the yard along a whole side
 	for r = 0, 9 do mesh:Join (mesh:Id (9, r), mesh:Id (10, r)) end
 	local p = Rooms.Partition (mesh:Graph ())
 	local yard, ledge = Rooms.RoomOf (p, mesh:Id (0, 5)), Rooms.RoomOf (p, mesh:Id (19, 5))
-	T.eq (yard ~= ledge, true, "two rooms, not one climbing the drop")
-	T.eq (yard.level, 1, "the yard")
-	T.eq (ledge.level, 2, "the ledge, the level above")
+	T.eq (yard ~= ledge,                                  true,    "two rooms, not one climbing the drop")
+	T.eq (yard.level,                                     1,       "the yard")
+	T.eq (ledge.level,                                    2,       "the ledge, the level above")
 	T.eq (#ledge.doors > 0 and ledge.doors [1].leads [1], yard.id, "dropping off the ledge leads to the yard")
 end)
 
 T.test ("a crate's top, too small to be a room, is the room it drops into", function ()
 	local mesh = Mesh ()
-	mesh:Block (0, 0, 10, 10, 0, true)
-	mesh:Block (10, 4, 2, 2, Rooms.LEVEL_GAP * 3, true)
+	mesh:Block (0,  0, 10, 10, 0,                   true)
+	mesh:Block (10, 4, 2,  2,  Rooms.LEVEL_GAP * 3, true)
 	for r = 4, 5 do mesh:Join (mesh:Id (9, r), mesh:Id (10, r)) end
 	local p = Rooms.Partition (mesh:Graph ())
-	T.eq (#p.rooms, 1, "no room of its own")
+	T.eq (#p.rooms,                          1,                                "no room of its own")
 	T.eq (Rooms.RoomOf (p, mesh:Id (11, 5)), Rooms.RoomOf (p, mesh:Id (0, 5)), "the yard's")
-	T.eq (#p.levels, 1, "nor a level")
+	T.eq (#p.levels,                         1,                                "nor a level")
 end)
 
 T.test ("a ledge too small to be a room, over a corridor, is the corridor's", function ()
@@ -297,13 +297,13 @@ T.test ("a ledge too small to be a room, over a corridor, is the corridor's", fu
 	mesh:Block (14, 6, 2, 2, Rooms.LEVEL_GAP * 3)
 	for c = 14, 15 do mesh:Join (mesh:Id (c, 5), mesh:Id (c, 6)) end
 	local p = Rooms.Partition (mesh:Graph ())
-	T.eq (#p.rooms, 2, "the halls alone")
+	T.eq (#p.rooms,                             2,                                    "the halls alone")
 	T.eq (Rooms.PassageOf (p, mesh:Id (15, 7)), Rooms.PassageOf (p, mesh:Id (12, 5)), "the corridor's")
 end)
 
 T.test ("a ledge no higher than LEVEL_GAP over the yard is the yard's floor", function ()
 	local mesh = Mesh ()
-	mesh:Block (0, 0, 10, 10, 0, true)
+	mesh:Block (0,  0, 10, 10, 0,               true)
 	mesh:Block (10, 0, 10, 10, Rooms.LEVEL_GAP, true)
 	for r = 0, 9 do mesh:Join (mesh:Id (9, r), mesh:Id (10, r)) end
 	local p = Rooms.Partition (mesh:Graph ())
@@ -325,13 +325,13 @@ T.test ("a ramp rising less than a storey is still a corridor", function ()
 	mesh:Block (20, 0, 10, 10, rise)
 	Corridor (mesh, 5, rise)
 	local p = Rooms.Partition (mesh:Graph ())
-	T.eq (#p.rooms, 2)
+	T.eq (#p.rooms,                                  2)
 	T.eq (Rooms.PassageOf (p, mesh:Id (14, 5)).kind, Rooms.CORRIDOR)
 end)
 
 T.test ("halls joined along a whole side are one room", function ()
 	local mesh = Mesh ()
-	mesh:Block (0, 0, 10, 10)
+	mesh:Block (0,  0, 10, 10)
 	mesh:Block (10, 0, 10, 10)
 	for r = 0, 9 do mesh:Join (mesh:Id (9, r), mesh:Id (10, r)) end
 	local p = Rooms.Partition (mesh:Graph ())
@@ -341,7 +341,7 @@ end)
 
 T.test ("a func_door across the join makes two rooms however wide it is", function ()
 	local mesh = Mesh ()
-	mesh:Block (0, 0, 10, 10)
+	mesh:Block (0,  0, 10, 10)
 	mesh:Block (10, 0, 10, 10)
 	for r = 0, 9 do mesh:Join (mesh:Id (9, r), mesh:Id (10, r), true) end
 	local p = Rooms.Partition (mesh:Graph ())
@@ -352,7 +352,7 @@ end)
 
 T.test ("an areaportal between halls joined along a whole side parts them, as a door does", function ()
 	local mesh = Mesh ()
-	mesh:Block (0, 0, 10, 10)
+	mesh:Block (0,  0, 10, 10)
 	mesh:Block (10, 0, 10, 10)
 	for r = 0, 9 do mesh:Join (mesh:Id (9, r), mesh:Id (10, r)) end
 	local graph = mesh:Graph ()
@@ -366,13 +366,13 @@ end)
 
 T.test ("a window between two halls joins their rooms, though no one walks through it", function ()
 	local mesh = Mesh ()
-	mesh:Block (0, 0, 10, 10)
+	mesh:Block (0,  0, 10, 10)
 	mesh:Block (11, 0, 10, 10)
 	local pos = { x = 10 * CELL, y = 5 * CELL, z = 32 }
 	local p = Rooms.Partition (mesh:Graph (), nil, { { pos = pos, from = mesh:Id (9, 5), to = mesh:Id (11, 5) } })
 	local a, b = Rooms.RoomOf (p, mesh:Id (0, 0)), Rooms.RoomOf (p, mesh:Id (20, 9))
-	T.eq (#a.doors, 0, "no door")
-	T.eq (#a.windows, 1, "a window")
+	T.eq (#a.doors,                0,    "no door")
+	T.eq (#a.windows,              1,    "a window")
 	T.eq (a.windows [1].leads [1], b.id, "onto the other")
 	T.eq (a.windows [1].pos, pos)
 	T.eq (b.windows [1].leads [1], a.id, "and back")
@@ -391,9 +391,9 @@ T.test ("a nook too small to be a room joins the room it opens on", function ()
 	mesh:Block (0, 10, 3, 3) -- a 3 x 3 nook above the first hall
 	for c = 0, 2 do mesh:Join (mesh:Id (c, 9), mesh:Id (c, 10)) end
 	local p = Rooms.Partition (mesh:Graph ())
-	T.eq (#p.rooms, 2, "still two")
+	T.eq (#p.rooms,                          2,                                "still two")
 	T.eq (Rooms.RoomOf (p, mesh:Id (1, 12)), Rooms.RoomOf (p, mesh:Id (0, 0)), "in the hall's room")
-	T.eq (#p.passages, 1, "the corridor the only passage")
+	T.eq (#p.passages,                       1,                                "the corridor the only passage")
 end)
 
 T.test ("corridors side by side are one doorway; far apart, two", function ()
@@ -401,7 +401,7 @@ T.test ("corridors side by side are one doorway; far apart, two", function ()
 	Corridor (mesh, 4)
 	Corridor (mesh, 5)
 	local doors = Rooms.RoomOf (Rooms.Partition (mesh:Graph ()), mesh:Id (0, 0)).doors
-	T.eq (#doors, 1, "one doorway")
+	T.eq (#doors,          1,        "one doorway")
 	T.eq (doors [1].width, 2 * CELL, "as wide as both")
 	mesh = TwoHalls ()
 	Corridor (mesh, 0)
@@ -415,7 +415,7 @@ T.test ("a room's floor is its areas', its centre their floor-weighted middle", 
 	local p = Rooms.Partition (mesh:Graph ())
 	T.eq (p.rooms [1].floor, 100 * CELL * CELL)
 	T.near (p.rooms [1].center.x, 4.5 * CELL, 1e-9)
-	T.eq (p.rooms [1].lo.x, -CELL / 2, "its block: from its areas' near corner")
+	T.eq (p.rooms [1].lo.x, -CELL / 2,  "its block: from its areas' near corner")
 	T.eq (p.rooms [1].hi.y, 9.5 * CELL, "to their far corner")
 end)
 
@@ -423,7 +423,7 @@ T.test ("rooms are numbered by their lowest area, so a map's rooms keep their nu
 	local mesh = TwoHalls ()
 	Corridor (mesh, 5)
 	local p = Rooms.Partition (mesh:Graph ())
-	T.eq (Rooms.RoomOf (p, 1).id, 1)
+	T.eq (Rooms.RoomOf (p, 1).id,               1)
 	T.eq (Rooms.RoomOf (p, mesh:Id (29, 9)).id, 2)
 	T.eq (Rooms.RoomOf (p, 1).areas [1], 1, "areas ascending")
 end)
@@ -432,7 +432,7 @@ T.test ("a mesh with no floor wider than a corridor has no rooms", function ()
 	local mesh = Mesh ()
 	mesh:Block (0, 0, 10, 1) -- a strip one cell wide: every area by a wall
 	local p = Rooms.Partition (mesh:Graph ())
-	T.eq (#p.rooms, 0)
+	T.eq (#p.rooms,            0)
 	T.eq (Rooms.RoomOf (p, 1), nil)
 end)
 
@@ -442,7 +442,7 @@ T.test ("an open yard outdoors is a room, marked outdoor", function ()
 	local mesh = Mesh ()
 	mesh:Block (0, 0, 10, 10, 0, true)
 	local p = Rooms.Partition (mesh:Graph ())
-	T.eq (#p.rooms, 1)
+	T.eq (#p.rooms,            1)
 	T.eq (p.rooms [1].outdoor, true)
 end)
 
@@ -454,13 +454,13 @@ T.test ("a building's door onto a yard leads from the room indoors to the yard's
 	local p = Rooms.Partition (mesh:Graph ())
 	T.eq (#p.rooms, 2)
 	local hall, yard = Rooms.RoomOf (p, mesh:Id (0, 0)), Rooms.RoomOf (p, mesh:Id (19, 9))
-	T.eq (hall.outdoor, false, "indoors")
-	T.eq (yard.outdoor, true, "outdoors")
-	T.eq (Rooms.RoomOf (p, mesh:Id (9, 5)), hall, "the threshold's inner side the hall's")
-	T.eq (Rooms.RoomOf (p, mesh:Id (10, 5)), yard, "its outer side the yard's")
-	T.eq (#hall.doors, 1)
+	T.eq (hall.outdoor,                      false, "indoors")
+	T.eq (yard.outdoor,                      true,  "outdoors")
+	T.eq (Rooms.RoomOf (p, mesh:Id (9, 5)),  hall,  "the threshold's inner side the hall's")
+	T.eq (Rooms.RoomOf (p, mesh:Id (10, 5)), yard,  "its outer side the yard's")
+	T.eq (#hall.doors,              1)
 	T.eq (hall.doors [1].leads [1], yard.id)
-	T.eq (hall.doors [1].outside, true, "out of doors")
+	T.eq (hall.doors [1].outside, true,  "out of doors")
 	T.eq (yard.doors [1].outside, false, "the yard's door into the building leads in, not out")
 end)
 
@@ -470,9 +470,9 @@ T.test ("a scrap of roof over a yard, too small to be a room, is the yard's", fu
 	local graph = mesh:Graph ()
 	graph [mesh:Id (4, 4)].outdoor = false -- one area under an awning
 	local p = Rooms.Partition (graph)
-	T.eq (#p.rooms, 1, "one yard")
+	T.eq (#p.rooms,                         1,                                "one yard")
 	T.eq (Rooms.RoomOf (p, mesh:Id (4, 4)), Rooms.RoomOf (p, mesh:Id (0, 0)), "the scrap in it")
-	T.eq (graph [mesh:Id (4, 4)].outdoor, false, "the graph given left as it was")
+	T.eq (graph [mesh:Id (4, 4)].outdoor,   false,                            "the graph given left as it was")
 end)
 
 T.test ("a roofed space open along a whole side is not sealed: it counts as outdoors", function ()
@@ -481,7 +481,7 @@ T.test ("a roofed space open along a whole side is not sealed: it counts as outd
 	mesh:Block (10, 0, 10, 10, 0, true)
 	for r = 0, 9 do mesh:Join (mesh:Id (9, r), mesh:Id (10, r)) end
 	local p = Rooms.Partition (mesh:Graph ())
-	T.eq (Rooms.RoomOf (p, mesh:Id (0, 0)).outdoor, true, "a porch")
+	T.eq (Rooms.RoomOf (p, mesh:Id (0, 0)).outdoor,                              true, "a porch")
 	T.eq (Rooms.RoomOf (p, mesh:Id (0, 0)) ~= Rooms.RoomOf (p, mesh:Id (19, 0)), true, "still apart from the yard")
 end)
 
@@ -492,8 +492,8 @@ T.test ("a roofed balcony open over a drop along a whole side, with no link ther
 		for c = 0, 9 do mesh.graph [mesh:Id (c, 0)].open = open end
 		return Rooms.Partition (mesh:Graph ()).rooms [1]
 	end
-	T.eq (Balcony (CELL).outdoor, true, "its front opens onto the air")
-	T.eq (Balcony (nil).outdoor, false, "walled all round: indoors")
+	T.eq (Balcony (CELL).outdoor, true,  "its front opens onto the air")
+	T.eq (Balcony (nil).outdoor,  false, "walled all round: indoors")
 end)
 
 T.test ("a big area against walls is open floor: its clearance counts from its wall, not its middle", function ()
@@ -576,14 +576,14 @@ T.test ("the floor under a door between a hall and a yard is a seam joining them
 	for _, layer in ipairs (strips) do
 		for _, id in ipairs (layer) do
 			T.eq (Rooms.PassageOf (p, id), seam, "one seam, indoors and out, along the doorway")
-			T.eq (Rooms.RoomOf (p, id), nil, "in no room")
+			T.eq (Rooms.RoomOf (p, id),    nil,  "in no room")
 		end
 	end
 	T.eq (table.concat (seam.joins, ","), hall.id .. "," .. yard.id, "joining the hall and the yard")
-	T.eq (hall.outdoor, false, "the hall sealed")
-	T.eq (#hall.doors, 1, "the hall's one door")
-	T.eq (hall.doors [1].passage, seam.id, "through the seam")
-	T.eq (hall.doors [1].leads [1], yard.id, "to the yard")
+	T.eq (hall.outdoor,                   false,                     "the hall sealed")
+	T.eq (#hall.doors,                    1,                         "the hall's one door")
+	T.eq (hall.doors [1].passage,         seam.id,                   "through the seam")
+	T.eq (hall.doors [1].leads [1],       yard.id,                   "to the yard")
 end)
 
 T.test ("the floor under a door deeper than a seam is no seam", function ()
@@ -594,9 +594,9 @@ T.test ("the floor under a door deeper than a seam is no seam", function ()
 end)
 
 T.test ("corridors and seams are passages; rooms and stairwells are not", function ()
-	T.eq (Rooms.IsPassage ({ kind = Rooms.CORRIDOR }), true, "a corridor")
-	T.eq (Rooms.IsPassage ({ kind = Rooms.SEAM }), true, "a seam")
-	T.eq (Rooms.IsPassage ({ kind = Rooms.ROOM }), false, "a room")
+	T.eq (Rooms.IsPassage ({ kind = Rooms.CORRIDOR }),  true,  "a corridor")
+	T.eq (Rooms.IsPassage ({ kind = Rooms.SEAM }),      true,  "a seam")
+	T.eq (Rooms.IsPassage ({ kind = Rooms.ROOM }),      false, "a room")
 	T.eq (Rooms.IsPassage ({ kind = Rooms.STAIRWELL }), false, "a stairwell")
 end)
 

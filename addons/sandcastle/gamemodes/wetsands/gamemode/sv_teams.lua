@@ -116,7 +116,7 @@ local function RestoreLater (ply)
 end
 
 hook.Add ("PlayerSpawn", "ws_teams_restore", RestoreLater)
-hook.Add ("UCLAuthed", "ws_teams_restore", RestoreLater)
+hook.Add ("UCLAuthed",   "ws_teams_restore", RestoreLater)
 
 -- CTFPlayer::HandleCommand_JoinTeam: "red", "blue", "auto" or "spectate".
 -- mp_forceautoteam auto-assigns a pick of RED or BLU, and spectating needs

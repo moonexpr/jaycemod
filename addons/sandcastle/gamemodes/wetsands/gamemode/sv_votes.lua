@@ -281,6 +281,6 @@ hook.Add ("WSChangeLevel", "ws_votes", function ()
 end)
 
 E.Listen ("system_client_ready", "ws_votes", function (_, ply)
-	E.Fire ("game_vote_maps", { maps = (VoteMaps ()) }, ply)
+	E.Fire ("game_vote_maps",  { maps = (VoteMaps ()) },            ply)
 	E.Fire ("game_vote_state", StateFor (Vote.Current (book), ply), ply)
 end)

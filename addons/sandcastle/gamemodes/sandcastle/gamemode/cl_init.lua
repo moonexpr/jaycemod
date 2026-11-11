@@ -145,7 +145,7 @@ function GM:PaintRound ()
 
 	local score = team.GetName (TEAM_RED) .. " " .. team.GetScore (TEAM_RED) .. " - " .. team.GetScore (TEAM_BLUE) .. " " .. team.GetName (TEAM_BLUE)
 
-	draw.SimpleTextOutlined (text, "DermaLarge", ScrW () / 2, 16, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 2, color_black)
+	draw.SimpleTextOutlined (text,  "DermaLarge",       ScrW () / 2, 16, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 2, color_black)
 	draw.SimpleTextOutlined (score, "DermaDefaultBold", ScrW () / 2, 52, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, color_black)
 
 end

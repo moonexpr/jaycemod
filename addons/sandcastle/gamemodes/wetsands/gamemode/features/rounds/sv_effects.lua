@@ -61,10 +61,10 @@ local MATCH_WIN_LINE =
 }
 
 local function PlayMatchEnd (winner)
-	WS.BroadcastSoundscape (winner, MATCH_WIN_MUSIC)
+	WS.BroadcastSoundscape (winner,              MATCH_WIN_MUSIC)
 	WS.BroadcastSoundscape (WS.EnemyOf (winner), MATCH_LOSE_MUSIC)
-	WS.BroadcastSoundscape (SPECTATOR, MATCH_SPECTATOR_MUSIC [winner])
-	WS.BroadcastSoundscape (UNASSIGNED, MATCH_WIN_LINE [winner])
+	WS.BroadcastSoundscape (SPECTATOR,           MATCH_SPECTATOR_MUSIC [winner])
+	WS.BroadcastSoundscape (UNASSIGNED,          MATCH_WIN_LINE [winner])
 end
 
 -- The level after the match (Rounds.NextMap): the engine's nextlevel, else
@@ -127,7 +127,7 @@ local function PlayWinSong (winner)
 		WS.BroadcastSoundscape (UNASSIGNED, STALEMATE_LINE)
 		return
 	end
-	WS.BroadcastSoundscape (winner, "Game.YourTeamWon")
+	WS.BroadcastSoundscape (winner,              "Game.YourTeamWon")
 	WS.BroadcastSoundscape (WS.EnemyOf (winner), "Game.YourTeamLost")
 	-- spectators, of neither team, hear who won over the stalemate music
 	-- (CHAN_AUTO, under the announcer's CHAN_VOICE2)
@@ -198,7 +198,7 @@ local ROUND_HOOKS =
 		if self.round:InSetup () then hook.Run ("SetupStart") end
 	end,
 	[ROUND_WIN] = function (_, args)
-		hook.Run (ROUND_WIN, args [1], args [2])
+		hook.Run (ROUND_WIN,         args [1], args [2])
 		hook.Run ("BonusRoundStart", args [1], args [2])
 	end
 }
@@ -353,7 +353,7 @@ local EFFECTS =
 	publish_win = function (self, e, now)
 		local remaining = 0
 		if e.winner ~= UNASSIGNED then remaining = self.objective:RoundsRemaining (e.winner) end
-		SetGlobal2Int ("ws_round_winner", e.winner)
+		SetGlobal2Int ("ws_round_winner",     e.winner)
 		SetGlobal2Int ("ws_round_win_reason", e.reason)
 		SetGlobal2Bool ("ws_round_full_round", e.fullRound)
 		SetGlobal2Int ("ws_rounds_remaining", remaining)
@@ -453,7 +453,7 @@ local EFFECTS =
 		for _, name in ipairs (RESTART_CONVARS) do RunConsoleCommand (name, "0") end
 		if e.announce then
 			local note = Text.RestartNote (e.announce, e.seconds)
-			PrintMessage (HUD_PRINTCENTER, note)
+			PrintMessage (HUD_PRINTCENTER,  note)
 			PrintMessage (HUD_PRINTCONSOLE, note .. "\n")
 		end
 		hook.Run ("WSRoundRestartSeconds", e.seconds)

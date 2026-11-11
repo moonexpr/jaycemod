@@ -8,7 +8,7 @@ T.test ("its root is the engine's own, holding what it does first", function ()
 	local given
 	local engine = { TacticalLeggings = function (config) given = config return { name = "root" } end }
 	local root = GroupIdentity.InitialAction (engine)
-	T.eq (root.name, "root", "what the engine made")
+	T.eq (root.name,          "root",     "what the engine made")
 	T.eq (given.initial.name, "LegsWait", "it starts by waiting")
 end)
 
@@ -20,13 +20,13 @@ T.test ("it is given to a soldier beside its main tree", function ()
 		InsertGroup = function (ent, action, me) placed = { ent, action, me } end
 	}
 	GroupIdentity.Give ("ent", engine, "me")
-	T.eq (placed [1], "ent", "on it")
+	T.eq (placed [1], "ent",  "on it")
 	T.eq (placed [2], "root", "its root")
-	T.eq (placed [3], "me", "told to whoever it is told to")
+	T.eq (placed [3], "me",   "told to whoever it is told to")
 end)
 
 T.test ("where the binary lacks it, a soldier goes without", function ()
-	T.eq (GroupIdentity.Give ("ent", {}, "me"), false, "nothing given")
+	T.eq (GroupIdentity.Give ("ent", {}, "me"),  false, "nothing given")
 	T.eq (GroupIdentity.Give ("ent", nil, "me"), false, "nor with no engine")
 end)
 
@@ -243,9 +243,9 @@ T.test ("an assault stages its squad around the entrance, outside and hidden fro
 	local staged = {}
 	for i, place in ipairs (places) do
 		local stage = order:StagingOf (place)
-		T.eq (stage ~= nil, true, "a staging place: " .. i)
-		T.eq (stage.x < ROOM.lo.x, true, "outside, beyond the wall: " .. i)
-		T.eq (Seen (stage), false, "out of the room's sight through the doorway: " .. i)
+		T.eq (stage ~= nil,        true,  "a staging place: " .. i)
+		T.eq (stage.x < ROOM.lo.x, true,  "outside, beyond the wall: " .. i)
+		T.eq (Seen (stage),        false, "out of the room's sight through the doorway: " .. i)
 		local cover = GroupIdentity.STACK_COVER
 		for _, d in ipairs ({ { cover, 0 }, { -cover, 0 }, { 0, cover }, { 0, -cover } }) do
 			T.eq (Seen ({ x = stage.x + d [1], y = stage.y + d [2], z = 0 }), false, "with a body's breadth to spare: " .. i)
@@ -337,7 +337,7 @@ for _, half in ipairs ({ 400, 375 }) do for where, enemy in pairs (ENEMIES) do
 		local points = {}
 		for i, place in ipairs (places) do
 			local point = order:BreachOf (place)
-			T.eq (point ~= nil, true, "a point: " .. i)
+			T.eq (point ~= nil,   true, "a point: " .. i)
 			T.eq (Inside (point), true, "in the room: " .. i)
 			local d = Distance2D (point, enemy)
 			T.eq (d >= GroupIdentity.ENCIRCLE_MIN - GroupIdentity.ENCIRCLE_BAND - 0.001
@@ -371,7 +371,7 @@ T.test ("an order told its room hides each member that evacuates out of its sigh
 	local hideouts = {}
 	for i = 1, 3 do
 		local h = order:Hideout ("m" .. i, ROOM.entry, SPACING, AdmitAt)
-		T.eq (h ~= nil, true, "a hideout: " .. i)
+		T.eq (h ~= nil,        true, "a hideout: " .. i)
 		T.eq (h.x < ROOM.lo.x, true, "out of the room: " .. i)
 		local cover = GroupIdentity.STACK_COVER
 		for _, d in ipairs ({ { 0, 0 }, { cover, 0 }, { -cover, 0 }, { 0, cover }, { 0, -cover } }) do
@@ -431,12 +431,12 @@ T.test ("off the squad's flow: one decoy at the front, shown in the room's sight
 	local decoys = Decoys (order, places)
 	T.eq (#decoys, 1, "one")
 	local decoy = order:DecoyOf (places [decoys [1]])
-	T.eq (DoorOf (decoy.show), 1, "shown at the front, where the flow comes in")
-	T.eq (SeenFromAll (decoy.show), true, "in the room's sight")
-	T.eq (Inside (decoy.show), false, "outside it")
-	T.eq (DoorOf (decoy.hide), 1, "hiding beside the front")
-	T.eq (SeenFromAll (decoy.hide), false, "out of the room's sight")
-	T.eq (order:BreachOf (places [decoys [1]]), nil, "it does not go in with the rest")
+	T.eq (DoorOf (decoy.show),                  1,     "shown at the front, where the flow comes in")
+	T.eq (SeenFromAll (decoy.show),             true,  "in the room's sight")
+	T.eq (Inside (decoy.show),                  false, "outside it")
+	T.eq (DoorOf (decoy.hide),                  1,     "hiding beside the front")
+	T.eq (SeenFromAll (decoy.hide),             false, "out of the room's sight")
+	T.eq (order:BreachOf (places [decoys [1]]), nil,   "it does not go in with the rest")
 end)
 
 T.test ("the rest stage hidden at the other entrances, split across them", function ()
@@ -446,8 +446,8 @@ T.test ("the rest stage hidden at the other entrances, split across them", funct
 	for i, place in ipairs (places) do
 		if i ~= decoy then
 			local stage = order:StagingOf (place)
-			T.eq (stage ~= nil, true, "staged: " .. i)
-			T.eq (DoorOf (stage) ~= 1, true, "not at the front: " .. i)
+			T.eq (stage ~= nil,        true,  "staged: " .. i)
+			T.eq (DoorOf (stage) ~= 1, true,  "not at the front: " .. i)
 			T.eq (SeenFromAll (stage), false, "out of the room's sight: " .. i)
 			used [DoorOf (stage)] = true
 		end
@@ -559,7 +559,7 @@ T.test ("going in from the sides and back, the rest encircle a known enemy", fun
 	for _, place in ipairs (places) do
 		if not order:DecoyOf (place) then points [#points + 1] = order:BreachOf (place) end
 	end
-	T.eq (#points, 4, "the four")
+	T.eq (#points,                             4,    "the four")
 	T.eq (WidestGap (enemy, points) < math.pi, true, "round it: " .. WidestGap (enemy, points))
 end)
 
@@ -589,7 +589,7 @@ T.test ("going in, the room is clear once all the living hold their points and n
 	T.eq (order:AllBreached (), false, "four of five")
 	order:Casualty ("m5")
 	T.eq (order:AllBreached (), true, "all the living")
-	T.eq (order:QuietSince (), 4, "since the last went in")
+	T.eq (order:QuietSince (),  4,    "since the last went in")
 	order:Contact (9)
 	T.eq (order:QuietSince (), 9, "since the last contact")
 end)
@@ -616,10 +616,10 @@ T.test ("an assault waits staged until it is signalled, once", function ()
 	for i = 1, 4 do order:Staged ("m" .. i, 0) end
 	T.eq (order:AllStaged (), false, "four of five")
 	order:Casualty ("m5")
-	T.eq (order:AllStaged (), true, "all the living")
+	T.eq (order:AllStaged (), true,  "all the living")
 	T.eq (order:Signalled (), false, "not yet signalled")
-	T.eq (order:Signal (), true, "signalled")
-	T.eq (order:Signal (), false, "once")
+	T.eq (order:Signal (),    true,  "signalled")
+	T.eq (order:Signal (),    false, "once")
 	T.eq (order:Signalled (), true)
 end)
 
@@ -647,8 +647,8 @@ T.test ("a squad's mode is a whole number, stationary unless it is told otherwis
 	local order = GroupIdentity.Muster ({ x = 0, y = 0, z = 0 })
 	T.eq (order.mode, MODE.STATIONARY, "stationary at first")
 	order:SetMode (MODE.PANIC)
-	T.eq (order.mode, MODE.PANIC, "told")
-	T.eq (pcall (order.SetMode, order, 9), false, "no such mode")
+	T.eq (order.mode,                      MODE.PANIC, "told")
+	T.eq (pcall (order.SetMode, order, 9), false,      "no such mode")
 end)
 
 T.defined (GroupIdentity.CASUALTY_SHARE, "CASUALTY_SHARE")
@@ -696,8 +696,8 @@ T.test ("a squad routs once, on heavy casualties, and evacuates", function ()
 	local order, members = Squad (4)
 	T.eq (order:Rout (), false, "not whole")
 	for i = 2, Heavy (4) + 1 do order:Casualty (members [i]) end
-	T.eq (order:Rout (), true, "routed")
-	T.eq (order.mode, MODE.PANIC, "evacuating")
+	T.eq (order:Rout (), true,       "routed")
+	T.eq (order.mode,    MODE.PANIC, "evacuating")
 	order:SetMode (MODE.STATIONARY)
 	T.eq (order:Rout (), false, "once")
 end)
@@ -706,10 +706,10 @@ T.test ("a squad's members take seats apart: the nearest one no other holds", fu
 	local order = GroupIdentity.Muster ({ x = 0, y = 0, z = 0 })
 	local a, b = {}, {}
 	local seats = function () return { { x = 10, y = 0, z = 0 }, { x = 200, y = 0, z = 0 } } end
-	T.eq (order:Seat (a, seats (), { x = 0, y = 0, z = 0 }).x, 10, "the nearest")
+	T.eq (order:Seat (a, seats (), { x = 0, y = 0, z = 0 }).x, 10,  "the nearest")
 	T.eq (order:Seat (b, seats (), { x = 0, y = 0, z = 0 }).x, 200, "the one left")
-	T.eq (order:Seat (a, seats (), { x = 0, y = 0, z = 0 }).x, 10, "its own again")
-	T.eq (order:Seat ({}, seats (), { x = 0, y = 0, z = 0 }), nil, "none left")
+	T.eq (order:Seat (a, seats (), { x = 0, y = 0, z = 0 }).x, 10,  "its own again")
+	T.eq (order:Seat ({}, seats (), { x = 0, y = 0, z = 0 }),  nil, "none left")
 	order:Leave (b)
 	T.eq (order:Seat ({}, seats (), { x = 0, y = 0, z = 0 }).x, 200, "freed as it leaves")
 end)
@@ -721,8 +721,8 @@ T.test ("the debug layer shows both trees, the group's after the main's", functi
 		return { { name = "TacticalLeggings", depth = 1 }, { name = "LegsWait", depth = 2 } }
 	end)
 	local _, frames = npc:Stack ()
-	T.eq (#frames, 3, "all of them")
-	T.eq (frames [1].name, "Main", "its main tree first")
+	T.eq (#frames,         3,          "all of them")
+	T.eq (frames [1].name, "Main",     "its main tree first")
 	T.eq (frames [3].name, "LegsWait", "then the group's")
 end)
 
@@ -751,11 +751,11 @@ end)
 T.test ("a squad endangered evacuates away from the danger, once", function ()
 	local order = Squad (4)
 	local danger = { x = 300, y = 0, z = 0 }
-	T.eq (order:Endanger (danger), true, "endangered")
-	T.eq (order.mode, MODE.PANIC, "evacuating")
-	T.eq (order.from, danger, "away from it")
-	T.eq (order:Endanger ({ x = 0, y = 300, z = 0 }), false, "once")
-	T.eq (order:Rout (), false, "its fall back called already")
+	T.eq (order:Endanger (danger),                    true,       "endangered")
+	T.eq (order.mode,                                 MODE.PANIC, "evacuating")
+	T.eq (order.from,                                 danger,     "away from it")
+	T.eq (order:Endanger ({ x = 0, y = 300, z = 0 }), false,      "once")
+	T.eq (order:Rout (),                              false,      "its fall back called already")
 end)
 
 T.finish ()

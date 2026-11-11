@@ -41,7 +41,7 @@ list.Set ("DesktopWindows", "PlayerEditor",
 
 			-- Undo defaults
 			mdl:SetDirectionalLight (BOX_FRONT, nil)
-			mdl:SetDirectionalLight (BOX_TOP, nil)
+			mdl:SetDirectionalLight (BOX_TOP,   nil)
 			mdl:SetAmbientLight (Color (32, 32, 32)) -- Still show the phong a little
 
 			mdl:SetAnimated (true)
@@ -282,7 +282,7 @@ list.Set ("DesktopWindows", "PlayerEditor",
 
 				if old ~= new then -- Only reset if we changed the model
 					RunConsoleCommand ("cl_playerbodygroups", "0")
-					RunConsoleCommand ("cl_playerskin", "0")
+					RunConsoleCommand ("cl_playerskin",       "0")
 				end
 
 				timer.Simple (0.1, function () UpdateFromConvars () end)
@@ -389,23 +389,23 @@ list.Set ("PlayerOptionsAnimations", "hostage02", { "idle_all_scared" })
 list.Set ("PlayerOptionsAnimations", "hostage03", { "idle_all_scared" })
 list.Set ("PlayerOptionsAnimations", "hostage04", { "idle_all_scared" })
 
-list.Set ("PlayerOptionsAnimations", "zombine", { "menu_zombie_01" })
-list.Set ("PlayerOptionsAnimations", "corpse", { "menu_zombie_01" })
+list.Set ("PlayerOptionsAnimations", "zombine",    { "menu_zombie_01" })
+list.Set ("PlayerOptionsAnimations", "corpse",     { "menu_zombie_01" })
 list.Set ("PlayerOptionsAnimations", "zombiefast", { "menu_zombie_01" })
-list.Set ("PlayerOptionsAnimations", "zombie", { "menu_zombie_01" })
-list.Set ("PlayerOptionsAnimations", "skeleton", { "menu_zombie_01" })
+list.Set ("PlayerOptionsAnimations", "zombie",     { "menu_zombie_01" })
+list.Set ("PlayerOptionsAnimations", "skeleton",   { "menu_zombie_01" })
 
-list.Set ("PlayerOptionsAnimations", "combine", { "menu_combine" })
+list.Set ("PlayerOptionsAnimations", "combine",       { "menu_combine" })
 list.Set ("PlayerOptionsAnimations", "combineprison", { "menu_combine" })
-list.Set ("PlayerOptionsAnimations", "combineelite", { "menu_combine" })
-list.Set ("PlayerOptionsAnimations", "police", { "menu_combine" })
-list.Set ("PlayerOptionsAnimations", "policefem", { "menu_combine" })
+list.Set ("PlayerOptionsAnimations", "combineelite",  { "menu_combine" })
+list.Set ("PlayerOptionsAnimations", "police",        { "menu_combine" })
+list.Set ("PlayerOptionsAnimations", "policefem",     { "menu_combine" })
 
-list.Set ("PlayerOptionsAnimations", "css_arctic", { "pose_standing_02", "idle_fist" })
-list.Set ("PlayerOptionsAnimations", "css_gasmask", { "pose_standing_02", "idle_fist" })
+list.Set ("PlayerOptionsAnimations", "css_arctic",   { "pose_standing_02", "idle_fist" })
+list.Set ("PlayerOptionsAnimations", "css_gasmask",  { "pose_standing_02", "idle_fist" })
 list.Set ("PlayerOptionsAnimations", "css_guerilla", { "pose_standing_02", "idle_fist" })
-list.Set ("PlayerOptionsAnimations", "css_leet", { "pose_standing_02", "idle_fist" })
-list.Set ("PlayerOptionsAnimations", "css_phoenix", { "pose_standing_02", "idle_fist" })
-list.Set ("PlayerOptionsAnimations", "css_riot", { "pose_standing_02", "idle_fist" })
-list.Set ("PlayerOptionsAnimations", "css_swat", { "pose_standing_02", "idle_fist" })
-list.Set ("PlayerOptionsAnimations", "css_urban", { "pose_standing_02", "idle_fist" })
+list.Set ("PlayerOptionsAnimations", "css_leet",     { "pose_standing_02", "idle_fist" })
+list.Set ("PlayerOptionsAnimations", "css_phoenix",  { "pose_standing_02", "idle_fist" })
+list.Set ("PlayerOptionsAnimations", "css_riot",     { "pose_standing_02", "idle_fist" })
+list.Set ("PlayerOptionsAnimations", "css_swat",     { "pose_standing_02", "idle_fist" })
+list.Set ("PlayerOptionsAnimations", "css_urban",    { "pose_standing_02", "idle_fist" })

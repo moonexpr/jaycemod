@@ -30,8 +30,8 @@ T.test ("Fire runs the realm's listeners at once, in the order added, and sends"
 	events:Listen ("e", "a", function () order [#order + 1] = "a2" end)
 	events:Fire ("e", { n = 1 }, { to = 3 })
 	T.eq (table.concat (order, ","), "a2,b1", "a replaced listener keeps its place")
-	T.eq (port.sent [1].name, "e", "sent")
-	T.eq (port.sent [1].options.to, 3, "with its options")
+	T.eq (port.sent [1].name,        "e",     "sent")
+	T.eq (port.sent [1].options.to,  3,       "with its options")
 	events:Ignore ("e", "a")
 	events:Fire ("e", { n = 2 })
 	T.eq (table.concat (order, ","), "a2,b1,b2", "an ignored one no longer runs")
@@ -43,7 +43,7 @@ T.test ("fields the wire cannot carry stop the event before any listener runs", 
 	local ran = false
 	events:Listen ("e", "a", function () ran = true end)
 	T.eq (pcall (events.Fire, events, "e", { bad = true }), false, "raised")
-	T.eq (ran, false, "no listener ran")
+	T.eq (ran,                                              false, "no listener ran")
 end)
 
 T.test ("a listener that raises is reported, and the others still run", function ()
@@ -53,8 +53,8 @@ T.test ("a listener that raises is reported, and the others still run", function
 	events:Listen ("e", "a", function () error ("boom") end)
 	events:Listen ("e", "b", function () ran = true end)
 	events:Fire ("e", {})
-	T.eq (ran, true, "the next ran")
-	T.eq (#port.reports, 1, "reported")
+	T.eq (ran,           true, "the next ran")
+	T.eq (#port.reports, 1,    "reported")
 end)
 
 T.test ("what the other realm sends reaches the listeners, with its sender", function ()
@@ -63,9 +63,9 @@ T.test ("what the other realm sends reaches the listeners, with its sender", fun
 	local got
 	events:Listen ("e", "a", function (fields, ply) got = { fields.n, ply } end)
 	port.receivers.e ({ n = 7 }, "a player")
-	T.eq (got [1], 7, "the fields")
-	T.eq (got [2], "a player", "the sender")
-	T.eq (#port.sent, 0, "and is not sent back")
+	T.eq (got [1],    7,          "the fields")
+	T.eq (got [2],    "a player", "the sender")
+	T.eq (#port.sent, 0,          "and is not sent back")
 end)
 
 T.test ("a predicted event runs the first time only", function ()
@@ -76,7 +76,7 @@ T.test ("a predicted event runs the first time only", function ()
 	events:Fire ("shot", {}, { predicted = true })
 	port.firstTime = false
 	events:Fire ("shot", {}, { predicted = true })
-	T.eq (ran, 1, "once")
+	T.eq (ran,        1, "once")
 	T.eq (#port.sent, 1, "handed to the transport once")
 end)
 

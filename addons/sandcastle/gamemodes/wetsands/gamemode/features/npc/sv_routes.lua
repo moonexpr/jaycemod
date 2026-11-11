@@ -264,9 +264,9 @@ Controller.reach = Controller.reach or ReachMemo.New (
 local function ForgetRegions ()
 	Controller.reach:Clear ()
 end
-hook.Add ("PostCleanupMap", "ws_npc_reach", ForgetRegions)
+hook.Add ("PostCleanupMap",  "ws_npc_reach", ForgetRegions)
 hook.Add ("WSRoundActivate", "ws_npc_reach", ForgetRegions)
-hook.Add ("WSRoundActive", "ws_npc_reach", ForgetRegions)
+hook.Add ("WSRoundActive",   "ws_npc_reach", ForgetRegions)
 
 -- The graph's traversable and crossable, writing down each refusal: the
 -- edge of the region a failed search walks. A search told the closed areas

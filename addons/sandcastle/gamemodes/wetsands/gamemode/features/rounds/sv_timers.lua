@@ -30,9 +30,9 @@ local OVERTIME_NAG = "Game.Overtime"
 -- The announcer credits the team the time was added for (AddTeamTime).
 local function AnnounceTimeAdded (t)
 	if t == RED or t == BLUE then
-		WS.BroadcastSoundscape (t, table.Random (TIME_ADDED_WINNER))
+		WS.BroadcastSoundscape (t,              table.Random (TIME_ADDED_WINNER))
 		WS.BroadcastSoundscape (WS.EnemyOf (t), TIME_ADDED_LOSER)
-		WS.BroadcastSoundscape (SPECTATOR, TIME_ADDED)
+		WS.BroadcastSoundscape (SPECTATOR,      TIME_ADDED)
 	else
 		WS.BroadcastSoundscape (UNASSIGNED, TIME_ADDED)
 	end
@@ -40,9 +40,9 @@ end
 
 local function AnnounceTimeSubtracted (t)
 	if t == RED or t == BLUE then
-		WS.BroadcastText (t, "Alert! The mission time has been shortened!")
+		WS.BroadcastText (t,              "Alert! The mission time has been shortened!")
 		WS.BroadcastText (WS.EnemyOf (t), "Congratulations. The enemy has less time for the mission.")
-		WS.BroadcastText (SPECTATOR, "The mission has lost time!")
+		WS.BroadcastText (SPECTATOR,      "The mission has lost time!")
 	else
 		WS.BroadcastText (UNASSIGNED, "The mission has lost time!")
 	end
@@ -63,7 +63,7 @@ function Controller:PublishHudTimer (now)
 	if not IsValid (ent) then return end
 	local timer = self.timers [ent]
 	local left = timer:TimeRemaining (now)
-	SetGlobal2Bool ("ws_timer_shown", true)
+	SetGlobal2Bool ("ws_timer_shown",  true)
 	SetGlobal2Bool ("ws_timer_paused", timer:Paused ())
 	if timer:Paused () then
 		SetGlobal2Float ("ws_timer_time_left", left)
@@ -384,7 +384,7 @@ function Controller:PublishRoundLimits ()
 	SetGlobal2Int ("ws_round_fraglimit", limits.frags)
 	SetGlobal2Int ("ws_round_cashlimit", limits.cash)
 	for _, t in ipairs (GAME_TEAMS) do
-		SetGlobal2Int ("ws_round_frags_" .. t, self.tally:Frags (t))
+		SetGlobal2Int ("ws_round_frags_" .. t,  self.tally:Frags (t))
 		SetGlobal2Int ("ws_round_earned_" .. t, self.tally:Earned (t))
 	end
 end
@@ -398,7 +398,7 @@ function Controller:Counted ()
 		if call.kind == "first_blood" then
 			WS.BroadcastSoundscape (UNASSIGNED, FIRST_BLOOD)
 		else
-			WS.BroadcastSoundFile (call.team, CLOSE_OURS, CHAN_VOICE2)
+			WS.BroadcastSoundFile (call.team,              CLOSE_OURS,   CHAN_VOICE2)
 			WS.BroadcastSoundFile (WS.EnemyOf (call.team), CLOSE_THEIRS, CHAN_VOICE2)
 		end
 	end
@@ -419,7 +419,7 @@ hook.Add ("WSTeamFrag", "ws_rounds_limits", function (team)
 	if not Counts () then return end
 	Controller.tally:Frag (team)
 	if Controller:RoundLimits ().frags > 0 then
-		WS.BroadcastSoundscape (team, SCORE_OURS)
+		WS.BroadcastSoundscape (team,              SCORE_OURS)
 		WS.BroadcastSoundscape (WS.EnemyOf (team), SCORE_THEIRS)
 	end
 	Controller:Counted ()

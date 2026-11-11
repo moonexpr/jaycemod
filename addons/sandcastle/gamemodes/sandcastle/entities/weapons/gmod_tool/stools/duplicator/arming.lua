@@ -38,7 +38,7 @@ if CLIENT then
 			local size = endbyte - start
 
 			net.Start ("ArmDupe")
-			net.WriteUInt (i, 8)
+			net.WriteUInt (i,     8)
 			net.WriteUInt (parts, 8)
 
 			net.WriteUInt (size, 32)
@@ -123,7 +123,7 @@ if SERVER then
 		net.WriteVector (Dupe.Maxs)
 		net.WriteString (dupeName)
 		net.WriteUInt (table.Count (Dupe.Entities), 24)
-		net.WriteUInt (workshopCount, 16)
+		net.WriteUInt (workshopCount,               16)
 		if Dupe.RequiredAddons then
 			for _, wsid in ipairs (Dupe.RequiredAddons) do
 				net.WriteString (wsid)

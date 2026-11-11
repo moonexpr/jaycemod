@@ -2,8 +2,8 @@ local PANEL = {}
 
 DEFINE_BASECLASS ("DScrollPanel")
 
-AccessorFunc (PANEL, "m_pControllerPanel", "ControllerPanel")
-AccessorFunc (PANEL, "m_strCategoryName", "CategoryName")
+AccessorFunc (PANEL, "m_pControllerPanel",        "ControllerPanel")
+AccessorFunc (PANEL, "m_strCategoryName",         "CategoryName")
 AccessorFunc (PANEL, "m_bTriggerSpawnlistChange", "TriggerSpawnlistChange")
 
 --[[---------------------------------------------------------

@@ -8,9 +8,9 @@ T.test ("an override stored on the network reads back as the representation it h
 	for _, rep in ipairs ({ Resolve.RED, Resolve.BLU, Resolve.ORIGINAL }) do
 		T.eq (Resolve.FromNetwork (Resolve.ToNetwork (rep)), rep, rep)
 	end
-	T.eq (Resolve.ToNetwork (nil), Resolve.NO_OVERRIDE, "no override")
-	T.eq (Resolve.FromNetwork (Resolve.NO_OVERRIDE), nil, "none stored")
-	T.eq (Resolve.FromNetwork (99), nil, "a number from nowhere")
+	T.eq (Resolve.ToNetwork (nil),                   Resolve.NO_OVERRIDE, "no override")
+	T.eq (Resolve.FromNetwork (Resolve.NO_OVERRIDE), nil,                 "none stored")
+	T.eq (Resolve.FromNetwork (99),                  nil,                 "a number from nowhere")
 end)
 
 T.test ("an override beats a given team, which beats the gamemode's", function ()
@@ -31,9 +31,9 @@ end)
 
 T.test ("the overlay says where the representation came from", function ()
 	T.eq (Resolve.Source ({ override = Resolve.BLU, team = Resolve.RED }), "override", "an override")
-	T.eq (Resolve.Source ({ given = Resolve.RED }), "given", "given in code")
-	T.eq (Resolve.Source ({ team = Resolve.RED }), "team", "the gamemode")
-	T.eq (Resolve.Source ({}), "none", "nobody")
+	T.eq (Resolve.Source ({ given = Resolve.RED }),                        "given",    "given in code")
+	T.eq (Resolve.Source ({ team = Resolve.RED }),                         "team",     "the gamemode")
+	T.eq (Resolve.Source ({}),                                             "none",     "nobody")
 end)
 
 T.finish ()

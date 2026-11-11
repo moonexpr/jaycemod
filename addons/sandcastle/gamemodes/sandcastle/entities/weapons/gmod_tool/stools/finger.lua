@@ -294,17 +294,17 @@ TranslateTable_VORT ["ValveBiped.Bip01_R_Finger4"] = "ValveBiped.pinky1_R"
 TranslateTable_VORT ["ValveBiped.Bip01_R_Finger41"] = "ValveBiped.pinky2_R"
 TranslateTable_VORT ["ValveBiped.Bip01_R_Finger42"] = "ValveBiped.pinky3_R"
 
-list.Set ("FingerPoserSkeletons", "tf2", { left_hand = "bip_hand_L", right_hand = "bip_hand_R", bones = TranslateTable_TF2, hand_type = "tf2" })
-list.Set ("FingerPoserSkeletons", "zeno_clash", { left_hand = "Bip01_L_Hand", right_hand = "Bip01_R_Hand", bones = TranslateTable_Zeno })
-list.Set ("FingerPoserSkeletons", "zeno_clash_too", { left_hand = "Left_hand", right_hand = "Right_hand", bones = TranslateTable_ZenoToo })
+list.Set ("FingerPoserSkeletons", "tf2",             { left_hand = "bip_hand_L", right_hand = "bip_hand_R", bones = TranslateTable_TF2, hand_type = "tf2" })
+list.Set ("FingerPoserSkeletons", "zeno_clash",      { left_hand = "Bip01_L_Hand", right_hand = "Bip01_R_Hand", bones = TranslateTable_Zeno })
+list.Set ("FingerPoserSkeletons", "zeno_clash_too",  { left_hand = "Left_hand", right_hand = "Right_hand", bones = TranslateTable_ZenoToo })
 list.Set ("FingerPoserSkeletons", "zeno_clash_too2", { left_hand = "Bip01 L Hand", right_hand = "Bip01 R Hand", bones = TranslateTable_ZenoToo })
-list.Set ("FingerPoserSkeletons", "hl2_dog", { left_hand = "Dog_Model.Hand_L", right_hand = "Dog_Model.Hand_R", bones = TranslateTable_DOG })
-list.Set ("FingerPoserSkeletons", "hl2_vortigaunt", { left_hand = "ValveBiped.Hand1_L", right_hand = "ValveBiped.Hand1_R", bones = TranslateTable_VORT })
-list.Set ("FingerPoserSkeletons", "portal1_chell", { left_hand = "wrist_L", right_hand = "wrist_R", bones = TranslateTable_P1_Chell })
-list.Set ("FingerPoserSkeletons", "portal2_chell", { left_hand = "wrist_L", right_hand = "wrist_R", bones = TranslateTable_P2_Chell, hand_type = "portal2" })
+list.Set ("FingerPoserSkeletons", "hl2_dog",         { left_hand = "Dog_Model.Hand_L", right_hand = "Dog_Model.Hand_R", bones = TranslateTable_DOG })
+list.Set ("FingerPoserSkeletons", "hl2_vortigaunt",  { left_hand = "ValveBiped.Hand1_L", right_hand = "ValveBiped.Hand1_R", bones = TranslateTable_VORT })
+list.Set ("FingerPoserSkeletons", "portal1_chell",   { left_hand = "wrist_L", right_hand = "wrist_R", bones = TranslateTable_P1_Chell })
+list.Set ("FingerPoserSkeletons", "portal2_chell",   { left_hand = "wrist_L", right_hand = "wrist_R", bones = TranslateTable_P2_Chell, hand_type = "portal2" })
 list.Set ("FingerPoserSkeletons", "portal2_ballbot", { left_hand = "wrist_L", right_hand = "wrist_R", bones = TranslateTable_P2_BallBot, hand_type = "portal2" })
-list.Set ("FingerPoserSkeletons", "portal2_eggbot", { left_hand = "wrist_A_L", right_hand = "wrist_A_R", bones = TranslateTable_P2_EggBot, hand_type = "portal2" })
-list.Set ("FingerPoserSkeletons", "insurgency", { left_hand = "L Hand", right_hand = "R Hand", bones = TranslateTable_INS })
+list.Set ("FingerPoserSkeletons", "portal2_eggbot",  { left_hand = "wrist_A_L", right_hand = "wrist_A_R", bones = TranslateTable_P2_EggBot, hand_type = "portal2" })
+list.Set ("FingerPoserSkeletons", "insurgency",      { left_hand = "L Hand", right_hand = "R Hand", bones = TranslateTable_INS })
 
 -- Translate the fingernum, part and hand into an real bone number
 local function GetFingerBone (self, fingernum, part, hand)

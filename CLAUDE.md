@@ -126,6 +126,14 @@ notcake's, from [gcompute](https://github.com/notcake/gcompute) and
 - Binary operators, `=` and `..` spaced; unary `-`, `#` tight; `not` a word.
 - Assignments or fields written as a run keep their `=` aligned; trailing
   comments written aligned stay aligned. Otherwise one space.
+- A run of one-line calls to one callee with as many arguments sets each
+  argument in a column, unless that would push a line under 120 over it:
+
+      CreateConVar ("cl_playercolor",      "0.24 0.34 0.41", { FCVAR_ARCHIVE, FCVAR_USERINFO }, "...")
+      CreateConVar ("cl_playerbodygroups", "0",              { FCVAR_ARCHIVE, FCVAR_USERINFO }, "...")
+
+  So a test finding a call's text in source takes a pattern (`%s*` after
+  each comma), not a plain find.
 - Double quotes, `-- ` comments, at most one blank line, no `;` ending a
   line, no parentheses around a whole `if`/`while` condition, no GMod
   operators or comments.

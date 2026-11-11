@@ -249,17 +249,17 @@ end
 
 function LINE:Update (row)
 	self.row = row
-	Text (self.Name, row.name)
-	Text (self.Kills, row.kills)
+	Text (self.Name,    row.name)
+	Text (self.Kills,   row.kills)
 	Text (self.Assists, row.assists)
-	Text (self.Money, Economy.Format (row.money))
+	Text (self.Money,   Economy.Format (row.money))
 	if row.npc then
 		Text (self.Deaths, NO_DEATHS)
-		Text (self.Ping, BOT_PING)
+		Text (self.Ping,   BOT_PING)
 		return
 	end
 	Text (self.Deaths, row.deaths)
-	Text (self.Ping, row.ent:IsBot () and BOT_PING or row.ent:Ping ())
+	Text (self.Ping,   row.ent:IsBot () and BOT_PING or row.ent:Ping ())
 	local muted = row.ent:IsMuted ()
 	if self.muted ~= muted then
 		self.muted = muted
@@ -442,7 +442,7 @@ function BOARD:Apply (shot)
 
 	local left = { "Map: " .. game.GetMap () }
 	if #board.spectators > 0 then left [#left + 1] = "Spectators: " .. table.concat (board.spectators, ", ") end
-	Text (self.Left, table.concat (left, "\n"))
+	Text (self.Left,  table.concat (left, "\n"))
 	Text (self.Right, table.concat (shot.conditions, "\n"))
 	tall = FOOTER_PAD * 2 + math.max (#left, #shot.conditions) * FOOTER_LINE_H
 	if self.Footer:GetTall () ~= tall then self.Footer:SetTall (tall) end

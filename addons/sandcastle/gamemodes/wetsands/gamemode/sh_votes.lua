@@ -7,13 +7,13 @@ local Vote = gameplay.vote
 local E = WS.Events
 
 local FLAGS = { FCVAR_ARCHIVE, FCVAR_REPLICATED, FCVAR_NOTIFY }
-CreateConVar ("mp_vote_duration", "20", FLAGS, "Seconds a vote runs", 5, 120)
-CreateConVar ("mp_vote_cooldown", "120", FLAGS, "Seconds a player waits after calling a vote before calling another", 0, 3600)
-CreateConVar ("mp_vote_map_enabled", "1", FLAGS, "1: players may vote on the next map", 0, 1)
-CreateConVar ("mp_vote_reset_enabled", "1", FLAGS, "1: players may vote to restart the round", 0, 1)
-CreateConVar ("mp_vote_scramble_enabled", "1", FLAGS, "1: players may vote to scramble the teams", 0, 1)
-CreateConVar ("mp_vote_support_enabled", "1", FLAGS, "1: a team may vote to help the other team", 0, 1)
-CreateConVar ("mp_vote_difficulty_enabled", "1", FLAGS, "1: players may vote on the soldiers' difficulty", 0, 1)
+CreateConVar ("mp_vote_duration",           "20",  FLAGS, "Seconds a vote runs", 5, 120)
+CreateConVar ("mp_vote_cooldown",           "120", FLAGS, "Seconds a player waits after calling a vote before calling another", 0, 3600)
+CreateConVar ("mp_vote_map_enabled",        "1",   FLAGS, "1: players may vote on the next map", 0, 1)
+CreateConVar ("mp_vote_reset_enabled",      "1",   FLAGS, "1: players may vote to restart the round", 0, 1)
+CreateConVar ("mp_vote_scramble_enabled",   "1",   FLAGS, "1: players may vote to scramble the teams", 0, 1)
+CreateConVar ("mp_vote_support_enabled",    "1",   FLAGS, "1: a team may vote to help the other team", 0, 1)
+CreateConVar ("mp_vote_difficulty_enabled", "1",   FLAGS, "1: players may vote on the soldiers' difficulty", 0, 1)
 -- How well the AI war's soldiers shoot (features/aiwar/sv_relations.lua reads it):
 -- here, replicated, so the Server tab knows the level a difficulty vote would change.
 local Marksmanship = WS.require ("features.aiwar.marksmanship")

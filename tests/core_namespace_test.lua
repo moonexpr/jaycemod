@@ -17,7 +17,7 @@ T.test ("a namespace is the global table of that name, made when absent", functi
 	local globals = { math = { floor = 1 } }
 	T.eq (Namespace.Namespace (globals, "math"), globals.math, "an existing table is extended")
 	local list = Namespace.Namespace (globals, "list")
-	T.eq (globals.list, list, "an absent one is made")
+	T.eq (globals.list,                          list, "an absent one is made")
 	T.eq (Namespace.Namespace (globals, "list"), list, "and found again")
 end)
 
@@ -39,14 +39,14 @@ T.test ("export refuses a key something else holds, naming it", function ()
 	local math = Namespace.Namespace (globals, "math")
 	local err = Raises (Namespace.Export, math, "random", {})
 	Has (err, "math.random", "names the key")
-	Has (err, "Replace", "points at the declared way")
+	Has (err, "Replace",     "points at the declared way")
 end)
 
 T.test ("export refuses nothing and a key that is not a name", function ()
 	local list = Namespace.Namespace ({}, "list")
 	Has (Raises (Namespace.Export, list, "queue", nil), "list.queue", "a missing value names its key")
-	Raises (Namespace.Export, list, 3, {})
-	Raises (Namespace.Export, list, "", {})
+	Raises (Namespace.Export, list,   3,       {})
+	Raises (Namespace.Export, list,   "",      {})
 	Raises (Namespace.Export, "list", "queue", {})
 end)
 
@@ -83,11 +83,11 @@ T.test ("a deferred key loads its module the first time it is read, and only the
 	end
 	local list = Namespace.Namespace ({}, "list")
 	Namespace.Defer (list, "drawlist", Load)
-	T.eq (loads, 0, "nothing loaded yet")
+	T.eq (loads,         0,        "nothing loaded yet")
 	T.eq (list.drawlist, drawlist, "loaded on read")
 	T.eq (list.drawlist, drawlist, "and kept")
-	T.eq (loads, 1, "once")
-	T.eq (list.missing, nil, "an undeclared key is still absent")
+	T.eq (loads,         1,        "once")
+	T.eq (list.missing,  nil,      "an undeclared key is still absent")
 end)
 
 T.test ("defer refuses a key something else holds, and a table another metatable rules", function ()
@@ -120,10 +120,10 @@ T.test ("an index runs in an environment of the calls, require and the globals",
 		Export(_G, "Queue", list.queue.New)
 	]]))
 	setfenv (index, env) ()
-	T.eq (globals.list.queue, loaded ["sample.list.queue"], "the module")
-	T.eq (globals.list.Queue, loaded ["sample.list.queue"].New, "a factory in the namespace")
-	T.eq (globals.Queue, loaded ["sample.list.queue"].New, "and as a plain global")
-	T.eq (rawget (env, "list"), nil, "an index's locals stay its own")
+	T.eq (globals.list.queue,   loaded ["sample.list.queue"],     "the module")
+	T.eq (globals.list.Queue,   loaded ["sample.list.queue"].New, "a factory in the namespace")
+	T.eq (globals.Queue,        loaded ["sample.list.queue"].New, "and as a plain global")
+	T.eq (rawget (env, "list"), nil,                              "an index's locals stay its own")
 end)
 
 -- A native twin as a binary module puts one: a table holding C functions
@@ -134,26 +134,26 @@ T.test ("twin publishes the Lua twin when no binary module put a native one firs
 	local ns = {}
 	local lua = { New = function () end, LIMIT = 4 }
 	T.eq (Namespace.Twin (ns, "heap", lua), lua, "returns what it published")
-	T.eq (ns.heap, lua, "published")
+	T.eq (ns.heap,                          lua, "published")
 end)
 
 T.test ("twin keeps a native twin that has the whole of the Lua twin's interface", function ()
 	local native = { New = NATIVE_NEW, Encode = NATIVE_NEW, LIMIT = 4 }
 	local ns = { heap = native }
 	local lua = { New = function () end, Encode = function () end, LIMIT = 4, _M = {}, _NAME = "foundation.tree.heap", _PACKAGE = "foundation.tree." }
-	T.eq (Namespace.Twin (ns, "heap", lua), native, "the native one stays")
-	T.eq (ns.heap, native, "published")
-	T.eq (native.Encode, NATIVE_NEW, "untouched: nothing of the Lua twin is mixed in")
-	T.eq (rawget (native, "_M"), nil, "module(...)'s own keys are no part of the interface")
-	T.eq (Namespace.Twin (ns, "heap", lua), native, "and again, as a reload twins it")
+	T.eq (Namespace.Twin (ns, "heap", lua), native,     "the native one stays")
+	T.eq (ns.heap,                          native,     "published")
+	T.eq (native.Encode,                    NATIVE_NEW, "untouched: nothing of the Lua twin is mixed in")
+	T.eq (rawget (native, "_M"),            nil,        "module(...)'s own keys are no part of the interface")
+	T.eq (Namespace.Twin (ns, "heap", lua), native,     "and again, as a reload twins it")
 end)
 
 T.test ("twin refuses a native twin that lacks part of the interface, naming each part", function ()
 	local ns = { heap = { New = NATIVE_NEW } }
 	local err = Raises (Namespace.Twin, ns, "heap", { New = function () end, Encode = function () end, LIMIT = 4 })
-	Has (err, "heap", "names the module")
+	Has (err, "heap",   "names the module")
 	Has (err, "Encode", "names a missing function")
-	Has (err, "LIMIT", "names a missing constant")
+	Has (err, "LIMIT",  "names a missing constant")
 end)
 
 T.test ("twin refuses a key something other than a native twin holds", function ()

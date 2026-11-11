@@ -218,7 +218,7 @@ local APPLY =
 		local prop = ents.Create (ANIMATED_PROP)
 		prop:SetModel (outcome.model)
 		prop:SetKeyValue ("DefaultAnim", outcome.sequence)
-		prop:SetKeyValue ("solid", NOT_SOLID)
+		prop:SetKeyValue ("solid",       NOT_SOLID)
 		prop:SetPos (outcome.target:GetPos ())
 		prop:SetAngles (angle_zero)
 		prop:Spawn ()

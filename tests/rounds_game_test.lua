@@ -136,7 +136,7 @@ local TO_RUNNING =
 local function Running (settings, world, mode)
 	local round = Rounds.New (Settings (settings))
 	if mode then round:SetMode (mode) end
-	round:Think (T0, world or World ())
+	round:Think (T0,                               world or World ())
 	round:Think (T0 + 1 + Rounds.PREROUND_SECONDS, world or World ())
 	T.eq (round:State (), State.RND_RUNNING, "running")
 	return round
@@ -160,7 +160,7 @@ T.test ("pregame waits for players, then a fresh map's first round sets up witho
 	T.eq (round:State (), State.PREGAME, "still PREGAME")
 
 	Expect (round:Think (T0 + 0.5, World ()), PREROUND_FULL_FRESH, "players arrive")
-	T.eq (round:State (), State.PREROUND, "pre-round")
+	T.eq (round:State (),       State.PREROUND,  "pre-round")
 	T.eq (round:PreroundEnd (), T0 + 0.5 + wait, "the pre-round lasts PREROUND_SECONDS times mp_enableroundwaittime")
 
 	Expect (round:Think (T0 + 1.5, World ()),
@@ -174,8 +174,8 @@ T.test ("pregame waits for players, then a fresh map's first round sets up witho
 	local done = {}
 	for _, line in ipairs (TO_RUNNING) do done [#done + 1] = line end
 	Expect (round:Think (T0 + 0.5 + wait, World ()), done, "the pre-round ends")
-	T.eq (round:State (), State.RND_RUNNING, "running")
-	T.eq (round:PointsMayBeCaptured (), true, "points may be captured")
+	T.eq (round:State (),               State.RND_RUNNING, "running")
+	T.eq (round:PointsMayBeCaptured (), true,              "points may be captured")
 end)
 
 T.test ("a full-round win scores, switches teams and resets the map after the bonus time", function ()
@@ -256,7 +256,7 @@ T.test ("a stalemate without sudden death ends the match drawn, in bonus time un
 	local note = now + Rounds.MATCH_WIN_EXTRA
 	local ends = note + 10
 	T.eq (effects [1] ["until"], ends, "bonus time lasts the extra and mp_chattime")
-	Expect (round:Think (note, World ()), { "next_map" }, "the next map announced, nobody frozen")
+	Expect (round:Think (note, World ()), { "next_map" },    "the next map announced, nobody frozen")
 	Expect (round:Think (ends, World ()), { "changelevel" }, "the level changes")
 end)
 
@@ -275,7 +275,7 @@ T.test ("sudden death: one team dead hands the round to the survivors", function
 	Expect (round:SetStalemate (T0 + 20, SM.TIMER, false, false), SUDDEN_DEATH, "sudden death")
 	T.eq (round:PointsMayBeCaptured (), true, "points may still be captured")
 	Expect (round:SetStalemate (T0 + 21, SM.TIMER, false, false), {}, "already in sudden death")
-	Expect (round:Think (T0 + 22, World ()), {}, "both teams alive")
+	Expect (round:Think (T0 + 22, World ()),                      {}, "both teams alive")
 	local effects = round:Think (T0 + 23, World (
 		{
 			teams =
@@ -375,11 +375,11 @@ T.test ("the win limit ends the game in an intermission, then the level changes"
 	T.eq (effects [1] ["until"], ends, "the intermission lasts the extra and mp_chattime")
 	T.defined (Rounds.MATCH_WIN_EXTRA, "Rounds.MATCH_WIN_EXTRA")
 	T.eq (effects [1].winner, RED, "RED won the match")
-	Expect (round:Think (frozen - 1, World ()), {}, "the fight to the music")
-	Expect (round:Think (frozen, World ()), { "freeze" }, "everyone frozen for mp_chattime")
-	Expect (round:Think (frozen + 1, World ()), {}, "frozen once")
-	Expect (round:Think (ends, World ()), { "changelevel" }, "the level changes")
-	Expect (round:Think (ends + 1, World ()), {}, "once")
+	Expect (round:Think (frozen - 1, World ()), {},                "the fight to the music")
+	Expect (round:Think (frozen, World ()),     { "freeze" },      "everyone frozen for mp_chattime")
+	Expect (round:Think (frozen + 1, World ()), {},                "frozen once")
+	Expect (round:Think (ends, World ()),       { "changelevel" }, "the level changes")
+	Expect (round:Think (ends + 1, World ()),   {},                "once")
 end)
 
 -- RED leads, so the match has a winner (a tie goes to sudden death).
@@ -402,12 +402,12 @@ T.test ("a round win that reaches the win limit is the match win at once", funct
 	local round = Running ({ winlimit = 2 })
 	round:Think (T0 + 1, World ({ scores = { [RED] = 1, [BLUE] = 0 } }))
 	local effects = round:SetWinningTeam (T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective ())
-	T.eq (Has (effects, "score"), true, "the point is scored: " .. Describe (effects))
-	T.eq (Has (effects, "intermission Reached Win Limit"), true, "the match is won")
-	T.eq (Has (effects, "win_song"), false, "no round win music")
-	T.eq (Has (effects, "state TEAM_WIN"), false, "no bonus round")
+	T.eq (Has (effects, "score"),                          true,  "the point is scored: " .. Describe (effects))
+	T.eq (Has (effects, "intermission Reached Win Limit"), true,  "the match is won")
+	T.eq (Has (effects, "win_song"),                       false, "no round win music")
+	T.eq (Has (effects, "state TEAM_WIN"),                 false, "no bonus round")
 	T.eq (effects [#effects].kind ~= nil, true)
-	T.eq (round:State (), State.GAME_OVER)
+	T.eq (round:State (),                 State.GAME_OVER)
 end)
 
 T.test ("a round win that would tie the match is a round win, and sudden death follows", function ()
@@ -433,9 +433,9 @@ T.test ("a match that ends tied at a round's end plays the next round as sudden 
 		if text ~= "" then seen [#seen + 1] = text end
 	end
 	local all = table.concat (seen, ", ")
-	T.eq (all:find ("intermission", 1, true), nil, "no game over: " .. all)
-	T.eq (all:find ("sudden_death " .. SM.MATCH_TIED, 1, true) ~= nil, true, "sudden death: " .. all)
-	T.eq (round:State (), State.STALEMATE, "in sudden death")
+	T.eq (all:find ("intermission", 1, true),                          nil,             "no game over: " .. all)
+	T.eq (all:find ("sudden_death " .. SM.MATCH_TIED, 1, true) ~= nil, true,            "sudden death: " .. all)
+	T.eq (round:State (),                                              State.STALEMATE, "in sudden death")
 end)
 
 T.test ("a match tied mid-round turns that round into sudden death", function ()
@@ -443,7 +443,7 @@ T.test ("a match tied mid-round turns that round into sudden death", function ()
 	local text = ""
 	for t = 21, 25 do text = text .. Describe (round:Think (T0 + t, World ({ scores = { [RED] = 2, [BLUE] = 2 } }))) end
 	T.eq (text:find ("sudden_death " .. SM.MATCH_TIED, 1, true) ~= nil, true, text)
-	T.eq (text:find ("intermission", 1, true), nil, "no game over")
+	T.eq (text:find ("intermission", 1, true),                          nil,  "no game over")
 	T.eq (round:State (), State.STALEMATE)
 	T.eq (round:RespawnStatus (RED, T0 + 25, 8), Spawns.SUDDEN_DEATH, "said: no respawning in sudden death")
 end)
@@ -476,19 +476,19 @@ end)
 T.test ("the maplist is the installed maps the gamemode's filter matches, in order", function ()
 	local installed = { "pl_upward", "gm_construct", "koth_viaduct", "cp_steel", "background01", "plr_hightower" }
 	local maps = Rounds.MapsMatching (installed, "^pl_|^plr_|^cp_|^koth_")
-	T.eq (table.concat (maps, " "), "cp_steel koth_viaduct pl_upward plr_hightower", "matched, sorted")
-	T.eq (#Rounds.MapsMatching (installed, ""), 0, "no filter, no maps")
+	T.eq (table.concat (maps, " "),             "cp_steel koth_viaduct pl_upward plr_hightower", "matched, sorted")
+	T.eq (#Rounds.MapsMatching (installed, ""), 0,                                               "no filter, no maps")
 end)
 
 T.test ("the maplist's next map follows this one, round to the first", function ()
 	local maps = { "cp_steel", "koth_viaduct", "pl_upward" }
-	T.eq (Rounds.MaplistNext (maps, "cp_steel"), "koth_viaduct", "the one after")
-	T.eq (Rounds.MaplistNext (maps, "pl_upward"), "cp_steel", "round to the first")
+	T.eq (Rounds.MaplistNext (maps, "cp_steel"),  "koth_viaduct", "the one after")
+	T.eq (Rounds.MaplistNext (maps, "pl_upward"), "cp_steel",     "round to the first")
 	-- a map off the list (gm_construct) goes on to the list's next in name order
-	T.eq (Rounds.MaplistNext (maps, "gm_construct"), "koth_viaduct", "where it would sit")
-	T.eq (Rounds.MaplistNext (maps, "zz_last"), "cp_steel", "past the end, the first")
-	T.eq (Rounds.MaplistNext ({}, "cp_steel"), "", "an empty list: none")
-	T.eq (Rounds.MaplistNext ({ "cp_steel" }, "cp_steel"), "cp_steel", "a list of one: itself")
+	T.eq (Rounds.MaplistNext (maps, "gm_construct"),       "koth_viaduct", "where it would sit")
+	T.eq (Rounds.MaplistNext (maps, "zz_last"),            "cp_steel",     "past the end, the first")
+	T.eq (Rounds.MaplistNext ({}, "cp_steel"),             "",             "an empty list: none")
+	T.eq (Rounds.MaplistNext ({ "cp_steel" }, "cp_steel"), "cp_steel",     "a list of one: itself")
 end)
 
 -- The next-map vote (mp_vote_nextmap_enabled), called once the match is one
@@ -527,7 +527,7 @@ end)
 -- Its choices, from the maplist: MAP_VOTE_SAME of the current map's mode
 -- (the filter's pattern it matches) and MAP_VOTE_OTHER of another's, never
 -- the current map, each once; a short pool fills from what is left.
-T.defined (Rounds.MAP_VOTE_SAME, "MAP_VOTE_SAME")
+T.defined (Rounds.MAP_VOTE_SAME,  "MAP_VOTE_SAME")
 T.defined (Rounds.MAP_VOTE_OTHER, "MAP_VOTE_OTHER")
 
 local FILTER = "^pl_|^cp_|^koth_"
@@ -542,16 +542,16 @@ end
 T.test ("the vote offers maps of this mode and of another", function ()
 	local maps = { "cp_steel", "koth_viaduct", "pl_badwater", "pl_goldrush", "pl_upward" }
 	local choices = Rounds.MapVoteChoices (maps, "pl_upward", FILTER, First)
-	T.eq (#choices, Rounds.MAP_VOTE_SAME + Rounds.MAP_VOTE_OTHER, "how many")
-	T.eq (ModeCount (choices, "pl_"), Rounds.MAP_VOTE_SAME, "this mode's")
-	T.eq (#choices - ModeCount (choices, "pl_"), Rounds.MAP_VOTE_OTHER, "another's")
+	T.eq (#choices,                              Rounds.MAP_VOTE_SAME + Rounds.MAP_VOTE_OTHER, "how many")
+	T.eq (ModeCount (choices, "pl_"),            Rounds.MAP_VOTE_SAME,                         "this mode's")
+	T.eq (#choices - ModeCount (choices, "pl_"), Rounds.MAP_VOTE_OTHER,                        "another's")
 	for _, map in ipairs (choices) do T.eq (map ~= "pl_upward", true, "not this map") end
 end)
 
 T.test ("a mode with too few maps leaves the rest to the others", function ()
 	local choices = Rounds.MapVoteChoices ({ "cp_steel", "cp_gorge", "pl_upward", "pl_badwater" }, "pl_upward", FILTER, First)
-	T.eq (#choices, Rounds.MAP_VOTE_SAME + Rounds.MAP_VOTE_OTHER, "still a full vote")
-	T.eq (ModeCount (choices, "pl_"), 1, "the one other payload map")
+	T.eq (#choices,                   Rounds.MAP_VOTE_SAME + Rounds.MAP_VOTE_OTHER, "still a full vote")
+	T.eq (ModeCount (choices, "pl_"), 1,                                            "the one other payload map")
 	local seen = {}
 	for _, map in ipairs (choices) do
 		T.eq (seen [map], nil, map .. " once")
@@ -656,10 +656,10 @@ T.test ("at the time limit a tie with no sudden death is the stalemate's bonus t
 	for _, e in ipairs (effects) do
 		if e.kind == "intermission" then over = e end
 	end
-	T.eq (over ~= nil, true, "the match is over")
-	T.eq (over.reason, Rounds.TIMELIMIT_GAME_OVER, "the game ran out of time")
-	T.eq (Rounds.TIMELIMIT_GAME_OVER, "Game ran out of time.", "the operator's words")
-	T.eq (round:State (), State.GAME_OVER, "bonus time, then the next map")
+	T.eq (over ~= nil,                true,                       "the match is over")
+	T.eq (over.reason,                Rounds.TIMELIMIT_GAME_OVER, "the game ran out of time")
+	T.eq (Rounds.TIMELIMIT_GAME_OVER, "Game ran out of time.",    "the operator's words")
+	T.eq (round:State (),             State.GAME_OVER,            "bonus time, then the next map")
 end)
 
 -- Deathmatch (mp_deathmatch_enable) breaks a tied match: a round of frags
@@ -676,21 +676,21 @@ T.test ("a tie at the time limit is a deathmatch round whose winner wins the mat
 	local round = Running ({ timelimit = TIMELIMIT_MINUTES, matchEndAtTimelimit = true, deathmatchEnable = true })
 	local over = TIMELIMIT_MINUTES * MINUTE
 	local effects = round:Think (over, World ())
-	T.eq (Effect (effects, "deathmatch") ~= nil, true, "deathmatch")
-	T.eq (Effect (effects, "intermission"), nil, "the match goes on")
-	T.eq (round:InDeathmatch (), true, "in it")
-	T.eq (round:Mode ().NAME, Rounds.DEATHMATCH, "frags alone decide it")
-	T.eq (round:Mode ().OBJECTIVE, false, "no objective")
-	T.eq (round:Mode ().HUD, Rounds.HUD_DEATHMATCH, "its own HUD: no objective panel")
-	round:Think (over + 1, World ())
+	T.eq (Effect (effects, "deathmatch") ~= nil, true,                  "deathmatch")
+	T.eq (Effect (effects, "intermission"),      nil,                   "the match goes on")
+	T.eq (round:InDeathmatch (),                 true,                  "in it")
+	T.eq (round:Mode ().NAME,                    Rounds.DEATHMATCH,     "frags alone decide it")
+	T.eq (round:Mode ().OBJECTIVE,               false,                 "no objective")
+	T.eq (round:Mode ().HUD,                     Rounds.HUD_DEATHMATCH, "its own HUD: no objective panel")
+	round:Think (over + 1,                           World ())
 	round:Think (over + Rounds.BONUS_FREEZE_SECONDS, World ())
-	T.eq (round:State (), State.RND_RUNNING, "fought, with respawns")
-	T.eq (round:PointsMayBeCaptured (over + 2), false, "no point is captured in it")
+	T.eq (round:State (),                                          State.RND_RUNNING, "fought, with respawns")
+	T.eq (round:PointsMayBeCaptured (over + 2),                    false, "no point is captured in it")
 	T.eq (Effect (round:Think (over + 5, World ()), "deathmatch"), nil, "the spent time limit starts no second one")
 	local won = round:LimitReached (over + 10, { team = BLUE, reason = W.FRAGLIMIT }, FakeObjective.Objective ())
 	local intermission = Effect (won, "intermission")
-	T.eq (intermission ~= nil and intermission.winner, BLUE, "BLU wins the match")
-	T.eq (intermission.reason, Rounds.DEATHMATCH_MATCH_WIN, "by the deathmatch")
+	T.eq (intermission ~= nil and intermission.winner, BLUE,                        "BLU wins the match")
+	T.eq (intermission.reason,                         Rounds.DEATHMATCH_MATCH_WIN, "by the deathmatch")
 end)
 
 -- The deathmatch is a bonus round timed as sudden death is: the map's
@@ -701,8 +701,8 @@ T.test ("a deathmatch runs on its stalemate timer; run out, the match is a stale
 	local over = TIMELIMIT_MINUTES * MINUTE
 	round:Think (over, World ())
 	local fought = round:Think (over + Rounds.BONUS_FREEZE_SECONDS, World ())
-	T.eq (round:State (), State.RND_RUNNING, "fought")
-	T.eq (Effect (fought, "hide_timers") ~= nil, true, "the map's timers hide: " .. Describe (fought))
+	T.eq (round:State (),                        State.RND_RUNNING, "fought")
+	T.eq (Effect (fought, "hide_timers") ~= nil, true,              "the map's timers hide: " .. Describe (fought))
 	local timer = Effect (fought, "stalemate_timer")
 	T.eq (timer ~= nil and timer.seconds, 240, "its own timer, mp_stalemate_timelimit long")
 	local left = over + Rounds.BONUS_FREEZE_SECONDS + 1
@@ -711,9 +711,9 @@ T.test ("a deathmatch runs on its stalemate timer; run out, the match is a stale
 	T.eq (Effect (paused, "intermission"), nil, "a timer that may not expire keeps it going")
 	local done = round:Think (left + 2, World ({ stalemateTimerLeft = 0 }))
 	local intermission = Effect (done, "intermission")
-	T.eq (intermission ~= nil and intermission.winner, Rounds.NOBODY_WON, "nobody won: " .. Describe (done))
-	T.eq (intermission.reason, Rounds.STALEMATE_GAME_OVER, "a stalemate")
-	T.eq (round:State (), State.GAME_OVER, "the match is over")
+	T.eq (intermission ~= nil and intermission.winner, Rounds.NOBODY_WON,          "nobody won: " .. Describe (done))
+	T.eq (intermission.reason,                         Rounds.STALEMATE_GAME_OVER, "a stalemate")
+	T.eq (round:State (),                              State.GAME_OVER,            "the match is over")
 end)
 
 T.test ("a round that is no deathmatch keeps the map's timers and has no stalemate timer", function ()
@@ -740,12 +740,12 @@ T.test ("a tied match at the win limit is a deathmatch round too; without deathm
 	end
 	effects = Through (round)
 	T.eq (Effect (effects, "deathmatch") ~= nil, true, "deathmatch: " .. Describe (effects))
-	T.eq (round:InDeathmatch (), true, "in it")
+	T.eq (round:InDeathmatch (),                 true, "in it")
 	local old = Running ({ maxrounds = 4, deathmatchEnable = false })
 	old.roundsPlayed = 4
 	old:SetWinningTeam (T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, true, FakeObjective.Objective ())
 	local oldEffects = Through (old)
-	T.eq (Effect (oldEffects, "deathmatch"), nil, "no deathmatch without it")
+	T.eq (Effect (oldEffects, "deathmatch"),          nil,  "no deathmatch without it")
 	T.eq (Effect (oldEffects, "sudden_death") ~= nil, true, "sudden death instead")
 end)
 
@@ -753,8 +753,8 @@ T.test ("a tied match at a round limit goes to its deathmatch on a map with time
 	local round = Running ({ maxrounds = 1, deathmatchEnable = true, timelimit = TIMELIMIT_MINUTES })
 	round:SetWinningTeam (T0 + 20, NOBODY, W.STALEMATE, true, false, false, FakeObjective.Objective ())
 	local back = T0 + 20 + Settings ().bonusRoundTime + 1
-	round:Think (back, World ())
-	round:Think (back + Rounds.PREROUND_SECONDS, World ())
+	round:Think (back,                                 World ())
+	round:Think (back + Rounds.PREROUND_SECONDS,       World ())
 	round:Think (back + Rounds.PREROUND_SECONDS + 0.1, World ())
 	T.eq (round:InDeathmatch (), true)
 end)
@@ -768,8 +768,8 @@ T.test ("deathmatch has no setup: a pre-round of BONUS_FREEZE_SECONDS, everyone 
 	local over = TIMELIMIT_MINUTES * MINUTE
 	local effects = round:Think (over, World ())
 	local freeze = Effect (effects, "bonus_freeze")
-	T.eq (freeze ~= nil, true, "frozen: " .. Describe (effects))
-	T.eq (freeze.ends, over + Rounds.BONUS_FREEZE_SECONDS, "for the freeze")
+	T.eq (freeze ~= nil, true,                               "frozen: " .. Describe (effects))
+	T.eq (freeze.ends,   over + Rounds.BONUS_FREEZE_SECONDS, "for the freeze")
 	local spawned, skipped
 	for i, e in ipairs (effects) do
 		if e.kind == "round_spawn" then spawned = i end
@@ -786,15 +786,15 @@ T.test ("a round after the deathmatch has its own pre-round and setup again", fu
 	local round = Running ()
 	local effects = round:Think (T0 + 1, World ())
 	T.eq (Effect (effects, "bonus_freeze"), nil, "no freeze in a plain round")
-	T.eq (Effect (effects, "skip_setup"), nil, "nor its setup skipped")
+	T.eq (Effect (effects, "skip_setup"),   nil, "nor its setup skipped")
 end)
 
 T.test ("sudden death opens frozen for BONUS_FREEZE_SECONDS", function ()
 	local round = Running ({ winlimit = 3 })
 	local called = round:SuddenDeathForMatch (T0 + 20)
 	local freeze = Effect (called, "bonus_freeze")
-	T.eq (freeze ~= nil, true, "frozen: " .. Describe (called))
-	T.eq (freeze.ends, T0 + 20 + Rounds.BONUS_FREEZE_SECONDS, "for the freeze")
+	T.eq (freeze ~= nil, true,                                  "frozen: " .. Describe (called))
+	T.eq (freeze.ends,   T0 + 20 + Rounds.BONUS_FREEZE_SECONDS, "for the freeze")
 end)
 
 T.test ("the time limit's winner and reason are the mode's", function ()
@@ -808,7 +808,7 @@ T.test ("the time limit's winner and reason are the mode's", function ()
 	for _, e in ipairs (round:Think (TIMELIMIT_MINUTES * MINUTE, World ())) do
 		if e.kind == "publish_win" then publish = e end
 	end
-	T.eq (publish.winner, RED, "the mode's winner")
+	T.eq (publish.winner, RED,             "the mode's winner")
 	T.eq (publish.reason, W.MOST_CAPTURES, "the mode's reason")
 end)
 
@@ -823,13 +823,13 @@ T.test ("a restart of a round with players ends it as a stalemate, then a fresh 
 	local round = Running ()
 	local now = T0 + 30
 	local ended = round:RestartRound (now, WITH_PLAYERS)
-	T.eq (round:State (), State.TEAM_WIN, "the round ended")
+	T.eq (round:State (),                                  State.TEAM_WIN, "the round ended")
 	T.eq (Has (ended, "publish_win " .. Teams.UNASSIGNED), true, "the stalemate's win panel: " .. Describe (ended))
-	T.eq (Has (ended, "win_song " .. Teams.UNASSIGNED), true, "the stalemate song and line")
-	T.eq (Has (ended, "score"), false, "nobody scores")
+	T.eq (Has (ended, "win_song " .. Teams.UNASSIGNED),    true, "the stalemate song and line")
+	T.eq (Has (ended, "score"),                            false, "nobody scores")
 	local fresh = round:Think (now + Settings ().bonusRoundTime + 1, World ())
-	T.eq (round:State (), State.PREROUND, "a fresh round")
-	T.eq (Has (fresh, "cleanup"), true, "on a reset map: " .. Describe (fresh))
+	T.eq (round:State (),         State.PREROUND, "a fresh round")
+	T.eq (Has (fresh, "cleanup"), true,           "on a reset map: " .. Describe (fresh))
 end)
 
 T.test ("a restart with nobody playing goes back to PREGAME, silently", function ()
@@ -852,22 +852,22 @@ T.test ("mp_restartround is read first, mp_restartgame when it is 0, and only a 
 	T.eq (Rounds.RestartRequest (0, 0, false), nil, "nothing asked")
 	local round = Rounds.RestartRequest (5, 0, false)
 	T.eq (round.seconds, 5)
-	T.eq (round.fullReset, false, "the round alone: a mini-round restarts on the map as it is")
-	T.eq (round.line, Rounds.RESTART_ROUND, "announced")
+	T.eq (round.fullReset, false,                "the round alone: a mini-round restarts on the map as it is")
+	T.eq (round.line,      Rounds.RESTART_ROUND, "announced")
 	local game = Rounds.RestartRequest (0, 3, false)
-	T.eq (game.seconds, 3)
+	T.eq (game.seconds,   3)
 	T.eq (game.fullReset, true)
-	T.eq (game.line, Rounds.RESTART_GAME)
+	T.eq (game.line,      Rounds.RESTART_GAME)
 	local both = Rounds.RestartRequest (4, 9, false)
-	T.eq (both.seconds, 4, "mp_restartround's delay")
+	T.eq (both.seconds,   4,    "mp_restartround's delay")
 	T.eq (both.fullReset, true, "mp_restartgame's reset")
 	T.eq (both.line, Rounds.RESTART_GAME)
 end)
 
 T.test ("mp_restartgame_immediate restarts the game now; delays are held to RESTART_DELAY_MAX", function ()
 	local now = Rounds.RestartRequest (0, 0, true)
-	T.eq (now.seconds, 0)
-	T.eq (now.fullReset, true)
+	T.eq (now.seconds,                                                            0)
+	T.eq (now.fullReset,                                                          true)
 	T.eq (Rounds.RestartRequest (0, Rounds.RESTART_DELAY_MAX + 1, false).seconds, Rounds.RESTART_DELAY_MAX)
 	T.eq (Rounds.RestartRequest (-1, 5, false), nil, "a negative mp_restartround asks nothing, as TF2 reads it")
 end)
@@ -882,7 +882,7 @@ end
 T.test ("a restart asked is told once, its convars spent, and comes after its delay", function ()
 	local round = Running ()
 	local told = round:Think (PERIODIC_AT, Restarting (5, false, Rounds.RESTART_ROUND))
-	T.eq (Has (told, "restart_seconds 5 " .. Rounds.RESTART_ROUND), true, Describe (told))
+	T.eq (Has (told, "restart_seconds 5 " .. Rounds.RESTART_ROUND),        true,  Describe (told))
 	T.eq (Has (round:Think (PERIODIC_AT + 4.9, World ()), "reset_scores"), false, "the round runs on")
 	T.eq (round:State (), State.RND_RUNNING)
 	round:Think (PERIODIC_AT + 5, World ())
@@ -893,19 +893,19 @@ T.test ("a round restart resets the scores, the rounds played and the map's time
 	local round = Running ({ timelimit = TIMELIMIT_MINUTES, maxrounds = 5 })
 	round:SetWinningTeam (T0 + 10, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective ())
 	local back = T0 + 10 + Settings ().bonusRoundTime + 1
-	round:Think (back, World ())
+	round:Think (back,                               World ())
 	round:Think (back + 1 + Rounds.PREROUND_SECONDS, World ())
 	T.eq (round:Limits (back).roundsPlayed, 1, "a round played")
 	local at = back + 10
 	round:Think (at, Restarting (0, false, Rounds.RESTART_ROUND))
 	local restart = round:Think (at + Rounds.PERIODIC_INTERVAL + 0.5, World ())
 	local now = at + Rounds.PERIODIC_INTERVAL + 0.5
-	T.eq (Has (restart, "reset_scores"), true, Describe (restart))
-	T.eq (Has (restart, "cleanup"), false, "the map kept")
-	T.eq (Has (restart, "clear_gore"), true)
+	T.eq (Has (restart, "reset_scores"), true,  Describe (restart))
+	T.eq (Has (restart, "cleanup"),      false, "the map kept")
+	T.eq (Has (restart, "clear_gore"),     true)
 	T.eq (round:Limits (now).roundsPlayed, 0)
-	T.eq (round:Limits (now).timeLeft, TIMELIMIT_MINUTES * MINUTE)
-	T.eq (round:State (), State.PREROUND)
+	T.eq (round:Limits (now).timeLeft,     TIMELIMIT_MINUTES * MINUTE)
+	T.eq (round:State (),                  State.PREROUND)
 end)
 
 T.test ("a game restart resets the map too", function ()
@@ -913,12 +913,12 @@ T.test ("a game restart resets the map too", function ()
 	round:Think (PERIODIC_AT, Restarting (0, true, Rounds.RESTART_GAME))
 	local restart = round:Think (PERIODIC_AT + 0.1, World ())
 	T.eq (Has (restart, "reset_scores"), true, Describe (restart))
-	T.eq (Has (restart, "cleanup"), true, "a full reset")
+	T.eq (Has (restart, "cleanup"),      true, "a full reset")
 end)
 
 T.test ("a game restart is announced only as a team switch, or a scramble, due", function ()
 	local quiet = Running ():Think (PERIODIC_AT, Restarting (3, true, Rounds.RESTART_GAME))
-	T.eq (Has (quiet, "restart_seconds 3"), true, Describe (quiet))
+	T.eq (Has (quiet, "restart_seconds 3"),  true,  Describe (quiet))
 	T.eq (Has (quiet, "restart_seconds 3 "), false, "nothing to say")
 	local scrambling = Running ()
 	scrambling:ScheduleScramble ()
@@ -932,7 +932,7 @@ T.test ("a restart due waits for a running round", function ()
 	round:Think (T0 + 11, Restarting (0, true, Rounds.RESTART_GAME))
 	T.eq (Has (round:Think (T0 + 12, World ()), "reset_scores"), false, "the winners celebrate")
 	local back = T0 + 10 + Settings ().bonusRoundTime + 1
-	round:Think (back, World ())
+	round:Think (back,                               World ())
 	round:Think (back + 1 + Rounds.PREROUND_SECONDS, World ())
 	T.eq (round:State (), State.RND_RUNNING)
 	T.eq (Has (round:Think (back + 1.1 + Rounds.PREROUND_SECONDS, World ()), "reset_scores"), true, "the next round running restarts")
@@ -942,7 +942,7 @@ T.test ("a restart due is forgotten by mp_round_restart and by a halt", function
 	local restarted = Running ()
 	restarted:Think (PERIODIC_AT, Restarting (5, true, Rounds.RESTART_GAME))
 	restarted:RestartRound (PERIODIC_AT + 1, NOBODY_PLAYING)
-	restarted:Think (PERIODIC_AT + 2, World ())
+	restarted:Think (PERIODIC_AT + 2,                           World ())
 	restarted:Think (PERIODIC_AT + 3 + Rounds.PREROUND_SECONDS, World ())
 	T.eq (Has (restarted:Think (PERIODIC_AT + 6, World ()), "reset_scores"), false)
 	local halted = Running ()
@@ -963,7 +963,7 @@ T.test ("Halt waits between rounds until a new game", function ()
 		}, "halted")
 	T.eq (round:Halted (), true, "halted")
 	Expect (round:Think (now + 5, World ()), {}, "nothing thinks")
-	Expect (round:Halt (now + 6), {}, "already between rounds")
+	Expect (round:Halt (now + 6),            {}, "already between rounds")
 	round:Unhalt ()
 	T.eq (round:Halted (), false, "unhalted")
 	Expect (round:RestartRound (now + 7, NOBODY_PLAYING), { "state PREGAME" }, "a restart")
@@ -1043,7 +1043,7 @@ T.test ("a halted round (Sandbox mode) stays between rounds whatever happens", f
 			switchTeams = false
 		}, objective), {}, "the timer's OnFinished to game_round_win wins nothing")
 	Expect (round:SetStalemate (now + 4, SM.TIMER, true, false), {}, "no sudden death")
-	Expect (round:RestartRound (now + 5, NOBODY_PLAYING), {}, "no restart until unhalted")
+	Expect (round:RestartRound (now + 5, NOBODY_PLAYING),        {}, "no restart until unhalted")
 	Expect (round:Think (now + 60, World (
 		{
 			scores =
@@ -1053,8 +1053,8 @@ T.test ("a halted round (Sandbox mode) stays between rounds whatever happens", f
 			}
 		}
 	)), {}, "no game over")
-	T.eq (round:State (), State.BETWEEN_RNDS, "between rounds throughout")
-	T.eq (round:PointsMayBeCaptured (), false, "no captures")
+	T.eq (round:State (),               State.BETWEEN_RNDS, "between rounds throughout")
+	T.eq (round:PointsMayBeCaptured (), false,              "no captures")
 	round:Unhalt ()
 	Expect (round:RestartRound (now + 61, NOBODY_PLAYING), { "state PREGAME" }, "Gameplay mode restarts the rounds")
 end)
@@ -1095,13 +1095,13 @@ T.test ("a capture holds the timer 0.1 s past its end; other holds only while he
 		capturing = false,
 		other = true
 	}
-	T.eq (round:TimerMayExpire (T0, free), true, "nothing holds")
-	T.eq (round:TimerMayExpire (T0, capturing), false, "a capture")
-	T.eq (round:TimerMayExpire (T0 + 0.05, free), false, "the buffer")
+	T.eq (round:TimerMayExpire (T0, free),                                 true,  "nothing holds")
+	T.eq (round:TimerMayExpire (T0, capturing),                            false, "a capture")
+	T.eq (round:TimerMayExpire (T0 + 0.05, free),                          false, "the buffer")
 	T.eq (round:TimerMayExpire (T0 + Rounds.CAP_IN_PROGRESS_BUFFER, free), false, "to its end")
-	T.eq (round:TimerMayExpire (T0 + 0.11, free), true, "then free")
-	T.eq (round:TimerMayExpire (T0 + 1, held), false, "a cp timer or a cart")
-	T.eq (round:TimerMayExpire (T0 + 1, free), true, "free at once")
+	T.eq (round:TimerMayExpire (T0 + 0.11, free),                          true,  "then free")
+	T.eq (round:TimerMayExpire (T0 + 1, held),                             false, "a cp timer or a cart")
+	T.eq (round:TimerMayExpire (T0 + 1, free),                             true,  "free at once")
 end)
 
 T.test ("a map without an objective respawns at once, unless an admin or the map sets a wave", function ()
@@ -1127,15 +1127,15 @@ T.test ("respawn waves scale with the team, and admins and maps set them", funct
 	T.eq (round:WaveMaxLength (RED, 8, true), 6, "a full team waits the whole wave")
 	T.eq (round:WaveMaxLength (RED, 1, true), 5, "one player: a quarter, but never under 5 s")
 	round:SetTeamWaveTime (RED, 20)
-	T.eq (round:WaveMaxLength (RED, 1, true), 5, "a quarter of 20")
+	T.eq (round:WaveMaxLength (RED, 1, true),  5,  "a quarter of 20")
 	T.eq (round:WaveMaxLength (RED, 1, false), 20, "unscaled")
 
-	T.eq (round:WaveDue (RED, now, 8), true, "the first wave is due at once")
-	T.eq (round:WaveDue (RED, now + 1, 8), false, "the next is a wave later")
-	T.eq (round:WaveDue (RED, now + 20, 8), true, "a wave later")
+	T.eq (round:WaveDue (RED, now, 8),      true,  "the first wave is due at once")
+	T.eq (round:WaveDue (RED, now + 1, 8),  false, "the next is a wave later")
+	T.eq (round:WaveDue (RED, now + 20, 8), true,  "a wave later")
 	-- died at now + 21: may spawn at now + 21 + 6.4, and the next wave is at now + 40
 	T.eq (round:NextRespawn (RED, now + 21, 8), now + 40, "the next wave after the death animation")
-	T.eq (round:RespawnAt (RED, now + 21, 8), now + 40, "the respawn time shown")
+	T.eq (round:RespawnAt (RED, now + 21, 8),   now + 40, "the respawn time shown")
 end)
 
 -- The controller checks the waves each round think, a little after one
@@ -1148,10 +1148,10 @@ T.test ("waves keep their length however late the think checks them", function (
 	local round = Running (nil, nil, CPMode)
 	round:SetTeamWaveTime (RED, 2)
 	local now = T0 + 20
-	T.eq (round:WaveDue (RED, now, 8), true, "the first wave")
-	T.eq (round:WaveDue (RED, now + 2 + THINK, 8), true, "the next, checked late")
+	T.eq (round:WaveDue (RED, now, 8),                 true,  "the first wave")
+	T.eq (round:WaveDue (RED, now + 2 + THINK, 8),     true,  "the next, checked late")
 	T.eq (round:WaveDue (RED, now + 4 - THINK / 2, 8), false, "the one after is due at now + 4")
-	T.eq (round:WaveDue (RED, now + 4, 8), true, "at now + 4, not now + 4.1")
+	T.eq (round:WaveDue (RED, now + 4, 8),             true,  "at now + 4, not now + 4.1")
 end)
 
 T.test ("the respawn time shown is the wave that brings the player back", function ()
@@ -1175,9 +1175,9 @@ T.test ("the dead come back with their team's next wave, once the death animatio
 	local round = Running ()
 	local now = T0 + 20
 	round:SetTeamWaveTime (RED, 20)
-	T.eq (round:WaveDue (RED, now, 8), true, "a wave now, the next at now + 20")
-	T.eq (round:NextRespawn (RED, now + 1, 8), now + 20, "died at now + 1: the next wave")
-	T.eq (round:RespawnAt (RED, now + 1, 8), now + 20, "the respawn time shown")
+	T.eq (round:WaveDue (RED, now, 8),          true,     "a wave now, the next at now + 20")
+	T.eq (round:NextRespawn (RED, now + 1, 8),  now + 20, "died at now + 1: the next wave")
+	T.eq (round:RespawnAt (RED, now + 1, 8),    now + 20, "the respawn time shown")
 	T.eq (round:NextRespawn (RED, now + 18, 8), now + 40, "died as the wave comes: the one after the animation")
 end)
 
@@ -1190,7 +1190,7 @@ T.test ("a wait is never longer than the death animation and one wave", function
 	for offset = 0, wave - 1 do
 		local death = now + offset
 		local wait = round:NextRespawn (RED, death, 8) - death
-		T.eq (wait >= Rounds.DEATH_ANIM_LENGTH, true, "at least the animation, dead at +" .. offset)
+		T.eq (wait >= Rounds.DEATH_ANIM_LENGTH,        true, "at least the animation, dead at +" .. offset)
 		T.eq (wait <= Rounds.DEATH_ANIM_LENGTH + wave, true, "at most a wave more, dead at +" .. offset)
 	end
 end)
@@ -1206,13 +1206,13 @@ T.test ("a player's respawn time is the team's timer, translated by their modifi
 	local nextWave = now + wave
 	local death = now + 1
 	T.eq (round:NextRespawn (RED, death, 8, -3), nextWave - 3, "sooner than the team's zero")
-	T.eq (round:NextRespawn (RED, death, 8, 5), nextWave + 5, "later than the team's zero")
-	T.eq (round:RespawnAt (RED, death, 8, -3), nextWave - 3, "the respawn time shown")
+	T.eq (round:NextRespawn (RED, death, 8, 5),  nextWave + 5, "later than the team's zero")
+	T.eq (round:RespawnAt (RED, death, 8, -3),   nextWave - 3, "the respawn time shown")
 	local status, at = round:RespawnStatus (RED, death, 8, 5)
-	T.eq (status, Spawns.WAVE, "said: a wave")
-	T.eq (at, nextWave + 5, "at the player's own time")
-	T.eq (round:WaveDue (RED, nextWave - 3, 8), false, "the team's timer has not moved")
-	T.eq (round:WaveDue (RED, nextWave, 8), true, "it reaches zero when it always would")
+	T.eq (status,                               Spawns.WAVE,  "said: a wave")
+	T.eq (at,                                   nextWave + 5, "at the player's own time")
+	T.eq (round:WaveDue (RED, nextWave - 3, 8), false,        "the team's timer has not moved")
+	T.eq (round:WaveDue (RED, nextWave, 8),     true,         "it reaches zero when it always would")
 end)
 
 T.test ("a reward stops at the end of the death animation, and is never worse than none", function ()
@@ -1227,8 +1227,8 @@ T.test ("a reward stops at the end of the death animation, and is never worse th
 	for offset = 0, wave - 1 do
 		local died = now + offset
 		local base = round:NextRespawn (RED, died, 8)
-		T.eq (round:NextRespawn (RED, died, 8, -3) <= base, true, "a reward, dead at +" .. offset)
-		T.eq (round:NextRespawn (RED, died, 8, 5), base + 5, "a penalty, dead at +" .. offset)
+		T.eq (round:NextRespawn (RED, died, 8, -3) <= base, true,     "a reward, dead at +" .. offset)
+		T.eq (round:NextRespawn (RED, died, 8, 5),          base + 5, "a penalty, dead at +" .. offset)
 	end
 end)
 
@@ -1244,8 +1244,8 @@ T.test ("the dead come back on their own time only while the waves run", functio
 	T.eq (round:WavesRun (), false, "an admin stopped respawns")
 	round:SetRespawnsDisabled (false)
 	round:SetWinningTeam (T0 + 20, BLUE, W.ALL_POINTS_CAPTURED, false, false, false, FakeObjective.Objective ())
-	T.eq (round:State (), State.TEAM_WIN, "a win")
-	T.eq (round:WavesRun (), false, "no respawn in the humiliation")
+	T.eq (round:State (),    State.TEAM_WIN, "a win")
+	T.eq (round:WavesRun (), false,          "no respawn in the humiliation")
 	local suddenDeath = Running ()
 	suddenDeath:SetStalemate (T0 + 20, SM.TIMER, false, false)
 	T.eq (suddenDeath:WavesRun (), false, "no respawn in sudden death")
@@ -1255,16 +1255,16 @@ T.test ("setup respawns at once, and sudden death or an admin stops respawns", f
 	local round = Running ()
 	local now = T0 + 20
 	round:SetSetup (true)
-	T.eq (round:NextRespawn (RED, now, 8), now, "setup: no wait of their own, the first quick wave")
-	T.eq (round:PointsMayBeCaptured (), false, "setup")
+	T.eq (round:NextRespawn (RED, now, 8), now,   "setup: no wait of their own, the first quick wave")
+	T.eq (round:PointsMayBeCaptured (),    false, "setup")
 	round:SetSetup (false)
-	T.eq (round:SetRespawnsDisabled (true), false, "disabling reschedules nobody")
-	T.eq (round:RespawnAt (RED, now, 8), 0, "no respawn")
+	T.eq (round:SetRespawnsDisabled (true),  false,             "disabling reschedules nobody")
+	T.eq (round:RespawnAt (RED, now, 8),     0,                 "no respawn")
 	T.eq (round:RespawnStatus (RED, now, 8), Spawns.NEXT_ROUND, "said: wait for the next round")
-	T.eq (round:SetRespawnsDisabled (false), true, "the dead are rescheduled")
+	T.eq (round:SetRespawnsDisabled (false), true,              "the dead are rescheduled")
 	local status, at = round:RespawnStatus (RED, now, 8)
-	T.eq (status, Spawns.WAVE, "said: a wave")
-	T.eq (at, round:RespawnAt (RED, now, 8), "at the respawn time shown")
+	T.eq (status, Spawns.WAVE,                   "said: a wave")
+	T.eq (at,     round:RespawnAt (RED, now, 8), "at the respawn time shown")
 	Expect (round:Think (now + 1, World ()), WAVES, "waves")
 	round:SetRespawnsDisabled (true)
 	Expect (round:Think (now + 40, World ()), {}, "the waves come, but nobody respawns")
@@ -1276,14 +1276,14 @@ end)
 T.test ("the pre-round and setup respawn the dead with a wave every QUICK_WAVE", function ()
 	local preround = Rounds.New (Settings ({ respawnWaveTime = 20 }))
 	preround:Think (T0, World ())
-	T.eq (preround:State (), State.PREROUND, "the pre-round")
-	T.eq (preround:NextRespawn (RED, T0 + 0.5, 8), T0 + 0.5, "pre-round: no wait of their own")
+	T.eq (preround:State (),                       State.PREROUND, "the pre-round")
+	T.eq (preround:NextRespawn (RED, T0 + 0.5, 8), T0 + 0.5,       "pre-round: no wait of their own")
 	Expect (preround:Think (T0 + 0.5, World ()), WAVES, "a quick wave")
 	local round = Running ({ respawnWaveTime = 20 })
 	local now = T0 + 20
 	round:SetSetup (true)
-	Expect (round:Think (now, World ()), WAVES, "a wave now")
-	Expect (round:Think (now + Rounds.QUICK_WAVE / 2, World ()), {}, "none between")
+	Expect (round:Think (now, World ()),                         WAVES, "a wave now")
+	Expect (round:Think (now + Rounds.QUICK_WAVE / 2, World ()), {},    "none between")
 	T.eq (round:RespawnAt (RED, now + 0.1, 8), now + Rounds.QUICK_WAVE, "the respawn time shown: the next quick wave")
 	Expect (round:Think (now + Rounds.QUICK_WAVE, World ()), WAVES, "the next")
 end)
@@ -1307,7 +1307,7 @@ T.test ("a mode that makes no time limit timer suppresses it", function ()
 	local world = World ({ mapHasActiveTimer = false })
 	local round = Rounds.New (Settings (settings))
 	local effects = round:Think (T0, world)
-	T.eq (effects [4].kind, "time_limit_timer", "a timer for the limit")
+	T.eq (effects [4].kind,    "time_limit_timer",              "a timer for the limit")
 	T.eq (effects [4].seconds, TIMELIMIT_MINUTES * MINUTE - T0, "the time left")
 
 	local clockless = Rounds.Mode:Extend ("clockless")
@@ -1349,11 +1349,11 @@ end)
 
 T.test ("setup and overtime report changes", function ()
 	local round = Rounds.New (Settings ())
-	T.eq (round:SetSetup (true), true, "into setup")
-	T.eq (round:SetSetup (true), false, "no change")
-	T.eq (round:InSetup (), true, "in setup")
-	T.eq (round:SetOvertime (true), true, "into overtime")
-	T.eq (round:InOvertime (), true, "overtime")
+	T.eq (round:SetSetup (true),    true,  "into setup")
+	T.eq (round:SetSetup (true),    false, "no change")
+	T.eq (round:InSetup (),         true,  "in setup")
+	T.eq (round:SetOvertime (true), true,  "into overtime")
+	T.eq (round:InOvertime (),      true,  "overtime")
 	T.eq (round:SetOvertime (true), false, "no change")
 end)
 
@@ -1390,8 +1390,8 @@ T.test ("game_round_win: a team wins, team 0 is a stalemate, and only a full res
 			forceMapReset = false,
 			switchTeams = true
 		}, objective)
-	T.eq (effects [1].kind, "publish_win", "a win")
-	T.eq (effects [1].fullRound, false, "a mini-round")
+	T.eq (effects [1].kind,      "publish_win", "a win")
+	T.eq (effects [1].fullRound, false,         "a mini-round")
 	round:Think (T0 + 35, World ())
 	T.eq (round:State (), State.PREROUND, "next round")
 
@@ -1418,12 +1418,12 @@ T.test ("the played rounds are remembered, two deep, and forgotten at a full res
 	local history = round:History ()
 	T.eq (history.previous [1], "round_c", "latest")
 	T.eq (history.previous [2], "round_b", "before")
-	T.eq (history.previous [3], nil, "two deep")
-	T.eq (history.first, "round_a", "first")
+	T.eq (history.previous [3], nil,       "two deep")
+	T.eq (history.first,        "round_a", "first")
 	round:SetWinningTeam (T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective ())
 	round:Think (T0 + 35, World ())
-	T.eq (round:History ().previous [1], nil, "a full reset forgets")
-	T.eq (round:History ().first, "round_a", "but not the first")
+	T.eq (round:History ().previous [1], nil,       "a full reset forgets")
+	T.eq (round:History ().first,        "round_a", "but not the first")
 end)
 
 T.test ("the round reports the team counts once a second", function ()
@@ -1446,7 +1446,7 @@ end)
 
 T.test ("halted players respawn after a pause", function ()
 	T.eq (Rounds.HaltedRespawnDue (T0, T0 + Rounds.HALT_RESPAWN - 0.1), false, "too soon")
-	T.eq (Rounds.HaltedRespawnDue (T0, T0 + Rounds.HALT_RESPAWN), true, "due")
+	T.eq (Rounds.HaltedRespawnDue (T0, T0 + Rounds.HALT_RESPAWN),       true,  "due")
 end)
 
 -- An attack/defend round, as on cp_gorge: the Round and the map's timer
@@ -1504,14 +1504,14 @@ T.test ("an A/D round: setup, time added by a capture, overtime while capping, t
 		if e.kind == "round_spawn" then Carry (timer:RoundSpawn (T0)) end
 	end
 	round:Think (T0 + Rounds.PREROUND_SECONDS, World ())
-	T.eq (round:State (), State.RND_RUNNING, "running")
-	T.eq (round:InSetup (), true, "setup")
-	T.eq (round:PointsMayBeCaptured (), false, "no captures in setup")
+	T.eq (round:State (),               State.RND_RUNNING, "running")
+	T.eq (round:InSetup (),             true,              "setup")
+	T.eq (round:PointsMayBeCaptured (), false,             "no captures in setup")
 
 	Tick (T0 + 60)
-	T.eq (round:InSetup (), false, "setup over")
-	T.eq (round:PointsMayBeCaptured (), true, "points open")
-	T.eq (outputs [#outputs - 1], "OnSetupFinished", "the gates open")
+	T.eq (round:InSetup (),             false,             "setup over")
+	T.eq (round:PointsMayBeCaptured (), true,              "points open")
+	T.eq (outputs [#outputs - 1],       "OnSetupFinished", "the gates open")
 
 	local events, added = timer:AddSeconds (T0 + 100, 480, BLUE,
 		{
@@ -1522,7 +1522,7 @@ T.test ("an A/D round: setup, time added by a capture, overtime while capping, t
 			announces = round:Mode ().ANNOUNCES_TIME_ADDED
 		}
 	)
-	T.eq (added, 600 - 230, "a capture adds up to max_length")
+	T.eq (added,           600 - 230,    "a capture adds up to max_length")
 	T.eq (events [2].kind, "time_added", "announced")
 
 	-- 600 s left from T0 + 100; the marks do not fire at zero, the end comes first
@@ -1569,21 +1569,21 @@ T.test ("mp_forcewin takes TF2's team numbers, the teams' names, or sudden death
 	T.eq (Rounds.ForceWinTarget ({ "2" }), RED)
 	T.eq (Rounds.ForceWinTarget ({ "3" }), BLUE)
 	T.eq (Rounds.ForceWinTarget ({ "0" }), NOBODY, "team 0: a stalemate")
-	T.eq (Rounds.ForceWinTarget ({ "red" }), RED)
-	T.eq (Rounds.ForceWinTarget ({ "BLUE" }), BLUE)
-	T.eq (Rounds.ForceWinTarget ({ "blu" }), BLUE)
+	T.eq (Rounds.ForceWinTarget ({ "red" }),    RED)
+	T.eq (Rounds.ForceWinTarget ({ "BLUE" }),   BLUE)
+	T.eq (Rounds.ForceWinTarget ({ "blu" }),    BLUE)
 	T.eq (Rounds.ForceWinTarget ({ "sudden" }), Rounds.FORCE_SUDDEN_DEATH)
 	T.eq (Rounds.ForceWinTarget ({ tostring (Teams.SPECTATOR) }), nil, "spectators win nothing")
-	T.eq (Rounds.ForceWinTarget ({ "green" }), nil, "anything else is refused")
-	T.eq (Rounds.ForceWinTarget ({ "2", "3" }), nil, "one team at most")
+	T.eq (Rounds.ForceWinTarget ({ "green" }),                    nil, "anything else is refused")
+	T.eq (Rounds.ForceWinTarget ({ "2", "3" }),                   nil, "one team at most")
 end)
 
 T.test ("mp_forcewin with no team gives the round to the first player's team", function ()
 	T.eq (Rounds.ForceWinTarget ({}, BLUE), BLUE)
 	T.eq (Rounds.ForceWinTarget ({}, NOBODY), NOBODY, "an unassigned first player: a stalemate")
 	local target, why = Rounds.ForceWinTarget ({}, nil)
-	T.eq (target, nil, "no player, no default team")
-	T.eq (why, Rounds.FORCE_WIN_NO_DEFAULT, "and why")
+	T.eq (target, nil,                         "no player, no default team")
+	T.eq (why,    Rounds.FORCE_WIN_NO_DEFAULT, "and why")
 end)
 
 T.test ("mp_forcewin's win is all points captured, scored as the map scores a round", function ()
@@ -1599,7 +1599,7 @@ end)
 T.test ("mp_forcewin 0 ends the round a stalemate, nobody scoring", function ()
 	local round = Running ()
 	local effects = round:ForceWin (T0 + 20, NOBODY, FakeObjective.Objective ())
-	T.eq (round:State (), State.TEAM_WIN)
+	T.eq (round:State (),     State.TEAM_WIN)
 	T.eq (effects [1].reason, W.STALEMATE)
 	T.eq (Has (effects, "publish_win " .. NOBODY), true, Describe (effects))
 	T.eq (Has (effects, "score"), false)
@@ -1613,9 +1613,9 @@ T.test ("a forced sudden death starts whatever mp_stalemate_enable says, called 
 end)
 
 T.test ("sudden death's survivors are rewarded with TF2's full overheal", function ()
-	T.eq (Rounds.SurvivorHealth (100, 40), 150, "half again its most")
+	T.eq (Rounds.SurvivorHealth (100, 40),  150, "half again its most")
 	T.eq (Rounds.SurvivorHealth (125, 200), 200, "never less than it has")
-	T.eq (Rounds.SurvivorHealth (175, 10), 262, "rounded down")
+	T.eq (Rounds.SurvivorHealth (175, 10),  262, "rounded down")
 end)
 
 T.test ("mp_scrambleteams_auto: a full round won to a lead of the win difference scrambles the next round's teams", function ()
@@ -1624,8 +1624,8 @@ T.test ("mp_scrambleteams_auto: a full round won to a lead of the win difference
 	local win = round:SetWinningTeam (T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, true, false, FakeObjective.Objective ())
 	T.eq (Has (win, "scramble_due"), true, "announced with the win: " .. Describe (win))
 	local restart = round:Think (T0 + 35, World ({ scores = { [RED] = 2, [BLUE] = 0 } }))
-	T.eq (Has (restart, "scramble_teams"), true, "the next round scrambled: " .. Describe (restart))
-	T.eq (Has (restart, "switch_teams"), false, "in place of the switch")
+	T.eq (Has (restart, "scramble_teams"), true,  "the next round scrambled: " .. Describe (restart))
+	T.eq (Has (restart, "switch_teams"),   false, "in place of the switch")
 end)
 
 T.test ("no scramble without mp_scrambleteams_auto, under the win difference, or on a mini-round", function ()
@@ -1643,11 +1643,11 @@ T.test ("a passed scramble vote scrambles the next round's teams, as TF2's does"
 	T.eq (round:ScramblePending (), false)
 	local now = round:ScheduleScramble ()
 	T.eq (Has (now, "scramble_due"), true, "told at once: " .. Describe (now))
-	T.eq (round:ScramblePending (), true, "a second vote is refused while it waits")
+	T.eq (round:ScramblePending (),  true, "a second vote is refused while it waits")
 	round:SetWinningTeam (T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective ())
 	local restart = round:Think (T0 + 35, World ({ scores = { [RED] = 1, [BLUE] = 0 } }))
-	T.eq (Has (restart, "scramble_teams"), true, "the next round scrambled: " .. Describe (restart))
-	T.eq (round:ScramblePending (), false, "done")
+	T.eq (Has (restart, "scramble_teams"), true,  "the next round scrambled: " .. Describe (restart))
+	T.eq (round:ScramblePending (),        false, "done")
 end)
 
 local function Intermission (effects)
@@ -1696,8 +1696,8 @@ T.test ("ended early on a tie, a sudden death decides the match", function ()
 	T.eq (Has (called, "sudden_death"), true, "sudden death: " .. Describe (called))
 	local won = round:SetWinningTeam (T0 + 30, BLUE, W.OPPONENTS_DEAD, true, false, false, FakeObjective.Objective ())
 	local over = Intermission (won)
-	T.eq (over ~= nil, true, "the match is over: " .. Describe (won))
-	T.eq (over.winner, BLUE, "the survivors win it")
+	T.eq (over ~= nil, true,                   "the match is over: " .. Describe (won))
+	T.eq (over.winner, BLUE,                   "the survivors win it")
 	T.eq (over.reason, Rounds.ENDED_EARLY_WIN, "ended early")
 end)
 
@@ -1706,7 +1706,7 @@ T.test ("ended early on a tie with no round under way, the match ends drawn", fu
 	T.eq (round:State (), State.PREGAME, "waiting for players: no round to hold a sudden death")
 	local effects = round:EndEarly (T0, nil, FakeObjective.Objective ())
 	local over = Intermission (effects)
-	T.eq (over ~= nil, true, "the match is over: " .. Describe (effects))
+	T.eq (over ~= nil, true,              "the match is over: " .. Describe (effects))
 	T.eq (over.winner, Rounds.NOBODY_WON, "drawn")
 end)
 
@@ -1743,8 +1743,8 @@ T.test ("a team at a round limit wins the round and its point, even where points
 	local round = Running ()
 	local effects = round:LimitReached (T0 + 20, { team = RED, reason = W.FRAGLIMIT }, FakeObjective.Objective ({ scorePerRound = false }))
 	Expect ({ effects [1], effects [2] }, { "score " .. RED .. " 1", "publish_win " .. RED }, "RED wins by frags")
-	T.eq (effects [2].reason, W.FRAGLIMIT, "the reason")
-	T.eq (round:State (), State.TEAM_WIN, "the round won")
+	T.eq (effects [2].reason, W.FRAGLIMIT,    "the reason")
+	T.eq (round:State (),     State.TEAM_WIN, "the round won")
 end)
 
 T.test ("both teams tied at a round limit is a stalemate: sudden death, or the match ends drawn", function ()
@@ -1766,7 +1766,7 @@ T.test ("kills and earnings count toward the limits only in a round being fought
 	T.eq (sudden:LimitsCount (), false, "sudden death")
 	local won = Running ()
 	won:SetWinningTeam (T0 + 20, BLUE, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective ())
-	T.eq (won:LimitsCount (), false, "the bonus round")
+	T.eq (won:LimitsCount (),                      false, "the bonus round")
 	T.eq (Rounds.New (Settings ()):LimitsCount (), false, "before the game")
 end)
 

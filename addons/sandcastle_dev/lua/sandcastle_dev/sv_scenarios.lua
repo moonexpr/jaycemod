@@ -124,8 +124,8 @@ function S.quickload (slot) return S.load (Slot (slot)) end
 
 dev.Command ("scenario_save", function (args) return S.save (args [1], table.concat (args, " ", 2)) end,
 	"scenario_save <name> [description]: the gameplay state, saved under this map")
-dev.Command ("scenario_load", function (args) return S.load (args [1]) end, "scenario_load <name>: restore a saved state in place")
+dev.Command ("scenario_load", function (args) return S.load (args [1]) end,                    "scenario_load <name>: restore a saved state in place")
 dev.Command ("scenario_list", function (args) return S.list ({ all = args [1] == "all" }) end, "scenario_list [all]")
-dev.Command ("scenario_diff", function (args) return S.diff (args [1], args [2]) end, "scenario_diff <a> <b>: names, or current")
-dev.Command ("dev_quicksave", function (args) return S.quicksave (args [1]) end, "dev_quicksave [slot]")
-dev.Command ("dev_quickload", function (args) return S.quickload (args [1]) end, "dev_quickload [slot]")
+dev.Command ("scenario_diff", function (args) return S.diff (args [1], args [2]) end,          "scenario_diff <a> <b>: names, or current")
+dev.Command ("dev_quicksave", function (args) return S.quicksave (args [1]) end,               "dev_quicksave [slot]")
+dev.Command ("dev_quickload", function (args) return S.quickload (args [1]) end,               "dev_quickload [slot]")

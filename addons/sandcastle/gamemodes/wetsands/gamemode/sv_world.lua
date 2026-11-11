@@ -81,10 +81,10 @@ end
 WS.MapIO = WS.MapIO or MapIO.New (World)
 
 local function Recache () WS.MapIO:Recache () end
-hook.Add ("InitPostEntity", "ws_map_io_recache", Recache)
-hook.Add ("PostCleanupMap", "ws_map_io_recache", Recache)
-hook.Add ("OnEntityCreated", "ws_map_io_track", function (ent) WS.MapIO:Track (ent) end)
-hook.Add ("EntityRemoved", "ws_map_io_forget", function (ent) WS.MapIO:Forget (ent) end)
+hook.Add ("InitPostEntity",  "ws_map_io_recache", Recache)
+hook.Add ("PostCleanupMap",  "ws_map_io_recache", Recache)
+hook.Add ("OnEntityCreated", "ws_map_io_track",   function (ent) WS.MapIO:Track (ent) end)
+hook.Add ("EntityRemoved",   "ws_map_io_forget",  function (ent) WS.MapIO:Forget (ent) end)
 
 -- Keyvalues of engine entities we read but do not implement. GMod exposes no
 -- getter for a path_track's next node or a teamspawn's team, so they are
@@ -341,5 +341,5 @@ local function PathTrackObserver (disabled)
 end
 
 Observe (MapIO.INPUT, "DisablePath", PathTrackObserver (function () return true end))
-Observe (MapIO.INPUT, "EnablePath", PathTrackObserver (function () return nil end))
-Observe (MapIO.INPUT, "TogglePath", PathTrackObserver (function (was) return not was or nil end))
+Observe (MapIO.INPUT, "EnablePath",  PathTrackObserver (function () return nil end))
+Observe (MapIO.INPUT, "TogglePath",  PathTrackObserver (function (was) return not was or nil end))

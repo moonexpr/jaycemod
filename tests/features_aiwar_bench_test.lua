@@ -15,7 +15,7 @@ ReadFile (AIWAR .. "sv_field.lua"), ReadFile (AIWAR .. "sv_enlist.lua")
 local follower = ReadFile (T.ROOT .. "../entities/entities/npc_pathfollower.lua")
 
 T.test ("a bench war is started as the war is, by its own call", function ()
-	T.eq (war:find ("function Controller:Start (opts)", 1, true) ~= nil, true, "Start takes it")
+	T.eq (war:find ("function Controller:Start (opts)", 1, true) ~= nil,        true, "Start takes it")
 	T.eq (war:find ("self.bench = opts and opts.bench or nil", 1, true) ~= nil, true, "and keeps it")
 end)
 
@@ -26,7 +26,7 @@ T.test ("it leaves the gamemode, the map's other NPCs and the notices be", funct
 end)
 
 T.test ("it brings no bots and drafts no waves", function ()
-	T.eq (bots:find ("if not Controller.bench then\n\t\t\tController:MaintainBotQuota ()", 1, true) ~= nil, true, "no quota")
+	T.eq (bots:find ("if not Controller.bench then\n\t\t\tController:MaintainBotQuota ()", 1, true) ~= nil,         true, "no quota")
 	T.eq (field:find ("if field.phase.reinforce and not self.bench then self:Reinforce (now) end", 1, true) ~= nil, true, "no waves")
 end)
 

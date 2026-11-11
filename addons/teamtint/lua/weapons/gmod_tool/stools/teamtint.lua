@@ -11,10 +11,10 @@ TOOL.Information =
 }
 
 if CLIENT then
-	language.Add ("tool.teamtint.name", "Team Tint")
-	language.Add ("tool.teamtint.desc", "Show a body as RED or BLU, and tune the team look")
-	language.Add ("tool.teamtint.left", "Paint RED (hold sprint: spawn a RED and a BLU copy beside it)")
-	language.Add ("tool.teamtint.right", "Paint BLU")
+	language.Add ("tool.teamtint.name",   "Team Tint")
+	language.Add ("tool.teamtint.desc",   "Show a body as RED or BLU, and tune the team look")
+	language.Add ("tool.teamtint.left",   "Paint RED (hold sprint: spawn a RED and a BLU copy beside it)")
+	language.Add ("tool.teamtint.right",  "Paint BLU")
 	language.Add ("tool.teamtint.reload", "Clear: the body shows its own team again")
 end
 

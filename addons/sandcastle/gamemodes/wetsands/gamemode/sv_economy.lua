@@ -70,7 +70,7 @@ function WS.GrantMoney (ent, amount)
 end
 
 hook.Add ("PlayerInitialSpawn", "ws_economy", WS.OpenAccount)
-hook.Add ("EntityRemoved", "ws_economy", function (ent) Economy.Close (ledger, ent) end)
+hook.Add ("EntityRemoved",      "ws_economy", function (ent) Economy.Close (ledger, ent) end)
 
 -- A reload of this file starts a new ledger: the players already here get accounts.
 for _, ply in player.Iterator () do WS.OpenAccount (ply) end

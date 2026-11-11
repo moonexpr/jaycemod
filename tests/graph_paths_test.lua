@@ -18,8 +18,8 @@ end
 local function Line (n)
 	local g = Paths.New (n)
 	for i = 1, n - 1 do
-		g:Step (i, i + 1, CELL)
-		g:Step (i + 1, i, CELL)
+		g:Step (i,     i + 1, CELL)
+		g:Step (i + 1, i,     CELL)
 	end
 	return g
 end
@@ -35,14 +35,14 @@ T.test ("the walk is from the nearest start, a path read off it, nil where it ne
 	Same (g:Tree ({ 1 }):Path (4), { 1, 2, 3, 4 })
 	local apart = Paths.New (3)
 	apart:Step (1, 2, CELL)
-	T.eq (apart:Tree ({ 1 }):Path (3), nil)
+	T.eq (apart:Tree ({ 1 }):Path (3),     nil)
 	T.eq (apart:Tree ({ 1 }):Distance (3), nil)
 end)
 
 T.test ("a step goes one way", function ()
 	local g = Line (5)
 	g:Step (1, 5, CELL)
-	Same (g:Tree ({ 1 }):Path (5), { 1, 5 }, "the drop")
+	Same (g:Tree ({ 1 }):Path (5), { 1, 5 },          "the drop")
 	Same (g:Tree ({ 5 }):Path (1), { 5, 4, 3, 2, 1 }, "no climbing it")
 end)
 
@@ -60,10 +60,10 @@ end)
 
 T.test ("a node out of the graph or a cost below nothing is the caller's mistake", function ()
 	local g = Paths.New (2)
-	T.eq (pcall (g.Step, g, 1, 3, 1), false)
+	T.eq (pcall (g.Step, g, 1, 3, 1),  false)
 	T.eq (pcall (g.Step, g, 1, 2, -1), false)
-	T.eq (pcall (g.Tree, g, { 0 }), false)
-	T.eq (#g, 2)
+	T.eq (pcall (g.Tree, g, { 0 }),    false)
+	T.eq (#g,                          2)
 end)
 
 -- 1 the spawn, 2 a hall, from it two ways: 3-4 and 5.
@@ -84,7 +84,7 @@ T.test ("a branch weighs the floor reached through it, and forks split into ways
 	Same (b.children [2], { 3, 5 })
 	T.eq (b.weight [1], 5)
 	T.eq (b.weight [3], 2)
-	Same (b.roots, { 1 })
+	Same (b.roots,                 { 1 })
 	Same (tree:Forks (FLOOR, 0.2), { 2 })
 	Same (tree:Forks (FLOOR, 0.3), {})
 end)

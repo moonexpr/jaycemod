@@ -35,8 +35,8 @@ local function Step (overrides)
 end
 
 T.test ("the limits are the engine NPC's: one step up or down, no more", function ()
-	T.eq (HL2.LIMITS.stepHeight, 18, "CAI_BaseNPC::StepHeight")
-	T.eq (HL2.LIMITS.jumpHeight, HL2.LIMITS.stepHeight, "no jumping")
+	T.eq (HL2.LIMITS.stepHeight,      18,                    "CAI_BaseNPC::StepHeight")
+	T.eq (HL2.LIMITS.jumpHeight,      HL2.LIMITS.stepHeight, "no jumping")
 	T.eq (HL2.LIMITS.deathDropHeight, HL2.LIMITS.stepHeight, "no dropping past a step")
 end)
 
@@ -62,14 +62,14 @@ T.test ("a soldier crouches and jumps through the areas a TF2 player would", fun
 	local limits = HL2.SOLDIER_LIMITS
 	local flat = HL2.Cost (Step (), limits, BOT)
 	T.eq (HL2.Cost (Step ({ attributes = HL2.NAV_MESH_CROUCH }), limits, BOT), flat, "crouch")
-	T.eq (HL2.Cost (Step ({ attributes = HL2.NAV_MESH_JUMP }), limits, BOT), flat, "jump")
+	T.eq (HL2.Cost (Step ({ attributes = HL2.NAV_MESH_JUMP }), limits, BOT),   flat, "jump")
 end)
 
 T.test ("a soldier must crouch in an area a TF2 player crouches through", function ()
-	T.eq (HL2.MustCrouch (HL2.NAV_MESH_CROUCH), true, "crouch")
-	T.eq (HL2.MustCrouch (HL2.NAV_MESH_CROUCH + 0x1000), true, "crouch, on stairs")
-	T.eq (HL2.MustCrouch (HL2.NAV_MESH_JUMP), false, "jump")
-	T.eq (HL2.MustCrouch (0), false, "open ground")
+	T.eq (HL2.MustCrouch (HL2.NAV_MESH_CROUCH),          true,  "crouch")
+	T.eq (HL2.MustCrouch (HL2.NAV_MESH_CROUCH + 0x1000), true,  "crouch, on stairs")
+	T.eq (HL2.MustCrouch (HL2.NAV_MESH_JUMP),            false, "jump")
+	T.eq (HL2.MustCrouch (0),                            false, "open ground")
 end)
 
 T.test ("flat ground costs what it costs a TF2 bot", function ()
@@ -78,16 +78,16 @@ T.test ("flat ground costs what it costs a TF2 bot", function ()
 end)
 
 T.test ("a climb or drop of a step height or more is a dead end", function ()
-	T.eq (HL2.Cost (Step ({ heightChange = 17 }), HL2.LIMITS, BOT), 140, "a step up")
-	T.eq (HL2.Cost (Step ({ heightChange = 18 }), HL2.LIMITS, BOT), Path.IMPASSABLE, "a ledge up")
-	T.eq (HL2.Cost (Step ({ heightChange = -18 }), HL2.LIMITS, BOT), 140, "a step down")
+	T.eq (HL2.Cost (Step ({ heightChange = 17 }), HL2.LIMITS, BOT),  140,             "a step up")
+	T.eq (HL2.Cost (Step ({ heightChange = 18 }), HL2.LIMITS, BOT),  Path.IMPASSABLE, "a ledge up")
+	T.eq (HL2.Cost (Step ({ heightChange = -18 }), HL2.LIMITS, BOT), 140,             "a step down")
 	T.eq (HL2.Cost (Step ({ heightChange = -19 }), HL2.LIMITS, BOT), Path.IMPASSABLE, "a ledge down")
 end)
 
 T.test ("areas a TF2 player must crouch or jump through are dead ends", function ()
 	T.eq (HL2.Cost (Step ({ attributes = HL2.NAV_MESH_CROUCH }), HL2.LIMITS, BOT), Path.IMPASSABLE, "crouch")
-	T.eq (HL2.Cost (Step ({ attributes = HL2.NAV_MESH_JUMP }), HL2.LIMITS, BOT), Path.IMPASSABLE, "jump")
-	T.eq (HL2.Cost (Step ({ attributes = 0x1000 }), HL2.LIMITS, BOT), 140, "stairs are fine")
+	T.eq (HL2.Cost (Step ({ attributes = HL2.NAV_MESH_JUMP }), HL2.LIMITS, BOT),   Path.IMPASSABLE, "jump")
+	T.eq (HL2.Cost (Step ({ attributes = 0x1000 }), HL2.LIMITS, BOT),              140,             "stairs are fine")
 end)
 
 T.finish ()

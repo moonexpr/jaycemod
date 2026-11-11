@@ -28,8 +28,8 @@ end
 T.test ("scenario: a timed grenade bounces about and detonates once when its fuse runs out", function ()
 	local clock = Fake.Clock (10)
 	local g = Throw ({ fuse = 2.5 }, clock:Now ())
-	T.eq (g:Gravity (), Grenade.GRAVITY, "a grenade falls")
-	T.eq (Grenade.GRAVITY > 0, true, "ballistic")
+	T.eq (g:Gravity (),        Grenade.GRAVITY, "a grenade falls")
+	T.eq (Grenade.GRAVITY > 0, true,            "ballistic")
 	local outcomes = {}
 	for step = 1, 20 do
 		clock:Advance (0.25) -- exact in binary, so the fuse ends on a step
@@ -39,8 +39,8 @@ T.test ("scenario: a timed grenade bounces about and detonates once when its fus
 		if o ~= NONE then outcomes [#outcomes + 1] = o .. "@" .. string.format ("%.2f", clock:Now ()) end
 	end
 	T.eq (table.concat (outcomes, " "), BOUNCE .. " " .. BOUNCE .. " " .. DETONATE .. "@12.50", "outcomes")
-	T.eq (g:IsFinished (), true, "finished")
-	T.eq (g:Touch (ENEMY), NONE, "nothing after detonating")
+	T.eq (g:IsFinished (),              true, "finished")
+	T.eq (g:Touch (ENEMY),              NONE, "nothing after detonating")
 end)
 
 T.test ("a grenade that explodes on touch does so on an enemy before it first hits the world", function ()
@@ -49,23 +49,23 @@ T.test ("a grenade that explodes on touch does so on an enemy before it first hi
 			fuse = 2,
 			explodeOnTouch = true
 		}, 0)
-	T.eq (g:Touch (FRIEND), BOUNCE, "a friend")
-	T.eq (g:Touch (ENEMY), DETONATE, "an enemy")
-	T.eq (g:Tick (5), NONE, "detonates once")
+	T.eq (g:Touch (FRIEND), BOUNCE,   "a friend")
+	T.eq (g:Touch (ENEMY),  DETONATE, "an enemy")
+	T.eq (g:Tick (5),       NONE,     "detonates once")
 	g = Throw (
 		{
 			fuse = 2,
 			explodeOnTouch = true
 		}, 0)
-	T.eq (g:Touch (WORLD), BOUNCE, "the world")
-	T.eq (g:Touch (ENEMY), BOUNCE, "an enemy after a bounce off the world")
-	T.eq (g:Tick (2), DETONATE, "the fuse still runs")
+	T.eq (g:Touch (WORLD), BOUNCE,   "the world")
+	T.eq (g:Touch (ENEMY), BOUNCE,   "an enemy after a bounce off the world")
+	T.eq (g:Tick (2),      DETONATE, "the fuse still runs")
 end)
 
 T.test ("a grenade without explodeOnTouch never detonates on touch", function ()
 	local g = Throw ({ fuse = 2 }, 0)
 	T.eq (g:Touch (ENEMY), BOUNCE, "enemy")
-	T.eq (g:Tick (1.99), NONE, "before the fuse")
+	T.eq (g:Tick (1.99),   NONE,   "before the fuse")
 end)
 
 T.test ("a projectile past its lifetime expires, unless its fuse ran out first", function ()
@@ -74,9 +74,9 @@ T.test ("a projectile past its lifetime expires, unless its fuse ran out first",
 			fuse = 10,
 			lifetime = 5
 		}, 0)
-	T.eq (g:Tick (4.9), NONE, "alive")
-	T.eq (g:Tick (5), EXPIRE, "expired")
-	T.eq (g:Tick (10), NONE, "once")
+	T.eq (g:Tick (4.9), NONE,   "alive")
+	T.eq (g:Tick (5),   EXPIRE, "expired")
+	T.eq (g:Tick (10),  NONE,   "once")
 	g = Throw (
 		{
 			fuse = 1,

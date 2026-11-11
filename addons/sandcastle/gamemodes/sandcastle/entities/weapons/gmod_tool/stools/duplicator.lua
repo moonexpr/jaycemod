@@ -179,8 +179,8 @@ function TOOL:RightClick (trace)
 	net.WriteVector (Dupe.Mins)
 	net.WriteVector (Dupe.Maxs)
 	net.WriteString ("#duplicator.dupe_unsaved")
-	net.WriteUInt (table.Count (Dupe.Entities), 24)
-	net.WriteUInt (0, 16)
+	net.WriteUInt (table.Count (Dupe.Entities),    24)
+	net.WriteUInt (0,                              16)
 	net.WriteUInt (table.Count (Dupe.Constraints), 24)
 	net.Send (self:GetOwner ())
 
@@ -375,7 +375,7 @@ if CLIENT then
 		ang.p = 0
 		ang.r = 0
 
-		render.DrawWireframeBox (pos, ang, self.CurrentDupeMins, self.CurrentDupeMaxs, color_red, false)
+		render.DrawWireframeBox (pos, ang, self.CurrentDupeMins, self.CurrentDupeMaxs, color_red,   false)
 		render.DrawWireframeBox (pos, ang, self.CurrentDupeMins, self.CurrentDupeMaxs, color_pulse, true)
 		-- render.DrawWireframeBox( pos, ang, Vector( -1, -1, -1 ), Vector( 1, 1, 1 ), color_red, true )
 

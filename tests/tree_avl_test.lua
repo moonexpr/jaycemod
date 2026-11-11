@@ -47,7 +47,7 @@ local CASES =
 	{ "any value comes back as it went in, and falls out when removed", function (Avl)
 		local tree, entry = Avl (), {}
 		tree:Insert (2.5, entry)
-		tree:Insert (-1, false)
+		tree:Insert (-1,  false)
 		local got, falsy = tree:Get (2.5) == entry, tree:Get (-1) == false
 		tree:Remove (2.5)
 		return { got, falsy, tostring (tree:Get (2.5)), tree:Size () }

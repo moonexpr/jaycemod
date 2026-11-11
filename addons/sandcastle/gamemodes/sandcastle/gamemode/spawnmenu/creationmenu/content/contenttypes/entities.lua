@@ -17,8 +17,8 @@ local function CreateEntityIcon (ent, propPanel)
 end
 
 list.Set ("ContentCategoryIcons", "Half-Life: Source", "games/16/hl1.png")
-list.Set ("ContentCategoryIcons", "Half-Life 2", "games/16/hl2.png")
-list.Set ("ContentCategoryIcons", "Portal", "games/16/portal.png")
+list.Set ("ContentCategoryIcons", "Half-Life 2",       "games/16/hl2.png")
+list.Set ("ContentCategoryIcons", "Portal",            "games/16/portal.png")
 
 hook.Add ("PopulateEntities", "AddEntityContent", function (pnlContent, tree, browseNode)
 

@@ -33,10 +33,10 @@ Say ("realm", SERVER and "server" or "client", "VERSION", VERSION, "BRANCH", BRA
 Say ("GM.FolderName", GAMEMODE.FolderName)
 
 Say ("--- gamemode files (include)")
-Source ("init.lua GM:PlayerSpawn", GAMEMODE.PlayerSpawn)
-Source ("shared.lua GM:StartCommand", GAMEMODE.StartCommand)
-Source ("shared.lua GM:CreateTeams", GAMEMODE.CreateTeams)
-Source ("ws/sh_core.lua WS.require", WS.require)
+Source ("init.lua GM:PlayerSpawn",      GAMEMODE.PlayerSpawn)
+Source ("shared.lua GM:StartCommand",   GAMEMODE.StartCommand)
+Source ("shared.lua GM:CreateTeams",    GAMEMODE.CreateTeams)
+Source ("ws/sh_core.lua WS.require",    WS.require)
 Source ("ws/sh_events.lua Events.Fire", WS.Events and WS.Events.Fire)
 
 Say ("--- foundation modules (CompileFile in WS.require)")
@@ -69,8 +69,8 @@ Source ("SWEP tf_weapon_spellbook." .. tostring (wkey), wfn)
 
 Say ("--- base gamemodes and GMod's own Lua")
 Source ("sandbox GM:PlayerSpawn (BaseClass)", GAMEMODE.BaseClass and GAMEMODE.BaseClass.PlayerSpawn)
-Source ("lua/includes hook.Add", hook.Add)
-Source ("lua/includes net.WriteEntity", net.WriteEntity)
+Source ("lua/includes hook.Add",              hook.Add)
+Source ("lua/includes net.WriteEntity",       net.WriteEntity)
 
 Say ("--- chunk names given by the loader functions")
 Source ("this probe (RunString name)", debug.getinfo (1, "f").func)
@@ -94,7 +94,7 @@ for _, p in ipairs (
 	ReadReport (p, "lsv")
 	ReadReport (p, "lcl")
 end
-ReadReport ("gamemodes/sandcastle/gamemode/shared.lua", "GAME")
+ReadReport ("gamemodes/sandcastle/gamemode/shared.lua",                   "GAME")
 ReadReport ("addons/sandcastle/gamemodes/sandcastle/gamemode/shared.lua", "GAME")
 ReadReport ("addons/sandcastle/gamemodes/sandcastle/gamemode/shared.lua", "MOD")
 

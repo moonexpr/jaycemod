@@ -61,7 +61,7 @@ local ANSWERS =
 		self.lastMen [e.team] = ply
 		WS.AddCondition (ply, C.OFFENSEBUFF, FOREVER)
 		WS.BroadcastText (UNASSIGNED, string.format (LAST_PLAYER, ply:Nick ()))
-		WS.BroadcastSoundscape (e.team, "Graveyard.LastManAlly")
+		WS.BroadcastSoundscape (e.team,              "Graveyard.LastManAlly")
 		WS.BroadcastSoundscape (WS.EnemyOf (e.team), "Graveyard.LastManEnemy")
 	end,
 	[Model.WIN] = function (self, e)
@@ -74,7 +74,7 @@ local ANSWERS =
 
 function Controller:Check ()
 	local living, members = self:Counts ()
-	SetGlobal2Int ("ws_graveyard_alive_" .. RED, living [RED])
+	SetGlobal2Int ("ws_graveyard_alive_" .. RED,  living [RED])
 	SetGlobal2Int ("ws_graveyard_alive_" .. BLUE, living [BLUE])
 	for _, event in ipairs (self.game:Check (living, members)) do ANSWERS [event.kind] (self, event) end
 end
@@ -151,7 +151,7 @@ end
 Controller.rounds:AddRoundListener (Rounds.PHASE_SPAWN, Rounds.LISTEN_LOGIC, function ()
 	local self = Controller
 	self.game, self.ghosts, self.lastMen = Model.New (), {}, {}
-	WS.Rules:Fire ("SetRedTeamRespawnWaveTime", "0")
+	WS.Rules:Fire ("SetRedTeamRespawnWaveTime",  "0")
 	WS.Rules:Fire ("SetBlueTeamRespawnWaveTime", "0")
 end)
 

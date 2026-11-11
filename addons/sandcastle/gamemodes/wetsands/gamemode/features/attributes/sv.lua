@@ -101,7 +101,7 @@ timer.Create (SYNC_TIMER, SYNC_INTERVAL, 0, function ()
 	for ply in pairs (Controller.byPlayer) do Controller:Sync (ply) end
 end)
 
-hook.Add ("PlayerSpawn", "ws_attributes_spawn_clear", function (ply) Controller:Clear (ply) end)
+hook.Add ("PlayerSpawn",     "ws_attributes_spawn_clear", function (ply) Controller:Clear (ply) end)
 hook.Add ("PostPlayerDeath", "ws_attributes_death_clear", function (ply) Controller:Clear (ply) end)
 
 return Controller

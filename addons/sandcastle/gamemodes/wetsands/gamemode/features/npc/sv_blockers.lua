@@ -357,7 +357,7 @@ end
 local function ForgetSpawnRooms ()
 	Controller.spawnRooms = nil
 end
-hook.Add ("PostCleanupMap", "ws_npc_spawn_rooms", ForgetSpawnRooms)
-hook.Add ("WSRoundActivate", "ws_npc_spawn_rooms", ForgetSpawnRooms)
-hook.Add ("WSRoundActive", "ws_npc_spawn_rooms", ForgetSpawnRooms)
+hook.Add ("PostCleanupMap",      "ws_npc_spawn_rooms", ForgetSpawnRooms)
+hook.Add ("WSRoundActivate",     "ws_npc_spawn_rooms", ForgetSpawnRooms)
+hook.Add ("WSRoundActive",       "ws_npc_spawn_rooms", ForgetSpawnRooms)
 hook.Add ("WSSpawnRoomsChanged", "ws_npc_spawn_rooms", ForgetSpawnRooms)

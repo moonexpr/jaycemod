@@ -11,11 +11,11 @@ local function P (x) return { x = x, y = 0, z = 0 } end
 local HOME, ZONE = P (0), P (1000)
 
 T.test ("a hostage's way along the track: from its home (0) to the zone (1)", function ()
-	T.eq (Hud.Progress (HOME, HOME, ZONE), 0, "at home")
-	T.eq (Hud.Progress (P (250), HOME, ZONE), 0.75 - 0.5, "a quarter of the way")
-	T.eq (Hud.Progress (ZONE, HOME, ZONE), 1, "at the zone")
-	T.eq (Hud.Progress (P (-500), HOME, ZONE), 0, "farther than home: home")
-	T.eq (Hud.Progress (P (5), P (0), P (0)), 1, "a home in the zone: there")
+	T.eq (Hud.Progress (HOME, HOME, ZONE),     0,          "at home")
+	T.eq (Hud.Progress (P (250), HOME, ZONE),  0.75 - 0.5, "a quarter of the way")
+	T.eq (Hud.Progress (ZONE, HOME, ZONE),     1,          "at the zone")
+	T.eq (Hud.Progress (P (-500), HOME, ZONE), 0,          "farther than home: home")
+	T.eq (Hud.Progress (P (5), P (0), P (0)),  1,          "a home in the zone: there")
 end)
 
 T.test ("each state has its tint; a rescued hostage sits at the car", function ()
@@ -29,10 +29,10 @@ T.test ("each state has its tint; a rescued hostage sits at the car", function (
 	)
 	local by = {}
 	for _, m in ipairs (markers) do by [m.tint] = m end
-	T.eq (by [Hud.HELD].at, 0, "held, at home")
+	T.eq (by [Hud.HELD].at,      0,   "held, at home")
 	T.eq (by [Hud.FOLLOWING].at, 0.4, "following, where it is")
-	T.eq (by [Hud.RESCUED].at, 1, "rescued, at the car")
-	T.eq (by [Hud.KILLED].at, 0.3, "killed, where it fell")
+	T.eq (by [Hud.RESCUED].at,   1,   "rescued, at the car")
+	T.eq (by [Hud.KILLED].at,    0.3, "killed, where it fell")
 end)
 
 T.test ("the markers furthest along are drawn last, on top", function ()

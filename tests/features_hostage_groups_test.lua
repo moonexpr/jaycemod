@@ -20,17 +20,17 @@ local OFFICE =
 
 T.test ("cs_office's four hostages are two groups of two", function ()
 	local groups = Groups.Cluster (OFFICE)
-	T.eq (#groups, 2, "groups")
+	T.eq (#groups,                            2,       "groups")
 	T.eq (table.concat (groups [1].ids, ","), "h1,h2", "the first group")
 	T.eq (table.concat (groups [2].ids, ","), "h3,h4", "the second group")
-	T.eq (groups [1].index, 1, "index 1")
-	T.eq (groups [2].index, 2, "index 2")
+	T.eq (groups [1].index,                   1,       "index 1")
+	T.eq (groups [2].index,                   2,       "index 2")
 end)
 
 T.test ("a group's centre is the middle of its hostages", function ()
 	local g = Groups.Cluster (OFFICE) [1]
 	T.near (g.center.x, 1764, 1e-6, "x")
-	T.near (g.center.y, 768, 1e-6, "y")
+	T.near (g.center.y, 768,  1e-6, "y")
 	T.near (g.center.z, -124, 1e-6, "z")
 end)
 
@@ -58,12 +58,12 @@ end)
 
 T.test ("a hostage is found in its group; an unknown one is the caller's mistake", function ()
 	local groups = Groups.Cluster (OFFICE)
-	T.eq (Groups.Of (groups, "h4").index, 2, "h4")
+	T.eq (Groups.Of (groups, "h4").index,      2,     "h4")
 	T.eq (pcall (Groups.Of, groups, "nobody"), false, "nobody")
 end)
 
 T.test ("no hostages, no groups; a hostage named twice is refused", function ()
-	T.eq (#Groups.Cluster ({}), 0, "none")
+	T.eq (#Groups.Cluster ({}),                               0,     "none")
 	T.eq (pcall (Groups.Cluster, { OFFICE [1], OFFICE [1] }), false, "twice")
 end)
 
@@ -132,14 +132,14 @@ T.test ("squads of other jobs are left without a group", function ()
 	local squads = { Squad (BLUE, "medic", 0) }
 	squads [1].group, squads [1].groupIndex, squads [1].groupKey = {}, 1, "stale"
 	Groups.Assign (squads, Groups.Cluster (OFFICE), JOBS)
-	T.eq (squads [1].group, nil, "no group")
+	T.eq (squads [1].group,      nil, "no group")
 	T.eq (squads [1].groupIndex, nil, "no index")
 end)
 
 T.test ("with no groups every squad is free of one", function ()
 	local squads = { Squad (RED, "ctf_defend", 0) }
 	Groups.Assign (squads, Groups.Cluster (OFFICE), JOBS)
-	Groups.Assign (squads, Groups.Cluster ({}), JOBS)
+	Groups.Assign (squads, Groups.Cluster ({}),     JOBS)
 	T.eq (squads [1].group, nil, "freed")
 end)
 

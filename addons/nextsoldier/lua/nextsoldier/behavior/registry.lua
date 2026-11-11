@@ -35,7 +35,7 @@ local function Check (ok, why)
 end
 
 function Registry:Register (spec)
-	Check (type (spec) == "table", "is a table")
+	Check (type (spec) == "table",                           "is a table")
 	Check (type (spec.name) == "string" and spec.name ~= "", "needs a name")
 	Check (type (spec.behavior) == "table" and Class.IsA (spec.behavior, Behavior.CHART.base),
 		"gives a behaviour that is a state of NextSoldier's chart")

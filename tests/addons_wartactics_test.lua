@@ -28,8 +28,8 @@ T.test ("every wartactics module the index publishes is the addon's", function (
 	for module in pairs (T.Published.global) do
 		if module:match ("^wartactics%.") then
 			count = count + 1
-			T.eq (T.Path (module), ADDON .. "lua/" .. module:gsub ("%.", "/") .. ".lua", module)
-			T.eq (Exists (T.Path (module)), true, T.Path (module))
+			T.eq (T.Path (module),          ADDON .. "lua/" .. module:gsub ("%.", "/") .. ".lua", module)
+			T.eq (Exists (T.Path (module)), true,                                                 T.Path (module))
 		end
 	end
 	T.eq (count > 0, true, "wartactics modules published")
@@ -54,7 +54,7 @@ T.test ("the addon reaches nothing of the war's feature", function ()
 	for _, path in ipairs (Lines ("find " .. ADDON .. "lua -name '*.lua'")) do
 		local source = assert (io.open (path)):read ("*a")
 		T.eq (source:find ('require%s*%("features%.'), nil, path .. " requires a feature")
-		T.eq (source:find ('require%s*%("ws%.'), nil, path .. " requires glue")
+		T.eq (source:find ('require%s*%("ws%.'),       nil, path .. " requires glue")
 	end
 end)
 
@@ -76,8 +76,8 @@ local function LoadsApart (tree, other, except)
 		end
 	end
 	_G [other] = kept
-	T.eq (table.concat (refused, "\n"), "", tree .. " modules read " .. other)
-	T.eq (count > 0, true, tree .. " modules published")
+	T.eq (table.concat (refused, "\n"), "",   tree .. " modules read " .. other)
+	T.eq (count > 0,                    true, tree .. " modules published")
 end
 
 T.test ("the tactics engine loads with NextSoldier out of reach, but for the bridge", function ()

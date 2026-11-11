@@ -14,10 +14,10 @@ end
 
 T.test ("unlocked, everyone spawns, respawns and picks a team", function ()
 	local m, ann = S.New (), { name = "ann" }
-	T.eq (m:LockedBy (), nil)
-	T.eq (m:MayChooseTeam (), true)
-	T.eq (m:Admit (ann), true)
-	T.eq (m:MayRespawn (ann), true)
+	T.eq (m:LockedBy (),                 nil)
+	T.eq (m:MayChooseTeam (),            true)
+	T.eq (m:Admit (ann),                 true)
+	T.eq (m:MayRespawn (ann),            true)
 	T.eq (Names (m:Spawnable ({ ann })), "ann")
 end)
 
@@ -25,12 +25,12 @@ T.test ("locked, nobody picks a team, spawns or respawns, and each is held", fun
 	local m = S.New ()
 	local ann, bob, cy = { name = "ann" }, { name = "bob" }, { name = "cy" }
 	m:Lock ("nav")
-	T.eq (m:LockedBy (), "nav")
+	T.eq (m:LockedBy (),      "nav")
 	T.eq (m:MayChooseTeam (), false)
-	T.eq (m:Admit (ann), false, "watches")
-	T.eq (m:MayRespawn (bob), false, "stays down")
-	T.eq (Names (m:Spawnable ({ cy })), "", "the wave brings nobody")
-	T.eq (Names (m:Unlock ("nav")), "ann,bob,cy", "all released, in the order held")
+	T.eq (m:Admit (ann),                false,        "watches")
+	T.eq (m:MayRespawn (bob),           false,        "stays down")
+	T.eq (Names (m:Spawnable ({ cy })), "",           "the wave brings nobody")
+	T.eq (Names (m:Unlock ("nav")),     "ann,bob,cy", "all released, in the order held")
 	T.eq (m:LockedBy (), nil)
 	T.eq (m:Admit (ann), true, "spawns again")
 end)
@@ -56,12 +56,12 @@ T.test ("a lock not in the vocabulary is our bug", function ()
 end)
 
 T.test ("why a player is not spawning, in TF2's words", function ()
-	T.eq (S.Message (S.WAVE, 4.2), "Respawn in: 5 seconds")
-	T.eq (S.Message (S.WAVE, 0.5), "Respawn in: 1 second")
-	T.eq (S.Message (S.WAVE, 0), "Prepare to respawn")
+	T.eq (S.Message (S.WAVE, 4.2),       "Respawn in: 5 seconds")
+	T.eq (S.Message (S.WAVE, 0.5),       "Respawn in: 1 second")
+	T.eq (S.Message (S.WAVE, 0),         "Prepare to respawn")
 	T.eq (S.Message (S.SUDDEN_DEATH, 0), "No respawning in Sudden Death")
-	T.eq (S.Message (S.ARENA, 0), "No respawning in Arena Mode")
-	T.eq (S.Message (S.NEXT_ROUND, 0), "Respawn in: Wait for next round")
+	T.eq (S.Message (S.ARENA, 0),        "No respawning in Arena Mode")
+	T.eq (S.Message (S.NEXT_ROUND, 0),   "Respawn in: Wait for next round")
 	T.eq (S.Message (S.NONE, 0), nil, "nothing to say")
 end)
 
@@ -80,7 +80,7 @@ T.test ("a player in play is held for nothing", function ()
 end)
 
 T.test ("a lock holds everyone out of play, in or out of team play", function ()
-	T.eq (S.Reason (Out ({ locked = true })), S.HELD, "dead")
+	T.eq (S.Reason (Out ({ locked = true })),                                                  S.HELD, "dead")
 	T.eq (S.Reason (Out ({ locked = true, teamPlay = false, playing = false, alive = true })), S.HELD, "watching in Sandbox")
 end)
 
@@ -92,7 +92,7 @@ end)
 
 T.test ("in team play, a spectator spectates and the teamless choose a team", function ()
 	T.eq (S.Reason (Out ({ spectator = true, playing = false, alive = true })), S.SPECTATING)
-	T.eq (S.Reason (Out ({ playing = false, alive = true })), S.CHOOSE_TEAM)
+	T.eq (S.Reason (Out ({ playing = false, alive = true })),                   S.CHOOSE_TEAM)
 end)
 
 T.test ("in team play, the dead wait as the round says, and a round with nothing to say holds none", function ()
@@ -100,11 +100,11 @@ T.test ("in team play, the dead wait as the round says, and a round with nothing
 		T.eq (S.Reason (Out ({ status = status })), status, status)
 	end
 	T.eq (S.Reason (Out ({ status = S.NONE })), S.NONE, "dead, nothing said")
-	T.eq (S.Reason (Out ({ alive = true })), S.NONE, "watching alive on a team")
+	T.eq (S.Reason (Out ({ alive = true })),    S.NONE, "watching alive on a team")
 end)
 
 T.test ("every reason a player is held has words", function ()
-	T.eq (S.Message (S.SPECTATING, 0), "Spectator mode")
+	T.eq (S.Message (S.SPECTATING, 0),  "Spectator mode")
 	T.eq (S.Message (S.CHOOSE_TEAM, 0), "Choose a team")
 end)
 

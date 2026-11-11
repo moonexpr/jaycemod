@@ -82,7 +82,7 @@ T.test ("a module runs again in place: every holder of its table sees the new fu
 	files [ROOT .. "fake/area.lua"] = "module(...) function Answer() return 2 end function Added() return 3 end"
 	commands.ws_hotswap_module (nil, nil, { "fake.area" })
 	T.eq (held.Answer (), 2, "the same table, the new function")
-	T.eq (held.Added (), 3, "and a new one")
+	T.eq (held.Added (),  3, "and a new one")
 end)
 
 T.test ("a feature's named methods are copied onto the live controller; its state and hooks are untouched", function ()
@@ -103,9 +103,9 @@ T.test ("a feature's named methods are copied onto the live controller; its stat
 	}
 	local commands, _, hooks = Load (files, { capture = live, rounds = {} })
 	commands.ws_hotswap_feature (nil, nil, { "capture", "Old" })
-	T.eq (live:Old (), "new live state", "the new method, on the live state")
-	T.eq (live:Kept (), "kept", "an unnamed method stays")
-	T.eq (hooks (), 0, "no hook added again")
+	T.eq (live:Old (),  "new live state", "the new method, on the live state")
+	T.eq (live:Kept (), "kept",           "an unnamed method stays")
+	T.eq (hooks (),     0,                "no hook added again")
 end)
 
 -- A split feature: the root declares the state and a Soldier port, and runs
@@ -164,9 +164,9 @@ T.test ("a swap reaches a method defined in a part, and the part's wiring is not
 	local live = SplitLive ()
 	local commands, _, hooks = Load (SplitFiles (), { capture = live })
 	commands.ws_hotswap_feature (nil, nil, { "capture", "Old" })
-	T.eq (live:Old (), "new 3", "the part's new method, on the live state")
-	T.eq (hooks (), 0, "the part's hook is not added again")
-	T.eq (commands.ws_area_print, nil, "the part's command is not registered again")
+	T.eq (live:Old (),            "new 3", "the part's new method, on the live state")
+	T.eq (hooks (),               0,       "the part's hook is not added again")
+	T.eq (commands.ws_area_print, nil,     "the part's command is not registered again")
 end)
 
 T.test ("a Table.Method name reaches every live instance of that table", function ()
@@ -181,19 +181,19 @@ T.test ("a name missing from the fresh side refuses the whole swap and is named"
 	local live = SplitLive ()
 	local commands, _, _, fake = Load (SplitFiles (), { capture = live })
 	commands.ws_hotswap_feature (nil, nil, { "capture", "Old", "Typo" })
-	T.eq (live:Old (), "old", "the valid name in the same call is not copied")
-	T.eq (live.Typo, nil, "nothing is set under the missing name")
-	T.eq (Contains (Said (fake), "Typo: missing"), true, "the caller is told the name and why")
-	T.eq (Contains (Said (fake), "swapped"), false, "nothing is reported swapped")
+	T.eq (live:Old (),                             "old", "the valid name in the same call is not copied")
+	T.eq (live.Typo,                               nil,   "nothing is set under the missing name")
+	T.eq (Contains (Said (fake), "Typo: missing"), true,  "the caller is told the name and why")
+	T.eq (Contains (Said (fake), "swapped"),       false, "nothing is reported swapped")
 end)
 
 T.test ("an unknown table refuses the whole swap and is named", function ()
 	local live = SplitLive ()
 	local commands, _, _, fake = Load (SplitFiles (), { capture = live })
 	commands.ws_hotswap_feature (nil, nil, { "capture", "Old", "Nope.Move" })
-	T.eq (live:Old (), "old", "the valid name in the same call is not copied")
-	T.eq (live.Nope, nil, "no table is made for the unknown name")
-	T.eq (Contains (Said (fake), "Nope.Move: not a table"), true, "the caller is told the name and why")
+	T.eq (live:Old (),                                      "old", "the valid name in the same call is not copied")
+	T.eq (live.Nope,                                        nil,   "no table is made for the unknown name")
+	T.eq (Contains (Said (fake), "Nope.Move: not a table"), true,  "the caller is told the name and why")
 end)
 
 T.test ("a part's listener is not rebound: the rerun makes no Listen call and the live listener stays", function ()
@@ -205,9 +205,9 @@ T.test ("a part's listener is not rebound: the rerun makes no Listen call and th
 	local original = function () end
 	fake.listeners ["x ws_x"] = original
 	commands.ws_hotswap_feature (nil, nil, { "capture", "Old" })
-	T.eq (fake.listens, 0, "no Listen call during the rerun")
+	T.eq (fake.listens,              0,        "no Listen call during the rerun")
 	T.eq (fake.listeners ["x ws_x"], original, "the live listener is the original")
-	T.eq (live:Old (), "new 3", "the swap still happened")
+	T.eq (live:Old (),               "new 3",  "the swap still happened")
 end)
 
 T.test ("a load-time alias of WS.Events is stubbed too, and Define still reaches the real Events", function ()
@@ -223,10 +223,10 @@ T.test ("a load-time alias of WS.Events is stubbed too, and Define still reaches
 	fake.listeners ["x ws_x"] = original
 	fake.listeners ["y ws_y"] = other
 	commands.ws_hotswap_feature (nil, nil, { "capture", "Old" })
-	T.eq (fake.listens, 0, "no Listen call during the rerun")
+	T.eq (fake.listens,              0,        "no Listen call during the rerun")
 	T.eq (fake.listeners ["x ws_x"], original, "the live listener is the original")
-	T.eq (fake.listeners ["y ws_y"], other, "Ignore removed nothing")
-	T.eq (fake.defines, 1, "Define reached the real Events")
+	T.eq (fake.listeners ["y ws_y"], other,    "Ignore removed nothing")
+	T.eq (fake.defines,              1,        "Define reached the real Events")
 end)
 
 T.test ("a method that reads only self swaps onto the live state", function ()
@@ -256,9 +256,9 @@ T.test ("a refused method refuses the whole swap: a safe name in the same call i
 	local live = SplitLive ()
 	local commands, _, _, fake = Load (SplitFiles (), { capture = live })
 	commands.ws_hotswap_feature (nil, nil, { "capture", "Size", "Report" })
-	T.eq (live:Size (), "old size", "the old Size stays")
-	T.eq (live:Report (), "old report", "the old Report stays")
-	T.eq (Contains (Said (fake), "Report: closes over the controller"), true, "the refused name is named")
+	T.eq (live:Size (),                                                 "old size",   "the old Size stays")
+	T.eq (live:Report (),                                               "old report", "the old Report stays")
+	T.eq (Contains (Said (fake), "Report: closes over the controller"), true,         "the refused name is named")
 end)
 
 T.test ("a port method that closes over the fresh port table is refused", function ()
@@ -284,7 +284,7 @@ T.test ("naming no methods lists the swappable and the refused ones and copies n
 	for key, value in pairs (before) do T.eq (live [key], value, "live " .. key .. " unchanged") end
 	for key in pairs (live) do T.eq (before [key] ~= nil, true, "no field added: " .. key) end
 	T.eq (live.Soldier.Move, soldierMove, "live Soldier.Move unchanged")
-	T.eq (hooks (), 0, "no hook added")
+	T.eq (hooks (),          0,           "no hook added")
 	local said = Said (fake)
 	-- one name a line: the console cuts a long line short
 	T.eq (Contains (said, "swappable:\n  Old\n  Size\n  Soldier.Move\n"), true, "the swappable list: " .. said)

@@ -2,4 +2,4 @@
 -- module, never a loop: docs/foundation-game-split-plan.md.
 Twin (_G, "transaction", require ("foundation.transaction"))
 Twin (_G, "configstore", require ("foundation.configstore"))
-Twin (_G, "nodegraph", require ("foundation.nodegraph"))
+Twin (_G, "nodegraph",   require ("foundation.nodegraph"))

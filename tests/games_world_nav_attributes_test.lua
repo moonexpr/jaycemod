@@ -7,8 +7,8 @@ local SENTRY, SNIPER, NO_SPAWNING = 0x400000, 0x200000, 0x2000000 -- tf_nav_area
 
 local function Fails (fn, says)
 	local ok, err = pcall (fn)
-	T.eq (ok, false, "refused: " .. says)
-	T.eq (tostring (err):find (says, 1, true) ~= nil, true, "says " .. says .. ": " .. tostring (err))
+	T.eq (ok,                                         false, "refused: " .. says)
+	T.eq (tostring (err):find (says, 1, true) ~= nil, true,  "says " .. says .. ": " .. tostring (err))
 end
 
 local function Joined (list) return table.concat (list, " ") end
@@ -40,27 +40,27 @@ end)
 
 T.test ("the areas with an attribute, in id order", function ()
 	local mesh = Attributes.Parse (Sidecar ({ "9 " .. SENTRY, "2 " .. SENTRY, "5 " .. SNIPER }))
-	T.eq (Joined (mesh:Areas ("SENTRY_SPOT")), "2 9")
+	T.eq (Joined (mesh:Areas ("SENTRY_SPOT")),   "2 9")
 	T.eq (Joined (mesh:Areas ("RESCUE_CLOSET")), "")
 end)
 
 T.test ("a map without a sidecar has an empty set", function ()
 	local mesh = Attributes.None ()
-	T.eq (mesh:Has (1, "SENTRY_SPOT"), false)
+	T.eq (mesh:Has (1, "SENTRY_SPOT"),         false)
 	T.eq (Joined (mesh:Areas ("SENTRY_SPOT")), "")
 end)
 
 T.test ("an unknown attribute name is our bug", function ()
 	local mesh = Attributes.None ()
-	Fails (function () mesh:Has (1, "SENTRY") end, "unknown")
+	Fails (function () mesh:Has (1, "SENTRY") end,     "unknown")
 	Fails (function () mesh:Areas ("sentry_spot") end, "unknown")
 end)
 
 T.test ("a file that is not a sidecar is refused", function ()
-	Fails (function () Attributes.Parse ("tfnav 2\n") end, "tfnav 1")
-	Fails (function () Attributes.Parse ("") end, "tfnav 1")
+	Fails (function () Attributes.Parse ("tfnav 2\n") end,       "tfnav 1")
+	Fails (function () Attributes.Parse ("") end,                "tfnav 1")
 	Fails (function () Attributes.Parse ("tfnav 1\n12 x\n") end, "line 2")
-	Fails (function () Attributes.Parse ("tfnav 1\n12\n") end, "line 2")
+	Fails (function () Attributes.Parse ("tfnav 1\n12\n") end,   "line 2")
 end)
 
 T.test ("an area's flags that are not TF2's persistent ones are refused", function ()

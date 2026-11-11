@@ -149,10 +149,10 @@ for _, entry in ipairs (MARKS) do MARK_OF [entry [1]] = entry end
 local UNMARK_REACH = 96
 
 if CLIENT then
-	language.Add ("tool.ns_pathfollower.name", "Path Follower")
-	language.Add ("tool.ns_pathfollower.desc", "Spawn path followers and drive them: a path, their legs, the AI war; or mark the map")
-	language.Add ("tool.ns_pathfollower.left", "Spawn a follower, or add/remove a follower (or, in Tactical, a soldier of the war) from your selection; annotating, place the annotation")
-	language.Add ("tool.ns_pathfollower.right", "Path: send the selection here. Local: give its squad the order here. Tactical: report an enemy contact here")
+	language.Add ("tool.ns_pathfollower.name",   "Path Follower")
+	language.Add ("tool.ns_pathfollower.desc",   "Spawn path followers and drive them: a path, their legs, the AI war; or mark the map")
+	language.Add ("tool.ns_pathfollower.left",   "Spawn a follower, or add/remove a follower (or, in Tactical, a soldier of the war) from your selection; annotating, place the annotation")
+	language.Add ("tool.ns_pathfollower.right",  "Path: send the selection here. Local: give its squad the order here. Tactical: report an enemy contact here")
 	language.Add ("tool.ns_pathfollower.reload", "Release your selection (dissolving its squad's order); annotating, remove the marks or piece here")
 
 	local YES_COLOR, NO_COLOR = Color (120, 255, 120), Color (255, 140, 140)
@@ -563,7 +563,7 @@ function TOOL.BuildCPanel (panel)
 	panel:CheckBox ("Show spacing (a ring its radius, pink with an arrow when a teammate pushes)", "ns_pathfollower_spacing")
 
 	panel:Help ("Tactical: the war's orders (a bench war, with no bots or waves, when none runs). A yellow cross is where its orders send a held soldier. Right-click reports an enemy contact at the aim to their squads.")
-	panel:CheckBox ("Lanes (uncheck: their squads go straight)", "ns_pathfollower_lanes")
+	panel:CheckBox ("Lanes (uncheck: their squads go straight)",     "ns_pathfollower_lanes")
 	panel:CheckBox ("Missions (uncheck: their squads ask for none)", "ns_pathfollower_missions")
 	panel:Button ("Form one squad of the selection", "ns_pathfollower_squad")
 	local jobs = panel:ComboBox ("Job")
@@ -571,7 +571,7 @@ function TOOL.BuildCPanel (panel)
 	for _, job in ipairs (JOBS) do jobs:AddChoice (job, job) end
 	function jobs:OnSelect (_, _, job) RunConsoleCommand ("ns_pathfollower_job", job) end
 	panel:Button ("Recall their squads to regroup", "ns_pathfollower_recall")
-	panel:Button ("Toggle the AI war's overlay", "ws_aiwar_debug")
+	panel:Button ("Toggle the AI war's overlay",    "ws_aiwar_debug")
 
 	panel:Help ("Annotate: left-click places, reload removes what is near the aim, for the team above. A mission is the selected squads'.")
 	local mark = panel:ComboBox ("Annotation", "ns_pathfollower_mark")

@@ -33,8 +33,8 @@ local function Targets (connections)
 end
 
 T.test ("the kinds are an enumeration", function ()
-	T.eq (KIND.SPAWN ~= KIND.SETUP and KIND.SETUP ~= KIND.ROUND, true, "apart")
-	T.eq (KIND [KIND.ROUND], "ROUND", "named")
+	T.eq (KIND.SPAWN ~= KIND.SETUP and KIND.SETUP ~= KIND.ROUND, true,    "apart")
+	T.eq (KIND [KIND.ROUND],                                     "ROUND", "named")
 end)
 
 T.test ("a spawn door is opened by the map's connection that opens it as play starts", function ()
@@ -107,8 +107,8 @@ end)
 
 T.test ("the map's last word on a trigger counts", function ()
 	local hold = Doors.Hold ({ "red_a" })
-	hold:MapInput ("red_a", "disable")
-	hold:MapInput ("red_a", "enable")
+	hold:MapInput ("red_a",  "disable")
+	hold:MapInput ("red_a",  "enable")
 	hold:MapInput ("blue_a", "enable")
 	hold:MapInput ("blue_a", "disable")
 	T.eq (table.concat (Sorted (hold:ToEnable ()), " "), "red_a")

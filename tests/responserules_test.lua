@@ -17,33 +17,33 @@ local function Speaker () return { memory = Response.Memory (), contexts = Respo
 
 T.test ("a criterion matches a word without regard to case", function ()
 	local c = Response.Criterion ("concept", "TLK_CART_STOP")
-	T.eq (c:Matches ("tlk_cart_stop"), true, "the same word")
+	T.eq (c:Matches ("tlk_cart_stop"),           true,  "the same word")
 	T.eq (c:Matches ("TLK_CART_MOVING_FORWARD"), false, "another")
-	T.eq (c:Matches (nil), false, "no value")
+	T.eq (c:Matches (nil),                       false, "no value")
 end)
 
 T.test ("a criterion compares numbers: above, at least, a range, not equal", function ()
-	T.eq (Response.Criterion ("randomnum", ">25"):Matches (26), true, "above")
-	T.eq (Response.Criterion ("randomnum", ">25"):Matches (25), false, "not above")
-	T.eq (Response.Criterion ("randomnum", "=>98"):Matches (98), true, "TF2's at least, written =>")
+	T.eq (Response.Criterion ("randomnum", ">25"):Matches (26),  true,  "above")
+	T.eq (Response.Criterion ("randomnum", ">25"):Matches (25),  false, "not above")
+	T.eq (Response.Criterion ("randomnum", "=>98"):Matches (98), true,  "TF2's at least, written =>")
 	T.eq (Response.Criterion ("randomnum", ">=98"):Matches (97), false, "under it")
 	local range = Response.Criterion ("health", ">10,<=50")
-	T.eq (range:Matches (50), true, "the top of the range")
-	T.eq (range:Matches (10), false, "below the range")
-	T.eq (Response.Criterion ("said", "!=1"):Matches (1), false, "equal")
-	T.eq (Response.Criterion ("said", "!=1"):Matches ("0"), true, "not equal")
+	T.eq (range:Matches (50),                               true,  "the top of the range")
+	T.eq (range:Matches (10),                               false, "below the range")
+	T.eq (Response.Criterion ("said", "!=1"):Matches (1),   false, "equal")
+	T.eq (Response.Criterion ("said", "!=1"):Matches ("0"), true,  "not equal")
 end)
 
 -- TF2's "not said yet" criteria rely on this: a key the speaker lacks is not
 -- 1, but neither is it 0.
 T.test ("a key the speaker lacks is no number, and is not equal to one", function ()
-	T.eq (Response.Criterion ("said", "!=1"):Matches (nil), true, "not equal")
-	T.eq (Response.Criterion ("said", "0"):Matches (nil), false, "not zero")
+	T.eq (Response.Criterion ("said", "!=1"):Matches (nil), true,  "not equal")
+	T.eq (Response.Criterion ("said", "0"):Matches (nil),   false, "not zero")
 end)
 
 T.test ("a criterion with no value to match is refused", function ()
 	T.eq (pcall (Response.Criterion, "concept", ""), false, "empty")
-	T.eq (pcall (Response.Criterion, "", "x"), false, "no key")
+	T.eq (pcall (Response.Criterion, "", "x"),       false, "no key")
 end)
 
 -- A system -------------------------------------------------------------------
@@ -83,8 +83,8 @@ end
 T.test ("the rule matching the most criteria answers", function ()
 	local system, speaker = Cart (), Speaker ()
 	local said = system:Speak (speaker, "TLK_CART_STOP", { teamrole = "offense", cartblocked = 1 }, First, 0)
-	T.eq (said.rule, "BlockedOffense", "blocked outscores a plain stop")
-	T.eq (said.response.kind, "print", "a print")
+	T.eq (said.rule,           "BlockedOffense",        "blocked outscores a plain stop")
+	T.eq (said.response.kind,  "print",                 "a print")
 	T.eq (said.response.value, "they cut the cart off", "its line")
 end)
 
@@ -131,7 +131,7 @@ T.test ("rules tied on score are picked among at random", function ()
 		}
 	)
 	T.eq (system:Speak (Speaker (), "TLK_A", {}, First, 0).rule, "A", "the first by name")
-	T.eq (system:Speak (Speaker (), "TLK_A", {}, Last, 0).rule, "B", "the last by name")
+	T.eq (system:Speak (Speaker (), "TLK_A", {}, Last, 0).rule,  "B", "the last by name")
 end)
 
 -- Contexts ---------------------------------------------------------------------
@@ -139,8 +139,8 @@ end)
 T.test ("a rule's context holds the speaker back until it expires", function ()
 	local system, speaker = Cart (), Speaker ()
 	local set = { teamrole = "offense" }
-	T.eq (system:Speak (speaker, "TLK_CART_STOP", set, First, 0).rule, "StopOffense", "said once")
-	T.eq (system:Speak (speaker, "TLK_CART_STOP", set, First, 19), nil, "not again within 20 s")
+	T.eq (system:Speak (speaker, "TLK_CART_STOP", set, First, 0).rule,  "StopOffense", "said once")
+	T.eq (system:Speak (speaker, "TLK_CART_STOP", set, First, 19),      nil,           "not again within 20 s")
 	T.eq (system:Speak (speaker, "TLK_CART_STOP", set, First, 20).rule, "StopOffense", "again once it expired")
 end)
 
@@ -158,7 +158,7 @@ T.test ("a context without a duration lasts", function ()
 end)
 
 T.test ("a malformed context is refused", function ()
-	T.eq (pcall (Response.Context, "nokey"), false, "no value")
+	T.eq (pcall (Response.Context, "nokey"),    false, "no value")
 	T.eq (pcall (Response.Context, "k:v:soon"), false, "a duration that is no number")
 end)
 
@@ -183,7 +183,7 @@ T.test ("a group says every line before it repeats one", function ()
 	local system, speaker = Lines ({ { "print", "a" }, { "print", "b" }, { "print", "c" } }), Speaker ()
 	local seen = {}
 	for _ = 1, 3 do seen [Said (system, speaker)] = true end
-	T.eq (seen.a and seen.b and seen.c, true, "all three in three")
+	T.eq (seen.a and seen.b and seen.c,  true, "all three in three")
 	T.eq (Said (system, speaker) ~= nil, true, "then it starts over")
 end)
 
@@ -221,7 +221,7 @@ T.test ("a response may name another group", function ()
 		}
 	)
 	local said = system:Speak (Speaker (), "TLK_A", {}, First, 0)
-	T.eq (said.response.kind, "speak", "the inner group's line")
+	T.eq (said.response.kind,  "speak",       "the inner group's line")
 	T.eq (said.response.value, "vo/line.wav", "its sound")
 end)
 
@@ -235,7 +235,7 @@ T.test ("a matchonce rule answers once", function ()
 	)
 	local speaker = Speaker ()
 	T.eq (system:Speak (speaker, "TLK_A", {}, First, 0) ~= nil, true, "once")
-	T.eq (system:Speak (speaker, "TLK_A", {}, First, 1), nil, "not again")
+	T.eq (system:Speak (speaker, "TLK_A", {}, First, 1),        nil,  "not again")
 end)
 
 -- Subcriteria, enumerations, group parameters ---------------------------------------
@@ -263,7 +263,7 @@ T.test ("a criterion of criteria scores the ones it holds", function ()
 		}
 	)
 	T.eq (system:Speak (Speaker (), "TLK_A", { y = 1 }, First, 0) ~= nil, true, "one of them")
-	T.eq (system:Speak (Speaker (), "TLK_A", {}, First, 0), nil, "none of them")
+	T.eq (system:Speak (Speaker (), "TLK_A", {}, First, 0),               nil,  "none of them")
 end)
 
 T.test ("a value may name an enumeration's member", function ()
@@ -279,7 +279,7 @@ T.test ("a value may name an enumeration's member", function ()
 		}
 	)
 	T.eq (system:Speak (Speaker (), "TLK_A", { npcstate = 3 }, First, 0) ~= nil, true, "the member's number")
-	T.eq (system:Speak (Speaker (), "TLK_A", { npcstate = 2 }, First, 0), nil, "another")
+	T.eq (system:Speak (Speaker (), "TLK_A", { npcstate = 2 }, First, 0),        nil,  "another")
 end)
 
 T.test ("an enumeration's member that is not defined is refused", function ()
@@ -295,7 +295,7 @@ T.test ("a rule may name several groups, one of which answers", function ()
 		}
 	)
 	T.eq (system:Speak (Speaker (), "TLK_A", {}, First, 0).response.value, "a", "the first")
-	T.eq (system:Speak (Speaker (), "TLK_A", {}, Last, 0).response.value, "b", "the last")
+	T.eq (system:Speak (Speaker (), "TLK_A", {}, Last, 0).response.value,  "b", "the last")
 end)
 
 T.test ("a rule's contexts may be several, comma separated", function ()
@@ -322,29 +322,29 @@ end
 T.test ("a group's odds may leave it silent", function ()
 	local system = Grouped ({ odds = 40 })
 	T.eq (system:Speak (Speaker (), "TLK_A", {}, function (n) if n then return 1 end return 0.39 end, 0) ~= nil, true, "within the odds")
-	T.eq (system:Speak (Speaker (), "TLK_A", {}, function (n) if n then return 1 end return 0.41 end, 0), nil, "past them")
+	T.eq (system:Speak (Speaker (), "TLK_A", {}, function (n) if n then return 1 end return 0.41 end, 0),        nil,  "past them")
 end)
 
 T.test ("a speakonce group says one line once", function ()
 	local system, speaker = Grouped ({ speakonce = true }), Speaker ()
 	T.eq (system:Speak (speaker, "TLK_A", {}, First, 0) ~= nil, true, "once")
-	T.eq (system:Speak (speaker, "TLK_A", {}, First, 100), nil, "never again")
+	T.eq (system:Speak (speaker, "TLK_A", {}, First, 100),      nil,  "never again")
 end)
 
 T.test ("a group with a respeakdelay waits it out", function ()
 	local system, speaker = Grouped ({ respeakdelay = { 10, 10 } }), Speaker ()
-	T.eq (system:Speak (speaker, "TLK_A", {}, First, 0) ~= nil, true, "once")
-	T.eq (system:Speak (speaker, "TLK_A", {}, First, 9), nil, "within the delay")
+	T.eq (system:Speak (speaker, "TLK_A", {}, First, 0) ~= nil,  true, "once")
+	T.eq (system:Speak (speaker, "TLK_A", {}, First, 9),         nil,  "within the delay")
 	T.eq (system:Speak (speaker, "TLK_A", {}, First, 10) ~= nil, true, "after it")
 end)
 
 T.test ("what is said carries its group's delay and sound level", function ()
 	local said = Grouped ({ delay = { 2.8, 3.2 }, soundlevel = "SNDLVL_95dB" }):Speak (Speaker (), "TLK_A", {}, First, 0)
-	T.eq (said.soundLevel, 95, "the level")
-	T.eq (said.delay, 2.8, "the delay, drawn from its interval")
+	T.eq (said.soundLevel, 95,  "the level")
+	T.eq (said.delay,      2.8, "the delay, drawn from its interval")
 	local plain = Grouped ({}):Speak (Speaker (), "TLK_A", {}, First, 0)
 	T.eq (plain.soundLevel, Response.SOUND_LEVELS.SNDLVL_TALKING, "talking, by default")
-	T.eq (plain.delay, 0, "no delay, by default")
+	T.eq (plain.delay,      0,                                    "no delay, by default")
 end)
 
 T.test ("a sound level the engine does not name is refused", function ()

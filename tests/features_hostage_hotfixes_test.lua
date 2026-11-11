@@ -8,19 +8,19 @@ T.test ("cs_office has its fix: the strip at the Terrorist spawn's exit is cut f
 	local links = Hotfixes.For ("cs_office")
 	T.eq (#links >= 1, true, "a link to cut")
 	for _, link in ipairs (links) do
-		T.eq (type (link.why), "string", "says why")
-		T.eq (type (link.a.x) == "number" and type (link.b.y) == "number", true, "named by positions")
+		T.eq (type (link.why),                                             "string", "says why")
+		T.eq (type (link.a.x) == "number" and type (link.b.y) == "number", true,     "named by positions")
 	end
 end)
 
 T.test ("a map with no fixes, and one that is not CS:S's, has none", function ()
 	T.eq (#Hotfixes.For ("cs_italy") >= 0, true, "a list")
-	T.eq (#Hotfixes.For ("gm_construct"), 0, "none")
+	T.eq (#Hotfixes.For ("gm_construct"),  0,    "none")
 end)
 
 T.test ("a fix finds its area by position, within a tolerance", function ()
 	local at = { x = 100, y = 100, z = 0 }
-	T.eq (Hotfixes.Near (at, { x = 110, y = 95, z = 3 }), true, "close")
+	T.eq (Hotfixes.Near (at, { x = 110, y = 95, z = 3 }),                           true,  "close")
 	T.eq (Hotfixes.Near (at, { x = 100 + Hotfixes.TOLERANCE + 1, y = 100, z = 0 }), false, "too far")
 end)
 
@@ -39,8 +39,8 @@ T.test ("cs_office's dumpster lids are listed one by one, each with why", functi
 	local areas = Hotfixes.Areas ("cs_office")
 	T.eq (#areas, 11, "eleven lid areas")
 	for _, area in ipairs (areas) do
-		T.eq (type (area.at.x) == "number" and type (area.at.z) == "number", true, "a position")
-		T.eq (type (area.why), "string", "why")
+		T.eq (type (area.at.x) == "number" and type (area.at.z) == "number", true,     "a position")
+		T.eq (type (area.why),                                               "string", "why")
 	end
 	T.eq (#Hotfixes.Areas ("gm_construct"), 0, "none elsewhere")
 end)

@@ -19,13 +19,13 @@ T.test ("a scalable image is nine pieces: fixed corners, stretched sides and mid
 	local pieces = Hud.Slices (10, 20, 100, 60, 64, 64, 16, 8)
 	T.eq (#pieces, 9, "nine")
 	local first, last = pieces [1], pieces [9]
-	T.eq (first.x, 10, "top left x")
-	T.eq (first.y, 20, "top left y")
-	T.eq (first.w, 8, "a corner's drawn width")
+	T.eq (first.x,                             10,   "top left x")
+	T.eq (first.y,                             20,   "top left y")
+	T.eq (first.w,                             8,    "a corner's drawn width")
 	T.eq (Near (first.u1, 16 / 64 - 0.5 / 64), true, "a corner's texture width, half a texel in")
-	T.eq (last.x + last.w, 110, "bottom right reaches the right")
-	T.eq (last.y + last.h, 80, "and the bottom")
-	T.eq (Near (last.u0, 48 / 64 + 0.5 / 64), true, "from the texture's last corner, half a texel in")
+	T.eq (last.x + last.w,                     110,  "bottom right reaches the right")
+	T.eq (last.y + last.h,                     80,   "and the bottom")
+	T.eq (Near (last.u0, 48 / 64 + 0.5 / 64),  true, "from the texture's last corner, half a texel in")
 	local middle = pieces [5]
 	T.eq (middle.w, 84, "the middle stretches across")
 	T.eq (middle.h, 44, "and down")
@@ -50,7 +50,7 @@ T.test ("a scalable image's pieces meet on whole pixels and sample only their ow
 		end
 	end
 	local half = 0.5 / 64
-	T.eq (Near (pieces [1].u0, half), true, "the first column half a texel in")
+	T.eq (Near (pieces [1].u0, half),           true, "the first column half a texel in")
 	T.eq (Near (pieces [1].u1, 16 / 64 - half), true, "and short of the next")
 	T.eq (Near (pieces [2].u0, 16 / 64 + half), true, "the middle from half a texel past the corner")
 end)
@@ -66,12 +66,12 @@ T.test ("the team scores sit centred above the timer, BLU left and RED right", f
 	local unit, centre, top = 2, 500, 100
 	local boxes = Hud.ScoreBoxes (centre, top, unit)
 	local blue, red = boxes [BLUE], boxes [RED]
-	T.eq (blue.x + blue.w < red.x, true, "BLU left of RED, a gap between")
-	T.eq (Near ((blue.x + red.x + red.w) / 2, centre), true, "centred")
-	T.eq (blue.y, top, "at the top of the row")
-	T.eq (blue.w, red.w, "the same width")
+	T.eq (blue.x + blue.w < red.x,                     true,  "BLU left of RED, a gap between")
+	T.eq (Near ((blue.x + red.x + red.w) / 2, centre), true,  "centred")
+	T.eq (blue.y,                                      top,   "at the top of the row")
+	T.eq (blue.w,                                      red.w, "the same width")
 	local timer = Hud.TimerPanel (centre, Hud.TimerTop (top, unit), unit)
-	T.eq (timer.bg.y >= blue.y + blue.h, true, "the timer below the scores")
+	T.eq (timer.bg.y >= blue.y + blue.h,              true, "the timer below the scores")
 	T.eq (Near (timer.bg.x + timer.bg.w / 2, centre), true, "the timer centred under them")
 end)
 
@@ -89,20 +89,20 @@ T.test ("the timer panel: the clock left of the pie, both in the background, the
 	T.eq (panel.pie.x > panel.value.x, true, "right of the clock")
 	T.eq (panel.pie.x + panel.pie.w <= panel.bg.x + panel.bg.w, true, "inside the background")
 	local box = panel.label.box
-	T.eq (box.x .. "," .. box.y .. " " .. box.w .. "x" .. box.h, "150,118 180x38", "the label's box at 10,43")
-	T.eq (box.y >= panel.bg.y + panel.bg.h, true, "under the background")
-	T.eq (panel.label.x, 240, "the label centred")
-	T.eq (panel.label.y, box.y + box.h / 2, "in its box")
+	T.eq (box.x .. "," .. box.y .. " " .. box.w .. "x" .. box.h, "150,118 180x38",  "the label's box at 10,43")
+	T.eq (box.y >= panel.bg.y + panel.bg.h,                      true,              "under the background")
+	T.eq (panel.label.x,                                         240,               "the label centred")
+	T.eq (panel.label.y,                                         box.y + box.h / 2, "in its box")
 end)
 
 -- CTFHudTimeStatus::OnThink: the pie shows the share of the timer's full
 -- length gone, none for a timer without one.
 T.test ("the pie's share is the time gone of the timer's full length", function ()
-	T.eq (Hud.TimerElapsed (45, 180), 0.75, "45 of 180 left")
-	T.eq (Hud.TimerElapsed (180, 180), 0, "none gone")
-	T.eq (Hud.TimerElapsed (30, 0), 0, "no full length: none")
-	T.eq (Hud.TimerElapsed (200, 180), 0, "never below none")
-	T.eq (Hud.TimerElapsed (-1, 180), 1, "nor above all")
+	T.eq (Hud.TimerElapsed (45, 180),  0.75, "45 of 180 left")
+	T.eq (Hud.TimerElapsed (180, 180), 0,    "none gone")
+	T.eq (Hud.TimerElapsed (30, 0),    0,    "no full length: none")
+	T.eq (Hud.TimerElapsed (200, 180), 0,    "never below none")
+	T.eq (Hud.TimerElapsed (-1, 180),  1,    "nor above all")
 end)
 
 -- CTFProgressBar::Paint: the whole image in the inactive colour, then the
@@ -114,15 +114,15 @@ T.test ("the pie's wedge runs clockwise from twelve o'clock to the time left, cu
 		for i, p in ipairs (wedge) do out [i] = string.format ("%.2f,%.2f", p.x, p.y) end
 		return table.concat (out, " ")
 	end
-	T.eq (#Hud.PieWedge (0), 0, "nothing left: no wedge")
-	T.eq (Points (Hud.PieWedge (0.25)), "0.50,0.50 0.50,0.00 1.00,0.00 1.00,0.50", "a quarter: to three o'clock")
+	T.eq (#Hud.PieWedge (0),             0, "nothing left: no wedge")
+	T.eq (Points (Hud.PieWedge (0.25)),  "0.50,0.50 0.50,0.00 1.00,0.00 1.00,0.50", "a quarter: to three o'clock")
 	T.eq (Points (Hud.PieWedge (0.125)), "0.50,0.50 0.50,0.00 1.00,0.00", "an eighth: to the corner")
-	T.eq (Points (Hud.PieWedge (0.5)), "0.50,0.50 0.50,0.00 1.00,0.00 1.00,1.00 0.50,1.00", "a half: to six")
-	T.eq (Points (Hud.PieWedge (1)), "0.50,0.50 0.50,0.00 1.00,0.00 1.00,1.00 0.00,1.00 0.00,0.00 0.50,0.00", "all: round to twelve")
+	T.eq (Points (Hud.PieWedge (0.5)),   "0.50,0.50 0.50,0.00 1.00,0.00 1.00,1.00 0.50,1.00", "a half: to six")
+	T.eq (Points (Hud.PieWedge (1)),     "0.50,0.50 0.50,0.00 1.00,0.00 1.00,1.00 0.00,1.00 0.00,0.00 0.50,0.00", "all: round to twelve")
 	local p = Hud.PieWedge (1 / 12) [3]
 	T.eq (string.format ("%.3f,%.3f", p.x, p.y), string.format ("%.3f,0.000", 0.5 + math.tan (math.pi / 6) / 2), "30 degrees on the top edge")
-	T.eq (Hud.PieColor (0.5), Hud.PIE_ACTIVE, "under 75% gone: active")
-	T.eq (Hud.PieColor (0.75), Hud.PIE_WARNING, "from 75%: the warning colour")
+	T.eq (Hud.PieColor (0.5),                    Hud.PIE_ACTIVE, "under 75% gone: active")
+	T.eq (Hud.PieColor (0.75),                   Hud.PIE_WARNING, "from 75%: the warning colour")
 end)
 
 -- hudobjectivekothtimepanel.res in hudlayout.res's HudKothTimeStatus (c-100,
@@ -131,11 +131,11 @@ end)
 T.test ("KOTH's clocks: BLU's left and RED's right of the centre, the active frame on the running one", function ()
 	local unit = 1
 	local clocks = Hud.KothPanels (320, 50, unit)
-	T.eq (clocks [BLUE].bg.x, 320 - 84, "BLU's background at c-84")
-	T.eq (clocks [RED].bg.x, 320 + 6, "RED's at c+6")
-	T.eq (clocks [BLUE].bg.y, 50, "on the timer row")
-	T.eq (Hud.KothActiveFrame (clocks, RED).x, clocks [RED].bg.x, "the frame over RED's")
-	T.eq (Hud.KothActiveFrame (clocks, BLUE).w, 78, "as big as a background")
+	T.eq (clocks [BLUE].bg.x,                   320 - 84,          "BLU's background at c-84")
+	T.eq (clocks [RED].bg.x,                    320 + 6,           "RED's at c+6")
+	T.eq (clocks [BLUE].bg.y,                   50,                "on the timer row")
+	T.eq (Hud.KothActiveFrame (clocks, RED).x,  clocks [RED].bg.x, "the frame over RED's")
+	T.eq (Hud.KothActiveFrame (clocks, BLUE).w, 78,                "as big as a background")
 end)
 
 -- The hill's lock at a koth round's start counts down on a timer panel of
@@ -145,7 +145,7 @@ T.test ("KOTH's setup timer hangs centred under the clocks, clear of them", func
 	local clocks = Hud.KothPanels (320, 50, unit)
 	local setup = Hud.TimerPanel (320, Hud.KothSetupTop (50, unit), unit)
 	T.eq (setup.bg.y > clocks [BLUE].bg.y + clocks [BLUE].bg.h, true, "below the clocks' backgrounds")
-	T.eq (setup.bg.x + setup.bg.w / 2, 320 + (Hud.TIMER_BG_X + Hud.TIMER_W / 2 - Hud.TIMER_PANEL_W / 2) * unit, "centred as the round timer is")
+	T.eq (setup.bg.x + setup.bg.w / 2,                          320 + (Hud.TIMER_BG_X + Hud.TIMER_W / 2 - Hud.TIMER_PANEL_W / 2) * unit, "centred as the round timer is")
 end)
 
 -- The objective HUDs stack from the foot of the screen, bottom first:
@@ -159,10 +159,10 @@ T.test ("the objectives stack frags, payload, points, then the flag, each clear 
 		flags = { bottom = 30, top = 140 }
 	}
 	local lifts = Hud.ObjectiveLifts (spans)
-	T.eq (lifts.frags, 0, "the lowest stays where it is")
-	T.eq (lifts.payload, nil, "absent")
+	T.eq (lifts.frags,                        0, "the lowest stays where it is")
+	T.eq (lifts.payload,                      nil, "absent")
 	T.eq (lifts.points + spans.points.bottom, spans.frags.top + Hud.OBJECTIVE_GAP, "the points just above the frags")
-	T.eq (lifts.flags + spans.flags.bottom, spans.points.top + lifts.points + Hud.OBJECTIVE_GAP, "the flag just above the points")
+	T.eq (lifts.flags + spans.flags.bottom,   spans.points.top + lifts.points + Hud.OBJECTIVE_GAP, "the flag just above the points")
 end)
 
 T.test ("an objective already clear of the one below stays put, and one alone is never lifted", function ()
@@ -184,7 +184,7 @@ T.test ("the respawn reasons' panel hangs under the label, as wide and as far of
 	for _, s in ipairs (SCREENS) do
 		local label = Hud.RespawnLabel (s [1], s [2])
 		local panel = Hud.RespawnReasons (s [1], s [2], 2).panel
-		T.eq (Near (panel.x, label.x) and Near (panel.w, label.w), true, "the label's left and width")
+		T.eq (Near (panel.x, label.x) and Near (panel.w, label.w),         true, "the label's left and width")
 		T.eq (Near (panel.y, label.y + label.h + Hud.REASONS_GAP * s [2]), true, "a gap under the label")
 	end
 	T.eq (Hud.REASONS_PANEL, "hud/color_panel_brown", "TFFatLineBorder's brown, apart from the label's thin line")
@@ -212,16 +212,16 @@ T.test ("the reasons stack down the panel, the seconds in a column before the wo
 		T.eq (line.seconds.y > panel.y and line.seconds.y < panel.y + panel.h, true, "inside the panel")
 		if i > 1 then
 			T.eq (Near (line.seconds.y - reasons.lines [i - 1].seconds.y, Hud.REASON_TALL * unit), true, "a line apart")
-			T.eq (Near (line.seconds.x, reasons.lines [1].seconds.x), true, "one column")
+			T.eq (Near (line.seconds.x, reasons.lines [1].seconds.x),                              true, "one column")
 		end
 	end
 	T.eq (Near (reasons.lines [1].seconds.y - panel.y, panel.y + panel.h - reasons.lines [3].seconds.y), true, "as much room above as below")
 end)
 
 T.test ("the timer's background is the local team's, BLU's for anyone else", function ()
-	T.eq (Hud.TimerBackground (RED), "hud/objectives_timepanel_red_bg", "RED's")
+	T.eq (Hud.TimerBackground (RED),  "hud/objectives_timepanel_red_bg",  "RED's")
 	T.eq (Hud.TimerBackground (BLUE), "hud/objectives_timepanel_blue_bg", "BLU's")
-	T.eq (Hud.TimerBackground (1), "hud/objectives_timepanel_blue_bg", "a spectator's")
+	T.eq (Hud.TimerBackground (1),    "hud/objectives_timepanel_blue_bg", "a spectator's")
 end)
 
 T.test ("the win panel: the scores over its border, coloured for the winner", function ()
@@ -249,19 +249,19 @@ end)
 -- its image.
 T.test ("the boss meter is centred, 42 down while you play and 90 while you watch", function ()
 	local playing = Hud.BossMeter (1280, 2, false, 1)
-	T.eq (playing.surround.x, 640 - 200, "centred: c-100")
-	T.eq (playing.surround.y, 84 - 22, "the border 11 above the panel's 42")
+	T.eq (playing.surround.x,                              640 - 200, "centred: c-100")
+	T.eq (playing.surround.y,                              84 - 22,   "the border 11 above the panel's 42")
 	T.eq (playing.surround.w .. "x" .. playing.surround.h, "400x102", "200x51")
-	T.eq (Hud.BossMeter (1280, 2, true, 1).surround.y, 180 - 22, "90 down while watching")
+	T.eq (Hud.BossMeter (1280, 2, true, 1).surround.y,     180 - 22,  "90 down while watching")
 end)
 
 T.test ("the boss meter's bar is cut to the health left, its image with it", function ()
 	local meter = Hud.BossMeter (1280, 2, false, 0.25)
 	T.eq (meter.bar.x, 640 - 200 + 30, "15 in")
-	T.eq (meter.bar.y, 84 + 20, "10 down")
+	T.eq (meter.bar.y, 84 + 20,        "10 down")
 	T.eq (meter.bar.w, 168 * 2 * 0.25, "a quarter of 168")
-	T.eq (meter.bar.h, 20, "10 tall")
-	T.eq (meter.u, 0.25, "a quarter of the image")
+	T.eq (meter.bar.h, 20,             "10 tall")
+	T.eq (meter.u,     0.25,           "a quarter of the image")
 	T.eq (Hud.BOSS_BAR, "hud/halloween_bar")
 end)
 

@@ -14,7 +14,7 @@ T.test ("a map with only TF2's team spawns is a players' map", function ()
 end)
 
 T.test ("a CS:S map, by its team spawns, is a players' map", function ()
-	T.eq (World.ClipFor ({ "info_player_terrorist" }), World.CLIP_PLAYER)
+	T.eq (World.ClipFor ({ "info_player_terrorist" }),        World.CLIP_PLAYER)
 	T.eq (World.ClipFor ({ "info_player_counterterrorist" }), World.CLIP_PLAYER)
 end)
 

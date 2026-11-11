@@ -53,7 +53,7 @@ end
 
 local texts = CombatText.New (Window ())
 local function Rebatch () texts = CombatText.New (Window ()) end
-cvars.AddChangeCallback (BATCHING:GetName (), Rebatch, "ws_hits")
+cvars.AddChangeCallback (BATCHING:GetName (),        Rebatch, "ws_hits")
 cvars.AddChangeCallback (BATCHING_WINDOW:GetName (), Rebatch, "ws_hits")
 
 -- The selected hit sound's files (HitSound.Files), resolved and precached
@@ -122,17 +122,17 @@ end
 local function BuildPanel (panel)
 	panel:ClearControls ()
 	panel:Help ("Damage numbers")
-	panel:CheckBox ("Show damage numbers", COMBAT_TEXT:GetName ())
+	panel:CheckBox ("Show damage numbers",             COMBAT_TEXT:GetName ())
 	panel:CheckBox ("Add up quick hits on one victim", BATCHING:GetName ())
 	panel:NumSlider ("Adding-up window (seconds)", BATCHING_WINDOW:GetName (), 0.1, 2, 2)
 	panel:Help ("Hit sounds")
 	panel:CheckBox ("Play a sound when I hit an enemy", DINGALING:GetName ())
 	local effect = panel:ComboBox ("Hit sound", EFFECT:GetName ())
 	for value = HitSound.EFFECTS:First (), HitSound.EFFECTS:Last () do effect:AddChoice (HitSound.Label (value), value) end
-	panel:NumSlider ("Volume", VOLUME:GetName (), 0, 1, 2)
-	panel:NumSlider ("Pitch at low damage", PITCH_LOW:GetName (), 1, 255, 0)
-	panel:NumSlider ("Pitch at high damage", PITCH_HIGH:GetName (), 1, 255, 0)
-	panel:NumSlider ("Least time between sounds", REPEAT_DELAY:GetName (), 0, 1, 2)
+	panel:NumSlider ("Volume",                    VOLUME:GetName (),       0, 1,   2)
+	panel:NumSlider ("Pitch at low damage",       PITCH_LOW:GetName (),    1, 255, 0)
+	panel:NumSlider ("Pitch at high damage",      PITCH_HIGH:GetName (),   1, 255, 0)
+	panel:NumSlider ("Least time between sounds", REPEAT_DELAY:GetName (), 0, 1,   2)
 	Help (panel, REPEAT_DELAY)
 	panel:TextEntry ("Custom sound file", WAV_OVERRIDE:GetName ())
 	Help (panel, WAV_OVERRIDE)

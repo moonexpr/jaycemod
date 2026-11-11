@@ -141,7 +141,7 @@ T.test ("a Task times out with its last progress", function ()
 	s.Watch.Task ("nav", { every = 1, timeout = 5, progress = function () return "generating" end, done = function () return false end })
 	s.Advance (10)
 	T.eq (s.lines [#s.lines], "5.00 nav timeout generating")
-	T.eq (#s.lines, 2)
+	T.eq (#s.lines,           2)
 end)
 
 T.test ("a Task whose function errors reports it and stops", function ()

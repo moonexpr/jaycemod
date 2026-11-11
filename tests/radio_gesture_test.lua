@@ -28,7 +28,7 @@ T.test ("a Combine soldier or a metrocop puts a hand to the ear, as GMod's gestu
 	local soldier, cop, state = Player ("models/player/combine_soldier.mdl"), Player ("models/player/police.mdl"), {}
 	GM:GrabEarAnimation (soldier, state)
 	GM:GrabEarAnimation (cop)
-	T.eq (#grabbed, 2)
+	T.eq (#grabbed,        2)
 	T.eq (grabbed [1].ply, soldier)
 	T.eq (grabbed [1].plyTable, state, "the player's table passed on")
 	T.eq (grabbed [2].ply, cop)

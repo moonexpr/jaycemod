@@ -221,7 +221,7 @@ end
 -- As a countdown opens, so it tells the game the layout makes; and as a game
 -- begins, for one whose countdown had none.
 hook.Add ("WSGameStarting", HOOK, Start)
-hook.Add ("MatchStart", HOOK, Start)
+hook.Add ("MatchStart",     HOOK, Start)
 
 local function Stop ()
 	SetPlaying (Controller, false)

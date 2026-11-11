@@ -238,9 +238,9 @@ function TOOL.BuildCPanel (CPanel)
 
 end
 
-list.Set ("HoverballModels", "models/dav0r/hoverball.mdl", {})
-list.Set ("HoverballModels", "models/maxofs2d/hover_basic.mdl", {})
-list.Set ("HoverballModels", "models/maxofs2d/hover_classic.mdl", {})
-list.Set ("HoverballModels", "models/maxofs2d/hover_plate.mdl", {})
+list.Set ("HoverballModels", "models/dav0r/hoverball.mdl",          {})
+list.Set ("HoverballModels", "models/maxofs2d/hover_basic.mdl",     {})
+list.Set ("HoverballModels", "models/maxofs2d/hover_classic.mdl",   {})
+list.Set ("HoverballModels", "models/maxofs2d/hover_plate.mdl",     {})
 list.Set ("HoverballModels", "models/maxofs2d/hover_propeller.mdl", {})
-list.Set ("HoverballModels", "models/maxofs2d/hover_rings.mdl", {})
+list.Set ("HoverballModels", "models/maxofs2d/hover_rings.mdl",     {})

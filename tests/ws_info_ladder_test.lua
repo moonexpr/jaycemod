@@ -15,7 +15,7 @@ local ladder = setmetatable ({}, { __index = base })
 Load (ENTITY_ROOT .. "info_ladder.lua", ladder)
 
 T.test ("info_ladder inherits the inert point behavior and keeps BSP bounds", function ()
-	T.eq (ladder.Type, "point", "entity type")
+	T.eq (ladder.Type, "point",          "entity type")
 	T.eq (ladder.Base, "ws_inert_point", "entity base")
 
 	local outputs = {}
@@ -37,10 +37,10 @@ T.test ("info_ladder inherits the inert point behavior and keeps BSP bounds", fu
 		entity:KeyValue (key, value)
 	end
 
-	T.eq (entity.wsKv ["mins.x"], "-16", "lower bound")
-	T.eq (entity.wsKv ["maxs.z"], "128", "upper bound")
-	T.eq (outputs.OnUser1, "target,Open,,0,-1", "map output")
-	T.eq (entity:UpdateTransmitState (), 7, "point entity is not transmitted")
+	T.eq (entity.wsKv ["mins.x"],        "-16",               "lower bound")
+	T.eq (entity.wsKv ["maxs.z"],        "128",               "upper bound")
+	T.eq (outputs.OnUser1,               "target,Open,,0,-1", "map output")
+	T.eq (entity:UpdateTransmitState (), 7,                   "point entity is not transmitted")
 end)
 
 T.finish ()

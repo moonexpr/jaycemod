@@ -38,7 +38,7 @@ end
 local classes, bases = Classes (fgd or "")
 
 T.test ("the FGD declares Sandcastle's own entities, and garrysmod.fgd's under them", function ()
-	T.eq (fgd ~= nil, true, "it exists")
+	T.eq (fgd ~= nil,                                            true, "it exists")
 	T.eq (fgd:find ('@include "garrysmod.fgd"', 1, true) ~= nil, true, "after garrysmod.fgd")
 	local names = {}
 	for _, class in ipairs (classes) do names [class.name] = true end
@@ -67,15 +67,15 @@ T.test ("every class it declares is an entity of the gamemode's, with what it sa
 			end
 		end
 		Check ("keyvalue", class.keys)
-		Check ("input", class.inputs)
-		Check ("output", class.outputs)
+		Check ("input",    class.inputs)
+		Check ("output",   class.outputs)
 		-- its own base classes' keys (TFTeam, RoomClass), not garrysmod.fgd's (Targetname, Angles...)
 		local function Bases (list)
 			for _, base in ipairs (list) do
 				local entry = bases [base]
 				if entry then
 					Check ("keyvalue of " .. base, entry.keys)
-					Check ("input of " .. base, entry.inputs)
+					Check ("input of " .. base,    entry.inputs)
 					Bases (entry.bases)
 				end
 			end

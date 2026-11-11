@@ -285,7 +285,7 @@ local function DrawBattleLine (line)
 		NeonLine (base, base + POST_HEIGHT, color)
 		local nextPoint = points [j + 1] or (line.closed and #points > 2 and points [1])
 		if nextPoint then
-			DashedLine (base, nextPoint + LINE_LIFT, rail)
+			DashedLine (base,                 nextPoint + LINE_LIFT,                 rail)
 			DashedLine (base + LINE_RAIL_GAP, nextPoint + LINE_LIFT + LINE_RAIL_GAP, rail)
 		end
 	end
@@ -314,7 +314,7 @@ local function DrawWar ()
 		for _, fireTeam in ipairs (war.teams) do
 			if IsValid (fireTeam.leader) then
 				local color = WAR_COLOR [fireTeam.team] or color_white
-				Ring (fireTeam.leader:GetPos () + GROUND_LIFT, LEADER_RING, RING_SEGMENTS, color)
+				Ring (fireTeam.leader:GetPos () + GROUND_LIFT, LEADER_RING,     RING_SEGMENTS, color)
 				Ring (fireTeam.leader:GetPos () + GROUND_LIFT, LEADER_RING + 4, RING_SEGMENTS, color)
 			end
 		end
@@ -502,7 +502,7 @@ local function DrawBox (box, rect)
 		surface.DrawLine (rect.left + rect.w / 2, rect.top + rect.h, anchor.x, anchor.y)
 	end
 	draw.RoundedBox (4, rect.left - 1, rect.top - 1, rect.w + 2, rect.h + 2, color)
-	draw.RoundedBox (4, rect.left, rect.top, rect.w, rect.h, BOX_BACKGROUND)
+	draw.RoundedBox (4, rect.left,     rect.top,     rect.w,     rect.h,     BOX_BACKGROUND)
 	local x, y = rect.left + BOX_PADDING, rect.top + BOX_PADDING
 	draw.SimpleText (box.heading, "WSNbDebugHeading", x, y, color)
 	y = y + box.headingHeight

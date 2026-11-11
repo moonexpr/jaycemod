@@ -47,7 +47,7 @@ end
 local clocks = {}
 
 local function Publish (id, clock)
-	SetGlobal2Float (END .. id, clock.paused and 0 or clock.endsAt)
+	SetGlobal2Float (END .. id,  clock.paused and 0 or clock.endsAt)
 	SetGlobal2Float (LEFT .. id, clock.paused and clock.left or NOT_PAUSED)
 end
 
@@ -63,7 +63,7 @@ end
 
 function Stop (id)
 	clocks [id] = nil
-	SetGlobal2Float (END .. id, 0)
+	SetGlobal2Float (END .. id,  0)
 	SetGlobal2Float (LEFT .. id, NOT_PAUSED)
 end
 

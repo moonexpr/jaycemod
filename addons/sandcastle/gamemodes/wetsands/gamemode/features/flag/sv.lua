@@ -55,7 +55,7 @@ function Controller:Rules ()
 end
 
 hook.Add ("FlagRules", HOOK, function () return Controller:Rules () end)
-hook.Add ("FlagTeam", HOOK, function (ent) return WS.TeamNumber (ent) end)
+hook.Add ("FlagTeam",  HOOK, function (ent) return WS.TeamNumber (ent) end)
 
 hook.Add ("FlagCarrierAlive", HOOK, function (ent)
 	if ent:IsPlayer () then return WS.IsAliveInGame (ent) end

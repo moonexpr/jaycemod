@@ -79,8 +79,8 @@ return function (t)
 			end
 		if not taken then break end
 	end
-	t:Info ("captures", steps)
-	t:Info ("points_at_end", Tests.DescribePoints (capture, BLUE))
+	t:Info ("captures",         steps)
+	t:Info ("points_at_end",    Tests.DescribePoints (capture, BLUE))
 	t:Info ("mini_round_stage", GetGlobal2Int ("ws_mini_round_stage", 0))
 	t:Check ("BLU wins the round", WS.State () == S.TEAM_WIN and Tests.Winner () == BLUE,
 		Tests.StateName (WS.State ()) .. ", winner " .. Tests.Winner ())

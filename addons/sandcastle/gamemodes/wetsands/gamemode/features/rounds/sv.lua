@@ -170,9 +170,9 @@ end
 local function PublishLimits ()
 	local now = CurTime ()
 	local limits = Controller.round:Limits (now)
-	SetGlobal2Int ("ws_match_winlimit", limits.winlimit)
-	SetGlobal2Int ("ws_match_maxrounds", limits.maxrounds)
-	SetGlobal2Int ("ws_match_timelimit", limits.timelimit)
+	SetGlobal2Int ("ws_match_winlimit",      limits.winlimit)
+	SetGlobal2Int ("ws_match_maxrounds",     limits.maxrounds)
+	SetGlobal2Int ("ws_match_timelimit",     limits.timelimit)
 	SetGlobal2Int ("ws_match_rounds_played", limits.roundsPlayed)
 	SetGlobal2Float ("ws_match_time_end", limits.timelimit > 0 and now + limits.timeLeft or 0)
 end
@@ -199,7 +199,7 @@ end
 local function PublishState ()
 	local round = Controller.round
 	SetGlobal2Bool ("ws_rounds_active", Active ())
-	SetGlobal2Int ("ws_round_state", round:State ())
+	SetGlobal2Int ("ws_round_state",    round:State ())
 	SetGlobal2Int ("ws_round_hud_type", round:Mode ().HUD)
 	PublishLimits ()
 end

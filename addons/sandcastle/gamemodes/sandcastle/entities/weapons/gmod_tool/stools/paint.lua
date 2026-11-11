@@ -97,12 +97,12 @@ function TOOL:RightClick (trace, bNoDelay)
 
 end
 
-game.AddDecal ("Eye", "decals/eye")
-game.AddDecal ("Dark", "decals/dark")
-game.AddDecal ("Smile", "decals/smile")
-game.AddDecal ("Light", "decals/light")
-game.AddDecal ("Cross", "decals/cross")
-game.AddDecal ("Nought", "decals/nought")
+game.AddDecal ("Eye",             "decals/eye")
+game.AddDecal ("Dark",            "decals/dark")
+game.AddDecal ("Smile",           "decals/smile")
+game.AddDecal ("Light",           "decals/light")
+game.AddDecal ("Cross",           "decals/cross")
+game.AddDecal ("Nought",          "decals/nought")
 game.AddDecal ("Noughtsncrosses", "decals/noughtsncrosses")
 
 list.Add ("PaintMaterials", "Eye")

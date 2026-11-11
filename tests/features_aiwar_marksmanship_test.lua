@@ -14,44 +14,44 @@ local function Angle (a, b)
 end
 
 T.test ("four levels, TF2's, normal by default", function ()
-	T.eq (M.EASY, 0, "easy")
-	T.eq (M.NORMAL, 1, "normal")
-	T.eq (M.HARD, 2, "hard")
-	T.eq (M.EXPERT, 3, "expert")
+	T.eq (M.EASY,    0,        "easy")
+	T.eq (M.NORMAL,  1,        "normal")
+	T.eq (M.HARD,    2,        "hard")
+	T.eq (M.EXPERT,  3,        "expert")
 	T.eq (M.DEFAULT, M.NORMAL, "normal by default")
 end)
 
 T.test ("expert shoots as the soldiers always have", function ()
 	local expert = M.For (M.EXPERT)
-	T.eq (expert.aimError, 0, "no aim error")
+	T.eq (expert.aimError,    0, "no aim error")
 	T.eq (expert.spreadScale, 1, "the gun's own spread")
-	T.eq (expert.reaction, 0, "no reaction time")
+	T.eq (expert.reaction,    0, "no reaction time")
 end)
 
 T.test ("each level down aims worse, spreads wider and reacts slower; normal greatly so", function ()
 	for level = M.EASY, M.HARD do
 		local this, harder = M.For (level), M.For (level + 1)
-		T.eq (this.aimError > harder.aimError, true, level .. ": more aim error")
+		T.eq (this.aimError > harder.aimError,       true, level .. ": more aim error")
 		T.eq (this.spreadScale > harder.spreadScale, true, level .. ": more spread")
-		T.eq (this.reaction > harder.reaction, true, level .. ": slower")
+		T.eq (this.reaction > harder.reaction,       true, level .. ": slower")
 	end
 	local normal = M.For (M.NORMAL)
 	T.eq (normal.spreadScale >= 2, true, "normal at least doubles the spread")
-	T.eq (normal.aimError >= 4, true, "and misses by degrees")
-	T.eq (normal.reaction >= 0.5, true, "and takes half a second to react")
+	T.eq (normal.aimError >= 4,    true, "and misses by degrees")
+	T.eq (normal.reaction >= 0.5,  true, "and takes half a second to react")
 end)
 
 T.test ("an unknown level is clamped to the nearest", function ()
-	T.eq (M.For (-4), M.For (M.EASY), "below easy")
-	T.eq (M.For (9), M.For (M.EXPERT), "above expert")
-	T.eq (M.For (1.6), M.For (M.HARD), "rounded")
+	T.eq (M.For (-4),  M.For (M.EASY),   "below easy")
+	T.eq (M.For (9),   M.For (M.EXPERT), "above expert")
+	T.eq (M.For (1.6), M.For (M.HARD),   "rounded")
 end)
 
 T.test ("aim error turns the shot within its cone, and no further", function ()
 	local dir = { x = 1, y = 0, z = 0 }
 	for _, r in ipairs ({ { 0, 0 }, { 1, 0.25 }, { 0.5, 0.5 }, { 1, 1 }, { 0.999, 0.75 } }) do
 		local aimed = M.Aim (dir, 6, r [1], r [2])
-		T.eq (Angle (dir, aimed) <= 6 + 1e-6, true, "within 6 degrees: " .. Angle (dir, aimed))
+		T.eq (Angle (dir, aimed) <= 6 + 1e-6,                true, "within 6 degrees: " .. Angle (dir, aimed))
 		T.eq (math.abs (Geometry.Length (aimed) - 1) < 1e-9, true, "a unit direction")
 	end
 	T.eq (Angle (dir, M.Aim (dir, 6, 1, 0)) > 5.9, true, "the cone's edge reached")

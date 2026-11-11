@@ -49,7 +49,7 @@ WS.HUD:Add ("player.spawn_message", WS.HUD_ORDER.OVERLAY, function ()
 	local h = ScrH ()
 	local unit = Hud.Unit (h)
 	if fontFor ~= unit then
-		surface.CreateFont (FONT, { font = Hud.FONT_SECONDARY, size = math.Round (Hud.RESPAWN_FONT_TALL * unit), weight = 500, antialias = true })
+		surface.CreateFont (FONT,        { font = Hud.FONT_SECONDARY, size = math.Round (Hud.RESPAWN_FONT_TALL * unit), weight = 500, antialias = true })
 		surface.CreateFont (REASON_FONT, { font = Hud.FONT_SECONDARY, size = math.Round (Hud.REASON_TALL * unit), weight = 500, antialias = true })
 		fontFor = unit
 	end

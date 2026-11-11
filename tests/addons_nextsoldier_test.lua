@@ -41,8 +41,8 @@ T.test ("every nextsoldier module the index publishes is the addon's", function 
 	for module in pairs (T.Published.global) do
 		if module:match ("^nextsoldier%.") then
 			count = count + 1
-			T.eq (T.Path (module), ADDON .. "lua/" .. module:gsub ("%.", "/") .. ".lua", module)
-			T.eq (Exists (T.Path (module)), true, T.Path (module))
+			T.eq (T.Path (module),          ADDON .. "lua/" .. module:gsub ("%.", "/") .. ".lua", module)
+			T.eq (Exists (T.Path (module)), true,                                                 T.Path (module))
 		end
 	end
 	T.eq (count > 0, true, "nextsoldier modules published")
@@ -59,10 +59,10 @@ end)
 
 T.test ("the soldier's base is the addon's; the gamemode's actors and combatants are the gamemode's", function ()
 	local GAMEMODE_ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
-	T.eq (Exists (ADDON .. "lua/entities/base_nextsoldier.lua"), true, "the base in the addon")
-	T.eq (Exists (GAMEMODE_ENTITIES .. "base_nextsoldier.lua"), false, "the base out of the gamemode")
+	T.eq (Exists (ADDON .. "lua/entities/base_nextsoldier.lua"), true,  "the base in the addon")
+	T.eq (Exists (GAMEMODE_ENTITIES .. "base_nextsoldier.lua"),  false, "the base out of the gamemode")
 	for _, class in ipairs (GAMEMODE_BASES) do
-		T.eq (Exists (GAMEMODE_ENTITIES .. class .. ".lua"), true, class .. " in the gamemode")
+		T.eq (Exists (GAMEMODE_ENTITIES .. class .. ".lua"),        true,  class .. " in the gamemode")
 		T.eq (Exists (ADDON .. "lua/entities/" .. class .. ".lua"), false, class .. " out of the addon")
 	end
 end)
@@ -81,7 +81,7 @@ end
 T.test ("NextSoldier reads nothing of the gamemode, whose host hands it what it needs", function ()
 	for _, path in ipairs (Lines ("find " .. ADDON .. "lua/nextsoldier " .. ADDON .. "lua/entities -name '*.lua'")) do
 		local code = Code (path)
-		T.eq (code:find ("%f[%w_]WS%f[^%w_]"), nil, path .. " reads WS")
+		T.eq (code:find ("%f[%w_]WS%f[^%w_]"),       nil, path .. " reads WS")
 		T.eq (code:find ("%f[%w_]GAMEMODE%f[^%w_]"), nil, path .. " reads GAMEMODE")
 		for _, used in ipairs (T.Uses (code)) do
 			T.eq (used:match ("^games%.") or used:match ("^features%.") or used:match ("^includes%."), nil,
@@ -92,8 +92,8 @@ end)
 
 T.test ("NextSoldier loads by plain includes, a line a file, each its own module's name", function ()
 	local init = Code (T.File ("nextsoldier/sh_init.lua"))
-	T.eq (init:find ("Defer", 1, true), nil, "no Defer")
-	T.eq (init:find ("Namespace", 1, true), nil, "no Namespace")
+	T.eq (init:find ("Defer", 1, true),                                               nil, "no Defer")
+	T.eq (init:find ("Namespace", 1, true),                                           nil, "no Namespace")
 	T.eq (Code (T.ROOT .. "shared_loader.lua"):find ('Index("nextsoldier/', 1, true), nil, "not an Index of the gamemode's")
 
 	local lines, order = {}, {}
@@ -118,7 +118,7 @@ T.test ("the collections are the addon's only exports, each file a part at its p
 	for key in pairs (nextsoldier) do keys [#keys + 1] = key end
 	table.sort (keys)
 	T.eq (table.concat (keys, ","), "base,behavior,body,bots,host,locomotion,senses,squad,world")
-	T.eq (nextsoldier.world.doors, package.loaded ["nextsoldier.world.doors"], "a part is its module")
+	T.eq (nextsoldier.world.doors,             package.loaded ["nextsoldier.world.doors"], "a part is its module")
 	T.eq (type (nextsoldier.world.BrushSweep), "function", "a single export is a function of its collection")
 end)
 
@@ -129,7 +129,7 @@ T.test ("a host is held to the port before a soldier reads it", function ()
 	local host = {}
 	for _, method in ipairs (Host.PORT:Methods ()) do host [method] = function () end end
 	T.eq (Host.Install (host), host)
-	T.eq (Host.current, host)
+	T.eq (Host.current,        host)
 	Host.current = kept
 end)
 
@@ -165,7 +165,7 @@ end)
 T.test ("a path's climb lands past the ledge's foot, and plans its path again from there", function ()
 	local base = Code (ADDON .. "lua/entities/base_nextsoldier.lua")
 	T.eq (base:find ("Leap.Landing(after, pos, goal.type == CLIMB_UP)", 1, true) ~= nil, true, "where it lands")
-	T.eq (base:find ("end, ledge, function() PathAgain(self) end)", 1, true) ~= nil, true, "its path planned again")
+	T.eq (base:find ("end, ledge, function() PathAgain(self) end)", 1, true) ~= nil,     true, "its path planned again")
 end)
 
 T.test ("a rappel shows a rope and sounds, for as long as it lasts", function ()

@@ -25,7 +25,7 @@ T.test ("a stopped game is Sandbox mode, even with an AI war set up", function (
 end)
 
 T.test ("running rounds are Gameplay mode, or the AI war's or the arena's", function ()
-	T.eq (PlayMode.Of (Facts ()), PlayMode.GAMEPLAY)
+	T.eq (PlayMode.Of (Facts ()),                 PlayMode.GAMEPLAY)
 	T.eq (PlayMode.Of (Facts ({ aiwar = true })), PlayMode.AIWAR)
 	T.eq (PlayMode.Of (Facts ({ arena = true })), PlayMode.ARENA)
 	T.eq (PlayMode.Of (Facts ({ aiwar = true, arena = true })), PlayMode.AIWAR, "the AI war names the mode first")

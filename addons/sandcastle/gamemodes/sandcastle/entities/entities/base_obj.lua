@@ -25,8 +25,8 @@ local SKINS = { [TEAM_RED] = 0, [TEAM_BLUE] = 1 }
 local FLOOR_CLEAR = 2
 
 function ENT:SetupDataTables ()
-	self:NetworkVar ("Int", 0, "ObjTeam")
-	self:NetworkVar ("Float", 0, "BuiltAt")
+	self:NetworkVar ("Int",    0, "ObjTeam")
+	self:NetworkVar ("Float",  0, "BuiltAt")
 	self:NetworkVar ("Entity", 0, "Builder")
 	self:ObjDataTables ()
 end

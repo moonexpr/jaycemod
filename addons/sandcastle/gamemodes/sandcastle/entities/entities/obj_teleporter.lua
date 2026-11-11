@@ -20,9 +20,9 @@ local PAD_MINS, PAD_MAXS = Vector (-24, -24, 0), Vector (24, 24, 24)
 local ARRIVE_UP = Vector (0, 0, 16)
 
 function ENT:ObjDataTables ()
-	self:NetworkVar ("Bool", 0, "IsExit")
+	self:NetworkVar ("Bool",   0, "IsExit")
 	self:NetworkVar ("Entity", 1, "Partner")
-	self:NetworkVar ("Float", 1, "LastTrip")
+	self:NetworkVar ("Float",  1, "LastTrip")
 end
 
 -- The pair, as a builder sets it up: this the entrance, exit its exit.

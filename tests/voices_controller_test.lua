@@ -55,7 +55,7 @@ T.test ("in a war, a player on no team keeps the engine's voice", function ()
 	for _, team in ipairs ({ Teams.UNASSIGNED, Teams.SPECTATOR }) do
 		local ply = Player (team)
 		hooks.PlayerHurt (ply, nil, 50, 10)
-		T.eq (#ply.sounds, 0, "no cry, team " .. team)
+		T.eq (#ply.sounds,                  0,   "no cry, team " .. team)
 		T.eq (hooks.PlayerDeathSound (ply), nil, "the engine's death sound, team " .. team)
 	end
 end)

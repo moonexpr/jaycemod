@@ -11,17 +11,17 @@ end
 
 T.test ("a box alone sits centred on its anchor, above it", function ()
 	local placed = Overlay.Layout ({ Box (100, 200, 40, 30) })
-	T.eq (placed [1].left, 80, "centred")
-	T.eq (placed [1].top, 170, "above the anchor")
+	T.eq (placed [1].left,  80,    "centred")
+	T.eq (placed [1].top,   170,   "above the anchor")
 	T.eq (placed [1].moved, false, "where it belongs")
 end)
 
 T.test ("a box that would cover one placed before it moves up above it", function ()
 	local placed = Overlay.Layout ({ Box (100, 200, 40, 30), Box (110, 205, 40, 30) })
-	T.eq (Overlaps (placed [1], placed [2]), false, "apart")
-	T.eq (placed [2].top, 170 - Overlay.GAP - 30, "just above the first")
-	T.eq (placed [2].moved, true, "marked as moved")
-	T.eq (placed [1].moved, false, "the first stays")
+	T.eq (Overlaps (placed [1], placed [2]), false,                  "apart")
+	T.eq (placed [2].top,                    170 - Overlay.GAP - 30, "just above the first")
+	T.eq (placed [2].moved,                  true,                   "marked as moved")
+	T.eq (placed [1].moved,                  false,                  "the first stays")
 end)
 
 T.test ("a pile of boxes on one spot becomes a column with none overlapping", function ()

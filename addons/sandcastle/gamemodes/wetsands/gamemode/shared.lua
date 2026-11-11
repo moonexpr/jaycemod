@@ -99,9 +99,9 @@ Include ("player_class/player_spectator.lua")
 -- TF2's team numbers (1 spectator, 2 RED, 3 BLU); GMod reserves only 0, 1001 and 1002.
 function GM:CreateTeams ()
 	BaseClass.CreateTeams (self)
-	team.SetUp (WS.TEAM_SPECTATOR, "Spectator", Color (200, 200, 200), true)
-	team.SetUp (WS.TEAM_RED, "RED", WS.TeamColor [WS.TEAM_RED], false)
-	team.SetUp (WS.TEAM_BLUE, "BLU", WS.TeamColor [WS.TEAM_BLUE], false)
+	team.SetUp (WS.TEAM_SPECTATOR, "Spectator", Color (200, 200, 200),       true)
+	team.SetUp (WS.TEAM_RED,       "RED",       WS.TeamColor [WS.TEAM_RED],  false)
+	team.SetUp (WS.TEAM_BLUE,      "BLU",       WS.TeamColor [WS.TEAM_BLUE], false)
 end
 
 -- Neither Sandbox nor base defines StartCommand, so there is nothing to defer to.

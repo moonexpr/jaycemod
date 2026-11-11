@@ -14,8 +14,8 @@ local function Valid (fields)
 end
 
 T.test ("the tuning is defined", function ()
-	T.defined (Mission.WAIT_MAX, "WAIT_MAX")
-	T.defined (Mission.STUCK_TIME, "STUCK_TIME")
+	T.defined (Mission.WAIT_MAX,      "WAIT_MAX")
+	T.defined (Mission.STUCK_TIME,    "STUCK_TIME")
 	T.defined (Mission.PROGRESS_STEP, "PROGRESS_STEP")
 	T.eq (Mission.CASUALTY_SHARE, 0.5, "heavy casualties: half the squad (settled with the operator)")
 end)
@@ -24,18 +24,18 @@ T.test ("a mission holds its kind, way, size, wait and when it was issued", func
 	local m = Mission.New (Valid ())
 	T.eq (m.alpha, false, "no alpha unless made one")
 	T.eq (Mission.New (Valid ({ alpha = true })).alpha, true)
-	T.eq (m.kind, Mission.ADVANCE)
-	T.eq (m.way, WAY)
-	T.eq (m.size, 4)
-	T.eq (m.wait, 10)
-	T.eq (m.issued, 100)
+	T.eq (m.kind,                                       Mission.ADVANCE)
+	T.eq (m.way,                                        WAY)
+	T.eq (m.size,                                       4)
+	T.eq (m.wait,                                       10)
+	T.eq (m.issued,                                     100)
 end)
 
 T.test ("a mission is refused an unknown kind, an empty way, a size under 1 or a negative wait", function ()
-	T.eq (pcall (Mission.New, Valid ({ kind = "picnic" })), false, "kind")
+	T.eq (pcall (Mission.New, Valid ({ kind = "picnic" })),                        false, "kind")
 	T.eq (pcall (Mission.New, Valid ({ way = { kind = "direct", points = {} } })), false, "way")
-	T.eq (pcall (Mission.New, Valid ({ size = 0 })), false, "size")
-	T.eq (pcall (Mission.New, Valid ({ wait = -1 })), false, "wait")
+	T.eq (pcall (Mission.New, Valid ({ size = 0 })),                               false, "size")
+	T.eq (pcall (Mission.New, Valid ({ wait = -1 })),                              false, "wait")
 end)
 
 T.test ("a mission cannot be changed once made", function ()
@@ -46,7 +46,7 @@ end)
 T.test ("the leader waits until the wait is over", function ()
 	local m = Mission.New (Valid ())
 	T.eq (Mission.Waited (m, 109.9), false)
-	T.eq (Mission.Waited (m, 110), true)
+	T.eq (Mission.Waited (m, 110),   true)
 end)
 
 T.test ("no one missing: no wait", function ()
@@ -87,7 +87,7 @@ end)
 T.test ("a squad no PROGRESS_STEP nearer in STUCK_TIME is stuck", function ()
 	local track = Mission.Track (1000, 0)
 	T.eq (track:Stuck (1000 - Mission.PROGRESS_STEP / 2, Mission.STUCK_TIME - 0.1), false, "not yet")
-	T.eq (track:Stuck (1000 - Mission.PROGRESS_STEP / 2, Mission.STUCK_TIME), true, "inching is not progress")
+	T.eq (track:Stuck (1000 - Mission.PROGRESS_STEP / 2, Mission.STUCK_TIME),       true,  "inching is not progress")
 end)
 
 T.test ("progress made resets the clock", function ()
@@ -109,7 +109,7 @@ end
 
 T.test ("heavy casualties call a regroup, even in a fight", function ()
 	T.eq (Judge ({ alive = 2, fighting = true }), Mission.CASUALTIES)
-	T.eq (Judge ({ alive = 3 }), nil)
+	T.eq (Judge ({ alive = 3 }),                  nil)
 end)
 
 T.test ("no progress along the way calls a regroup", function ()
@@ -137,7 +137,7 @@ T.test ("a squad recalled to regroup leads no more and musters afresh, keeping i
 	T.eq (squad.missionLed, nil)
 	T.eq (squad.musterAt, nil, "a hiding spot to find")
 	T.eq (squad.musterArrived, nil)
-	T.eq (squad.missionTrack, nil)
+	T.eq (squad.missionTrack,  nil)
 	T.eq (squad.mission, m, "kept meanwhile")
 end)
 
@@ -163,9 +163,9 @@ local ROOM = { id = 7, center = { x = 800, y = 0, z = 0 },
 
 T.test ("a mission's target in a room is its door toward where the squad comes from", function ()
 	local target = Mission.Target (ROOM, { x = 0, y = 0, z = 0 })
-	T.eq (target.room, 7, "the room")
-	T.eq (target.pos, ROOM.center, "its centre")
-	T.eq (target.door, ROOM.doors [1], "the near door")
+	T.eq (target.room,                                            7,              "the room")
+	T.eq (target.pos,                                             ROOM.center,    "its centre")
+	T.eq (target.door,                                            ROOM.doors [1], "the near door")
 	T.eq (Mission.Target (ROOM, { x = 2000, y = 0, z = 0 }).door, ROOM.doors [2], "from the far side, the far door")
 end)
 
@@ -174,15 +174,15 @@ T.test ("a mission given by hand is issued as given, on the squad's way", functi
 	local squad = { team = 2, role = "escort" }
 	local target = Mission.Target (ROOM, { x = 0, y = 0, z = 0 })
 	local m = Ask (squad, { squad }, lanes, { given = { kind = Mission.ASSAULT, target = target } })
-	T.eq (m.kind, Mission.ASSAULT, "its kind")
-	T.eq (m.target, target, "its target")
-	T.eq (m.way, lanes [1], "the alpha's way still")
+	T.eq (m.kind,   Mission.ASSAULT, "its kind")
+	T.eq (m.target, target,          "its target")
+	T.eq (m.way,    lanes [1],       "the alpha's way still")
 end)
 
 T.test ("with no lanes yet the request is declined, NO_LANES", function ()
 	local squad = { team = 2, role = "escort" }
 	local ok, err = pcall (Ask, squad, { squad }, { key = "none" })
-	T.eq (ok, false)
+	T.eq (ok,                                                         false)
 	T.eq (Transaction.IsRefusal (err, { [Mission.NO_LANES] = true }), true)
 end)
 
@@ -191,9 +191,9 @@ T.test ("the first squad of a team to ask is its alpha, on the direct lane", fun
 	local squad = { team = 2, role = "escort" }
 	local m = Ask (squad, { squad }, lanes)
 	T.eq (m.alpha, true)
-	T.eq (m.way, lanes [1])
-	T.eq (m.kind, Mission.ADVANCE)
-	T.eq (m.size, 4)
+	T.eq (m.way,   lanes [1])
+	T.eq (m.kind,  Mission.ADVANCE)
+	T.eq (m.size,  4)
 	T.eq (m.wait, 15, "the wave in 10 s and a 5 s walk")
 	T.eq (m.issued, 100)
 end)
@@ -225,7 +225,7 @@ T.test ("an alpha that regroups, or is gone, leaves the alpha to the next squad 
 	alpha.regrouping = true
 	local next = { team = 2, role = "escort" }
 	T.eq (Ask (next, { alpha, next }, lanes).alpha, true, "regrouping")
-	T.eq (Ask (next, { next }, lanes).alpha, true, "gone")
+	T.eq (Ask (next, { next }, lanes).alpha,        true, "gone")
 end)
 
 T.test ("a squad asking again, still the alpha, stays the alpha", function ()
@@ -252,7 +252,7 @@ T.test ("raiders are never the alpha: they tour, even with no alpha out", functi
 	local raider = { team = 2, role = "raid" }
 	local m = Ask (raider, { raider }, lanes)
 	T.eq (m.alpha, false)
-	T.eq (m.way, lanes [4])
+	T.eq (m.way,   lanes [4])
 end)
 
 -- Special missions (docs/special-missions-plan.md §2.3): a squad other than
@@ -273,13 +273,13 @@ end
 
 T.test ("the special missions' tuning is defined", function ()
 	T.defined (Mission.AMBUSH_TRAFFIC, "AMBUSH_TRAFFIC")
-	T.defined (Mission.ASSAULT_ODDS, "ASSAULT_ODDS")
-	T.defined (Mission.TOPPLE_WEIGHT, "TOPPLE_WEIGHT")
+	T.defined (Mission.ASSAULT_ODDS,   "ASSAULT_ODDS")
+	T.defined (Mission.TOPPLE_WEIGHT,  "TOPPLE_WEIGHT")
 end)
 
 T.test ("an ambush: a room on the enemy's way with traffic, not held, at the door the enemy comes by", function ()
 	local kind, target = Mission.Choose (Options ({ Room (3, { theirs = true, traffic = Mission.AMBUSH_TRAFFIC }) }))
-	T.eq (kind, Mission.AMBUSH)
+	T.eq (kind,        Mission.AMBUSH)
 	T.eq (target.room, 3)
 	T.eq (target.door.pos.x, 3100, "the door nearer the enemy's side")
 end)
@@ -292,7 +292,7 @@ end)
 
 T.test ("an assault: a guarded room on our way the squad can take, at the door we come by", function ()
 	local kind, target = Mission.Choose (Options ({ Room (5, { ours = true, guarded = 3 }) }))
-	T.eq (kind, Mission.ASSAULT)
+	T.eq (kind,        Mission.ASSAULT)
 	T.eq (target.room, 5)
 	T.eq (target.door.pos.x, 4900, "the door nearer our side")
 	T.eq (Mission.Choose (Options ({ Room (5, { ours = true, guarded = 4 * Mission.ASSAULT_ODDS + 1 }) })), nil, "too strongly held")
@@ -301,14 +301,14 @@ end)
 
 T.test ("a topple: the enemy's support base the squad can take, the strongest first", function ()
 	local kind, target = Mission.Choose (Options ({ Room (6, { support = 2, guarded = 2 }), Room (7, { support = 5, guarded = 5 }) }))
-	T.eq (kind, Mission.TOPPLE)
+	T.eq (kind,        Mission.TOPPLE)
 	T.eq (target.room, 7)
 	T.eq (target.door ~= nil, true, "the door we come by")
 end)
 
 T.test ("defenders favour ambushes, attackers assaults", function ()
 	local rooms = { Room (3, { theirs = true, traffic = Mission.AMBUSH_TRAFFIC }), Room (5, { ours = true, guarded = 2 }) }
-	T.eq ((Mission.Choose (Options (rooms, { defending = true }))), Mission.AMBUSH)
+	T.eq ((Mission.Choose (Options (rooms, { defending = true }))),  Mission.AMBUSH)
 	T.eq ((Mission.Choose (Options (rooms, { defending = false }))), Mission.ASSAULT)
 end)
 
@@ -329,7 +329,7 @@ T.test ("Issue gives a squad other than the alpha its special mission, its way s
 	alpha.mission = Ask (alpha, { alpha }, lanes)
 	local second = { team = 2, role = "escort" }
 	local m = Ask (second, { alpha, second }, lanes, { special = Options ({ Room (5, { ours = true, guarded = 2 }) }) })
-	T.eq (m.kind, Mission.ASSAULT)
+	T.eq (m.kind,        Mission.ASSAULT)
 	T.eq (m.target.room, 5)
 	T.eq (m.way ~= nil, true, "a lane to muster and scan by")
 	T.eq (m.alpha, false)
@@ -339,7 +339,7 @@ T.test ("the alpha is never given a special mission", function ()
 	local lanes = TeamLanes ()
 	local squad = { team = 2, role = "escort" }
 	local m = Ask (squad, { squad }, lanes, { special = Options ({ Room (5, { ours = true, guarded = 2 }) }) })
-	T.eq (m.kind, Mission.ADVANCE)
+	T.eq (m.kind,  Mission.ADVANCE)
 	T.eq (m.alpha, true)
 end)
 
@@ -383,11 +383,11 @@ end)
 
 T.test ("no promotion while the alpha is out, nor of raiders, nor of squads not out, nor across teams", function ()
 	local alpha, other = Out (2, "escort", true), Out (2, "escort", false)
-	T.eq (Mission.Promote ({ alpha, other }, 2), nil, "the alpha is out")
+	T.eq (Mission.Promote ({ alpha, other }, 2),           nil, "the alpha is out")
 	T.eq (Mission.Promote ({ Out (2, "raid", false) }, 2), nil, "raiders")
 	local waiting = Out (2, "escort", false)
 	waiting.missionLed = nil
-	T.eq (Mission.Promote ({ waiting }, 2), nil, "not out yet: it asks for itself")
+	T.eq (Mission.Promote ({ waiting }, 2),                  nil, "not out yet: it asks for itself")
 	T.eq (Mission.Promote ({ Out (3, "escort", false) }, 2), nil, "the other team's")
 	local regrouping = Out (2, "escort", false)
 	regrouping.regrouping = Mission.STUCK

@@ -51,8 +51,8 @@ T.test ("players and NPCs sit in their team's column", function ()
 			Row ("Heavy", BLUE)
 		}
 	)
-	T.eq (Names (b.teams [RED]), "Scout,Combine", "RED")
-	T.eq (Names (b.teams [BLUE]), "Heavy,Rebel", "BLU")
+	T.eq (Names (b.teams [RED]),  "Scout,Combine", "RED")
+	T.eq (Names (b.teams [BLUE]), "Heavy,Rebel",   "BLU")
 end)
 
 T.test ("a column is ordered by kills, then fewest deaths, then players before NPCs, then name", function ()
@@ -81,7 +81,7 @@ T.test ("spectators are a line of names, not rows", function ()
 		}
 	)
 	T.eq (table.concat (b.spectators, ","), "amy,zed")
-	T.eq (#b.unassigned, 0)
+	T.eq (#b.unassigned,                    0)
 end)
 
 T.test ("players on no team are rows of their own, so a Sandbox map's players still show", function ()
@@ -95,8 +95,8 @@ T.test ("players on no team are rows of their own, so a Sandbox map's players st
 end)
 
 T.test ("TF2's time left: minutes and seconds, hours when there are any", function ()
-	T.eq (Board.Clock (0), "0:00")
-	T.eq (Board.Clock (65), "1:05")
+	T.eq (Board.Clock (0),         "0:00")
+	T.eq (Board.Clock (65),        "1:05")
 	T.eq (Board.Clock (3600 + 61), "1:01:01")
 end)
 
@@ -115,7 +115,7 @@ end
 
 T.test ("no limits: only that the map has no time limit", function ()
 	local lines = Board.WinConditions (Limits ({}))
-	T.eq (#lines, 1)
+	T.eq (#lines,    1)
 	T.eq (lines [1], "No time limit")
 end)
 
@@ -177,9 +177,9 @@ T.test ("a round reports the limits the scoreboard shows", function ()
 		}
 	)
 	local limits = round:Limits (160)
-	T.eq (limits.winlimit, 3)
-	T.eq (limits.maxrounds, 5)
-	T.eq (limits.timelimit, 10)
+	T.eq (limits.winlimit,     3)
+	T.eq (limits.maxrounds,    5)
+	T.eq (limits.timelimit,    10)
 	T.eq (limits.roundsPlayed, 0)
 	T.eq (limits.timeLeft, 540, "ten minutes from 100, at 160")
 end)
@@ -212,10 +212,10 @@ T.test ("a round takes new limits mid-match, its clock still from the map's star
 		}
 	)
 	local limits = round:Limits (160)
-	T.eq (limits.winlimit, 2)
+	T.eq (limits.winlimit,  2)
 	T.eq (limits.maxrounds, 4)
 	T.eq (limits.timelimit, 20)
-	T.eq (limits.timeLeft, 1140, "twenty minutes from 100, at 160")
+	T.eq (limits.timeLeft,      1140, "twenty minutes from 100, at 160")
 	T.eq (round:TimeLeft (160), 1140, "the round's own clock agrees")
 end)
 

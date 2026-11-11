@@ -84,14 +84,14 @@ local function PublishCart (i, hud)
 	local key = "ws_cart_" .. i .. "_"
 	SetGlobal2Int (key .. "team", hud.team)
 	SetGlobal2Float (key .. "progress", hud.progress)
-	SetGlobal2Int (key .. "speed", hud.speed)
+	SetGlobal2Int (key .. "speed",   hud.speed)
 	SetGlobal2Int (key .. "cappers", hud.cappers)
 	SetGlobal2Float (key .. "recede_time", hud.recedeAt)
 	SetGlobal2Bool (key .. "can_recede", hud.canRecede)
-	SetGlobal2Bool (key .. "alarm", hud.alarm)
-	SetGlobal2String (key .. "cps", Hud.EncodeNumbers (hud.cps, Hud.POSITION_FORMAT))
+	SetGlobal2Bool (key .. "alarm",      hud.alarm)
+	SetGlobal2String (key .. "cps",    Hud.EncodeNumbers (hud.cps, Hud.POSITION_FORMAT))
 	SetGlobal2String (key .. "owners", Hud.EncodeNumbers (hud.owners, Hud.OWNER_FORMAT))
-	SetGlobal2String (key .. "hills", Hud.EncodeHills (hud.hills))
+	SetGlobal2String (key .. "hills",  Hud.EncodeHills (hud.hills))
 end
 
 -- Each cart and each of its checkpoints has a proxy (WS.Proxy, kind

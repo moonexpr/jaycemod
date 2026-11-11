@@ -31,7 +31,7 @@ UI.THEME =
 }
 
 surface.CreateFont ("WSTitle", { font = "TF2 Build", size = 20, weight = 500 })
-surface.CreateFont ("WSBody", { font = "TF2 Secondary", size = 16, weight = 500 })
+surface.CreateFont ("WSBody",  { font = "TF2 Secondary", size = 16, weight = 500 })
 
 local PREFIX = "WS"
 
@@ -56,7 +56,7 @@ local THEME = UI.THEME
 local function Box (w, h, x, y)
 	x, y = x or 0, y or 0
 	local b, corner = THEME.borderWidth, THEME.corner
-	draw.RoundedBox (corner, x, y, w, h, THEME.edge)
+	draw.RoundedBox (corner, x,     y,     w,         h,         THEME.edge)
 	draw.RoundedBox (corner, x + b, y + b, w - b * 2, h - b * 2, THEME.background)
 end
 UI.Box = Box
@@ -171,7 +171,7 @@ local CIRCLE_SEGMENTS = 24
 local STAR_INNER = 0.45 -- the star's inner points, of its outer radius
 local BADGE_SMALL = 20 -- below this size, the small glyph font
 
-surface.CreateFont ("WSBadge", { font = "Verdana", size = 15, weight = 900 })
+surface.CreateFont ("WSBadge",      { font = "Verdana", size = 15, weight = 900 })
 surface.CreateFont ("WSBadgeSmall", { font = "Verdana", size = 10, weight = 900 })
 
 local function Lerp2 (a, b, t)

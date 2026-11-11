@@ -70,7 +70,7 @@ local function SwitchTeams ()
 		if t ~= UNASSIGNED then WS.SetPlayerTeam (ply, WS.EnemyOf (t), true) end
 	end)
 	local red, blu = team.GetScore (RED), team.GetScore (BLUE)
-	team.SetScore (RED, blu)
+	team.SetScore (RED,  blu)
 	team.SetScore (BLUE, red)
 end
 
@@ -88,7 +88,7 @@ local function ScrambleTeams ()
 	for id, t in pairs (WS.TeamRules.Scramble (players, math.random (0, 1) == 0 and RED or BLUE)) do
 		WS.SetPlayerTeam (byId [id], t, true)
 	end
-	team.SetScore (RED, 0)
+	team.SetScore (RED,  0)
 	team.SetScore (BLUE, 0)
 	PrintMessage (HUD_PRINTTALK, "The teams have been scrambled.")
 	-- a team helped is no longer the players it was voted for (ws/sv_handicap.lua)

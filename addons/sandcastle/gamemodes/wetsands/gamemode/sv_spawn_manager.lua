@@ -75,4 +75,4 @@ local function RefuseTeam (ply)
 end
 
 hook.Add ("PlayerRequestTeam", "ws_spawn_manager", RefuseTeam)
-hook.Add ("ShowTeam", "ws_spawn_manager", RefuseTeam)
+hook.Add ("ShowTeam",          "ws_spawn_manager", RefuseTeam)

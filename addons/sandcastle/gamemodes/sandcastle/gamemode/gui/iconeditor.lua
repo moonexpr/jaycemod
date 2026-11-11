@@ -1,7 +1,7 @@
 local PANEL = {}
 
-AccessorFunc (PANEL, "m_strModel", "Model")
-AccessorFunc (PANEL, "m_pOrigin", "Origin")
+AccessorFunc (PANEL, "m_strModel",    "Model")
+AccessorFunc (PANEL, "m_pOrigin",     "Origin")
 AccessorFunc (PANEL, "m_bCustomIcon", "CustomIcon")
 
 function PANEL:Init ()
@@ -432,11 +432,11 @@ function PANEL:Init ()
 	exp1.DoClick = function (p)
 		-- Remove base lighting
 		local baseClr = Color (0, 0, 0)
-		self.ModelPanel:SetDirectionalLight (BOX_FRONT, baseClr)
-		self.ModelPanel:SetDirectionalLight (BOX_BACK, baseClr)
-		self.ModelPanel:SetDirectionalLight (BOX_RIGHT, baseClr)
-		self.ModelPanel:SetDirectionalLight (BOX_LEFT, baseClr)
-		self.ModelPanel:SetDirectionalLight (BOX_TOP, baseClr)
+		self.ModelPanel:SetDirectionalLight (BOX_FRONT,  baseClr)
+		self.ModelPanel:SetDirectionalLight (BOX_BACK,   baseClr)
+		self.ModelPanel:SetDirectionalLight (BOX_RIGHT,  baseClr)
+		self.ModelPanel:SetDirectionalLight (BOX_LEFT,   baseClr)
+		self.ModelPanel:SetDirectionalLight (BOX_TOP,    baseClr)
 		self.ModelPanel:SetDirectionalLight (BOX_BOTTOM, baseClr)
 
 		-- Apply CoOl lights
@@ -493,11 +493,11 @@ function PANEL:SetDefaultLighting ()
 	topColor.g = topColor.r
 	topColor.b = topColor.r
 
-	self.ModelPanel:SetDirectionalLight (BOX_FRONT, frontColor)
-	self.ModelPanel:SetDirectionalLight (BOX_BACK, Color (255 * 0.2, 255 * 0.2, 255 * 0.2))
-	self.ModelPanel:SetDirectionalLight (BOX_RIGHT, Color (255 * 0.2, 255 * 0.2, 255 * 0.2))
-	self.ModelPanel:SetDirectionalLight (BOX_LEFT, Color (255 * 0.2, 255 * 0.2, 255 * 0.2))
-	self.ModelPanel:SetDirectionalLight (BOX_TOP, topColor)
+	self.ModelPanel:SetDirectionalLight (BOX_FRONT,  frontColor)
+	self.ModelPanel:SetDirectionalLight (BOX_BACK,   Color (255 * 0.2, 255 * 0.2, 255 * 0.2))
+	self.ModelPanel:SetDirectionalLight (BOX_RIGHT,  Color (255 * 0.2, 255 * 0.2, 255 * 0.2))
+	self.ModelPanel:SetDirectionalLight (BOX_LEFT,   Color (255 * 0.2, 255 * 0.2, 255 * 0.2))
+	self.ModelPanel:SetDirectionalLight (BOX_TOP,    topColor)
 	self.ModelPanel:SetDirectionalLight (BOX_BOTTOM, Color (255 * 0.1, 255 * 0.1, 255 * 0.1))
 
 	self.ModelPanel.LocalLights = nil

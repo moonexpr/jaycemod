@@ -38,8 +38,8 @@ local function Reason () return GetGlobal2Int ("ws_round_win_reason", Rounds.WIN
 return function (t)
 	local rounds, capture, gamemode, arena = t:Feature ("rounds"), t:Feature ("capture"), t:Feature ("gamemode"), t:Feature ("arena")
 	if not (rounds and capture and gamemode and arena) then return t:Skip ("arena, rounds, capture or gamemode not loaded") end
-	t:Check ("the round is arena's", rounds:Mode ().NAME == "arena", rounds:Mode ().NAME)
-	t:Check ("tf_logic_arena is bound", IsValid (arena.logicEnt), tostring (arena.logicEnt))
+	t:Check ("the round is arena's",    rounds:Mode ().NAME == "arena", rounds:Mode ().NAME)
+	t:Check ("tf_logic_arena is bound", IsValid (arena.logicEnt),       tostring (arena.logicEnt))
 	t:Info ("cap_enable_delay", arena.logic and arena.logic.capEnableDelay)
 	RunConsoleCommand ("mp_arena_override_cap_enable_time", tostring (CAP_ENABLE))
 	local bonusBefore = GetConVar ("mp_bonusroundtime"):GetString ()
@@ -52,7 +52,7 @@ return function (t)
 	end
 	t:Check ("gameplay runs", not WS.GameplayStopped (), tostring (WS.GameplayStopped ()))
 	local red, blue = { bots [1], bots [2] }, { bots [3], bots [4] }
-	t:Join (red, RED)
+	t:Join (red,  RED)
 	t:Join (blue, BLUE)
 
 	local pre = t:WaitFor (ROUND_TIMEOUT, function () return WS.State () == S.PREROUND end)
@@ -66,7 +66,7 @@ return function (t)
 	local fought = t:WaitFor (preroundTime + 5, function () return WS.State () == S.STALEMATE end)
 	local startedAt = CurTime ()
 	t:Check ("the pre-round ends in the arena round (STALEMATE)", fought ~= nil, Tests.StateName (WS.State ()))
-	t:Check ("it ends on time", math.abs (startedAt - preEnd) < 1, string.format ("%.1f s after the pre-round's end", startedAt - preEnd))
+	t:Check ("it ends on time",                                   math.abs (startedAt - preEnd) < 1, string.format ("%.1f s after the pre-round's end", startedAt - preEnd))
 	local logic = arena.logicEnt
 	t:Check ("OnArenaRoundStart fired once", Fired (logic, "OnArenaRoundStart") == 1, Fired (logic, "OnArenaRoundStart") .. " times")
 	local enableAt = rounds:CapEnableTime ()
@@ -121,7 +121,7 @@ return function (t)
 		and Reason () == Rounds.WINREASON.STALEMATE,
 		string.format ("%s, winner %d, reason %d", Tests.StateName (WS.State ()), Tests.Winner (), Reason ()))
 
-	RunConsoleCommand ("mp_arena_round_time", "0")
+	RunConsoleCommand ("mp_arena_round_time",               "0")
 	RunConsoleCommand ("mp_arena_override_cap_enable_time", "-1")
-	RunConsoleCommand ("mp_bonusroundtime", bonusBefore)
+	RunConsoleCommand ("mp_bonusroundtime",                 bonusBefore)
 end

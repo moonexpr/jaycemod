@@ -23,9 +23,9 @@ local LEVEL_BITS = 16
 local SECONDS_BITS = 8
 
 E.Define ("game_pumpkin_lord_summoned", {})
-E.Define ("game_pumpkin_lord_killed", {})
+E.Define ("game_pumpkin_lord_killed",   {})
 E.Define ("game_eyeball_boss_summoned", { level = E.Int (LEVEL_BITS) })
-E.Define ("game_eyeball_boss_killed", { level = E.Int (LEVEL_BITS) })
+E.Define ("game_eyeball_boss_killed",   { level = E.Int (LEVEL_BITS) })
 E.Define ("game_eyeball_boss_escape_imminent",
 	{
 		level = E.Int (LEVEL_BITS),
@@ -33,8 +33,8 @@ E.Define ("game_eyeball_boss_escape_imminent",
 	}
 )
 E.Define ("game_eyeball_boss_escaped", { level = E.Int (LEVEL_BITS) })
-E.Define ("game_merasmus_summoned", { level = E.Int (LEVEL_BITS) })
-E.Define ("game_merasmus_killed", { level = E.Int (LEVEL_BITS) })
+E.Define ("game_merasmus_summoned",    { level = E.Int (LEVEL_BITS) })
+E.Define ("game_merasmus_killed",      { level = E.Int (LEVEL_BITS) })
 E.Define ("game_merasmus_escape_warning",
 	{
 		level = E.Int (LEVEL_BITS),

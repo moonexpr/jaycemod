@@ -63,7 +63,7 @@ local Controller =
 
 Controller.rounds:SetMode (Round.Mode)
 SetGlobal2Bool ("ws_round_arena", true)
-SetGlobal2Bool ("ws_defuse", true)
+SetGlobal2Bool ("ws_defuse",      true)
 
 -- The map's settings: its cs_defuse_logic's, made with the defaults on a map without one.
 function Controller:Config ()
@@ -158,7 +158,7 @@ function Controller:EnsureRoundEntities ()
 	if made then self.capture:Rebuild () end
 	if not IsValid (self.bombEnt) and self.bomb and self.bomb:State () == Defuse.CARRIED then
 		local bomb = ents.Create ("item_teamflag")
-		bomb:SetKeyValue ("teamnum", tostring (RED))
+		bomb:SetKeyValue ("teamnum",    tostring (RED))
 		bomb:SetKeyValue ("flag_model", BOMB_MODEL)
 		bomb:SetKeyValue ("returntime", "100000")
 		bomb:SetPos (BombHome ())
@@ -307,7 +307,7 @@ function Controller:Publish ()
 		local h = IsValid (s.point) and hud [s.point]
 		local prefix = "ws_defuse_site_" .. i .. "_"
 		SetGlobal2String (prefix .. "name", s.name)
-		SetGlobal2Int (prefix .. "owner", h and h.owner or BLUE)
+		SetGlobal2Int (prefix .. "owner",   h and h.owner or BLUE)
 		SetGlobal2Int (prefix .. "capping", h and h.capping or 0)
 		SetGlobal2Float (prefix .. "progress", h and h.progress or 0)
 		if self.bomb:Site () == site then planted = i end

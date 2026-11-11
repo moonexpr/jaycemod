@@ -16,7 +16,7 @@ end
 
 WS.HUD:Add ("game.objective.graveyard", WS.HUD_ORDER.OBJECTIVES, function (w, h)
 	if not WS.TeamPlay () then return end
-	View:DrawCount (RED, w / 2 - GAP, h - FOOT)
+	View:DrawCount (RED,  w / 2 - GAP, h - FOOT)
 	View:DrawCount (BLUE, w / 2 + GAP, h - FOOT)
 end)
 

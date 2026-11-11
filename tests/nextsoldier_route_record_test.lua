@@ -65,8 +65,8 @@ local function Joined (list) return table.concat (list, " ") end
 T.test ("a replayed search walks the recorded mesh", function ()
 	local record = { map = "test_row", areas = Mesh (), requests = { Request () } }
 	local result = Record.Replay (record, record.requests [1], STRATEGIES)
-	T.eq (result.status, Pathfinder.FOUND, "found")
-	T.eq (Joined (result.route), "1 2 3 4", "straight along the row")
+	T.eq (result.status,         Pathfinder.FOUND, "found")
+	T.eq (Joined (result.route), "1 2 3 4",        "straight along the row")
 end)
 
 T.test ("an area the live search found closed is closed in the replay", function ()
@@ -90,7 +90,7 @@ T.test ("the replay uses the estimates the live search computed", function ()
 	local record = { map = "x", areas = Mesh (), requests = {} }
 	local plain = Record.Replay (record, Request (), STRATEGIES)
 	local steered = Record.Replay (record, Request ({ estimates = { [2] = 1e6 } }), STRATEGIES)
-	T.eq (Joined (plain.route), "1 2 3 4", "by the centres' distances")
+	T.eq (Joined (plain.route),   "1 2 3 4", "by the centres' distances")
 	T.eq (Joined (steered.route), "1 5 3 4", "away from the area the recorded estimate overrates")
 end)
 
@@ -135,10 +135,10 @@ T.test ("a recording reads back as it was written", function ()
 	local record = { map = "test_row", areas = Mesh (), requests = { request } }
 	request.result = Record.Replay (record, request, STRATEGIES)
 	local back = Record.Read (Record.Write (record))
-	T.eq (back.map, "test_row", "the map")
-	T.eq (back.areas [5].y, CELL, "an area's centre")
-	T.eq (back.areas [1].links [2].to, 5, "its links, in order")
-	T.eq (back.areas [1].links [2].distance, 2 * CELL, "with their lengths")
+	T.eq (back.map,                          "test_row", "the map")
+	T.eq (back.areas [5].y,                  CELL,       "an area's centre")
+	T.eq (back.areas [1].links [2].to,       5,          "its links, in order")
+	T.eq (back.areas [1].links [2].distance, 2 * CELL,   "with their lengths")
 	local r = back.requests [1]
 	T.eq (r.source .. " " .. r.team .. " " .. r.start .. " " .. r.goal .. " " .. r.generation, "soldier 2 1 4 7", "the request")
 	T.eq (r.goalPos.x, 3 * CELL, "its goal position")

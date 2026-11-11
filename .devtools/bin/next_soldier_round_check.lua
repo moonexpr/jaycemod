@@ -4,10 +4,10 @@
 -- data/ns_round_check.txt as it happens.
 --   dt gmod lua_run instance=N code="$(cat .devtools/bin/next_soldier_round_check.lua)"
 local E = nextsoldier.engine
-RunConsoleCommand ("mp_winlimit", "1")
+RunConsoleCommand ("mp_winlimit",      "1")
 RunConsoleCommand ("tf_flag_caplimit", "1")
-RunConsoleCommand ("mp_timelimit", "0")
-RunConsoleCommand ("mp_maxrounds", "0")
+RunConsoleCommand ("mp_timelimit",     "0")
+RunConsoleCommand ("mp_maxrounds",     "0")
 local FILE = "ns_round_check.txt"
 file.Write (FILE, "")
 local report = { log = {}, wins = {} }

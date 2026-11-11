@@ -202,7 +202,7 @@ local function WinchOn (ply, winch, dir)
 	if not IsValid (winch) then return false end
 	winch:SetDirection (dir)
 end
-numpad.Register ("WinchOn", WinchOn)
+numpad.Register ("WinchOn",      WinchOn)
 numpad.Register ("HydraulicDir", WinchOn) -- A little cheat
 
 --[[----------------------------------------------------------------------

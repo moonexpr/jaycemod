@@ -92,9 +92,9 @@ local function Load (w)
 		w.ready = w.ready + 1
 		w.heard [#w.heard + 1] = HOOK
 	end)
-	hook.Add ("WSGameplayBotsReady", "test_bots", function () return w.botsReady end)
-	hook.Add ("MatchStart", "test_addon", function () w.heard [#w.heard + 1] = "MatchStart" end)
-	hook.Add ("MatchTimerHurried", "test_addon", function () w.hurried = w.hurried + 1 end)
+	hook.Add ("WSGameplayBotsReady", "test_bots",  function () return w.botsReady end)
+	hook.Add ("MatchStart",          "test_addon", function () w.heard [#w.heard + 1] = "MatchStart" end)
+	hook.Add ("MatchTimerHurried",   "test_addon", function () w.hurried = w.hurried + 1 end)
 	local rounds =
 	{
 		Mode = function ()
@@ -183,12 +183,12 @@ T.test ("Begin Game only shortens its long countdown after the bots are ready", 
 	w.now = w.now + 1
 	controller:Tick ()
 	T.eq (controller.mode:TransitionEnd (), finish, "not shortened while bots are still spawning")
-	T.eq (w.ready, 0, "not announced before the bots are ready")
+	T.eq (w.ready,                          0,      "not announced before the bots are ready")
 	w.botsReady = true
 	w.now = w.now + 1
 	controller:Tick ()
 	T.eq (controller.mode:TransitionEnd (), w.now + Gamemode.HURRIED_COUNTDOWN, "shortened after bots spawn")
-	T.eq (w.ready, 1, "announced once")
+	T.eq (w.ready,                          1,                                  "announced once")
 end)
 
 T.test ("an admin setting sv_gameplay_enabled 1 in the console runs it", function ()
@@ -309,7 +309,7 @@ T.test ("a request in Gameplay mode, or for Sandbox mode, does not run it", func
 	local w = World ({ enabled = true })
 	local controller = Load (w)
 	controller:Request (Gamemode.GAMEPLAY, Gamemode.SOURCE_BUTTON, nil)
-	controller:Request (Gamemode.SANDBOX, Gamemode.SOURCE_BUTTON, nil)
+	controller:Request (Gamemode.SANDBOX,  Gamemode.SOURCE_BUTTON, nil)
 	T.eq (w.ready, 0, "never")
 end)
 

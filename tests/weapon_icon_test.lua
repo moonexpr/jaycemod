@@ -56,7 +56,7 @@ T.test ("a melee weapon's icon leans 30 degrees counter-clockwise about its cent
 	T.eq (drawn.rect.x, 32)
 	T.eq (drawn.rect.y, 32)
 	T.eq (drawn.material, MATERIAL, "its own image")
-	T.eq (drawn.color, TINT, "tinted as the panel is")
+	T.eq (drawn.color,    TINT,     "tinted as the panel is")
 end)
 
 T.test ("the leaning icon is shrunk so its corners stay inside the panel", function ()

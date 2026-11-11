@@ -385,7 +385,7 @@ function TOOL.BuildCPanel (CPanel, faceEntity)
 		groupForm.GetBackgroundColor = function () return color_white end
 
 		function groupForm:Paint (w, h)
-			derma.SkinHook ("Paint", "CategoryList", self, w, h)
+			derma.SkinHook ("Paint", "CategoryList",        self, w, h)
 			derma.SkinHook ("Paint", "CollapsibleCategory", self, w, h)
 		end
 

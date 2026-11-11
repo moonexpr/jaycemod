@@ -10,14 +10,14 @@ end
 
 T.test ("the Horsemann's rise plays its music and says it appeared", function ()
 	local cue = Cue (BossEvents.PUMPKIN_LORD_SUMMONED)
-	T.eq (cue.sound, "Halloween.HeadlessBossSpawn", "music")
-	T.eq (cue.text, "The Horseless Headless Horsemann has appeared!", "text")
+	T.eq (cue.sound, "Halloween.HeadlessBossSpawn",                    "music")
+	T.eq (cue.text,  "The Horseless Headless Horsemann has appeared!", "text")
 end)
 
 T.test ("the Horsemann's death plays its sting and says it was defeated", function ()
 	local cue = Cue (BossEvents.PUMPKIN_LORD_KILLED)
-	T.eq (cue.sound, "Halloween.HeadlessBossDeath", "sting")
-	T.eq (cue.text, "The Horseless Headless Horsemann has been defeated!", "text")
+	T.eq (cue.sound, "Halloween.HeadlessBossDeath",                         "sting")
+	T.eq (cue.text,  "The Horseless Headless Horsemann has been defeated!", "text")
 end)
 
 T.test ("MONOCULUS's rise plays its music; past the first level the text names the level", function ()
@@ -29,8 +29,8 @@ end)
 
 T.test ("MONOCULUS's death and escape play their lines and say so", function ()
 	local killed = Cue (BossEvents.EYEBALL_BOSS_KILLED, { level = 1 })
-	T.eq (killed.sound, "Halloween.MonoculusBossDeath", "death")
-	T.eq (killed.text, "MONOCULUS! has been defeated!", "killed")
+	T.eq (killed.sound,                                             "Halloween.MonoculusBossDeath",            "death")
+	T.eq (killed.text,                                              "MONOCULUS! has been defeated!",           "killed")
 	T.eq (Cue (BossEvents.EYEBALL_BOSS_KILLED, { level = 2 }).text, "MONOCULUS! (LEVEL 2) has been defeated!", "levelled")
 	local escaped = Cue (BossEvents.EYEBALL_BOSS_ESCAPED, { level = 1 })
 	T.eq (escaped.sound, "Halloween.EyeballBossEscaped", "escaped")
@@ -46,36 +46,36 @@ T.test ("escape warnings: 10 s or less is imminent, more is soon; the text count
 			time_remaining = 60
 		}
 	)
-	T.eq (sixty.sound, "Halloween.EyeballBossEscapeSoon", "soon")
-	T.eq (sixty.text, "MONOCULUS! is leaving in 60 seconds...", "60")
+	T.eq (sixty.sound, "Halloween.EyeballBossEscapeSoon",        "soon")
+	T.eq (sixty.text,  "MONOCULUS! is leaving in 60 seconds...", "60")
 	local thirty = Cue (IMMINENT,
 		{
 			level = 1,
 			time_remaining = 30
 		}
 	)
-	T.eq (thirty.sound, "Halloween.EyeballBossEscapeSoon", "soon")
-	T.eq (thirty.text, "MONOCULUS! is leaving in 30 seconds...", "30")
+	T.eq (thirty.sound, "Halloween.EyeballBossEscapeSoon",        "soon")
+	T.eq (thirty.text,  "MONOCULUS! is leaving in 30 seconds...", "30")
 	local ten = Cue (IMMINENT,
 		{
 			level = 2,
 			time_remaining = 10
 		}
 	)
-	T.eq (ten.sound, "Halloween.EyeballBossEscapeImminent", "imminent")
-	T.eq (ten.text, "MONOCULUS! (LEVEL 2) is leaving in 10 seconds!", "10, levelled")
+	T.eq (ten.sound, "Halloween.EyeballBossEscapeImminent",            "imminent")
+	T.eq (ten.text,  "MONOCULUS! (LEVEL 2) is leaving in 10 seconds!", "10, levelled")
 end)
 
 T.test ("MONOCULUS's words are in its colour, the Horsemann's in the plain chat colour", function ()
 	T.eq (Cue (BossEvents.EYEBALL_BOSS_KILLED, { level = 1 }).color, BossEvents.EYEBALL_COLOR, "eyeball")
-	T.eq (Cue (BossEvents.PUMPKIN_LORD_KILLED).color, nil, "horsemann")
+	T.eq (Cue (BossEvents.PUMPKIN_LORD_KILLED).color,                nil,                      "horsemann")
 end)
 
 T.test ("Merasmus's arrival plays his music; past the first level the text names the level", function ()
 	local first = Cue (BossEvents.MERASMUS_SUMMONED, { level = BossEvents.FIRST_LEVEL })
-	T.eq (first.sound, "Halloween.MerasmusBossSpawn", "music")
-	T.eq (first.text, "MERASMUS! has appeared!", "level 1")
-	T.eq (first.color, BossEvents.MERASMUS_COLOR, "his colour")
+	T.eq (first.sound,                                            "Halloween.MerasmusBossSpawn",       "music")
+	T.eq (first.text,                                             "MERASMUS! has appeared!",           "level 1")
+	T.eq (first.color,                                            BossEvents.MERASMUS_COLOR,           "his colour")
 	T.eq (Cue (BossEvents.MERASMUS_SUMMONED, { level = 2 }).text, "MERASMUS! (LEVEL 2) has appeared!", "level 2")
 end)
 
@@ -83,8 +83,8 @@ end)
 -- game_merasmus_killed itself plays nothing.
 T.test ("Merasmus's defeat only says so", function ()
 	local killed = Cue (BossEvents.MERASMUS_KILLED, { level = 1 })
-	T.eq (killed.sound, nil, "no sound")
-	T.eq (killed.text, "MERASMUS! has been defeated!", "killed")
+	T.eq (killed.sound,                                         nil,                                      "no sound")
+	T.eq (killed.text,                                          "MERASMUS! has been defeated!",           "killed")
 	T.eq (Cue (BossEvents.MERASMUS_KILLED, { level = 3 }).text, "MERASMUS! (LEVEL 3) has been defeated!", "levelled")
 end)
 
@@ -98,9 +98,9 @@ T.test ("each of his killers is named, with his level past the first", function 
 			player = ply,
 			level = 1
 		}, NameOf)
-	T.eq (first.text, "Soldier has defeated MERASMUS!", "named")
-	T.eq (first.sound, nil, "no sound")
-	T.eq (first.color, nil, "the chat's own colour")
+	T.eq (first.text,  "Soldier has defeated MERASMUS!", "named")
+	T.eq (first.sound, nil,                              "no sound")
+	T.eq (first.color, nil,                              "the chat's own colour")
 	T.eq (BossEvents.Cue (BossEvents.MERASMUS_KILLER,
 		{
 			player = ply,
@@ -121,23 +121,23 @@ T.test ("Merasmus's warnings and departure use MONOCULUS's sounds and his own wo
 			time_remaining = 60
 		}
 	)
-	T.eq (sixty.sound, "Halloween.EyeballBossEscapeSoon", "soon")
-	T.eq (sixty.text, "MERASMUS! is leaving in 60 seconds...", "60")
+	T.eq (sixty.sound, "Halloween.EyeballBossEscapeSoon",       "soon")
+	T.eq (sixty.text,  "MERASMUS! is leaving in 60 seconds...", "60")
 	local ten = Cue (WARNING,
 		{
 			level = 2,
 			time_remaining = 10
 		}
 	)
-	T.eq (ten.sound, "Halloween.EyeballBossEscapeImminent", "imminent")
-	T.eq (ten.text, "MERASMUS! (LEVEL 2) is leaving in 10 seconds!", "10, levelled")
+	T.eq (ten.sound, "Halloween.EyeballBossEscapeImminent",           "imminent")
+	T.eq (ten.text,  "MERASMUS! (LEVEL 2) is leaving in 10 seconds!", "10, levelled")
 	local gone = Cue (BossEvents.MERASMUS_ESCAPED, { level = 1 })
-	T.eq (gone.sound, "Halloween.EyeballBossEscaped", "escaped")
-	T.eq (gone.text, "MERASMUS! has gone home!", "escaped text")
+	T.eq (gone.sound,                                            "Halloween.EyeballBossEscaped", "escaped")
+	T.eq (gone.text,                                             "MERASMUS! has gone home!", "escaped text")
 	T.eq (Cue (BossEvents.MERASMUS_ESCAPED, { level = 5 }).text, "MERASMUS! (LEVEL 5) has gone home!", "levelled")
-	T.eq (BossEvents.MERASMUS_COLOR.r, 112, "colorMerasmusText")
-	T.eq (BossEvents.MERASMUS_COLOR.g, 176, "colorMerasmusText")
-	T.eq (BossEvents.MERASMUS_COLOR.b, 74, "colorMerasmusText")
+	T.eq (BossEvents.MERASMUS_COLOR.r,                           112, "colorMerasmusText")
+	T.eq (BossEvents.MERASMUS_COLOR.g,                           176, "colorMerasmusText")
+	T.eq (BossEvents.MERASMUS_COLOR.b,                           74, "colorMerasmusText")
 end)
 
 -- CTFPlayerShared's bomb stages (s_vecBombStages): the hat's skin by the
@@ -160,8 +160,8 @@ T.test ("every boss event has a cue with a line; its sound, when it has one, is 
 				time_remaining = 10,
 				player = {}
 			}, function () return "Pyro" end)
-		T.eq (type (cue.text), "string", name .. " text")
-		T.eq (cue.sound == nil or type (cue.sound) == "string", true, name .. " sound")
+		T.eq (type (cue.text),                                  "string", name .. " text")
+		T.eq (cue.sound == nil or type (cue.sound) == "string", true,     name .. " sound")
 	end
 	T.eq (type (BossEvents.Cue (BossEvents.PUMPKIN_LORD_SUMMONED, {}).sound), "string", "the Horsemann's music")
 end)

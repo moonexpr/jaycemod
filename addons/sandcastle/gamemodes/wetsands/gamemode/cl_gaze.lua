@@ -44,7 +44,7 @@ function WS.GazeUpdate (ent, facing, fighting, hint, team, urgent)
 	local yaw, pitch = Gaze.Goal ({ fighting = fighting, eye = pos + EYE_HEIGHT, facing = facing, hint = hint, people = people })
 	ent.wsHeadYaw = Gaze.Turn (ent.wsHeadYaw or 0, yaw, step, turned)
 	ent.wsHeadPitch = Gaze.Approach (ent.wsHeadPitch or 0, pitch, step)
-	ent:SetPoseParameter ("head_yaw", ent.wsHeadYaw)
+	ent:SetPoseParameter ("head_yaw",   ent.wsHeadYaw)
 	ent:SetPoseParameter ("head_pitch", ent.wsHeadPitch)
 	ent:InvalidateBoneCache ()
 end

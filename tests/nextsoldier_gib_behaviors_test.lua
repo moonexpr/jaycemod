@@ -13,8 +13,8 @@ for _, name in ipairs ({ "PATROL_RADIUS", "PATROL_REST", "WANDER_RADIUS", "WANDE
 	end
 
 T.eq (type (GIB.FALL_BACK_LINE), "string", "the line its leader calls")
-T.eq (type (GIB.SIGNAL_LINE), "string", "the line its leader signals an assault in by")
-T.eq (type (GIB.CLEAR_LINE), "string", "the line its leader calls a room clear by")
+T.eq (type (GIB.SIGNAL_LINE),    "string", "the line its leader signals an assault in by")
+T.eq (type (GIB.CLEAR_LINE),     "string", "the line its leader calls a room clear by")
 
 local function Distance (a, b) return math.sqrt ((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2) end
 
@@ -67,13 +67,13 @@ end)
 T.test ("at ease, a member stays so and senses its group", function ()
 	local me = Member (nil)
 	T.eq (GIB.LegsAtEase:New ():Update (me).type, Action.CONTINUE, "stays")
-	T.eq (me.sensed, 1, "sensed")
+	T.eq (me.sensed,                              1,               "sensed")
 end)
 
 T.test ("told an order, a member takes the action for it", function ()
 	local result = GIB.LegsAtEase:New ():Update (Member (Muster ()))
-	T.eq (result.type, Action.CHANGE_TO, "changes")
-	T.eq (result.action.name, "LegsMuster", "to muster")
+	T.eq (result.type,        Action.CHANGE_TO, "changes")
+	T.eq (result.action.name, "LegsMuster",     "to muster")
 	local fallBack = GroupIdentity.FallBack ({ x = 0, y = 0, z = 0 }, { x = 500, y = 0, z = 0 })
 	T.eq (GIB.LegsAtEase:New ():Update (Member (fallBack)).action.name, "LegsFallBack", "or fall back")
 end)
@@ -81,24 +81,24 @@ end)
 T.test ("on its order, a member keeps to it and senses its group, heading nowhere itself", function ()
 	local me, _, orders = OnOrder (Muster ())
 	T.eq (orders:Update (me).type, Action.CONTINUE, "stays")
-	T.eq (me.sensed, 2, "each update")
-	T.eq (me.headed, 0, "its squad's mode heads")
+	T.eq (me.sensed,               2,               "each update")
+	T.eq (me.headed,               0,               "its squad's mode heads")
 end)
 
 T.test ("a new order, even of the same kind, replaces the one it is on", function ()
 	local me, _, orders = OnOrder (Muster ())
 	me.order = Muster ()
 	local result = orders:Update (me)
-	T.eq (result.type, Action.CHANGE_TO, "changes")
-	T.eq (result.action.order, me.order, "on the new one")
+	T.eq (result.type,         Action.CHANGE_TO, "changes")
+	T.eq (result.action.order, me.order,         "on the new one")
 end)
 
 T.test ("dissolved, a member goes back to ease, and its mode heads nowhere", function ()
 	local me, mode, orders = OnOrder (Muster ())
 	me.order = nil
-	T.eq (mode:Update (me).type, Action.CONTINUE, "its order's action changes it")
-	T.eq (me.headed, 0, "not for the order it no longer has")
-	T.eq (orders:Update (me).action.name, "LegsAtEase", "at ease")
+	T.eq (mode:Update (me).type,          Action.CONTINUE, "its order's action changes it")
+	T.eq (me.headed,                      0,               "not for the order it no longer has")
+	T.eq (orders:Update (me).action.name, "LegsAtEase",    "at ease")
 end)
 
 local MODE_NAMES =
@@ -124,9 +124,9 @@ T.test ("told its squad's new mode, a member changes to that mode's action", fun
 	local me, action = OnOrder (order)
 	order:SetMode (MODE.CAUTIOUS)
 	local result = action:Update (me)
-	T.eq (result.type, Action.CHANGE_TO, "changes")
-	T.eq (result.action.name, "LegsWander", "to wander")
-	T.eq (me.headed, 0, "heading nowhere on the old one")
+	T.eq (result.type,        Action.CHANGE_TO, "changes")
+	T.eq (result.action.name, "LegsWander",     "to wander")
+	T.eq (me.headed,          0,                "heading nowhere on the old one")
 end)
 
 T.test ("stationary, a member rests at the seat nearest its place", function ()
@@ -134,7 +134,7 @@ T.test ("stationary, a member rests at the seat nearest its place", function ()
 	me.seats = { { x = 300, y = 0, z = 0 }, { x = 120, y = 10, z = 0 } }
 	action:Update (me)
 	T.eq (me.spot, me.seats [2], "the nearer")
-	T.eq (me.gait, GAIT.REST, "to rest")
+	T.eq (me.gait, GAIT.REST,    "to rest")
 	action:Update (me)
 	T.eq (me.asked, 1, "found once and kept")
 end)
@@ -147,14 +147,14 @@ T.test ("stationary, members of a squad do not share a seat", function ()
 	first.seats, second.seats = seats, { { x = 120, y = 0, z = 0 }, { x = 400, y = 0, z = 0 } }
 	firstAction:Update (first)
 	secondAction:Update (second)
-	T.eq (first.spot.x, 120, "the first takes the near one")
+	T.eq (first.spot.x,  120, "the first takes the near one")
 	T.eq (second.spot.x, 400, "the second the one left")
 end)
 
 T.test ("stationary with no seat near, a member rests at its place", function ()
 	local me, action = OnOrder (Muster ())
 	action:Update (me)
-	T.eq (me.spot, me.place, "its place")
+	T.eq (me.spot, me.place,  "its place")
 	T.eq (me.gait, GAIT.REST, "resting")
 end)
 
@@ -165,9 +165,9 @@ T.test ("alert, a member patrols round the squad's point on its own side, a spot
 	me.draws = { 0.1, 0.9, 0.6 }
 	action:Update (me)
 	local first = me.spot
-	T.eq (Distance (first, order.point) <= GIB.PATROL_RADIUS + 0.001, true, "within the patrol's reach")
-	T.eq (first.x > 0, true, "on its own side of the point")
-	T.eq (me.gait, GAIT.WALK, "walking")
+	T.eq (Distance (first, order.point) <= GIB.PATROL_RADIUS + 0.001, true,      "within the patrol's reach")
+	T.eq (first.x > 0,                                                true,      "on its own side of the point")
+	T.eq (me.gait,                                                    GAIT.WALK, "walking")
 	me.now = GIB.PATROL_REST - 0.1
 	action:Update (me)
 	T.eq (me.spot, first, "rests there")
@@ -183,12 +183,12 @@ T.test ("cautious, a member wanders near its own place, resting longer", functio
 	me.draws = { 0.3, 0.8 }
 	action:Update (me)
 	local first = me.spot
-	T.eq (Distance (first, me.place) <= GIB.WANDER_RADIUS + 0.001, true, "near its place")
-	T.eq (me.gait, GAIT.WALK, "walking")
+	T.eq (Distance (first, me.place) <= GIB.WANDER_RADIUS + 0.001, true,      "near its place")
+	T.eq (me.gait,                                                 GAIT.WALK, "walking")
 	me.now = GIB.WANDER_REST - 0.1
 	action:Update (me)
-	T.eq (me.spot, first, "rests there")
-	T.eq (GIB.WANDER_REST > GIB.PATROL_REST, true, "longer than a patrol's")
+	T.eq (me.spot,                           first, "rests there")
+	T.eq (GIB.WANDER_REST > GIB.PATROL_REST, true,  "longer than a patrol's")
 end)
 
 T.test ("where the map refuses every spot it draws, a member keeps to its place", function ()
@@ -244,8 +244,8 @@ end)
 T.test ("evacuating with no way out known, a member runs straight away from the threat", function ()
 	local me, action = OnOrder (Panicked (nil), { x = 50, y = 0, z = 0 })
 	action:Update (me)
-	T.eq (me.spot.x > me.place.x, true, "further from the threat than it stands")
-	T.eq (me.gait, GAIT.RUN, "running")
+	T.eq (me.spot.x > me.place.x, true,     "further from the threat than it stands")
+	T.eq (me.gait,                GAIT.RUN, "running")
 end)
 
 T.test ("evacuating, a member keeps to the way out it chose", function ()
@@ -276,7 +276,7 @@ T.test ("staying close, a member near its leader stays where it stands", functio
 	local _, squad = Close (2, { { x = 0, y = 0, z = 0 }, { x = 10, y = 20, z = 0 } })
 	squad [2].action:Update (squad [2].me)
 	T.eq (squad [2].me.spot, squad [2].me.at, "where it stands")
-	T.eq (squad [2].me.gait, GAIT.WALK, "walking")
+	T.eq (squad [2].me.gait, GAIT.WALK,       "walking")
 end)
 
 T.test ("staying close, a member too far from its leader runs to it, on its own side", function ()
@@ -285,9 +285,9 @@ T.test ("staying close, a member too far from its leader runs to it, on its own 
 	local me = squad [2].me
 	me.draws = { 0.2, 0.7 }
 	squad [2].action:Update (me)
-	T.eq (Distance (me.spot, { x = 0, y = 0 }) <= GIB.STAY_CLOSE_RADIUS + 0.001, true, "near its leader")
-	T.eq (me.spot.x >= 0, true, "on its side")
-	T.eq (me.gait, GAIT.RUN, "running")
+	T.eq (Distance (me.spot, { x = 0, y = 0 }) <= GIB.STAY_CLOSE_RADIUS + 0.001, true,     "near its leader")
+	T.eq (me.spot.x >= 0,                                                        true,     "on its side")
+	T.eq (me.gait,                                                               GAIT.RUN, "running")
 end)
 
 T.test ("staying close, the leader keeps to its place; with no leader, each does", function ()
@@ -306,11 +306,11 @@ T.test ("a member strayed far from its squad's point regroups, running for its p
 		local me, action = OnOrder (order)
 		me.at = { x = GIB.REGROUP_RANGE + 1, y = 0, z = 0 }
 		local result = action:Update (me)
-		T.eq (result.type, Action.SUSPEND_FOR, MODE [mode] .. " suspends")
-		T.eq (result.action.name, "LegsRegroup", MODE [mode] .. " for regroup")
-		T.eq (result.action:Update (me).type, Action.CONTINUE, "regrouping")
-		T.eq (me.spot, me.place, "for its place")
-		T.eq (me.gait, GAIT.RUN, "running")
+		T.eq (result.type,                    Action.SUSPEND_FOR, MODE [mode] .. " suspends")
+		T.eq (result.action.name,             "LegsRegroup",      MODE [mode] .. " for regroup")
+		T.eq (result.action:Update (me).type, Action.CONTINUE,    "regrouping")
+		T.eq (me.spot,                        me.place,           "for its place")
+		T.eq (me.gait,                        GAIT.RUN,           "running")
 	end
 end)
 
@@ -354,7 +354,7 @@ T.test ("a full squad's leader, its casualties heavy, calls the fall back once a
 	order:Casualty ({})
 	orders:Update (leader)
 	T.eq (leader.said [1], GIB.FALL_BACK_LINE, "called")
-	T.eq (order.mode, MODE.PANIC, "evacuating")
+	T.eq (order.mode,      MODE.PANIC,         "evacuating")
 	orders:Update (leader)
 	T.eq (#leader.said, 1, "once")
 end)
@@ -365,9 +365,9 @@ T.test ("a member who does not lead never calls the fall back", function ()
 	order:Casualty ({})
 	order:Casualty ({})
 	orders:Update (me)
-	T.eq (#me.said, 0, "not its call")
-	T.eq (order.mode, MODE.STATIONARY, "nor its squad's")
-	T.eq (leader ~= me, true, "another leads")
+	T.eq (#me.said,     0,               "not its call")
+	T.eq (order.mode,   MODE.STATIONARY, "nor its squad's")
+	T.eq (leader ~= me, true,            "another leads")
 end)
 
 T.test ("a squad's leader told of a danger near its point calls the fall back once, the squad evacuating away from it", function ()
@@ -375,8 +375,8 @@ T.test ("a squad's leader told of a danger near its point calls the fall back on
 	leader.danger = { x = 300, y = 0, z = 0 }
 	orders:Update (leader)
 	T.eq (leader.said [1], GIB.FALL_BACK_LINE, "called")
-	T.eq (order.mode, MODE.PANIC, "evacuating")
-	T.eq (order.from, leader.danger, "away from it")
+	T.eq (order.mode,      MODE.PANIC,         "evacuating")
+	T.eq (order.from,      leader.danger,      "away from it")
 	orders:Update (leader)
 	T.eq (#leader.said, 1, "once")
 end)
@@ -386,7 +386,7 @@ T.test ("a member who does not lead is not the one to call a danger", function (
 	local me, _, orders = OnOrder (order)
 	me.danger = { x = 300, y = 0, z = 0 }
 	orders:Update (me)
-	T.eq (#me.said, 0, "not its call")
+	T.eq (#me.said,   0,               "not its call")
 	T.eq (order.mode, MODE.STATIONARY, "nor its squad's")
 end)
 
@@ -414,7 +414,7 @@ end
 T.test ("told an assault, a member takes it, and stages first", function ()
 	local _, squad = Assault ()
 	T.eq (squad [1].orders.name, "LegsAssault", "the assault")
-	T.eq (squad [1].action.name, "LegsStage", "staging first")
+	T.eq (squad [1].action.name, "LegsStage",   "staging first")
 end)
 
 T.test ("staging, a member walks to its place in the stack, not the room; there it is staged, ready", function ()
@@ -422,13 +422,13 @@ T.test ("staging, a member walks to its place in the stack, not the room; there 
 	local me, stage = squad [2].me, squad [2].action
 	local staging = order:StagingOf (me.place)
 	stage:Update (me)
-	T.eq (me.spot, staging, "for the stack")
-	T.eq (me.gait, GAIT.WALK, "walking")
-	T.eq (order:StagedAt (me), nil, "not staged on its way")
+	T.eq (me.spot,             staging,   "for the stack")
+	T.eq (me.gait,             GAIT.WALK, "walking")
+	T.eq (order:StagedAt (me), nil,       "not staged on its way")
 	me.at, me.now = staging, 3
 	T.eq (stage:Update (me).type, Action.CONTINUE, "waiting")
-	T.eq (me.gait, GAIT.REST, "ready there")
-	T.eq (order:StagedAt (me), 3, "staged")
+	T.eq (me.gait,                GAIT.REST,       "ready there")
+	T.eq (order:StagedAt (me),    3,               "staged")
 end)
 
 T.test ("on its way to the stack, a member hops: crouched on a doorway's near side a while, across at a run", function ()
@@ -437,20 +437,20 @@ T.test ("on its way to the stack, a member hops: crouched on a doorway's near si
 	local near, far = { x = -100, y = 450, z = 0 }, { x = 100, y = 450, z = 0 }
 	order.hops = { [me.place] = { { point = near, pause = true }, { point = far, cross = true } } }
 	stage:Update (me)
-	T.eq (me.spot, near, "to the near side first")
+	T.eq (me.spot, near,      "to the near side first")
 	T.eq (me.gait, GAIT.WALK, "walking")
 	me.at, me.now = near, 10
 	stage:Update (me)
-	T.eq (me.spot, near, "there, it waits")
+	T.eq (me.spot, near,      "there, it waits")
 	T.eq (me.gait, GAIT.REST, "crouched")
 	me.now = 10 + GIB.HOP_PAUSE
 	stage:Update (me)
-	T.eq (me.spot, far, "then for the far side")
+	T.eq (me.spot, far,      "then for the far side")
 	T.eq (me.gait, GAIT.RUN, "across at a run")
 	me.at = far
 	stage:Update (me)
-	T.eq (me.spot, order:StagingOf (me.place), "then on to its stack")
-	T.eq (order:StagedAt (me), nil, "not staged on its way")
+	T.eq (me.spot,             order:StagingOf (me.place), "then on to its stack")
+	T.eq (order:StagedAt (me), nil,                        "not staged on its way")
 end)
 
 T.test ("staged, a member waits for the signal, then goes in", function ()
@@ -460,8 +460,8 @@ T.test ("staged, a member waits for the signal, then goes in", function ()
 	stage:Update (me)
 	order:Signal ()
 	local result = stage:Update (me)
-	T.eq (result.type, Action.CHANGE_TO, "goes")
-	T.eq (result.action.name, "LegsEnter", "in")
+	T.eq (result.type,        Action.CHANGE_TO, "goes")
+	T.eq (result.action.name, "LegsEnter",      "in")
 end)
 
 T.test ("going in, a member runs for its assault point, and there holds it", function ()
@@ -470,13 +470,13 @@ T.test ("going in, a member runs for its assault point, and there holds it", fun
 	local point = order:BreachOf (me.place)
 	local enter = GIB.LegsEnter:New ({ order = order })
 	T.eq (enter:Update (me).type, Action.CONTINUE, "on its way")
-	T.eq (me.spot, point, "for its assault point, not its place")
-	T.eq (me.gait, GAIT.RUN, "running")
+	T.eq (me.spot,                point,           "for its assault point, not its place")
+	T.eq (me.gait,                GAIT.RUN,        "running")
 	me.at, me.now = point, 7
 	local result = enter:Update (me)
-	T.eq (result.type, Action.CHANGE_TO, "there")
-	T.eq (result.action.name, "LegsClear", "holding it")
-	T.eq (order:AllBreached (), false, "the others not yet")
+	T.eq (result.type,          Action.CHANGE_TO, "there")
+	T.eq (result.action.name,   "LegsClear",      "holding it")
+	T.eq (order:AllBreached (), false,            "the others not yet")
 end)
 
 -- Every member of the squad holding its assault point from `at`, each with its LegsClear.
@@ -492,11 +492,11 @@ T.test ("holding its point, a member waits for the room to be clear, then goes t
 	Holding (order, squad, 0)
 	local me, clear = squad [2].me, squad [2].clear
 	me.now = GIB.CLEAR_GRACE - 0.1
-	T.eq (clear:Update (me).type, Action.CONTINUE, "not clear yet")
-	T.eq (me.spot, order:BreachOf (me.place), "holding")
+	T.eq (clear:Update (me).type, Action.CONTINUE,           "not clear yet")
+	T.eq (me.spot,                order:BreachOf (me.place), "holding")
 	me.now = GIB.CLEAR_GRACE
 	local result = clear:Update (me)
-	T.eq (result.type, Action.CHANGE_TO, "clear")
+	T.eq (result.type,        Action.CHANGE_TO, "clear")
 	T.eq (result.action.name, "LegsStationary", "its squad's mode, about its place")
 end)
 
@@ -522,8 +522,8 @@ T.test ("the leader calls the room clear, once", function ()
 	local said = #leader.said
 	squad [2].me.now = GIB.CLEAR_GRACE
 	squad [2].clear:Update (squad [2].me)
-	T.eq (#squad [2].me.said, 0, "by the leader alone")
-	T.eq (#leader.said, said, "once")
+	T.eq (#squad [2].me.said, 0,    "by the leader alone")
+	T.eq (#leader.said,       said, "once")
 end)
 
 T.test ("a member with no assault point goes straight to its place", function ()
@@ -545,8 +545,8 @@ T.test ("the leader signals the assault in once its whole squad is staged, once"
 	T.eq (order:Signalled (), false, "three of four staged")
 	order:Staged (squad [4].me, 0)
 	orders:Update (leader)
-	T.eq (order:Signalled (), true, "all four")
-	T.eq (leader.said [1], GIB.SIGNAL_LINE, "called")
+	T.eq (order:Signalled (), true,            "all four")
+	T.eq (leader.said [1],    GIB.SIGNAL_LINE, "called")
 	orders:Update (leader)
 	T.eq (#leader.said, 1, "once")
 end)
@@ -575,8 +575,8 @@ T.test ("a member with no place in the stack is staged where it stands", functio
 	local me = squad [2].me
 	order.staging [me.place] = nil
 	squad [2].action:Update (me)
-	T.eq (order:StagedAt (me) ~= nil, true, "staged")
-	T.eq (me.spot, me.at, "where it stands")
+	T.eq (order:StagedAt (me) ~= nil, true,  "staged")
+	T.eq (me.spot,                    me.at, "where it stands")
 end)
 
 T.test ("evacuating, with its room's sight known, a member runs out of the room to hide out of its sight", function ()
@@ -586,9 +586,9 @@ T.test ("evacuating, with its room's sight known, a member runs out of the room 
 	order:SetRoom ({ center = { x = 0, y = 0, z = 0 }, seen = seen, exits = { { x = -400, y = 0, z = 0 } } })
 	local me, action = OnOrder (order, { x = 0, y = 0, z = 0 })
 	action:Update (me)
-	T.eq (me.spot.x < -400, true, "out of the room")
-	T.eq (seen (me.spot), false, "out of its sight")
-	T.eq (me.gait, GAIT.RUN, "running")
+	T.eq (me.spot.x < -400, true,     "out of the room")
+	T.eq (seen (me.spot),   false,    "out of its sight")
+	T.eq (me.gait,          GAIT.RUN, "running")
 end)
 
 -- An assault on a room with a door in each wall, RED's flow coming in by the west, which sees
@@ -638,8 +638,8 @@ T.test ("the decoy goes to hide beside the front first, staged there", function 
 	T.eq (decoy.me.spot, part.hide, "for its hiding place")
 	decoy.me.at = part.hide
 	decoy.action:Update (decoy.me)
-	T.eq (order:StagedAt (decoy.me) ~= nil, true, "staged")
-	T.eq (decoy.me.spot, part.hide, "and waits there while the rest stage")
+	T.eq (order:StagedAt (decoy.me) ~= nil, true,      "staged")
+	T.eq (decoy.me.spot,                    part.hide, "and waits there while the rest stage")
 end)
 
 -- Every member staged where it is to be, the decoy hidden.
@@ -656,15 +656,15 @@ T.test ("the rest staged, the decoy runs out to show itself; drawing the enemy, 
 	local part = order:DecoyOf (decoy.me.place)
 	decoy.action:Update (decoy.me)
 	T.eq (decoy.me.spot, part.show, "out to show itself")
-	T.eq (decoy.me.gait, GAIT.RUN, "running")
+	T.eq (decoy.me.gait, GAIT.RUN,  "running")
 	decoy.me.at = part.show
 	decoy.action:Update (decoy.me)
 	T.eq (order:Engaged (), false, "seen by none yet")
 	decoy.me.contact = true
 	decoy.action:Update (decoy.me)
-	T.eq (order:Engaged (), true, "the enemy drawn")
-	T.eq (decoy.me.spot, part.hide, "back to hide")
-	T.eq (decoy.me.gait, GAIT.RUN, "running")
+	T.eq (order:Engaged (), true,      "the enemy drawn")
+	T.eq (decoy.me.spot,    part.hide, "back to hide")
+	T.eq (decoy.me.gait,    GAIT.RUN,  "running")
 end)
 
 T.test ("shown and drawing no one for DECOY_PATIENCE, the decoy takes the enemy as drawn", function ()
@@ -703,7 +703,7 @@ T.test ("hidden again once the rest go in, the decoy waits out the clearing, the
 	for _, m in ipairs (squad) do order:Breached (m.me, 0) end
 	decoy.me.now = GIB.CLEAR_GRACE
 	local result = decoy.action:Update (decoy.me)
-	T.eq (result.type, Action.CHANGE_TO, "on")
+	T.eq (result.type,        Action.CHANGE_TO, "on")
 	T.eq (result.action.name, "LegsStationary", "to its place")
 end)
 
@@ -711,7 +711,7 @@ T.test ("an assault falling back leaves off staging, going in and holding, and e
 	local order, squad = Flanking ()
 	order:SetMode (MODE.PANIC)
 	local stage = GIB.LegsStage:New ({ order = order })
-	T.eq (stage:Update (squad [2].me).action.name, "LegsEvacuate", "staging")
+	T.eq (stage:Update (squad [2].me).action.name,                                 "LegsEvacuate", "staging")
 	T.eq (GIB.LegsEnter:New ({ order = order }):Update (squad [2].me).action.name, "LegsEvacuate", "going in")
 	T.eq (GIB.LegsClear:New ({ order = order, point = squad [2].me.place }):Update (squad [2].me).action.name, "LegsEvacuate",
 		"holding")
@@ -725,7 +725,7 @@ T.test ("half an assaulting squad lost, its leader calls the fall back and the s
 	for _, m in ipairs (squad) do
 		if m.me == leader then m.orders:Update (leader) end
 	end
-	T.eq (order.mode, MODE.PANIC, "falling back")
+	T.eq (order.mode,                 MODE.PANIC,         "falling back")
 	T.eq (leader.said [#leader.said], GIB.FALL_BACK_LINE, "called")
 end)
 
@@ -742,9 +742,9 @@ T.test ("its leader lost, the first of the squad to see it takes the lead and ca
 	order:Casualty (squad [1].me)
 	order:Casualty ({})
 	squad [2].orders:Update (squad [2].me)
-	T.eq (order.leader, squad [2].me, "the lead taken")
+	T.eq (order.leader,          squad [2].me,       "the lead taken")
 	T.eq (squad [2].me.said [1], GIB.FALL_BACK_LINE, "the fall back called")
-	T.eq (order.mode, MODE.PANIC, "evacuating")
+	T.eq (order.mode,            MODE.PANIC,         "evacuating")
 end)
 
 T.test ("staging and hiding, a member keeps out of the room; going in, it does not", function ()

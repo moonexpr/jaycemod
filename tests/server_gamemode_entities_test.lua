@@ -52,7 +52,7 @@ T.test ("a gamemode entity an addon also defines is registered again from the ga
 	local bodies = { [GM_DIR .. "tf_projectile_rocket.lua"] = function (ENT) ENT.Variant = "ours" end }
 	local registered, env = load (files, bodies)
 	T.eq (registered.tf_projectile_rocket.Variant, "ours")
-	T.eq (registered.tf_projectile_rocket.Folder, "entities/tf_projectile_rocket")
+	T.eq (registered.tf_projectile_rocket.Folder,  "entities/tf_projectile_rocket")
 	T.eq (env.ENT, nil, "ENT is cleared after")
 end)
 

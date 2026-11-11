@@ -11,8 +11,8 @@ local CAMERA_MODEL = Model ("models/dav0r/camera.mdl")
 
 function ENT:SetupDataTables ()
 
-	self:NetworkVar ("Int", 0, "Key")
-	self:NetworkVar ("Bool", 0, "On")
+	self:NetworkVar ("Int",    0, "Key")
+	self:NetworkVar ("Bool",   0, "On")
 	self:NetworkVar ("Vector", 0, "vecTrack")
 	self:NetworkVar ("Entity", 0, "entTrack")
 	self:NetworkVar ("Entity", 1, "Player")

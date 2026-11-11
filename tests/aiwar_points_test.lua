@@ -51,8 +51,8 @@ end
 
 T.test ("the control point variant is the rounds mode's", function ()
 	T.eq (Scenario.For ("control_points"), CP.Scenario, "chosen by the mode's NAME")
-	T.eq (CP.Scenario.NAME, CP.MODE, "named for it")
-	T.eq (CP.Scenario.GUARDS_ALL_ROUND, false, "guards keep to their side of the point")
+	T.eq (CP.Scenario.NAME,                CP.MODE,     "named for it")
+	T.eq (CP.Scenario.GUARDS_ALL_ROUND,    false,       "guards keep to their side of the point")
 end)
 
 -- B1: objectives ------------------------------------------------------------------
@@ -70,10 +70,10 @@ T.test ("attack and defend reproduce CollectCapturePoints and CollectDefendPoint
 		}
 	})
 	local red, blue = field.objectives [RED], field.objectives [BLUE]
-	T.eq (Ranks (red.attack), "1", "RED attacks what it may capture, in round, zoned and shown")
-	T.eq (Ranks (red.defend), "0", "RED defends its own the enemy may capture")
+	T.eq (Ranks (red.attack),  "1",   "RED attacks what it may capture, in round, zoned and shown")
+	T.eq (Ranks (red.defend),  "0",   "RED defends its own the enemy may capture")
 	T.eq (Ranks (blue.attack), "0,1", "BLU attacks RED's point and the neutral one")
-	T.eq (Ranks (blue.defend), "", "BLU's point RED may not capture is not defended")
+	T.eq (Ranks (blue.defend), "",    "BLU's point RED may not capture is not defended")
 end)
 
 -- B2: target and staging --------------------------------------------------------
@@ -81,13 +81,13 @@ end)
 T.test ("the target is the point we are capping, else the nearest to our base", function ()
 	local near = FP.Point ({ rank = 0, at = P (-1000, 0), mayCapture = { [RED] = true } })
 	local far = FP.Point ({ rank = 1, at = P (1000, 0), mayCapture = { [RED] = true } })
-	T.eq (RankOf (Brief ({ points = { far, near } }).objectives [RED].target), 0, "nearest RED's base")
+	T.eq (RankOf (Brief ({ points = { far, near } }).objectives [RED].target),  0,   "nearest RED's base")
 	T.eq (RankOf (Brief ({ points = { far, near } }).objectives [BLUE].target), nil, "BLU may capture neither")
 	far.capping = RED
 	local o = Brief ({ points = { near, far } }).objectives [RED]
-	T.eq (RankOf (o.target), 1, "the one we cap")
-	T.eq (o.capping, true, "capping")
-	T.eq (RankOf (o.focus), 1, "the focus is the target")
+	T.eq (RankOf (o.target), 1,    "the one we cap")
+	T.eq (o.capping,         true, "capping")
+	T.eq (RankOf (o.focus),  1,    "the focus is the target")
 end)
 
 T.test ("staging is the locked point not ours nearest our base, only with nothing to attack", function ()
@@ -98,16 +98,16 @@ T.test ("staging is the locked point not ours nearest our base, only with nothin
 		FP.Point ({ rank = 2, at = P (500, 0), locked = true })
 	}
 	local o = Brief ({ points = points }).objectives [RED]
-	T.eq (RankOf (o.staging), 2, "the nearest locked point not ours")
-	T.eq (o.target, nil, "no target")
-	T.eq (RankOf (o.focus), 2, "the focus is where it stages")
+	T.eq (RankOf (o.staging), 2,   "the nearest locked point not ours")
+	T.eq (o.target,           nil, "no target")
+	T.eq (RankOf (o.focus),   2,   "the focus is where it stages")
 	points [1].mayCapture [BLUE] = true
 	points [3].locked, points [3].mayCapture [RED] = false, true
 	o = Brief ({ points = points }).objectives [RED]
-	T.eq (o.staging, nil, "a point to attack: no staging")
-	T.eq (RankOf (o.target), 2, "the target")
-	T.eq (RankOf (o.guard), 0, "and a guard")
-	T.eq (RankOf (o.focus), 2, "offense is the focus")
+	T.eq (o.staging,         nil, "a point to attack: no staging")
+	T.eq (RankOf (o.target), 2,   "the target")
+	T.eq (RankOf (o.guard),  0,   "and a guard")
+	T.eq (RankOf (o.focus),  2,   "offense is the focus")
 end)
 
 T.test ("the guard is a threatened point first, else the one nearest the enemy's base", function ()
@@ -119,9 +119,9 @@ T.test ("the guard is a threatened point first, else the one nearest the enemy's
 	T.eq (RankOf (Brief ({ points = points }).objectives [RED].guard), 1, "the forward one")
 	points [1].capping = BLUE
 	local o = Brief ({ points = points }).objectives [RED]
-	T.eq (RankOf (o.guard), 0, "the one being capped")
-	T.eq (o.threatened, true, "threatened")
-	T.eq (RankOf (o.focus), 0, "defense is the focus without offense")
+	T.eq (RankOf (o.guard), 0,    "the one being capped")
+	T.eq (o.threatened,     true, "threatened")
+	T.eq (RankOf (o.focus), 0,    "defense is the focus without offense")
 end)
 
 -- B3: threat memory -------------------------------------------------------------
@@ -131,8 +131,8 @@ T.test ("a point contested at t stays threatened until t + CONTESTED_MEMORY", fu
 	local field, scenario = Brief ({ points = { point } }, 10)
 	T.eq (field.objectives [RED].threatened, true, "being capped")
 	point.capping = Teams.UNASSIGNED
-	T.eq (Brief ({ points = { point } }, 10 + CP.CONTESTED_MEMORY - 0.1, scenario).objectives [RED].threatened, true, "just after")
-	T.eq (Brief ({ points = { point } }, 10 + CP.CONTESTED_MEMORY, scenario).objectives [RED].threatened, false, "forgotten")
+	T.eq (Brief ({ points = { point } }, 10 + CP.CONTESTED_MEMORY - 0.1, scenario).objectives [RED].threatened, true,  "just after")
+	T.eq (Brief ({ points = { point } }, 10 + CP.CONTESTED_MEMORY, scenario).objectives [RED].threatened,       false, "forgotten")
 	point.blocked = true
 	T.eq (Brief ({ points = { point } }, 20, scenario).objectives [RED].threatened, true, "a blocked capture is a contest")
 end)
@@ -166,10 +166,10 @@ end)
 
 T.test ("urgency: overtime, the round's clock under MUST_PUSH_TIME, or capping", function ()
 	local point = FP.Point ({ rank = 0, at = P (0, 0), mayCapture = { [RED] = true } })
-	T.eq (Brief ({ points = { point }, timeLeft = CP.MUST_PUSH_TIME + 1 }).objectives [RED].urgent, false, "time enough")
+	T.eq (Brief ({ points = { point }, timeLeft = CP.MUST_PUSH_TIME + 1 }).objectives [RED].urgent,   false, "time enough")
 	T.eq (Brief ({ points = { point }, timeLeft = CP.MUST_PUSH_TIME + 1 }).objectives [RED].timeLeft, CP.MUST_PUSH_TIME + 1, "the round's clock")
-	T.eq (Brief ({ points = { point }, timeLeft = CP.MUST_PUSH_TIME - 1 }).objectives [RED].urgent, true, "short of time")
-	T.eq (Brief ({ points = { point }, overtime = true }).objectives [RED].urgent, true, "overtime")
+	T.eq (Brief ({ points = { point }, timeLeft = CP.MUST_PUSH_TIME - 1 }).objectives [RED].urgent,   true, "short of time")
+	T.eq (Brief ({ points = { point }, overtime = true }).objectives [RED].urgent,                    true, "overtime")
 	point.capping = RED
 	T.eq (Brief ({ points = { point } }).objectives [RED].urgent, true, "capping")
 end)
@@ -206,20 +206,20 @@ end)
 T.test ("A/D: attackers take only offense roles, defenders only defense roles", function ()
 	local entries, defense = Stances ({ points = AttackDefend () })
 	T.eq (Shares (entries [BLUE].stance), "capture:40 assault:30 raid:20 support:10", "BLU attacks")
-	T.eq (entries [BLUE].key, "0", "key")
-	T.eq (defense [BLUE], 0, "no defense")
-	T.eq (Shares (entries [RED].stance), "defend:50 hold:20 raid:20 support:10", "RED defends")
-	T.eq (entries [RED].key, "10", "key")
-	T.eq (defense [RED], 1, "all defense")
-	T.eq (entries [RED].critical, false, "nothing critical")
+	T.eq (entries [BLUE].key,             "0",                                        "key")
+	T.eq (defense [BLUE],                 0,                                          "no defense")
+	T.eq (Shares (entries [RED].stance),  "defend:50 hold:20 raid:20 support:10",     "RED defends")
+	T.eq (entries [RED].key,              "10",                                       "key")
+	T.eq (defense [RED],                  1,                                          "all defense")
+	T.eq (entries [RED].critical,         false,                                      "nothing critical")
 end)
 
 T.test ("only a staging point: the attack-only stance; nothing at all: no stance", function ()
 	local entries = Stances ({ points = { FP.Point ({ rank = 0, at = P (0, 0), locked = true }) } })
-	T.eq (entries [RED].key, "0", "RED stages")
+	T.eq (entries [RED].key,  "0", "RED stages")
 	T.eq (entries [BLUE].key, "0", "and BLU")
 	entries = Stances ({ points = { FP.Point ({ rank = 0, at = P (0, 0), owner = RED }) } })
-	T.eq (entries [RED], nil, "RED: nothing to take or hold")
+	T.eq (entries [RED],  nil, "RED: nothing to take or hold")
 	T.eq (entries [BLUE], nil, "BLU: nothing it may capture")
 end)
 
@@ -237,13 +237,13 @@ end
 
 T.test ("5CP with both: the share follows the points held, the threat, and our capping", function ()
 	local entries, defense = Stances ({ points = FiveCP () })
-	T.eq (entries [RED].key, "6", "a point behind: 0.5 + 0.1")
-	T.eq (defense [RED], 0.6, "the share")
+	T.eq (entries [RED].key,             "6", "a point behind: 0.5 + 0.1")
+	T.eq (defense [RED],                 0.6, "the share")
 	T.eq (Shares (entries [RED].stance), "defend:30 hold:12 capture:16 assault:12 raid:20 support:10", "defense first from half")
 	local points = FiveCP ()
 	points [3].capping = RED
 	entries = Stances ({ points = points })
-	T.eq (entries [RED].key, "4", "capping: less defense")
+	T.eq (entries [RED].key,             "4", "capping: less defense")
 	T.eq (Shares (entries [RED].stance), "capture:24 assault:18 defend:20 hold:8 raid:20 support:10", "offense first under half")
 end)
 
@@ -251,9 +251,9 @@ T.test ("threatened, hold and defend swap; critical once the enemy's progress re
 	local points = FiveCP ()
 	points [2].capping, points [2].progress = BLUE, CP.CRITICAL_PROGRESS - 0.1
 	local entries = Stances ({ points = points })
-	T.eq (entries [RED].key, "8t", "threatened: more defense, hot")
+	T.eq (entries [RED].key,             "8t", "threatened: more defense, hot")
 	T.eq (Shares (entries [RED].stance), "hold:40 defend:16 capture:8 assault:6 raid:20 support:10", "holders first")
-	T.eq (entries [RED].critical, false, "not yet critical")
+	T.eq (entries [RED].critical,        false, "not yet critical")
 	points [2].progress = CP.CRITICAL_PROGRESS
 	T.eq (Stances ({ points = points }) [RED].critical, true, "critical")
 end)
@@ -356,7 +356,7 @@ T.test ("hold: a ring round the guard's zone, onto it while threatened or in set
 	local member = Member (RED, AiWar.HOLD)
 	local field = Goals ({})
 	Near (Orders.Goal (field, member), Orders.Ring (P (-1000, 0), 1, R + CP.HOLD_RING), "round it")
-	T.eq (hold.Zone (field, member), nil, "no zone")
+	T.eq (hold.Zone (field, member),   nil,   "no zone")
 	T.eq (hold.Urgent (field, member), false, "not urgent")
 	local threatened = Goals ({ points =
 		{
@@ -364,11 +364,11 @@ T.test ("hold: a ring round the guard's zone, onto it while threatened or in set
 		}
 	})
 	Near (Orders.Goal (threatened, member), Orders.Ring (P (-1000, 0), 1, R * CP.CAPTURE_SPREAD), "on it")
-	Near (hold.Zone (threatened, member), P (-1000, 0), "occupying it")
+	Near (hold.Zone (threatened, member),   P (-1000, 0),                                         "occupying it")
 	T.eq (hold.Urgent (threatened, member), true, "urgent")
 	local setup = Goals ({ setup = true })
 	Near (Orders.Goal (setup, member), Orders.Ring (P (-1000, 0), 1, R * CP.CAPTURE_SPREAD), "on it in setup")
-	Near (hold.Zone (setup, member), P (-1000, 0), "occupying it in setup")
+	Near (hold.Zone (setup, member),   P (-1000, 0),                                         "occupying it in setup")
 end)
 
 T.test ("assault: the way into a sphere short of the target, on our side", function ()
@@ -378,8 +378,8 @@ T.test ("assault: the way into a sphere short of the target, on our side", funct
 	Near (Orders.Goal (field, Member (RED, AiWar.ASSAULT, 1, from)), Orders.EntryPoint (center, CP.ASSAULT_SPHERE, from), "the entry")
 	local sphere, radius = CP.DOCTRINE.ROLES [AiWar.ASSAULT].Sphere (field, Member (RED, AiWar.ASSAULT))
 	Near (sphere, center, "the sphere")
-	T.eq (radius, CP.ASSAULT_SPHERE, "its radius")
-	T.eq (Lanes.JOBS [AiWar.ASSAULT], true, "assault squads take lanes")
+	T.eq (radius,                     CP.ASSAULT_SPHERE, "its radius")
+	T.eq (Lanes.JOBS [AiWar.ASSAULT], true,              "assault squads take lanes")
 end)
 
 T.test ("defend: posts round the guard, else a ring toward the enemy's base; gate spots in setup", function ()
@@ -415,8 +415,8 @@ T.test ("raid: round the target's line from our base on offense, the guard's fro
 	Near (raid.Cleared (offense, member), Orders.Ring (P (0, 0), 9, R * CP.CAPTURE_SPREAD), "then onto the point")
 	local defense = Goals ({ points = { FP.Point ({ rank = 1, at = P (-1000, 0), owner = RED, mayCapture = { [BLUE] = true } }) } })
 	line, from = raid.Line (defense, member)
-	Near (line, P (-1000, 0), "the guard")
-	Near (from, BASE_B, "from their base")
+	Near (line,                           P (-1000, 0),                                              "the guard")
+	Near (from,                           BASE_B,                                                    "from their base")
 	Near (raid.Cleared (defense, member), Geometry.Toward (P (-1000, 0), BASE_B, CP.RAID_INTERCEPT), "then intercepts")
 end)
 
@@ -436,7 +436,7 @@ T.test ("support stands behind the focus on our side, spread sideways; a medic w
 	local spot = Geometry.Toward (P (0, 0), BASE_R, R + Orders.SUPPORT_BEHIND)
 	Near (Orders.Goal (field, Member (RED, AiWar.SUPPORT, 0)), spot, "slot 0 on the line")
 	Near (Orders.Goal (field, Member (RED, AiWar.SUPPORT, 1)), Orders.Across (BASE_R, spot, Orders.Lateral (1)), "slot 1 aside")
-	Near (Orders.Goal (field, Member (RED, AiWar.MEDIC, 1)), Orders.Goal (field, Member (RED, AiWar.SUPPORT, 1)), "the medic")
+	Near (Orders.Goal (field, Member (RED, AiWar.MEDIC, 1)),   Orders.Goal (field, Member (RED, AiWar.SUPPORT, 1)), "the medic")
 	T.eq (CP.DOCTRINE.ROLES [AiWar.MEDIC].heals, true, "heals")
 end)
 
@@ -460,7 +460,7 @@ end)
 
 T.test ("every job falls back: capture to hold, hold to capture, assault to defend, defend to assault", function ()
 	local defending = Goals ({ points = { FP.Point ({ rank = 1, at = P (-1000, 0), owner = RED, mayCapture = { [BLUE] = true } }) } })
-	Near (Orders.Goal (defending, Member (RED, AiWar.CAPTURE)), Orders.Goal (defending, Member (RED, AiWar.HOLD)), "no target: hold's goal")
+	Near (Orders.Goal (defending, Member (RED, AiWar.CAPTURE)),                  Orders.Goal (defending, Member (RED, AiWar.HOLD)),   "no target: hold's goal")
 	Near (Orders.Goal (defending, Member (RED, AiWar.ASSAULT, 1, P (-2500, 0))), Orders.Goal (defending, Member (RED, AiWar.DEFEND)), "no target: defend's goal")
 	local attacking = Goals ({ points = { FP.Point ({ rank = 2, at = P (0, 0), mayCapture = { [RED] = true } }) } })
 	Near (Orders.Goal (attacking, Member (RED, AiWar.HOLD)), Orders.Goal (attacking, Member (RED, AiWar.CAPTURE)), "no guard: capture's goal")
@@ -483,14 +483,14 @@ end)
 T.test ("the doctrine's setup wait, chase anchor and patrol mark", function ()
 	local doctrine = CP.DOCTRINE
 	local setup = Goals ({ setup = true, points = AttackDefend () })
-	T.eq (doctrine.WaitsForSetup (setup, Member (BLUE, AiWar.CAPTURE)), true, "the attackers wait")
-	T.eq (doctrine.WaitsForSetup (setup, Member (RED, AiWar.HOLD)), false, "the defenders do not")
+	T.eq (doctrine.WaitsForSetup (setup, Member (BLUE, AiWar.CAPTURE)), true,  "the attackers wait")
+	T.eq (doctrine.WaitsForSetup (setup, Member (RED, AiWar.HOLD)),     false, "the defenders do not")
 	local field = Goals ({ points = AttackDefend () })
 	T.eq (doctrine.WaitsForSetup (field, Member (BLUE, AiWar.CAPTURE)), false, "not after setup")
 	Near (doctrine.ChaseAnchor (field, Member (BLUE, AiWar.CAPTURE)), P (-500, 0), "BLU's focus: its target")
-	Near (doctrine.ChaseAnchor (field, Member (RED, AiWar.DEFEND)), P (-500, 0), "RED's: its guard")
-	Near (doctrine.Threat (field, Member (BLUE, AiWar.CAPTURE)), P (-500, 0), "BLU watches its target")
-	Near (doctrine.Threat (field, Member (RED, AiWar.DEFEND)), P (-500, 0), "RED watches its guard")
+	Near (doctrine.ChaseAnchor (field, Member (RED, AiWar.DEFEND)),   P (-500, 0), "RED's: its guard")
+	Near (doctrine.Threat (field, Member (BLUE, AiWar.CAPTURE)),      P (-500, 0), "BLU watches its target")
+	Near (doctrine.Threat (field, Member (RED, AiWar.DEFEND)),        P (-500, 0), "RED watches its guard")
 	local mark = doctrine.PatrolMark (field, Member (RED, AiWar.DEFEND))
 	T.eq (doctrine.PatrolHolds (mark, field, Member (RED, AiWar.DEFEND)), true, "the same guard, unthreatened")
 	local points = AttackDefend ()
@@ -510,10 +510,10 @@ T.test ("the doctrine's sides: capturers and assaulters attack, holders and defe
 	T.eq (doctrine.SIDES.defend, "ControlPointDefender")
 	T.eq (doctrine.Side (field, Member (BLUE, AiWar.CAPTURE)), "attack", "capture")
 	T.eq (doctrine.Side (field, Member (BLUE, AiWar.ASSAULT)), "attack", "assault")
-	T.eq (doctrine.Side (field, Member (RED, AiWar.HOLD)), "defend", "hold")
-	T.eq (doctrine.Side (field, Member (RED, AiWar.DEFEND)), "defend", "defend")
-	T.eq (doctrine.Side (field, Member (BLUE, AiWar.RAID)), "attack", "BLU's raider attacks: it guards nothing")
-	T.eq (doctrine.Side (field, Member (RED, AiWar.RAID)), "defend", "RED's raider defends: it attacks nothing")
+	T.eq (doctrine.Side (field, Member (RED, AiWar.HOLD)),     "defend", "hold")
+	T.eq (doctrine.Side (field, Member (RED, AiWar.DEFEND)),   "defend", "defend")
+	T.eq (doctrine.Side (field, Member (BLUE, AiWar.RAID)),    "attack", "BLU's raider attacks: it guards nothing")
+	T.eq (doctrine.Side (field, Member (RED, AiWar.RAID)),     "defend", "RED's raider defends: it attacks nothing")
 end)
 
 T.test ("the front is the focus; setup attackers come out toward their target", function ()
@@ -521,7 +521,7 @@ T.test ("the front is the focus; setup attackers come out toward their target", 
 	local field = FP.Field ({ points = AttackDefend (), setup = true })
 	scenario:Brief (field, 0)
 	Near (scenario:Front (field, BLUE), P (-500, 0), "BLU's target")
-	Near (scenario:Front (field, RED), P (-500, 0), "RED's guard")
+	Near (scenario:Front (field, RED),  P (-500, 0), "RED's guard")
 	local attacks = scenario:SetupAttacks (field)
 	Near (attacks [BLUE], P (-500, 0), "BLU attacks")
 	T.eq (attacks [RED], nil, "RED defends")
@@ -542,11 +542,11 @@ T.test ("points out of the mini-round are never targeted or guarded", function (
 		}
 	})
 	local red, blue = field.objectives [RED], field.objectives [BLUE]
-	T.eq (red.target, nil, "RED targets nothing out of round")
-	T.eq (red.staging, nil, "nor stages there")
-	T.eq (RankOf (red.guard), 3, "RED guards only the round's point")
-	T.eq (RankOf (blue.target), 3, "BLU targets only it")
-	T.eq (blue.guard, nil, "BLU guards nothing out of round")
+	T.eq (red.target,           nil, "RED targets nothing out of round")
+	T.eq (red.staging,          nil, "nor stages there")
+	T.eq (RankOf (red.guard),   3,   "RED guards only the round's point")
+	T.eq (RankOf (blue.target), 3,   "BLU targets only it")
+	T.eq (blue.guard,           nil, "BLU guards nothing out of round")
 end)
 
 -- Full stack ------------------------------------------------------------------------
@@ -569,7 +569,7 @@ T.test ("5CP: both sides take mid and shuffle on it; once BLU has it, RED defend
 	local function Soldier (i)
 		return { patrolSpots = spots }
 	end
-	battle:Enlist (RED, SOLDIERS, Soldier)
+	battle:Enlist (RED,  SOLDIERS, Soldier)
 	battle:Enlist (BLUE, SOLDIERS, Soldier)
 	local field = FP.Field ({ points = points })
 	battle:Start (field)
@@ -579,7 +579,7 @@ T.test ("5CP: both sides take mid and shuffle on it; once BLU has it, RED defend
 	battle:Tick (field, 40)
 	for _, s in ipairs (capturers) do
 		T.eq (FP.InZone (s.me.pos, mid), true, s.member.handle .. " inside mid")
-		T.eq (s.npc:State ().inZone, true, s.member.handle .. " knows it")
+		T.eq (s.npc:State ().inZone,     true, s.member.handle .. " knows it")
 	end
 	local s = capturers [1]
 	local seen = {}
@@ -628,7 +628,7 @@ T.test ("A/D setup: BLU wanders, RED lines up at the gates and holds A; after se
 	local b = FP.Point ({ rank = 1, at = P (-1500, 0), owner = RED })
 	local battle = FP.Battle (CP.Scenario)
 	battle.war:SetOffRoles ({}) -- assault squads on lanes: every role on
-	battle:Enlist (RED, SOLDIERS, function (i) return { pos = P (-1000, 0) } end)
+	battle:Enlist (RED,  SOLDIERS, function (i) return { pos = P (-1000, 0) } end)
 	battle:Enlist (BLUE, SOLDIERS, function (i) return { pos = P (2500, 0) } end)
 	local lane =
 	{
@@ -687,10 +687,10 @@ T.test ("A/D fall back: A lost, RED's guard is B at once, and its holders reach 
 	a.owner, a.mayCapture [BLUE], a.capping = BLUE, false, Teams.UNASSIGNED
 	b.mayCapture [BLUE] = true
 	battle:Tick (field, 1)
-	T.eq (RankOf (field.objectives [RED].guard), 1, "the guard is B")
-	T.eq (field.objectives [RED].justLost, true, "A just lost")
-	T.eq (battle.scenario.current [RED].key, "10t", "the hot stance, undamped")
-	T.eq (battle.scenario.current [RED].critical, true, "critical")
+	T.eq (RankOf (field.objectives [RED].guard),  1,     "the guard is B")
+	T.eq (field.objectives [RED].justLost,        true,  "A just lost")
+	T.eq (battle.scenario.current [RED].key,      "10t", "the hot stance, undamped")
+	T.eq (battle.scenario.current [RED].critical, true,  "critical")
 	battle:Tick (field, 19)
 	local holders = battle:Of (RED, AiWar.HOLD)
 	T.eq (#holders > 0, true, "RED has holders")

@@ -28,8 +28,8 @@ T.test ("nested tables count, each object once, credited to the first root to re
 	local report = Memory.Measure ({ { "a", { shared } }, { "b", { shared } } })
 	local sharedBytes = Memory.TABLE + 4 * Memory.ARRAY_SLOT
 	T.eq (Bytes (report, "a"), Memory.TABLE + Memory.ARRAY_SLOT + sharedBytes, "a holds it")
-	T.eq (Bytes (report, "b"), Memory.TABLE + Memory.ARRAY_SLOT, "b only points at it")
-	T.eq (report.total, Bytes (report, "a") + Bytes (report, "b"), "the total")
+	T.eq (Bytes (report, "b"), Memory.TABLE + Memory.ARRAY_SLOT,               "b only points at it")
+	T.eq (report.total,        Bytes (report, "a") + Bytes (report, "b"),      "the total")
 end)
 
 T.test ("cycles end, and metatables count", function ()

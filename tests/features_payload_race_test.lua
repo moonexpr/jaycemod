@@ -14,7 +14,7 @@ end)
 
 T.test ("a missing cart counts as not started", function ()
 	T.eq (R.Leader ({ [BLU] = 10 }), BLU)
-	T.eq (R.Leader ({}), NOBODY)
+	T.eq (R.Leader ({}),             NOBODY)
 end)
 
 T.test ("a stage win plays the first-stage outcome lines", function ()
@@ -35,7 +35,7 @@ end)
 
 T.test ("every announcer line the SDK names maps to its mp3", function ()
 	local sounds = R.Sounds ()
-	T.eq (sounds ["Announcer.PLR_RaceGeneral15"], "vo/announcer_plr_racegeneral15.mp3")
+	T.eq (sounds ["Announcer.PLR_RaceGeneral15"],     "vo/announcer_plr_racegeneral15.mp3")
 	T.eq (sounds ["Announcer.PLR_FinalStageStart09"], "vo/announcer_plr_finalstagestart09.mp3")
 	local n = 0
 	for _ in pairs (sounds) do n = n + 1 end

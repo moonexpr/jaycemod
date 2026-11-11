@@ -11,11 +11,11 @@ end
 
 T.test ("ASCII decodes to itself, the byte-order mark dropped", function ()
 	T.eq (Utf16.Decode (Le (0xFEFF, 0x41, 0x62)), "Ab", "BOM gone")
-	T.eq (Utf16.Decode (""), "", "empty")
+	T.eq (Utf16.Decode (""),                      "",   "empty")
 end)
 
 T.test ("two- and three-byte UTF-8 for the basic plane", function ()
-	T.eq (Utf16.Decode (Le (0xE9)), "\195\169", "é")
+	T.eq (Utf16.Decode (Le (0xE9)),   "\195\169",     "é")
 	T.eq (Utf16.Decode (Le (0x20AC)), "\226\130\172", "€")
 end)
 

@@ -87,7 +87,7 @@ end
 
 T.test ("the monitors load without the war's feature", function ()
 	T.eq (package.loaded ["features.aiwar.ns_behaviors"], nil, "orders")
-	T.eq (package.loaded ["features.aiwar.model"], nil, "model")
+	T.eq (package.loaded ["features.aiwar.model"],        nil, "model")
 end)
 
 T.test ("the tree runs tactical, squad, a role, scenario, then the mode's side", function ()
@@ -109,8 +109,8 @@ end)
 
 T.test ("a scenario naming a behaviour never registered is refused, naming it", function ()
 	local ok, why = pcall (Soldier, { scenario = { name = "holdout", monitor = "Nowhere" } })
-	T.eq (ok, false, "refused")
-	T.eq (tostring (why):find ("Nowhere", 1, true) ~= nil, true, tostring (why))
+	T.eq (ok,                                              false, "refused")
+	T.eq (tostring (why):find ("Nowhere", 1, true) ~= nil, true,  tostring (why))
 end)
 
 T.test ("a member follows its squad's kind", function ()
@@ -170,8 +170,8 @@ end)
 
 T.test ("a host missing a part is refused, naming it", function ()
 	local ok, why = pcall (function () return Monitors.HOST:Check ({ Sides = function () end }) end)
-	T.eq (ok, false, "refused")
-	T.eq (tostring (why):find ("Hunting", 1, true) ~= nil, true, tostring (why))
+	T.eq (ok,                                              false, "refused")
+	T.eq (tostring (why):find ("Hunting", 1, true) ~= nil, true,  tostring (why))
 end)
 
 T.finish ()

@@ -11,7 +11,7 @@ function ENT:SetupDataTables ()
 
 	self:NetworkVar ("String", 0, "Effect")
 	self:NetworkVar ("Vector", 0, "Offset")
-	self:NetworkVar ("Bool", 0, "On")
+	self:NetworkVar ("Bool",   0, "On")
 
 	-- Backwards compat, use :GetOn instead
 	self.IsOn = self.GetOn
@@ -377,9 +377,9 @@ list.Set ("ThrusterEffects", "#thrustereffect.flames",
 			render.SetMaterial (matFire)
 
 			render.StartBeam (3)
-			render.AddBeam (vOffset, size * Scale, scroll, clrFireBlue)
-			render.AddBeam (vOffset + vNormal * 60 * Scale, 32 * Scale, scroll + 1, clrFireWhite)
-			render.AddBeam (vOffset + vNormal * 148 * Scale, 32 * Scale, scroll + 3, clrFireWhiteEmpty)
+			render.AddBeam (vOffset,                         size * Scale, scroll,     clrFireBlue)
+			render.AddBeam (vOffset + vNormal * 60 * Scale,  32 * Scale,   scroll + 1, clrFireWhite)
+			render.AddBeam (vOffset + vNormal * 148 * Scale, 32 * Scale,   scroll + 3, clrFireWhiteEmpty)
 			render.EndBeam ()
 
 			scroll = scroll * 0.5
@@ -387,17 +387,17 @@ list.Set ("ThrusterEffects", "#thrustereffect.flames",
 			render.UpdateRefractTexture ()
 			render.SetMaterial (matHeatWave)
 			render.StartBeam (3)
-			render.AddBeam (vOffset, size * Scale, scroll, clrFireBlue)
-			render.AddBeam (vOffset + vNormal * 32 * Scale, 32 * Scale, scroll + 2, color_white)
-			render.AddBeam (vOffset + vNormal * 128 * Scale, 48 * Scale, scroll + 5, clrFireEmpty)
+			render.AddBeam (vOffset,                         size * Scale, scroll,     clrFireBlue)
+			render.AddBeam (vOffset + vNormal * 32 * Scale,  32 * Scale,   scroll + 2, color_white)
+			render.AddBeam (vOffset + vNormal * 128 * Scale, 48 * Scale,   scroll + 5, clrFireEmpty)
 			render.EndBeam ()
 
 			scroll = scroll * 1.3
 			render.SetMaterial (matFire)
 			render.StartBeam (3)
-			render.AddBeam (vOffset, size * Scale, scroll, clrFireBlue)
-			render.AddBeam (vOffset + vNormal * 60 * Scale, 16 * Scale, scroll + 1, clrFireWhite)
-			render.AddBeam (vOffset + vNormal * 148 * Scale, 16 * Scale, scroll + 3, clrFireWhiteEmpty)
+			render.AddBeam (vOffset,                         size * Scale, scroll,     clrFireBlue)
+			render.AddBeam (vOffset + vNormal * 60 * Scale,  16 * Scale,   scroll + 1, clrFireWhite)
+			render.AddBeam (vOffset + vNormal * 148 * Scale, 16 * Scale,   scroll + 3, clrFireWhiteEmpty)
 			render.EndBeam ()
 		end
 	}
@@ -429,24 +429,24 @@ list.Set ("ThrusterEffects", "#thrustereffect.plasma",
 			scroll = scroll * 0.9
 
 			render.StartBeam (3)
-			render.AddBeam (vOffset, size, scroll, clrPlasmaBlue)
-			render.AddBeam (vOffset + vNormal * 8, size, scroll + 0.01, color_white)
+			render.AddBeam (vOffset,                size, scroll,        clrPlasmaBlue)
+			render.AddBeam (vOffset + vNormal * 8,  size, scroll + 0.01, color_white)
 			render.AddBeam (vOffset + vNormal * 64, size, scroll + 0.02, clrPlasmaBlueEmpty)
 			render.EndBeam ()
 
 			scroll = scroll * 0.9
 
 			render.StartBeam (3)
-			render.AddBeam (vOffset, size, scroll, clrPlasmaBlue)
-			render.AddBeam (vOffset + vNormal * 8, size, scroll + 0.01, color_white)
+			render.AddBeam (vOffset,                size, scroll,        clrPlasmaBlue)
+			render.AddBeam (vOffset + vNormal * 8,  size, scroll + 0.01, color_white)
 			render.AddBeam (vOffset + vNormal * 64, size, scroll + 0.02, clrPlasmaBlueEmpty)
 			render.EndBeam ()
 
 			scroll = scroll * 0.9
 
 			render.StartBeam (3)
-			render.AddBeam (vOffset, size, scroll, clrPlasmaBlue)
-			render.AddBeam (vOffset + vNormal * 8, size, scroll + 0.01, color_white)
+			render.AddBeam (vOffset,                size, scroll,        clrPlasmaBlue)
+			render.AddBeam (vOffset + vNormal * 8,  size, scroll + 0.01, color_white)
 			render.AddBeam (vOffset + vNormal * 64, size, scroll + 0.02, clrPlasmaBlueEmpty)
 			render.EndBeam ()
 		end

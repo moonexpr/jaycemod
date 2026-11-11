@@ -37,7 +37,7 @@ T.test ("every privilege is registered once, with a known default rank and a des
 	for _, p in ipairs (Permissions.PRIVILEGES) do
 		T.eq (seen [p.name], nil, "registered once: " .. p.name)
 		seen [p.name] = true
-		T.eq (RANKS [p.rank], true, "a known rank: " .. p.name)
+		T.eq (RANKS [p.rank],                                          true, "a known rank: " .. p.name)
 		T.eq (type (p.description) == "string" and #p.description > 0, true, "described: " .. p.name)
 	end
 	for _, name in ipairs (
@@ -61,15 +61,15 @@ end)
 T.test ("a held privilege is allowed; one not held is refused for rank", function ()
 	T.eq (Permissions.Allows (Permissions.MATCH, Holding (Permissions.MATCH), Facts ()), true)
 	local ok, why = Permissions.Allows (Permissions.MATCH, Holding (), Facts ())
-	T.eq (ok, false)
+	T.eq (ok,  false)
 	T.eq (why, Permissions.REASON_RANK)
 end)
 
 T.test ("everyone spawns in Sandbox mode; in Gameplay mode only holders do", function ()
 	T.eq (Permissions.Allows (Permissions.SPAWN, Holding (), Facts ({ mode = PlayMode.SANDBOX })), true)
 	for _, mode in ipairs ({ PlayMode.GAMEPLAY, PlayMode.AIWAR, PlayMode.ARENA }) do
-		T.eq (Permissions.Allows (Permissions.SPAWN, Holding (), Facts ({ mode = mode })), false, mode)
-		T.eq (Permissions.Allows (Permissions.SPAWN, Holding (Permissions.SPAWN), Facts ({ mode = mode })), true, mode)
+		T.eq (Permissions.Allows (Permissions.SPAWN, Holding (), Facts ({ mode = mode })),                  false, mode)
+		T.eq (Permissions.Allows (Permissions.SPAWN, Holding (Permissions.SPAWN), Facts ({ mode = mode })), true,  mode)
 	end
 end)
 

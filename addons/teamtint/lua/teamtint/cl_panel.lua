@@ -42,7 +42,7 @@ end
 
 function TeamTint.BuildPanel (panel)
 	panel:Help ("Paint a body RED (left click) or BLU (right click); reload clears. Shift + left click spawns a RED and a BLU copy beside it. Without a toolgun: teamtint_paint red|blu|original|clear.")
-	panel:CheckBox ("Theme bodies by team", "teamtint_enable")
+	panel:CheckBox ("Theme bodies by team",        "teamtint_enable")
 	panel:CheckBox ("Overlay: team and materials", "teamtint_overlay")
 
 	local view = panel:ComboBox ("View", "teamtint_view")
@@ -56,7 +56,7 @@ function TeamTint.BuildPanel (panel)
 	panel:Button ("Reset this scope", "teamtint_reset_scope")
 	local copy = panel:Button ("Copy knobs to clipboard")
 	function copy:DoClick () SetClipboardText (TeamTint.ConvarText ()) end
-	panel:Button ("Export tuning and VMTs", "teamtint_export")
+	panel:Button ("Export tuning and VMTs",        "teamtint_export")
 	panel:Button ("Census of the war's materials", "teamtint_census")
 	panel:CheckBox ("Bench: $softwareskin on themed bodies", "teamtint_bench_softwareskin")
 	panel:Help ("Tuning is saved to data/teamtint/tuning.json. Views: albedo and silhouette draw unlit; value is greyscale, and RED and BLU must still differ in it.")

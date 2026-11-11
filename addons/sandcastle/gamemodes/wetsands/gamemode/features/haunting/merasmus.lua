@@ -583,7 +583,7 @@ local function BombHeadForTeam (state, me, team)
 		if victim == nil then return end
 		me:StunPlayer (victim, duration, 0, Players.STUN.LOSER_STATE)
 		me:AddCond (victim, Players.COND.HALLOWEEN_BOMB_HEAD, duration)
-		me:AddCond (victim, Players.COND.SPEED_BOOST, duration)
+		me:AddCond (victim, Players.COND.SPEED_BOOST,         duration)
 		stamps [victim] = now
 		state.bombHeads [#state.bombHeads + 1] =
 		{
@@ -613,8 +613,8 @@ local function AddStun (state, me, index)
 		me:PlayLowPrioritySound (rare and "Halloween.MerasmusHitByBombRare" or "Halloween.MerasmusHitByBomb")
 	end
 	me:AddCond (t, Players.COND.CRITBOOSTED_PUMPKIN, STUN_BUFF)
-	me:AddCond (t, Players.COND.SPEED_BOOST, STUN_BUFF)
-	me:AddCond (t, Players.COND.INVULNERABLE, STUN_BUFF)
+	me:AddCond (t, Players.COND.SPEED_BOOST,         STUN_BUFF)
+	me:AddCond (t, Players.COND.INVULNERABLE,        STUN_BUFF)
 	me:EndStun (t)
 	RemoveBombHead (state, me, index)
 	PlayerBombExplode (me, t, true)
@@ -686,8 +686,8 @@ local function OnRevealed (state, me, playSound)
 	local finder = state.revealer
 	if finder ~= nil then
 		me:AddCond (finder, Players.COND.CRITBOOSTED_PUMPKIN, STUN_BUFF)
-		me:AddCond (finder, Players.COND.SPEED_BOOST, STUN_BUFF)
-		me:AddCond (finder, Players.COND.INVULNERABLE, STUN_BUFF)
+		me:AddCond (finder, Players.COND.SPEED_BOOST,         STUN_BUFF)
+		me:AddCond (finder, Players.COND.INVULNERABLE,        STUN_BUFF)
 	end
 	state.revealer = nil
 	ShowHealth (me)

@@ -1,7 +1,7 @@
 local PANEL = {}
 
-AccessorFunc (PANEL, "m_strType", "Type")
-AccessorFunc (PANEL, "m_ConVars", "ConVars")
+AccessorFunc (PANEL, "m_strType",       "Type")
+AccessorFunc (PANEL, "m_ConVars",       "ConVars")
 AccessorFunc (PANEL, "m_PresetControl", "PresetControl")
 
 function PANEL:Init ()

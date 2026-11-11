@@ -129,7 +129,7 @@ function WS.EndStun (ply)
 end
 
 -- A player starts each life with no conditions.
-hook.Add ("PlayerSpawn", "ws_conditions", WS.RemoveAllConditions)
+hook.Add ("PlayerSpawn",     "ws_conditions", WS.RemoveAllConditions)
 hook.Add ("PostPlayerDeath", "ws_conditions", WS.RemoveAllConditions)
 
 -- Afterburn, from nobody: what set the fire is not kept.
@@ -172,7 +172,7 @@ local function SyncBonusCrits (now)
 			if boosted ~= P.InCond (WS.ConditionsOf (ent), C.CRITBOOSTED_BONUS_TIME, now) then
 				if boosted then
 					WS.AddCondition (ent, C.CRITBOOSTED_BONUS_TIME, P.PERMANENT)
-					WS.AddCondition (ent, C.SPEED_BOOST, P.PERMANENT)
+					WS.AddCondition (ent, C.SPEED_BOOST,            P.PERMANENT)
 				else
 					WS.RemoveCondition (ent, C.CRITBOOSTED_BONUS_TIME)
 					WS.RemoveCondition (ent, C.SPEED_BOOST)

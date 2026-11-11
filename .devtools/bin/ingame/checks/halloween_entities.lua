@@ -20,8 +20,8 @@ return function (t)
 		local wanted = t.args.holiday or Holiday.HALLOWEEN
 		t:Check ("the holiday the map's tf_logic_holiday names (" .. wanted .. ") is active", holiday:HolidayActive (wanted), "")
 		t:Info ("halloween_active", holiday:HolidayActive (Holiday.HALLOWEEN))
-		t:Info ("holiday_mode", holiday.mode and holiday.mode.HOLIDAY or "none")
-		t:Info ("spells_on", holiday.holiday:UsingSpells () and true or false)
+		t:Info ("holiday_mode",     holiday.mode and holiday.mode.HOLIDAY or "none")
+		t:Info ("spells_on",        holiday.holiday:UsingSpells () and true or false)
 	end
 
 	local stubs, engine = {}, {}

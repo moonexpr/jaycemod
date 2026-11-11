@@ -25,8 +25,8 @@ function Cast (caster)
 	SpellSet.CastSound (caster, INDEX)
 	local owner = caster:Owner ()
 	caster:Heal (owner, HEAL)
-	caster:AddCond (owner, SpellSet.COND.HALLOWEEN_TINY, DURATION)
+	caster:AddCond (owner, SpellSet.COND.HALLOWEEN_TINY,        DURATION)
 	caster:AddCond (owner, SpellSet.COND.HALLOWEEN_SPEED_BOOST, DURATION)
-	caster:AddCond (owner, SpellSet.COND.SPEED_BOOST, DURATION)
+	caster:AddCond (owner, SpellSet.COND.SPEED_BOOST,           DURATION)
 	return true
 end

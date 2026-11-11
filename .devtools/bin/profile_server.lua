@@ -271,7 +271,7 @@ function P.Report (n)
 		end
 	end
 	Section ("-- by self time (ms of CPU per second of play)", "self")
-	Section ("-- by inclusive time", "incl")
+	Section ("-- by inclusive time",                           "incl")
 	if P.alloc then
 		local allocated = {}
 		for _, row in ipairs (rows) do

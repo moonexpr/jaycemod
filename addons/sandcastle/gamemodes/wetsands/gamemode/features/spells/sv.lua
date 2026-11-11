@@ -313,7 +313,7 @@ function Controller:Publish (caster)
 	if book == nil or not IsValid (weapon) then return end
 	local state = book:State ()
 	weapon:SetNW2Int (NW_SELECTED, state.selected)
-	weapon:SetNW2Int (NW_CHARGES, state.charges)
+	weapon:SetNW2Int (NW_CHARGES,  state.charges)
 	weapon:SetNW2Float (NW_ROLLING_UNTIL, state.rollingUntil or NOT_ROLLING)
 end
 

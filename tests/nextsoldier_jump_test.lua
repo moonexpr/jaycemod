@@ -21,15 +21,15 @@ local GMOD = Model (
 local NPC = Model ("ACT_JUMP", "ACT_GLIDE", "ACT_LAND")
 
 T.test ("a TF2 model plays the jump of the slot its weapon is held as, each phase its own", function ()
-	T.eq (Jump.Pick ("ar2", Jump.START, TF2), "ACT_MP_JUMP_START_PRIMARY")
-	T.eq (Jump.Pick ("ar2", Jump.FLOAT, TF2), "ACT_MP_JUMP_FLOAT_PRIMARY")
-	T.eq (Jump.Pick ("ar2", Jump.LAND, TF2), "ACT_MP_JUMP_LAND_PRIMARY")
+	T.eq (Jump.Pick ("ar2", Jump.START, TF2),    "ACT_MP_JUMP_START_PRIMARY")
+	T.eq (Jump.Pick ("ar2", Jump.FLOAT, TF2),    "ACT_MP_JUMP_FLOAT_PRIMARY")
+	T.eq (Jump.Pick ("ar2", Jump.LAND, TF2),     "ACT_MP_JUMP_LAND_PRIMARY")
 	T.eq (Jump.Pick ("pistol", Jump.FLOAT, TF2), "ACT_MP_JUMP_FLOAT_SECONDARY")
-	T.eq (Jump.Pick ("melee", Jump.FLOAT, TF2), "ACT_MP_JUMP_FLOAT_MELEE")
+	T.eq (Jump.Pick ("melee", Jump.FLOAT, TF2),  "ACT_MP_JUMP_FLOAT_MELEE")
 end)
 
 T.test ("a TF2 model holding nothing it has a slot for jumps as with its primary", function ()
-	T.eq (Jump.Pick ("normal", Jump.FLOAT, TF2), "ACT_MP_JUMP_FLOAT_PRIMARY")
+	T.eq (Jump.Pick ("normal", Jump.FLOAT, TF2),       "ACT_MP_JUMP_FLOAT_PRIMARY")
 	T.eq (Jump.Pick ("no such hold", Jump.FLOAT, TF2), "ACT_MP_JUMP_FLOAT_PRIMARY")
 end)
 
@@ -38,18 +38,18 @@ T.test ("a GMod player model plays its hold type's jump all the way up, and land
 	T.eq (Jump.Pick ("ar2", Jump.START, GMOD), "ACT_HL2MP_JUMP_AR2")
 	T.eq (Jump.Pick ("smg", Jump.FLOAT, GMOD), "ACT_HL2MP_JUMP_SMG1", "named as its other acts name it")
 	T.eq (Jump.Pick ("pistol", Jump.FLOAT, GMOD), "ACT_HL2MP_JUMP_PISTOL")
-	T.eq (Jump.Pick ("ar2", Jump.LAND, GMOD), "ACT_LAND")
+	T.eq (Jump.Pick ("ar2", Jump.LAND, GMOD),     "ACT_LAND")
 end)
 
 T.test ("a GMod player model with empty hands jumps as GMod's own players do", function ()
-	T.eq (Jump.Pick ("normal", Jump.FLOAT, GMOD), "ACT_HL2MP_JUMP_SLAM")
+	T.eq (Jump.Pick ("normal", Jump.FLOAT, GMOD),       "ACT_HL2MP_JUMP_SLAM")
 	T.eq (Jump.Pick ("no such hold", Jump.FLOAT, GMOD), "ACT_HL2MP_JUMP_SLAM")
 end)
 
 T.test ("an HL2 NPC's model jumps, glides and lands whatever it holds", function ()
 	T.eq (Jump.Pick ("ar2", Jump.START, NPC), "ACT_JUMP")
 	T.eq (Jump.Pick ("ar2", Jump.FLOAT, NPC), "ACT_GLIDE")
-	T.eq (Jump.Pick ("ar2", Jump.LAND, NPC), "ACT_LAND")
+	T.eq (Jump.Pick ("ar2", Jump.LAND, NPC),  "ACT_LAND")
 end)
 
 T.test ("a model with no jump has none picked, and keeps its usual animation", function ()

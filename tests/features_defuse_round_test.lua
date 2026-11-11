@@ -14,17 +14,17 @@ local RED, BLUE = Teams.RED, Teams.BLUE
 local W = Rounds.WINREASON
 
 T.test ("it is a rounds mode named defuse, fought like an arena round under CS:S's rules", function ()
-	T.eq (Round.Mode.NAME, "defuse", "name")
-	T.eq (Round.Mode.ROUND_STATE, State.STALEMATE, "fought in STALEMATE")
-	T.eq (Round.Mode.STALEMATE_IS_ROUND, true, "the stalemate is the round")
-	T.eq (Round.Mode.RULES_CLASS, "cs_gamerules", "CS:S's gamerules")
-	T.eq (Round.Mode.OBJECTIVE, true, "the bomb is the objective")
-	T.eq (Round.Mode:MayWinByPoints (RED, {}), false, "owning the sites wins nothing")
+	T.eq (Round.Mode.NAME,                     "defuse",        "name")
+	T.eq (Round.Mode.ROUND_STATE,              State.STALEMATE, "fought in STALEMATE")
+	T.eq (Round.Mode.STALEMATE_IS_ROUND,       true,            "the stalemate is the round")
+	T.eq (Round.Mode.RULES_CLASS,              "cs_gamerules",  "CS:S's gamerules")
+	T.eq (Round.Mode.OBJECTIVE,                true,            "the bomb is the objective")
+	T.eq (Round.Mode:MayWinByPoints (RED, {}), false,           "owning the sites wins nothing")
 end)
 
 T.test ("the bomb is RED's own to carry, as MvM's is its invaders'", function ()
 	T.eq (Round.Mode.FLAG_OWNERS_CARRY, true, "owners carry")
-	T.eq (Round.Mode.FLAG_INVADERS, RED, "RED carries")
+	T.eq (Round.Mode.FLAG_INVADERS,     RED,  "RED carries")
 end)
 
 T.test ("the AI war fights it with its own scenario", function ()
@@ -35,18 +35,18 @@ local function World (bomb) return { objectiveState = bomb and { bomb = bomb } o
 
 T.test ("time running out before the plant saves the targets: BLU wins", function ()
 	local winner, reason = Round.Mode:StalemateTimerWin (World (Defuse.New ()))
-	T.eq (winner == BLUE and reason == W.TARGET_SAVED, true, "BLU, the targets saved")
+	T.eq (winner == BLUE and reason == W.TARGET_SAVED,            true,  "BLU, the targets saved")
 	T.eq (Round.Mode:HoldsStalemateTimer (World (Defuse.New ())), false, "the timer ends it")
 end)
 
 T.test ("planted, the bomb decides: neither time nor RED's death ends the round", function ()
 	local planted = World (Defuse.New ():Plant ("A", 0, 45))
-	T.eq (Round.Mode:HoldsStalemateTimer (planted), true, "time out holds")
-	T.eq (Round.Mode:EliminationWins (BLUE, planted), false, "BLU alone must defuse")
-	T.eq (Round.Mode:EliminationWins (RED, planted), true, "RED alone wins")
-	T.eq (Round.Mode:EliminationWins (nil, planted), false, "nobody left: the bomb decides")
-	T.eq (Round.Mode:EliminationWins (BLUE, World (Defuse.New ())), true, "unplanted: as arena")
-	T.eq (Round.Mode:EliminationWins (BLUE, World (nil)), true, "no bomb told yet: as arena")
+	T.eq (Round.Mode:HoldsStalemateTimer (planted),                 true,  "time out holds")
+	T.eq (Round.Mode:EliminationWins (BLUE, planted),               false, "BLU alone must defuse")
+	T.eq (Round.Mode:EliminationWins (RED, planted),                true,  "RED alone wins")
+	T.eq (Round.Mode:EliminationWins (nil, planted),                false, "nobody left: the bomb decides")
+	T.eq (Round.Mode:EliminationWins (BLUE, World (Defuse.New ())), true,  "unplanted: as arena")
+	T.eq (Round.Mode:EliminationWins (BLUE, World (nil)),           true,  "no bomb told yet: as arena")
 end)
 
 -- Through the rounds' own think ------------------------------------------------------
@@ -86,9 +86,9 @@ local FIGHT_AT = T0 + Rounds.PREROUND_SECONDS + Round.FREEZE_SECONDS
 local function Fighting ()
 	local round = Rounds.New (Settings ())
 	T.eq (round:SetMode (Round.Mode), true, "defuse chosen")
-	round:Think (T0, Full ())
+	round:Think (T0,                           Full ())
 	round:Think (T0 + Rounds.PREROUND_SECONDS, Full ())
-	round:Think (FIGHT_AT, Full ())
+	round:Think (FIGHT_AT,                     Full ())
 	T.eq (round:State (), State.STALEMATE, "fought in STALEMATE")
 	return round
 end
@@ -115,8 +115,8 @@ T.test ("with the bomb planted, the round's timer running out ends nothing", fun
 end)
 
 T.test ("the round's length is the map's setting, after the freeze", function ()
-	T.eq (Round.Mode:StalemateSeconds ({ defuseRoundTime = 135 }), 135, "timed")
-	T.eq (Round.Mode:SetupSeconds ({}), Round.FREEZE_SECONDS, "the freeze")
+	T.eq (Round.Mode:StalemateSeconds ({ defuseRoundTime = 135 }), 135,                  "timed")
+	T.eq (Round.Mode:SetupSeconds ({}),                            Round.FREEZE_SECONDS, "the freeze")
 end)
 
 T.finish ()

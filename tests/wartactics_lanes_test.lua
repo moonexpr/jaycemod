@@ -33,7 +33,7 @@ T.test ("a hill path that climbs away from the corridor pairs with the far side,
 	local separation = Separation ({ hill = 1300, fieldLeft = 700, fieldRight = 690 })
 	local walks = WalksFrom ({ ["hill fieldLeft"] = 1800, ["hill fieldRight"] = 300 })
 	local a, b = Lanes.Siblings ({ "fieldRight", "hill", "fieldLeft" }, separation, walks)
-	T.eq (a, "hill", "the hill, farthest off the corridor")
+	T.eq (a, "hill",      "the hill, farthest off the corridor")
 	T.eq (b, "fieldLeft", "with the far side")
 end)
 
@@ -53,20 +53,20 @@ end)
 T.test ("with fewer than two places there are no siblings", function ()
 	local walks = WalksFrom ({})
 	T.eq (Lanes.Siblings ({ "a" }, Separation ({ a = 500 }), walks), nil, "one place")
-	T.eq (Lanes.Siblings ({}, Separation ({}), walks), nil, "none")
+	T.eq (Lanes.Siblings ({}, Separation ({}), walks),               nil, "none")
 end)
 
 T.test ("flank range is FLANK_MIN to FLANK_MAX from the objective, flat", function ()
 	local objective = P (1000, 0)
-	T.eq (Lanes.InFlankRange (objective, P (1000 + Lanes.FLANK_MIN - 1, 0)), false, "too near")
-	T.eq (Lanes.InFlankRange (objective, { x = 1000, y = Lanes.FLANK_MIN + 1, z = 900 }), true, "high above counts flat")
-	T.eq (Lanes.InFlankRange (objective, P (1000, Lanes.FLANK_MAX + 1)), false, "too far")
+	T.eq (Lanes.InFlankRange (objective, P (1000 + Lanes.FLANK_MIN - 1, 0)),              false, "too near")
+	T.eq (Lanes.InFlankRange (objective, { x = 1000, y = Lanes.FLANK_MIN + 1, z = 900 }), true,  "high above counts flat")
+	T.eq (Lanes.InFlankRange (objective, P (1000, Lanes.FLANK_MAX + 1)),                  false, "too far")
 end)
 
 T.test ("with no ground to choose from the flanks are FLANK_RADIUS left and right of the objective", function ()
 	local left, right = Lanes.FixedFlanks (P (0, 0), P (1000, 0))
 	T.near (left.x, 1000, 1e-9)
-	T.near (left.y, Lanes.FLANK_RADIUS, 1e-9, "the left of the way in, +y")
+	T.near (left.y,  Lanes.FLANK_RADIUS,  1e-9, "the left of the way in, +y")
 	T.near (right.y, -Lanes.FLANK_RADIUS, 1e-9, "the right")
 end)
 
@@ -86,10 +86,10 @@ T.test ("the lanes after the direct one: two flanks, then two tours on to the en
 	local kinds = {}
 	for i, spec in ipairs (specs) do kinds [i] = spec.kind end
 	T.eq (table.concat (kinds, ","), "flank,flank,tour,tour")
-	T.eq (specs [1].stops [1], flanks [1])
-	T.eq (specs [2].stops [1], flanks [2])
-	T.eq (specs [3].stops [1], tours [1], "through the first place")
-	T.eq (specs [3].stops [2].x .. "," .. specs [3].stops [2].y, "3000,400", "on to the enemy spawn nearest it")
+	T.eq (specs [1].stops [1],       flanks [1])
+	T.eq (specs [2].stops [1],       flanks [2])
+	T.eq (specs [3].stops [1],                                   tours [1],   "through the first place")
+	T.eq (specs [3].stops [2].x .. "," .. specs [3].stops [2].y, "3000,400",  "on to the enemy spawn nearest it")
 	T.eq (specs [4].stops [2].x .. "," .. specs [4].stops [2].y, "3000,-300", "and its own")
 end)
 
@@ -102,8 +102,8 @@ T.test ("a route's points thin to about WAYPOINT_SPACING apart, keeping both end
 	local points = {}
 	for i = 0, 10 do points [#points + 1] = P (i * 100, 0) end
 	local kept, length = Lanes.Thin (points, function () return true end)
-	T.eq (length, 1000, "its length")
-	T.eq (#kept, 5, "0, 300, 600, 900 and the end")
+	T.eq (length,         1000, "its length")
+	T.eq (#kept,          5,    "0, 300, 600, 900 and the end")
 	T.eq (kept [#kept].x, 1000, "the end")
 end)
 
@@ -118,8 +118,8 @@ T.test ("thinning keeps a waypoint where skipping it would cut through the world
 		return not ((a.x < 200 and b.y > 0) or (b.x < 200 and a.y > 0))
 	end
 	local kept, length = Lanes.Thin (route, Clear)
-	T.eq (length, 400, "its length")
-	T.eq (#kept, 3, "the start, the corner and the end")
+	T.eq (length,                          400,     "its length")
+	T.eq (#kept,                           3,       "the start, the corner and the end")
 	T.eq (kept [2].x .. "," .. kept [2].y, "200,0", "the corner")
 	for i = 2, #kept do T.eq (Clear (kept [i - 1], kept [i]), true, "segment " .. i - 1 .. " is clear") end
 end)
@@ -151,7 +151,7 @@ T.test ("escorts take the direct lane and the flanks, least taken first, and sta
 	local teams = { a, b, c, d, blockers }
 	Lanes.Assign (teams, { [3] = lanes })
 	T.eq (a.laneIndex .. b.laneIndex .. c.laneIndex .. d.laneIndex, "1231", "direct, flank, flank, then the direct again")
-	T.eq (blockers.lane, nil, "blockers take no lane")
+	T.eq (blockers.lane,                                            nil,    "blockers take no lane")
 	Lanes.Assign (teams, { [3] = lanes })
 	T.eq (b.laneIndex, 2, "kept while the plan is the same")
 	local replanned = { key = "k2", Kind ("direct", 900) }
@@ -164,8 +164,8 @@ T.test ("a squad with its lanes off takes none, and does not count against the o
 	local off = { team = 3, role = "escort", lanesOff = true, lane = lanes [2], laneKey = "k", laneIndex = 2 }
 	local other = { team = 3, role = "escort" }
 	Lanes.Assign ({ off, other }, { [3] = lanes })
-	T.eq (off.lane, nil, "no lane, the one it had dropped")
-	T.eq (other.laneIndex, 1, "the direct lane, free of it")
+	T.eq (off.lane,        nil, "no lane, the one it had dropped")
+	T.eq (other.laneIndex, 1,   "the direct lane, free of it")
 	off.lanesOff = nil
 	Lanes.Assign ({ off, other }, { [3] = lanes })
 	T.eq (off.laneIndex, 2, "on again: the least taken")
@@ -177,8 +177,8 @@ T.test ("raiders take the tours, and assault squads take lanes as escorts do", f
 	local assault = { team = 3, role = "assault" }
 	Lanes.Assign ({ r1, r2, r3, assault }, { [3] = lanes })
 	T.eq (r1.laneIndex .. r2.laneIndex .. r3.laneIndex, "343", "the tours, least taken first")
-	T.eq (assault.laneIndex, 1, "the direct lane")
-	T.eq (Lanes.JOBS.assault, true, "a lane job")
+	T.eq (assault.laneIndex,                            1,     "the direct lane")
+	T.eq (Lanes.JOBS.assault,                           true,  "a lane job")
 end)
 
 T.test ("a squad on a mission walks its mission's way, which the others count as taken", function ()
@@ -186,8 +186,8 @@ T.test ("a squad on a mission walks its mission's way, which the others count as
 	local onMission = { team = 3, role = "escort", mission = { way = lanes [1] } }
 	local other = { team = 3, role = "escort" }
 	Lanes.Assign ({ onMission, other }, { [3] = lanes })
-	T.eq (onMission.lane, lanes [1], "the mission's way")
-	T.eq (other.laneIndex, 2, "the direct lane is taken")
+	T.eq (onMission.lane,  lanes [1], "the mission's way")
+	T.eq (other.laneIndex, 2,         "the direct lane is taken")
 end)
 
 T.test ("a squad musters at its lane's first point outside its spawn room", function ()
@@ -195,14 +195,14 @@ T.test ("a squad musters at its lane's first point outside its spawn room", func
 	local inRoom = function (p) return p.x < 200 end
 	T.eq (Lanes.Muster (lane, inRoom), lane.points [2])
 	T.eq (Lanes.Muster (lane, function () return false end), lane.points [1], "a spawn with no room: where the lane starts")
-	T.eq (Lanes.Muster (lane, function () return true end), lane.points [3], "all in the room: its end")
+	T.eq (Lanes.Muster (lane, function () return true end),  lane.points [3], "all in the room: its end")
 end)
 
 T.test ("what is left of a lane from a point: to its nearest waypoint, then along it", function ()
 	local lane = { points = { { x = 0, y = 0, z = 0 }, { x = 300, y = 0, z = 0 }, { x = 300, y = 400, z = 0 } } }
-	T.near (Lanes.Remaining (lane, { x = 0, y = 0, z = 0 }), 700, 1e-9, "from its start")
-	T.near (Lanes.Remaining (lane, { x = 300, y = 30, z = 0 }), 30 + 400, 1e-9, "near its corner")
-	T.near (Lanes.Remaining (lane, { x = 300, y = 400, z = 0 }), 0, 1e-9, "at its end")
+	T.near (Lanes.Remaining (lane, { x = 0, y = 0, z = 0 }),     700,      1e-9, "from its start")
+	T.near (Lanes.Remaining (lane, { x = 300, y = 30, z = 0 }),  30 + 400, 1e-9, "near its corner")
+	T.near (Lanes.Remaining (lane, { x = 300, y = 400, z = 0 }), 0,        1e-9, "at its end")
 end)
 
 T.test ("a muster is kept by its team and the spawn its lanes leave, to MUSTER_GRID", function ()
@@ -215,8 +215,8 @@ end)
 
 T.test ("Choices: the lanes of a job's kinds, else every lane", function ()
 	local lanes = { key = "k", Kind ("direct", 1000), Kind ("flank", 1200), Kind ("tour", 2000) }
-	T.eq (table.concat (Lanes.Choices (lanes, "escort"), ","), "1,2")
-	T.eq (table.concat (Lanes.Choices (lanes, "raid"), ","), "3")
+	T.eq (table.concat (Lanes.Choices (lanes, "escort"), ","),                           "1,2")
+	T.eq (table.concat (Lanes.Choices (lanes, "raid"), ","),                             "3")
 	T.eq (table.concat (Lanes.Choices ({ key = "k", Kind ("direct", 1) }, "raid"), ","), "1")
 end)
 
@@ -231,11 +231,11 @@ end)
 -- spawn), whatever the walker's goal, so a tour runs on past the objective.
 T.test ("a walker makes for the next waypoint it has not reached, and leaves the lane once it no longer brings it nearer the lane's end", function ()
 	local lane = { points = { P (0, 0), P (300, 0), P (600, 0) } }
-	T.eq (Lanes.Next (lane, P (10, 0), 1), 2, "the first reached: the second")
-	T.eq (Lanes.Next (lane, P (590, 10), 1), 4, "all reached")
+	T.eq (Lanes.Next (lane, P (10, 0), 1),     2,   "the first reached: the second")
+	T.eq (Lanes.Next (lane, P (590, 10), 1),   4,   "all reached")
 	T.eq (Lanes.Target (lane, P (10, 0), 2).x, 300, "on toward the lane's end")
-	T.eq (Lanes.Target (lane, P (450, 0), 2), nil, "past that waypoint: it no longer helps")
-	T.eq (Lanes.Target (lane, P (590, 0), 4), nil, "walked")
+	T.eq (Lanes.Target (lane, P (450, 0), 2),  nil, "past that waypoint: it no longer helps")
+	T.eq (Lanes.Target (lane, P (590, 0), 4),  nil, "walked")
 end)
 
 T.test ("planning a lane costs more through areas an earlier lane took", function ()
@@ -259,8 +259,8 @@ T.test ("a change that lasts CHANGE_SETTLE makes the lanes stale", function ()
 	T.defined (Lanes.CHANGE_SETTLE, "CHANGE_SETTLE")
 	local function Differs (id) return id == 40 end
 	local stale, pending = Lanes.Settled ({ [40] = true }, Differs, {}, 100)
-	T.eq (stale, false, "just changed")
-	T.eq (pending [40], 100, "changed at 100")
+	T.eq (stale,        false, "just changed")
+	T.eq (pending [40], 100,   "changed at 100")
 	stale = Lanes.Settled ({}, Differs, pending, 100 + Lanes.CHANGE_SETTLE)
 	T.eq (stale, true, "still changed after the settle")
 end)
@@ -268,8 +268,8 @@ end)
 T.test ("a change undone before CHANGE_SETTLE changes nothing", function ()
 	local _, pending = Lanes.Settled ({ [40] = true }, function () return true end, {}, 100)
 	local stale, after = Lanes.Settled ({ [40] = true }, function () return false end, pending, 101)
-	T.eq (stale, false, "undone")
-	T.eq (after [40], nil, "forgotten")
+	T.eq (stale,      false, "undone")
+	T.eq (after [40], nil,   "forgotten")
 	stale = Lanes.Settled ({ [40] = true }, function () return true end, after, 100 + Lanes.CHANGE_SETTLE)
 	T.eq (stale, false, "changed again: the settle starts over")
 end)
@@ -277,9 +277,9 @@ end)
 T.test ("an area not changed and not pending is not looked at", function ()
 	local looked = {}
 	local stale, pending = Lanes.Settled ({}, function (id) looked [#looked + 1] = id return true end, {}, 100)
-	T.eq (stale, false, "nothing to look at")
-	T.eq (#looked, 0, "none looked at")
-	T.eq (next (pending), nil, "nothing pending")
+	T.eq (stale,          false, "nothing to look at")
+	T.eq (#looked,        0,     "none looked at")
+	T.eq (next (pending), nil,   "nothing pending")
 end)
 
 -- A tour's last stop: the enemy spawn's threshold, the nearest area to it
@@ -298,7 +298,7 @@ T.test ("a tour ends at the nearest area outside the enemy's spawn room", functi
 	}
 	local stop = Lanes.Threshold (spawn, areas, 3, Open)
 	T.eq (stop.x, 300, "the doorway's x")
-	T.eq (stop.y, 0, "the doorway's y")
+	T.eq (stop.y, 0,   "the doorway's y")
 end)
 
 T.test ("a tour skips an area outside the room that is enclosed by it", function ()

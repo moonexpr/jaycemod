@@ -56,10 +56,10 @@ if SERVER then
 		end, nil, help)
 	end
 
-	Command ("ws_nodegraph_generate", "Generate", "Make an AI node graph for this map from its nav mesh")
-	Command ("ws_nodegraph_destroy", "Destroy", "Delete this map's generated AI node graph")
-	Command ("ws_nodegraph_debug", "ToggleDebug", "Toggle drawing the AI node graph near you")
-	Command ("ws_nodegraph_status", "Status", "Report the generated and installed AI node graphs")
+	Command ("ws_nodegraph_generate", "Generate",    "Make an AI node graph for this map from its nav mesh")
+	Command ("ws_nodegraph_destroy",  "Destroy",     "Delete this map's generated AI node graph")
+	Command ("ws_nodegraph_debug",    "ToggleDebug", "Toggle drawing the AI node graph near you")
+	Command ("ws_nodegraph_status",   "Status",      "Report the generated and installed AI node graphs")
 	return
 end
 
@@ -71,10 +71,10 @@ local HELP = "HL2's NPCs find cover, retreat, flank and patrol over the map's AI
 local function BuildPanel (panel)
 	panel:ClearControls ()
 	panel:Help (HELP)
-	panel:Button ("Generate Node Graph", "ws_nodegraph_generate")
-	panel:Button ("Destroy Generated Graph", "ws_nodegraph_destroy")
+	panel:Button ("Generate Node Graph",       "ws_nodegraph_generate")
+	panel:Button ("Destroy Generated Graph",   "ws_nodegraph_destroy")
 	panel:Button ("Toggle Node Graph Overlay", "ws_nodegraph_debug")
-	panel:Button ("Print Node Graph Status", "ws_nodegraph_status")
+	panel:Button ("Print Node Graph Status",   "ws_nodegraph_status")
 	WS.ServerSlider (panel, "Most nodes", "ws_nodegraph_max_nodes")
 	panel:Help ("The engine's limit is 1500 nodes in the 2013 SDK; raise this only if your build allows more.")
 end

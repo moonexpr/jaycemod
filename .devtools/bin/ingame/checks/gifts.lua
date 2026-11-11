@@ -14,7 +14,7 @@ return function (t)
 	if not holiday then return t:Check ("the holiday feature is loaded", false, "") end
 	local locations, gifts = holiday.giftLocations, holiday.gifts
 	t:Check ("gift spawn locations reached the holiday controller", #locations > 0, #locations .. " locations")
-	t:Check ("Halloween gives a gift schedule", gifts ~= nil, tostring (gifts))
+	t:Check ("Halloween gives a gift schedule",                     gifts ~= nil,   tostring (gifts))
 	if not gifts or #locations == 0 then return end
 	local due = gifts.nextAt and gifts.nextAt - CurTime ()
 	t:Check ("the first gift round is 7 to 12 minutes off", due ~= nil

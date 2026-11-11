@@ -41,14 +41,14 @@ T.test ("with no push its way is as it was", function ()
 	push = { 0, 0 }
 	local point = Soldier ():SteerOn (AT, AHEAD)
 	T.eq (point.x, 500, "ahead")
-	T.eq (point.y, 0, "straight")
+	T.eq (point.y, 0,   "straight")
 end)
 
 T.test ("walking, its group's push leans its way aside", function ()
 	push = { 0, 1 }
 	local point = Soldier ():SteerOn (AT, AHEAD)
 	T.eq (point.y > 0, true, "off to where it is pushed")
-	T.eq (point.x, 500, "still going where it goes")
+	T.eq (point.x,     500,  "still going where it goes")
 end)
 
 T.test ("a drop's ledge is stepped off as it was, the push no matter", function ()
@@ -74,8 +74,8 @@ end)
 T.test ("where the binary lacks it, there is no push", function ()
 	local engine = nextsoldier.engine
 	nextsoldier.engine = {}
-	T.eq (Soldier ():Spread (AT), nil, "nothing to read")
-	T.eq (Soldier ():SteerOn (AT, AHEAD).y, 0, "its way as it was")
+	T.eq (Soldier ():Spread (AT),           nil, "nothing to read")
+	T.eq (Soldier ():SteerOn (AT, AHEAD).y, 0,   "its way as it was")
 	nextsoldier.engine = engine
 end)
 

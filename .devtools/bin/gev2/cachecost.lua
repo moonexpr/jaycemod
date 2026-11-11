@@ -63,7 +63,7 @@ local function Best (fn)
 end
 
 local names, packed, packedBytes = {}, {}, 0
-Say ("sent files", #texts)
+Say ("sent files",                                 #texts)
 Say ("names: SHA256(text..NUL):sub(1,40) for all", Best (function ()
 	for i, text in ipairs (texts) do names [i] = util.SHA256 (text .. "\0"):sub (1, 40) end
 end))

@@ -65,8 +65,8 @@ function P.Stop ()
 	timer.Remove ("bot_probe_run")
 	hook.Remove ("StartCommand", "bot_probe")
 	for _, name in ipairs ({ "SetupMove", "Move", "FinishMove", "PlayerTick", "PlayerPostThink" }) do hook.Remove (name, "bot_probe_count") end
-	hook.Remove ("KeyPress", "bot_probe_keys")
-	hook.Remove ("PlayerUse", "bot_probe_use")
+	hook.Remove ("KeyPress",          "bot_probe_keys")
+	hook.Remove ("PlayerUse",         "bot_probe_use")
 	hook.Remove ("EntityFireBullets", "bot_probe_bullets")
 	if IsValid (P.bot) then P.bot:Kick ("probe done") end
 end

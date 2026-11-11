@@ -49,9 +49,9 @@ T.test ("dancing, flexing, the zombie and the robot play TF2's sounds, whoever p
 	for _, voice in ipairs (VOICES) do
 		for _, gesture in ipairs ({ "dance", "muscle", "zombie", "robot" }) do
 			local said = Sound (voice, gesture)
-			T.eq (said ~= nil, true, voice.name .. ": " .. gesture)
-			T.eq (said.response.kind, "speak", gesture .. ": a sound")
-			T.eq (said.response.value:match ("^[%w_]+%.[%w_]+$") ~= nil, true, gesture .. ": a sound script, " .. said.response.value)
+			T.eq (said ~= nil,                                           true,    voice.name .. ": " .. gesture)
+			T.eq (said.response.kind,                                    "speak", gesture .. ": a sound")
+			T.eq (said.response.value:match ("^[%w_]+%.[%w_]+$") ~= nil, true,    gesture .. ": a sound script, " .. said.response.value)
 		end
 	end
 end)
@@ -71,8 +71,8 @@ T.test ("a taunt danced or flexed is cheered, each voice with lines its own", fu
 			local said = system:Speak (Speaker (), Speech.CONCEPT_TAUNT, Speech.Criteria (voice, Speech.OFFENSE, SURE, false, gesture), First, 0)
 			T.eq (said ~= nil, true, voice.name .. ": " .. gesture)
 			if OWN [voice.name] then
-				T.eq (said.rule:match ("^Cheer" .. OWN [voice.name]) ~= nil, true, voice.name .. " " .. gesture .. ": its cheer, " .. said.rule)
-				T.eq (said.response.kind, "speak", "a sound")
+				T.eq (said.rule:match ("^Cheer" .. OWN [voice.name]) ~= nil, true,    voice.name .. " " .. gesture .. ": its cheer, " .. said.rule)
+				T.eq (said.response.kind,                                    "speak", "a sound")
 			end
 		end
 		local said = system:Speak (Speaker (), Speech.CONCEPT_TAUNT, Speech.Criteria (voice, Speech.OFFENSE, SURE, false, "zombie"), First, 0)
@@ -81,7 +81,7 @@ T.test ("a taunt danced or flexed is cheered, each voice with lines its own", fu
 end)
 
 T.test ("the gesture is in the criteria set only when given", function ()
-	T.eq (Speech.Criteria (VOICES [1], Speech.OFFENSE, SURE, false).gesture, nil)
+	T.eq (Speech.Criteria (VOICES [1], Speech.OFFENSE, SURE, false).gesture,          nil)
 	T.eq (Speech.Criteria (VOICES [1], Speech.OFFENSE, SURE, false, "dance").gesture, "dance")
 end)
 
@@ -111,8 +111,8 @@ end)
 
 T.test ("a voice with lines of its own outscores its affiliation's", function ()
 	local said = Say (Voices.For ("models/player/police.mdl"), Speech.OFFENSE, Payload.CONCEPT_CART_MOVING_FORWARD, false)
-	T.eq (said.rule, "CartMovingForwardOffenseCombineMetrocop", "the metrocop's own")
-	T.eq (said.response.kind, "speak", "a sound")
+	T.eq (said.rule,          "CartMovingForwardOffenseCombineMetrocop", "the metrocop's own")
+	T.eq (said.response.kind, "speak",                                   "a sound")
 end)
 
 T.test ("a new model of a side speaks by its affiliation's rules", function ()
@@ -125,7 +125,7 @@ T.test ("a cart cut off by the enemy has its own lines, even over a voice's plai
 	local metrocop = Voices.For ("models/player/police.mdl")
 	local stop = Say (metrocop, Speech.DEFENSE, Payload.CONCEPT_CART_STOP, false)
 	local cut = Say (metrocop, Speech.DEFENSE, Payload.CONCEPT_CART_STOP, true)
-	T.eq (stop.rule:find ("Blocked"), nil, "a plain stop")
+	T.eq (stop.rule:find ("Blocked"),       nil,  "a plain stop")
 	T.eq (cut.rule:find ("Blocked") ~= nil, true, "cut off")
 	-- the vortigaunt has no cut-off lines of its own
 	local vort = Say (Voices.For ("models/vortigaunt.mdl"), Speech.OFFENSE, Payload.CONCEPT_CART_STOP, true)
@@ -144,7 +144,7 @@ T.test ("a soldier speaks a concept three times in four", function ()
 	local function Draw (n)
 		return system:Speak (Speaker (), Payload.CONCEPT_CART_STOP, Speech.Criteria (male, Speech.OFFENSE, n, false), First, 0)
 	end
-	T.eq (Draw (25), nil, "not this time")
+	T.eq (Draw (25),        nil,  "not this time")
 	T.eq (Draw (26) ~= nil, true, "this time")
 end)
 
@@ -164,10 +164,10 @@ end)
 T.test ("the criteria name the side, the voice, the role, the draw and whether the cart is cut off", function ()
 	local set = Speech.Criteria (Voices.For ("models/player/police.mdl"), Speech.DEFENSE, 42, true)
 	T.eq (set.affiliation, Voices.COMBINE, "the side")
-	T.eq (set.voice, "metrocop", "the voice")
-	T.eq (set.teamrole, Speech.DEFENSE, "the role")
-	T.eq (set.randomnum, 42, "the draw")
-	T.eq (set.cartblocked, 1, "cut off")
+	T.eq (set.voice,       "metrocop",     "the voice")
+	T.eq (set.teamrole,    Speech.DEFENSE, "the role")
+	T.eq (set.randomnum,   42,             "the draw")
+	T.eq (set.cartblocked, 1,              "cut off")
 end)
 
 -- Battle stances: in setup, a soldier settling into its stance where it
@@ -183,8 +183,8 @@ end)
 
 T.test ("a voice's own ready lines outscore its side's, and a voice with none uses its side's", function ()
 	local cop = Say (Voices.For ("models/player/police.mdl"), Speech.DEFENSE, Speech.CONCEPT_BATTLE_STANCE, false)
-	T.eq (cop.rule, "BattleStanceCombineMetrocop", "the metrocop's own")
-	T.eq (cop.response.kind, "speak", "a sound")
+	T.eq (cop.rule,          "BattleStanceCombineMetrocop", "the metrocop's own")
+	T.eq (cop.response.kind, "speak",                       "a sound")
 	local alyx = Say (Voices.For ("models/player/alyx.mdl"), Speech.OFFENSE, Speech.CONCEPT_BATTLE_STANCE, false)
 	T.eq (alyx.rule, "BattleStanceRebel", "the rebels'")
 end)
@@ -194,7 +194,7 @@ T.test ("three soldiers in four announce their stance, so a squad is heard but n
 	local function Draw (n)
 		return system:Speak (Speaker (), Speech.CONCEPT_BATTLE_STANCE, Speech.Criteria (male, Speech.OFFENSE, n, false), First, 0)
 	end
-	T.eq (Draw (25), nil, "not this time")
+	T.eq (Draw (25),        nil,  "not this time")
 	T.eq (Draw (26) ~= nil, true, "this time")
 end)
 
@@ -226,33 +226,33 @@ T.test ("three soldiers in four greet; every one calls out a contact", function 
 	local function Draw (concept, n)
 		return system:Speak (Speaker (), concept, Speech.Criteria (male, Speech.OFFENSE, n, false), First, 0)
 	end
-	T.eq (Draw (Speech.CONCEPT_PLAYER_PASSING, 25), nil, "no greeting this time")
+	T.eq (Draw (Speech.CONCEPT_PLAYER_PASSING, 25),        nil,  "no greeting this time")
 	T.eq (Draw (Speech.CONCEPT_PLAYER_PASSING, 26) ~= nil, true, "a greeting")
-	T.eq (Draw (Speech.CONCEPT_ENEMY_SPOTTED, 0) ~= nil, true, "a callout, whatever the draw")
+	T.eq (Draw (Speech.CONCEPT_ENEMY_SPOTTED, 0) ~= nil,   true, "a callout, whatever the draw")
 end)
 
 T.test ("a soldier greets at most once in 20 seconds, and calls out contacts at most once in 5", function ()
 	local set = Speech.Criteria (Voices.For ("models/player/combine_soldier.mdl"), Speech.OFFENSE, SURE, false)
 	local speaker = Speaker ()
-	T.eq (system:Speak (speaker, Speech.CONCEPT_PLAYER_PASSING, set, First, 0) ~= nil, true, "a greeting")
-	T.eq (system:Speak (speaker, Speech.CONCEPT_PLAYER_PASSING, set, First, 19), nil, "not yet")
+	T.eq (system:Speak (speaker, Speech.CONCEPT_PLAYER_PASSING, set, First, 0) ~= nil,  true, "a greeting")
+	T.eq (system:Speak (speaker, Speech.CONCEPT_PLAYER_PASSING, set, First, 19),        nil,  "not yet")
 	T.eq (system:Speak (speaker, Speech.CONCEPT_PLAYER_PASSING, set, First, 20) ~= nil, true, "again")
-	T.eq (system:Speak (speaker, Speech.CONCEPT_ENEMY_SPOTTED, set, First, 0) ~= nil, true, "a callout")
-	T.eq (system:Speak (speaker, Speech.CONCEPT_ENEMY_SPOTTED, set, First, 4), nil, "not yet")
-	T.eq (system:Speak (speaker, Speech.CONCEPT_ENEMY_SPOTTED, set, First, 5) ~= nil, true, "again")
+	T.eq (system:Speak (speaker, Speech.CONCEPT_ENEMY_SPOTTED, set, First, 0) ~= nil,   true, "a callout")
+	T.eq (system:Speak (speaker, Speech.CONCEPT_ENEMY_SPOTTED, set, First, 4),          nil,  "not yet")
+	T.eq (system:Speak (speaker, Speech.CONCEPT_ENEMY_SPOTTED, set, First, 5) ~= nil,   true, "again")
 end)
 
 T.test ("a player is passing a soldier when moving within GREET_RANGE of it", function ()
-	T.eq (Speech.Passes (Speech.GREET_RANGE, Speech.PASS_SPEED), true, "at the edge, walking")
-	T.eq (Speech.Passes (Speech.GREET_RANGE + 1, Speech.PASS_SPEED), false, "too far")
+	T.eq (Speech.Passes (Speech.GREET_RANGE, Speech.PASS_SPEED),         true,  "at the edge, walking")
+	T.eq (Speech.Passes (Speech.GREET_RANGE + 1, Speech.PASS_SPEED),     false, "too far")
 	T.eq (Speech.Passes (Speech.GREET_RANGE / 2, Speech.PASS_SPEED - 1), false, "standing about, not passing")
 end)
 
 T.test ("a soldier does not announce a stance again for 15 seconds", function ()
 	local speaker = Speaker ()
 	local set = Speech.Criteria (Voices.For ("models/player/combine_soldier.mdl"), Speech.OFFENSE, SURE, false)
-	T.eq (system:Speak (speaker, Speech.CONCEPT_BATTLE_STANCE, set, First, 0) ~= nil, true, "once")
-	T.eq (system:Speak (speaker, Speech.CONCEPT_BATTLE_STANCE, set, First, 14), nil, "not at its next rest")
+	T.eq (system:Speak (speaker, Speech.CONCEPT_BATTLE_STANCE, set, First, 0) ~= nil,  true, "once")
+	T.eq (system:Speak (speaker, Speech.CONCEPT_BATTLE_STANCE, set, First, 14),        nil,  "not at its next rest")
 	T.eq (system:Speak (speaker, Speech.CONCEPT_BATTLE_STANCE, set, First, 15) ~= nil, true, "again")
 end)
 
@@ -274,8 +274,8 @@ end)
 T.test ("a Combine soldier says every kind of chatter in its own voice, and so does a metrocop", function ()
 	for _, concept in ipairs (CHATTER) do
 		local soldier = Say (Voices.For ("models/player/combine_soldier.mdl"), Speech.OFFENSE, concept, false)
-		T.eq (soldier.rule:find ("CombineSoldier$") ~= nil, true, concept .. ": the soldier's own (" .. soldier.rule .. ")")
-		T.eq (soldier.response.kind, "speak", concept .. ": a line")
+		T.eq (soldier.rule:find ("CombineSoldier$") ~= nil, true,    concept .. ": the soldier's own (" .. soldier.rule .. ")")
+		T.eq (soldier.response.kind,                        "speak", concept .. ": a line")
 		local cop = Say (Voices.For ("models/player/police.mdl"), Speech.OFFENSE, concept, false)
 		T.eq (cop.rule:find ("CombineMetrocop$") ~= nil, true, concept .. ": the metrocop's own (" .. cop.rule .. ")")
 	end
@@ -295,13 +295,13 @@ T.test ("a teammate down is always said; a kill and a lost contact three times i
 	local function Draw (concept, n)
 		return system:Speak (Speaker (), concept, Speech.Criteria (cop, Speech.OFFENSE, n, false), First, 0)
 	end
-	T.eq (Draw (Speech.CONCEPT_ALLY_DOWN, 0) ~= nil, true, "a teammate down, whatever the draw")
-	T.eq (Draw (Speech.CONCEPT_ENEMY_KILLED, 25), nil, "no kill line this time")
+	T.eq (Draw (Speech.CONCEPT_ALLY_DOWN, 0) ~= nil,     true, "a teammate down, whatever the draw")
+	T.eq (Draw (Speech.CONCEPT_ENEMY_KILLED, 25),        nil,  "no kill line this time")
 	T.eq (Draw (Speech.CONCEPT_ENEMY_KILLED, 26) ~= nil, true, "a kill line")
-	T.eq (Draw (Speech.CONCEPT_CONTACT_LOST, 25), nil, "no lost contact this time")
+	T.eq (Draw (Speech.CONCEPT_CONTACT_LOST, 25),        nil,  "no lost contact this time")
 	T.eq (Draw (Speech.CONCEPT_CONTACT_LOST, 26) ~= nil, true, "a lost contact")
-	T.eq (Draw (Speech.CONCEPT_IDLE, 50), nil, "no idle talk this time")
-	T.eq (Draw (Speech.CONCEPT_IDLE, 51) ~= nil, true, "idle talk")
+	T.eq (Draw (Speech.CONCEPT_IDLE, 50),                nil,  "no idle talk this time")
+	T.eq (Draw (Speech.CONCEPT_IDLE, 51) ~= nil,         true, "idle talk")
 end)
 
 T.test ("a soldier says a kill or a teammate down at most every 6 seconds, a lost contact every 15, idle talk every 30", function ()
@@ -309,14 +309,14 @@ T.test ("a soldier says a kill or a teammate down at most every 6 seconds, a los
 	for concept, wait in pairs ({ [Speech.CONCEPT_ENEMY_KILLED] = 6, [Speech.CONCEPT_ALLY_DOWN] = 6,
 		[Speech.CONCEPT_CONTACT_LOST] = 15, [Speech.CONCEPT_IDLE] = 30 }) do
 			local speaker = Speaker ()
-			T.eq (system:Speak (speaker, concept, set, First, 0) ~= nil, true, concept .. ": once")
-			T.eq (system:Speak (speaker, concept, set, First, wait - 1), nil, concept .. ": not yet")
+			T.eq (system:Speak (speaker, concept, set, First, 0) ~= nil,    true, concept .. ": once")
+			T.eq (system:Speak (speaker, concept, set, First, wait - 1),    nil,  concept .. ": not yet")
 			T.eq (system:Speak (speaker, concept, set, First, wait) ~= nil, true, concept .. ": again")
 		end
 end)
 
 T.test ("a teammate's fall is heard by soldiers within ALLY_DOWN_RANGE of it", function ()
-	T.eq (Speech.WitnessesFall (Speech.ALLY_DOWN_RANGE), true, "at the edge")
+	T.eq (Speech.WitnessesFall (Speech.ALLY_DOWN_RANGE),     true,  "at the edge")
 	T.eq (Speech.WitnessesFall (Speech.ALLY_DOWN_RANGE + 1), false, "too far")
 end)
 
@@ -344,8 +344,8 @@ T.test ("every voice calls out falling back to cover and going for health, each 
 			local said = Say (voice, Speech.DEFENSE, concept)
 			T.eq (said ~= nil, true, voice.name .. ": " .. concept)
 			if OWN [voice.name] then
-				T.eq (said.rule, name .. OWN [voice.name], voice.name .. "'s own")
-				T.eq (said.response.kind, "speak", "a sound")
+				T.eq (said.rule,          name .. OWN [voice.name], voice.name .. "'s own")
+				T.eq (said.response.kind, "speak",                  "a sound")
 			end
 		end
 	end
@@ -360,8 +360,8 @@ T.test ("every squad leader calls its squad out and calls a regroup, each voice 
 				local said = Say (voice, Speech.OFFENSE, concept, false, speaker)
 				T.eq (said ~= nil, true, voice.name .. ": " .. name)
 				if OWN [voice.name] then
-					T.eq (said.rule, name .. OWN [voice.name], voice.name .. "'s own")
-					T.eq (said.response.kind, "speak", "a sound")
+					T.eq (said.rule,          name .. OWN [voice.name], voice.name .. "'s own")
+					T.eq (said.response.kind, "speak",                  "a sound")
 				end
 				T.eq (Say (voice, Speech.OFFENSE, concept, false, speaker), nil, voice.name .. ": not again at once")
 			end

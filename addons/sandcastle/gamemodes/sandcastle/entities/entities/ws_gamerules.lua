@@ -29,8 +29,8 @@ end
 -- way (a map's Kill), that is our bug, raised with who removed them and the
 -- last input; the controller replaces them at once, and the game goes on.
 local shuttingDown, cleaningUp = false, false
-hook.Add ("ShutDown", "ws_gamerules", function () shuttingDown = true end)
-hook.Add ("PreCleanupMap", "ws_gamerules", function () cleaningUp = true end)
+hook.Add ("ShutDown",       "ws_gamerules", function () shuttingDown = true end)
+hook.Add ("PreCleanupMap",  "ws_gamerules", function () cleaningUp = true end)
 hook.Add ("PostCleanupMap", "ws_gamerules", function () cleaningUp = false end)
 
 function ENT:OnRemove ()

@@ -122,9 +122,9 @@ function ENT:PublishTally ()
 	local objective = {}
 	game_manager.RunActive ("Standing", objective)
 	if not objective.captures then return end
-	SetGlobal2Int ("ws_flag_caps_" .. TEAM_RED, objective.captures [TEAM_RED])
+	SetGlobal2Int ("ws_flag_caps_" .. TEAM_RED,  objective.captures [TEAM_RED])
 	SetGlobal2Int ("ws_flag_caps_" .. TEAM_BLUE, objective.captures [TEAM_BLUE])
-	SetGlobal2Int ("ws_flag_caplimit", objective.caplimit)
+	SetGlobal2Int ("ws_flag_caplimit",           objective.caplimit)
 	SetGlobal2Bool ("ws_flag_scores", Rules ().scores)
 end
 

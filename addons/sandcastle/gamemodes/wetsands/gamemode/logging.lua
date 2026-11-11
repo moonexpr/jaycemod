@@ -73,7 +73,7 @@ end
 WS.LOGGING_SUBSYSTEMS = SUBSYSTEMS
 
 local Boot = WS.Logger ("boot")
-hook.Add ("Initialize", "ws_boot", function () Boot ("Initialize") end)
+hook.Add ("Initialize",     "ws_boot", function () Boot ("Initialize") end)
 hook.Add ("InitPostEntity", "ws_boot", function () Boot ("InitPostEntity: the load is done") end)
 
 return WS.Logger

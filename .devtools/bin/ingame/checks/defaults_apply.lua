@@ -12,8 +12,8 @@ local SETTLE = 1 -- the lines run through the console on the next frame
 
 return function (t)
 	local reply = t.args.before_reply or ""
-	t:Check ("the reply says it ran the cfg's lines", string.find (reply, "ran %d+ lines") ~= nil, reply)
-	t:Check ("the reply does not say not found", string.find (reply, "not found", 1, true) == nil, reply)
+	t:Check ("the reply says it ran the cfg's lines", string.find (reply, "ran %d+ lines") ~= nil,      reply)
+	t:Check ("the reply does not say not found",      string.find (reply, "not found", 1, true) == nil, reply)
 	t:Wait (SETTLE)
 	for name, value in pairs (DEFAULTS) do
 		t:Check ("ws_defaults_apply puts " .. name .. " back to " .. value,

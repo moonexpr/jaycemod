@@ -369,7 +369,7 @@ local function SpawnMenuChangesFinished ()
 	g_SpawnMenu.m_UnsavedModifications = nil
 end
 hook.Add ("OnRevertSpawnlist", "SpawnMenuChangesFinished", SpawnMenuChangesFinished)
-hook.Add ("OnSaveSpawnlist", "SpawnMenuChangesFinished", SpawnMenuChangesFinished)
+hook.Add ("OnSaveSpawnlist",   "SpawnMenuChangesFinished", SpawnMenuChangesFinished)
 
 local function SpawnMenuLanguageRefresh ()
 	if not IsValid (g_SpawnMenu) then return end

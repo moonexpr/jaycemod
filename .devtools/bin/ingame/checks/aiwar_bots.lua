@@ -38,8 +38,8 @@ return function (t)
 		for name, value in pairs (saved) do RunConsoleCommand (name, value) end
 	end
 	RunConsoleCommand ("tf_bot_join_after_player", "0")
-	RunConsoleCommand ("tf_bot_quota_mode", "normal")
-	RunConsoleCommand ("tf_bot_quota", tostring (quota))
+	RunConsoleCommand ("tf_bot_quota_mode",        "normal")
+	RunConsoleCommand ("tf_bot_quota",             tostring (quota))
 
 	local joined, waited = t:WaitFor (JOIN_TIMEOUT, function () return #Bots (aiwar) == quota end)
 	t:Check ("the quota's bots join", joined ~= nil, string.format ("%d of %d after %.1f s", #Bots (aiwar), quota, waited))

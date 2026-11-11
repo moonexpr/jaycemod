@@ -210,7 +210,7 @@ end)
 T.test ("the teller takes its four inputs; Kill and AddOutput are the engine's", function ()
 	local fortune = Fortune.New ({}, 0)
 	for _, input in ipairs ({ ENABLE, DISABLE, START, STOP }) do T.eq (fortune:Accepts (input), true, input) end
-	T.eq (fortune:Accepts ("kill"), false, "kill")
+	T.eq (fortune:Accepts ("kill"),      false, "kill")
 	T.eq (fortune:Accepts ("addoutput"), false, "addoutput")
 end)
 
@@ -221,15 +221,15 @@ T.test ("teleports shuffle the team and hand out the named spots in turn", funct
 	local moves = Fortune.Teleports ({ "a", "b", "c" }, { "s1", "s2", "s3" }, First)
 	local where = {}
 	for _, m in ipairs (moves) do where [m.player] = m.spot end
-	T.eq (#moves, 3, "everyone")
+	T.eq (#moves,                                                           3,    "everyone")
 	T.eq (where.a ~= where.b and where.b ~= where.c and where.a ~= where.c, true, "one spot each")
 end)
 
 T.test ("players beyond the spots stay where they are", function ()
 	local moves = Fortune.Teleports ({ "a", "b", "c" }, { "s1" }, First)
-	T.eq (#moves, 1, "one spot, one player")
-	T.eq (moves [1].spot, "s1", "the spot")
-	T.eq (#Fortune.Teleports ({ "a" }, {}, First), 0, "no spots")
+	T.eq (#moves,                                  1,    "one spot, one player")
+	T.eq (moves [1].spot,                          "s1", "the spot")
+	T.eq (#Fortune.Teleports ({ "a" }, {}, First), 0,    "no spots")
 end)
 
 T.finish ()

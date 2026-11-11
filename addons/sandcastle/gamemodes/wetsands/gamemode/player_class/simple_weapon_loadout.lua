@@ -82,15 +82,15 @@ local function GiveAll (ply, classes)
 end
 
 local function GiveHL2Ammo (ply)
-	ply:GiveAmmo (256, "Pistol", true)
-	ply:GiveAmmo (256, "SMG1", true)
-	ply:GiveAmmo (5, "SMG1_Grenade", true)
-	ply:GiveAmmo (5, "grenade", true)
-	ply:GiveAmmo (64, "Buckshot", true)
-	ply:GiveAmmo (32, "357", true)
-	ply:GiveAmmo (32, "XBowBolt", true)
-	ply:GiveAmmo (6, "AR2AltFire", true)
-	ply:GiveAmmo (100, "AR2", true)
+	ply:GiveAmmo (256, "Pistol",       true)
+	ply:GiveAmmo (256, "SMG1",         true)
+	ply:GiveAmmo (5,   "SMG1_Grenade", true)
+	ply:GiveAmmo (5,   "grenade",      true)
+	ply:GiveAmmo (64,  "Buckshot",     true)
+	ply:GiveAmmo (32,  "357",          true)
+	ply:GiveAmmo (32,  "XBowBolt",     true)
+	ply:GiveAmmo (6,   "AR2AltFire",   true)
+	ply:GiveAmmo (100, "AR2",          true)
 end
 
 GM.SimpleWeaponLoadout =

@@ -29,16 +29,16 @@ T.test ("two areas a seam apart, side by side, are a candidate crossed at the mi
 	local from, to = c.from, c.to
 	if c.a == 2 then from, to = to, from end
 	T.eq (from.x, 100 - Gaps.INSIDE, "just inside the first")
-	T.eq (to.x, 125 + Gaps.INSIDE, "just inside the second")
-	T.eq (from.y, 60, "at the middle of the edges' overlap")
-	T.eq (to.y, 60, "straight across")
+	T.eq (to.x,   125 + Gaps.INSIDE, "just inside the second")
+	T.eq (from.y, 60,                "at the middle of the edges' overlap")
+	T.eq (to.y,   60,                "straight across")
 end)
 
 T.test ("the seam may run along either axis", function ()
 	local a, b = Area (1, 0, 0, 100, 100), Area (2, 0, 125, 100, 225)
 	local c = Gaps.Candidates ({ a, b }, Flat ({ a, b }), Never) [1]
 	T.eq (c ~= nil, true, "a candidate")
-	T.eq (c.from.x, 50, "across the middle")
+	T.eq (c.from.x, 50,   "across the middle")
 end)
 
 T.test ("a gap wider than GAP_MAX, an edge overlap under OVERLAP_MIN, a corner, or a step too high is no candidate", function ()
@@ -82,21 +82,21 @@ local function Pt (x, y, z) return { x = x, y = y, z = z or 0 } end
 T.test ("a crossing runs across the link's side, at the middle of where the other area borders it", function ()
 	-- a 200-wide room; a doorway area only 50 wide on its north side
 	local start, finish = Gaps.CrossingLine (Pt (-750, -2125), Pt (-550, -1925), 2, Pt (-750, -1925), Pt (-700, -1800), -196)
-	T.eq (start.x, -725, "the doorway's middle, not the room's")
-	T.eq (finish.x, -725, "straight across")
-	T.eq (start.y, -1925 - Gaps.DEEP, "DEEP inside the room, past a rail a lip in from its edge")
+	T.eq (start.x,  -725,                "the doorway's middle, not the room's")
+	T.eq (finish.x, -725,                "straight across")
+	T.eq (start.y,  -1925 - Gaps.DEEP,   "DEEP inside the room, past a rail a lip in from its edge")
 	T.eq (finish.y, -1925 + Gaps.INSIDE, "past its edge")
-	T.eq (start.z, -196, "at the height given")
+	T.eq (start.z,  -196,                "at the height given")
 end)
 
 T.test ("each side crosses its own way", function ()
 	local lo, hi, other = Pt (0, 0), Pt (50, 50), { Pt (-100, -100), Pt (150, 150) }
 	local s0, f0 = Gaps.CrossingLine (lo, hi, 0, other [1], other [2], 0)
-	T.eq (s0.y, 25, "north: from inside, no farther in than the centre")
+	T.eq (s0.y, 25,           "north: from inside, no farther in than the centre")
 	T.eq (f0.y, -Gaps.INSIDE, "north: out the low y")
 	local s1, f1 = Gaps.CrossingLine (lo, hi, 1, other [1], other [2], 0)
 	T.eq (f1.x, 50 + Gaps.INSIDE, "east: out the high x")
-	T.eq (s1.y, 25, "the middle of the overlap")
+	T.eq (s1.y, 25,               "the middle of the overlap")
 	local _, f3 = Gaps.CrossingLine (lo, hi, 3, other [1], other [2], 0)
 	T.eq (f3.x, -Gaps.INSIDE, "west: out the low x")
 end)
@@ -110,18 +110,18 @@ end)
 -- where the floor past the edge falls away (else the floor goes on at the
 -- upper level, and the way down is over a rail).
 T.test ("a drop crosses where the floor past the edge falls away", function ()
-	T.eq (Gaps.FallsAway (160, -32, -32), true, "the floor below")
-	T.eq (Gaps.FallsAway (160, -32, 160), false, "walkway past the edge: no way down there")
-	T.eq (Gaps.FallsAway (160, 160 - Gaps.STEP_HEIGHT, 150), true, "no drop at all: a step")
-	T.eq (Gaps.FallsAway (160, -32, nil), true, "nothing under it: the walker falls")
+	T.eq (Gaps.FallsAway (160, -32, -32),                    true,  "the floor below")
+	T.eq (Gaps.FallsAway (160, -32, 160),                    false, "walkway past the edge: no way down there")
+	T.eq (Gaps.FallsAway (160, 160 - Gaps.STEP_HEIGHT, 150), true,  "no drop at all: a step")
+	T.eq (Gaps.FallsAway (160, -32, nil),                    true,  "nothing under it: the walker falls")
 end)
 
 -- The side a link leaves by, from where the other area lies: GMod files
 -- some links on no side.
 T.test ("the side toward an area is the way it mostly lies", function ()
-	T.eq (Gaps.SideToward (Pt (0, 0), Pt (100, 20)), 1, "east")
+	T.eq (Gaps.SideToward (Pt (0, 0), Pt (100, 20)),  1, "east")
 	T.eq (Gaps.SideToward (Pt (0, 0), Pt (-100, 20)), 3, "west")
-	T.eq (Gaps.SideToward (Pt (0, 0), Pt (20, 100)), 2, "south (+y)")
+	T.eq (Gaps.SideToward (Pt (0, 0), Pt (20, 100)),  2, "south (+y)")
 	T.eq (Gaps.SideToward (Pt (0, 0), Pt (20, -100)), 0, "north (-y)")
 end)
 
@@ -138,11 +138,11 @@ end)
 T.test ("a crossing is traced across the whole opening: CLEARANCE in from each end, SPAN_STEP apart", function ()
 	-- a doorway-wide strip of the wall: the engine's path may cross anywhere in the overlap
 	local lines = Gaps.CrossingLines (Pt (0, 0), Pt (200, 200), 1, Pt (225, 40), Pt (400, 200), 0)
-	T.eq (lines [1].start.y, 40 + Gaps.CLEARANCE, "first: off the overlap's low end")
+	T.eq (lines [1].start.y,      40 + Gaps.CLEARANCE,  "first: off the overlap's low end")
 	T.eq (lines [#lines].start.y, 200 - Gaps.CLEARANCE, "last: off its high end")
 	for i = 2, #lines do
 		T.eq (lines [i].start.y - lines [i - 1].start.y <= Gaps.SPAN_STEP, true, "no wider apart than SPAN_STEP")
-		T.eq (lines [i].start.y > lines [i - 1].start.y, true, "in order along the opening")
+		T.eq (lines [i].start.y > lines [i - 1].start.y,                   true, "in order along the opening")
 	end
 	local middle = Gaps.CrossingLine (Pt (0, 0), Pt (200, 200), 1, Pt (225, 40), Pt (400, 200), 0)
 	for _, line in ipairs (lines) do
@@ -152,7 +152,7 @@ end)
 
 T.test ("an opening narrower than twice CLEARANCE is traced once, at its middle", function ()
 	local lines = Gaps.CrossingLines (Pt (0, 0), Pt (200, 200), 1, Pt (200, 100), Pt (400, 120), 0)
-	T.eq (#lines, 1, "one line")
+	T.eq (#lines,            1,   "one line")
 	T.eq (lines [1].start.y, 110, "the middle")
 end)
 
@@ -179,14 +179,14 @@ T.test ("the body is fitted across the opening from its middle outward, FIT_STEP
 	table.sort (along)
 	for i = 2, #along do
 		T.eq (along [i] - along [i - 1] <= Gaps.FIT_STEP, true, "no wider apart than FIT_STEP")
-		T.eq (along [i] > along [i - 1], true, "each once")
+		T.eq (along [i] > along [i - 1],                  true, "each once")
 	end
 end)
 
 T.test ("areas whose edges do not overlap are fitted once, where the crossing runs", function ()
 	local lines = Gaps.FitLines (Pt (0, 0), Pt (200, 100), 1, Pt (225, 150), Pt (400, 200), 0)
 	local start = Gaps.CrossingLine (Pt (0, 0), Pt (200, 100), 1, Pt (225, 150), Pt (400, 200), 0)
-	T.eq (#lines, 1, "one")
+	T.eq (#lines,            1,       "one")
 	T.eq (lines [1].start.y, start.y, "as the crossing")
 end)
 

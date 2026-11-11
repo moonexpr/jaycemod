@@ -47,7 +47,7 @@ end
 
 local sounds = {}
 for name in pairs (WS.HiddenTFSounds) do sounds [#sounds + 1] = "sound/" .. name end
-MountCopies ("sounds", sounds)
+MountCopies ("sounds",      sounds)
 MountCopies ("sounds_misc", sounds)
 
 -- The TF2 material a world material draws as: itself, or for a map's

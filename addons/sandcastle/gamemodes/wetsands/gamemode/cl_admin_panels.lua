@@ -65,9 +65,9 @@ local RULES =
 		title = "Winning",
 		privilege = Permissions.RULES,
 		build = function (f)
-			Slider (f, "Rounds to win the match", "mp_winlimit", "The match ends when a team wins this many rounds. 0: no limit.")
-			Slider (f, "Most rounds in a match", "mp_maxrounds", "The match ends after this many rounds. 0: no limit.")
-			Slider (f, "Time limit (minutes)", "mp_timelimit", "The map changes after this long. 0: no limit.")
+			Slider (f, "Rounds to win the match", "mp_winlimit",  "The match ends when a team wins this many rounds. 0: no limit.")
+			Slider (f, "Most rounds in a match",  "mp_maxrounds", "The match ends after this many rounds. 0: no limit.")
+			Slider (f, "Time limit (minutes)",    "mp_timelimit", "The map changes after this long. 0: no limit.")
 			Check (f, "End the match at the time limit", "mp_match_end_at_timelimit", "Otherwise the round in progress finishes first.")
 		end
 	},
@@ -77,12 +77,12 @@ local RULES =
 		build = function (f)
 			Slider (f, "Reports that start a kick vote", "mp_reports_kick_count",
 				"Different players reporting the same player. On a server of exactly three players, two are enough.")
-			Check (f, "Players may vote: Next Map", "mp_vote_map_enabled", "The Server tab's Next Map vote.")
-			Check (f, "Players may vote: Restart Round", "mp_vote_reset_enabled", "The Server tab's Restart Round vote.")
-			Check (f, "Players may vote: Scramble Teams", "mp_vote_scramble_enabled", "The Server tab's Scramble Teams vote.")
-			Check (f, "Players may vote: Help Other Team", "mp_vote_support_enabled", "The Server tab's Help Other Team vote.")
+			Check (f, "Players may vote: Next Map",           "mp_vote_map_enabled", "The Server tab's Next Map vote.")
+			Check (f, "Players may vote: Restart Round",      "mp_vote_reset_enabled", "The Server tab's Restart Round vote.")
+			Check (f, "Players may vote: Scramble Teams",     "mp_vote_scramble_enabled", "The Server tab's Scramble Teams vote.")
+			Check (f, "Players may vote: Help Other Team",    "mp_vote_support_enabled", "The Server tab's Help Other Team vote.")
 			Check (f, "Players may vote: Soldier Difficulty", "mp_vote_difficulty_enabled", "The Server tab's Soldier Difficulty vote.")
-			Slider (f, "Vote length (seconds)", "mp_vote_duration", "How long a vote runs.")
+			Slider (f, "Vote length (seconds)",                   "mp_vote_duration", "How long a vote runs.")
 			Slider (f, "Wait between a player's votes (seconds)", "mp_vote_cooldown", "After calling a vote, a player waits this long to call another.")
 		end
 	},
@@ -93,10 +93,10 @@ local RULES =
 			Check (f, "Sudden death after a stalemate", "mp_stalemate_enable", "No respawns; the last team standing wins.")
 			Check (f, "Deathmatch after a tied match", "mp_deathmatch_enable",
 				"A round of frags alone, with respawns: the first team to the frag limit wins the match.")
-			Slider (f, "Sudden death length (seconds)", "mp_stalemate_timelimit", "How long sudden death lasts before a draw.")
-			Slider (f, "Frags to win a round", "mp_fraglimit", "A team wins the round, or the deathmatch, at this many kills. 0: off.")
-			Slider (f, "Money to win a round", "mp_creditlimit", "A team wins the round when it earns this much. 0: off.")
-			Slider (f, "Bonus time after a win (seconds)", "mp_bonusroundtime", "The winners hunt the losers before the next round.")
+			Slider (f, "Sudden death length (seconds)",    "mp_stalemate_timelimit", "How long sudden death lasts before a draw.")
+			Slider (f, "Frags to win a round",             "mp_fraglimit",           "A team wins the round, or the deathmatch, at this many kills. 0: off.")
+			Slider (f, "Money to win a round",             "mp_creditlimit",         "A team wins the round when it earns this much. 0: off.")
+			Slider (f, "Bonus time after a win (seconds)", "mp_bonusroundtime",      "The winners hunt the losers before the next round.")
 		end
 	},
 	{
@@ -108,7 +108,7 @@ local RULES =
 			Check (f, "Scramble after a lopsided match", "mp_scrambleteams_auto", "Scrambles when one team wins by too much.")
 			Slider (f, "Win margin that triggers a scramble", "mp_scrambleteams_auto_windifference", "In rounds.")
 			Check (f, "Allow spectators", "mp_allowspectators", "Players may join Spectator.")
-			Check (f, "Friendly fire", "mp_friendlyfire", "Players and soldiers can hurt their teammates.")
+			Check (f, "Friendly fire",    "mp_friendlyfire",    "Players and soldiers can hurt their teammates.")
 		end
 	},
 	{
@@ -250,7 +250,7 @@ local MATCH =
 			Slider (f, "Soldiers per side", "mp_aiwar_team_size", "-1: the slot list decides.")
 			Check (f, "Size squads automatically", "ns_squads_auto_enabled", "The war groups its soldiers into squads itself.")
 			Slider (f, "Fewest squads a team", "ns_squads_min", "")
-			Slider (f, "Most squads a team", "ns_squads_max", "")
+			Slider (f, "Most squads a team",   "ns_squads_max", "")
 			f:Help ("Debugging: Utilities > Sandcastle > Debug NextSoldier.")
 		end
 	}
@@ -369,10 +369,10 @@ local MATCH_TAB =
 		privilege = Permissions.RULES,
 		build = function (f)
 			Slider (f, "Rounds to win the match", "mp_winlimit", "The match ends when a team wins this many rounds. 0: no limit.")
-			Slider (f, "Most rounds in a match", "mp_maxrounds", "The match ends after this many rounds. 0: no limit.")
-			Slider (f, "Time limit (minutes)", "mp_timelimit", "The map changes after this long. 0: no limit.")
-			Slider (f, "Frags to win a round", "mp_fraglimit", "A team wins the round when it reaches this many frags. 0: no limit.")
-			Slider (f, "Credit to win a round", "mp_creditlimit", "A team wins the round when it earns this much. 0: no limit.")
+			Slider (f, "Most rounds in a match",  "mp_maxrounds", "The match ends after this many rounds. 0: no limit.")
+			Slider (f, "Time limit (minutes)",    "mp_timelimit", "The map changes after this long. 0: no limit.")
+			Slider (f, "Frags to win a round",    "mp_fraglimit", "A team wins the round when it reaches this many frags. 0: no limit.")
+			Slider (f, "Credit to win a round",   "mp_creditlimit", "A team wins the round when it earns this much. 0: no limit.")
 			f:Help ("0 on any of these: no limit. Frags and credit win a round, not the match.")
 		end
 	}

@@ -23,10 +23,10 @@ local BOT =
 -- Whether a walker can make a move that changes its height by deltaZ: up
 -- less than its jump, down no further than its death drop.
 T.test ("a walker climbs less than its jump and drops no further than its death drop", function ()
-	T.eq (Path.Walkable (0, LIMITS), true, "flat")
-	T.eq (Path.Walkable (LIMITS.jumpHeight - 1, LIMITS), true, "just under the jump")
-	T.eq (Path.Walkable (LIMITS.jumpHeight, LIMITS), false, "the jump itself")
-	T.eq (Path.Walkable (-LIMITS.deathDropHeight, LIMITS), true, "the death drop itself")
+	T.eq (Path.Walkable (0, LIMITS),                           true,  "flat")
+	T.eq (Path.Walkable (LIMITS.jumpHeight - 1, LIMITS),       true,  "just under the jump")
+	T.eq (Path.Walkable (LIMITS.jumpHeight, LIMITS),           false, "the jump itself")
+	T.eq (Path.Walkable (-LIMITS.deathDropHeight, LIMITS),     true,  "the death drop itself")
 	T.eq (Path.Walkable (-LIMITS.deathDropHeight - 1, LIMITS), false, "past the death drop")
 end)
 
@@ -77,20 +77,20 @@ T.test ("the distance is the ladder's length, else the given length, else the ce
 			length = 80
 		}
 	)
-	T.eq (Ground.Cost (ladder, LIMITS, BOT), 40 + 250, "ladder")
-	T.eq (Ground.Cost (Step ({ length = 80 }), LIMITS, BOT), 40 + 80, "length")
-	T.eq (Ground.Cost (Step ({ length = 0 }), LIMITS, BOT), 40 + 100, "centre distance")
+	T.eq (Ground.Cost (ladder, LIMITS, BOT),                 40 + 250, "ladder")
+	T.eq (Ground.Cost (Step ({ length = 80 }), LIMITS, BOT), 40 + 80,  "length")
+	T.eq (Ground.Cost (Step ({ length = 0 }), LIMITS, BOT),  40 + 100, "centre distance")
 end)
 
 T.test ("a climb of a step or more is a jump: impassable at the jump height, else penalised", function ()
 	T.eq (Ground.Cost (Step ({ heightChange = 17.9 }), JUMPER, BOT), 40 + 100, "below a step")
-	T.eq (Ground.Cost (Step ({ heightChange = 18 }), JUMPER, BOT), 40 + 100 + Path.JUMP_PENALTY * 100, "a jump")
-	T.eq (Ground.Cost (Step ({ heightChange = 72 }), JUMPER, BOT), Path.IMPASSABLE, "too high")
-	T.eq (Ground.Cost (Step ({ heightChange = 18 }), LIMITS, BOT), Path.IMPASSABLE, "a bot whose jump is a step")
+	T.eq (Ground.Cost (Step ({ heightChange = 18 }), JUMPER, BOT),   40 + 100 + Path.JUMP_PENALTY * 100, "a jump")
+	T.eq (Ground.Cost (Step ({ heightChange = 72 }), JUMPER, BOT),   Path.IMPASSABLE, "too high")
+	T.eq (Ground.Cost (Step ({ heightChange = 18 }), LIMITS, BOT),   Path.IMPASSABLE, "a bot whose jump is a step")
 end)
 
 T.test ("a drop deeper than the death drop is impassable", function ()
-	T.eq (Ground.Cost (Step ({ heightChange = -200 }), LIMITS, BOT), 40 + 100, "at the limit")
+	T.eq (Ground.Cost (Step ({ heightChange = -200 }), LIMITS, BOT),   40 + 100,        "at the limit")
 	T.eq (Ground.Cost (Step ({ heightChange = -200.5 }), LIMITS, BOT), Path.IMPASSABLE, "below it")
 end)
 
@@ -102,11 +102,11 @@ end
 
 T.test ("scatter weighs the distance by a per-bot, per-area, per-ten-seconds preference", function ()
 	local p = Preference (7, 3, 12)
-	T.near (Scatter.Cost (Step (), LIMITS, BOT), 40 + 100 * p, 1e-6, "flat")
-	T.near (Scatter.Cost (Step ({ heightChange = 10 }), LIMITS, BOT), 40 + 100 * p, 1e-6, "under a step")
+	T.near (Scatter.Cost (Step (), LIMITS, BOT),                      40 + 100 * p,     1e-6, "flat")
+	T.near (Scatter.Cost (Step ({ heightChange = 10 }), LIMITS, BOT), 40 + 100 * p,     1e-6, "under a step")
 	T.near (Scatter.Cost (Step ({ heightChange = 18 }), JUMPER, BOT), 40 + 6 * 100 * p, 1e-6, "the jump penalty is weighed too")
 	T.eq (Scatter.Cost (Step ({ traversable = false }), LIMITS, BOT), Path.IMPASSABLE, "still impassable")
-	T.eq (Scatter.Cost (Step ({ hasFrom = false }), LIMITS, BOT), 0, "first area")
+	T.eq (Scatter.Cost (Step ({ hasFrom = false }), LIMITS, BOT),     0,               "first area")
 end)
 
 -- NavAreaBuildPath's first call has no from-area, so the binding fills
@@ -125,9 +125,9 @@ T.test ("scatter keeps a route for ten seconds and differs between bots", functi
 			}
 		)
 	end
-	T.eq (at (7, 10), at (7, 19.9), "same ten-second window")
-	T.eq (at (7, 10) ~= at (7, 20), true, "next window")
-	T.eq (at (7, 10) ~= at (8, 10), true, "another bot")
+	T.eq (at (7, 10),               at (7, 19.9), "same ten-second window")
+	T.eq (at (7, 10) ~= at (7, 20), true,         "next window")
+	T.eq (at (7, 10) ~= at (8, 10), true,         "another bot")
 	T.near (at (7, 10), 40 + 100 * Preference (7, 3, 10), 1e-6, "value")
 end)
 

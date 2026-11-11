@@ -39,7 +39,7 @@ local FONT, SMALL_FONT = "Sandcastle.Hud.DefuseSite", "Sandcastle.Hud.DefuseSmal
 local fontsFor
 local function Fonts (u)
 	if fontsFor == u then return end
-	surface.CreateFont (FONT, { font = "TF2 Build", size = math.Round (24 * u), weight = 500 })
+	surface.CreateFont (FONT,       { font = "TF2 Build", size = math.Round (24 * u), weight = 500 })
 	surface.CreateFont (SMALL_FONT, { font = "TF2 Secondary", size = math.Round (14 * u), weight = 500 })
 	fontsFor = u
 end
@@ -103,15 +103,15 @@ end
 local function DrawPanel (panel, cx, foot, u)
 	surface.SetDrawColor (255, 255, 255, 255)
 	local x, y, w, h = cx + BG.x * u, foot - BG.y * u, BG.w * u, BG.h * u
-	Image ("hud/objectives_flagpanel_bg_left", x, y, w, h)
-	Image ("hud/objectives_flagpanel_bg_right", x, y, w, h)
+	Image ("hud/objectives_flagpanel_bg_left",    x, y, w, h)
+	Image ("hud/objectives_flagpanel_bg_right",   x, y, w, h)
 	Image ("hud/objectives_flagpanel_bg_outline", x, y, w, h)
 	for i, site in ipairs (panel.sites) do
 		local L = SITE_TEXT [i]
 		if L then
 			local colour = FILLS [site.tint] or TAN_LIGHT
 			draw.SimpleText (site.name, FONT, cx + L.x * u + u, foot - SITE_Y * u + u, SHADOW, L.align, TEXT_ALIGN_CENTER)
-			draw.SimpleText (site.name, FONT, cx + L.x * u, foot - SITE_Y * u, colour, L.align, TEXT_ALIGN_CENTER)
+			draw.SimpleText (site.name, FONT, cx + L.x * u,     foot - SITE_Y * u, colour, L.align, TEXT_ALIGN_CENTER)
 		end
 	end
 	surface.SetDrawColor (255, 255, 255, 255)
@@ -127,8 +127,8 @@ local function DrawPanel (panel, cx, foot, u)
 	end
 	local label = panel.site and ("Site " .. panel.site) or "Bomb sites"
 	if panel.seconds then label = label .. "  " .. string.format ("%d", math.max (panel.seconds, 0)) end
-	draw.SimpleText (label, SMALL_FONT, cx + u, by + bh / 2 + u, SHADOW, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-	draw.SimpleText (label, SMALL_FONT, cx, by + bh / 2, TAN_LIGHT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText (label, SMALL_FONT, cx + u, by + bh / 2 + u, SHADOW,    TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText (label, SMALL_FONT, cx,     by + bh / 2,     TAN_LIGHT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end
 
 -- The objectives' stack: the panel's bar at its foot, the bomb's panel on top.

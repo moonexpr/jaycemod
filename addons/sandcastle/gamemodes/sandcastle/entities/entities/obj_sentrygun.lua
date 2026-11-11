@@ -61,7 +61,7 @@ if SERVER then
 		local local_ = self:WorldToLocalAngles ((to - from):Angle ())
 		self.aimYaw = Buildings.Turn (self.aimYaw, local_.y, dt)
 		self.aimPitch = Buildings.Turn (self.aimPitch, local_.p, dt)
-		self:SetPoseParameter ("aim_yaw", math.NormalizeAngle (self.aimYaw))
+		self:SetPoseParameter ("aim_yaw",   math.NormalizeAngle (self.aimYaw))
 		self:SetPoseParameter ("aim_pitch", math.NormalizeAngle (self.aimPitch))
 		if now < self.nextFire or not (Buildings.OnTarget (self.aimYaw, local_.y) and Buildings.OnTarget (self.aimPitch, local_.p)) then
 			return

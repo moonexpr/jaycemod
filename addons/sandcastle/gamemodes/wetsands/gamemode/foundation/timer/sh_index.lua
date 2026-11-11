@@ -2,4 +2,4 @@
 -- a loop: docs/foundation-game-split-plan.md.
 local timer = Namespace ("timer")
 Twin (timer, "countdown", require ("foundation.timer.countdown"))
-Twin (timer, "interval", require ("foundation.timer.interval"))
+Twin (timer, "interval",  require ("foundation.timer.interval"))

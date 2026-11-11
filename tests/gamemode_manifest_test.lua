@@ -74,11 +74,11 @@ end
 local manifest = KeyValues (ReadFile (MANIFEST)).sandcastle
 
 T.test ("the manifest names its base, title, maps, category and menu", function ()
-	T.eq (manifest.base, "sandbox", "base")
-	T.eq (manifest.title, "Sandcastle", "title")
-	T.eq (manifest.category, "pvp", "category")
-	T.eq (manifest.menusystem, "1", "selectable from the menu")
-	T.eq (type (manifest.maps), "string", "a map filter")
+	T.eq (manifest.base,        "sandbox",    "base")
+	T.eq (manifest.title,       "Sandcastle", "title")
+	T.eq (manifest.category,    "pvp",        "category")
+	T.eq (manifest.menusystem,  "1",          "selectable from the menu")
+	T.eq (type (manifest.maps), "string",     "a map filter")
 end)
 
 T.test ("every setting is well formed and defaults to what the code gives it", function ()

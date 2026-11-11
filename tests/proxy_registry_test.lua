@@ -44,14 +44,14 @@ T.test ("a proxy is made once for what it stands at, with its kind, target and b
 	local W, made = Load ()
 	local point, watcher = At ("cp"), At ("watcher")
 	local p = W.Proxy (point, "point", point, MINS, MAXS)
-	T.eq (p.class, "ws_proxy")
-	T.eq (p.kind, "point")
+	T.eq (p.class,  "ws_proxy")
+	T.eq (p.kind,   "point")
 	T.eq (p.target, point)
-	T.eq (p.mins, MINS)
+	T.eq (p.mins,   MINS)
 	local again, made2 = W.Proxy (point, "point", point, MINS, MAXS)
-	T.eq (again, p, "the same one again")
-	T.eq (made2, false, "not made this time")
-	T.eq (select (2, W.Proxy (At ("other"), "point", point, MINS, MAXS)), true, "a new one is made")
+	T.eq (again,                                                          p,     "the same one again")
+	T.eq (made2,                                                          false, "not made this time")
+	T.eq (select (2, W.Proxy (At ("other"), "point", point, MINS, MAXS)), true,  "a new one is made")
 	T.eq (#made, 2)
 end)
 
@@ -95,9 +95,9 @@ T.test ("the props standing on its spot name the proxy; other things do not", fu
 	env.ents.FindInBox = function () return { base, wall, player } end
 	local proxy = {}
 	W.ProxyBodies (proxy, env.Vector (0, 0, 0))
-	T.eq (base.nw.ws_proxy, proxy, "the base")
-	T.eq (wall.nw.ws_proxy, proxy, "a prop on the spot")
-	T.eq (player.nw.ws_proxy, nil, "not a player")
+	T.eq (base.nw.ws_proxy,   proxy, "the base")
+	T.eq (wall.nw.ws_proxy,   proxy, "a prop on the spot")
+	T.eq (player.nw.ws_proxy, nil,   "not a player")
 end)
 
 T.finish ()

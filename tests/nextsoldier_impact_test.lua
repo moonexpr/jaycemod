@@ -23,7 +23,7 @@ end)
 
 T.test ("recovered, it has its gait back", function ()
 	T.eq (Locomotion.Recovering (500, 10.1, 10.1), 500)
-	T.eq (Locomotion.Recovering (500, 11, 10.1), 500)
+	T.eq (Locomotion.Recovering (500, 11, 10.1),   500)
 end)
 
 T.finish ()

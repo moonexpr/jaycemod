@@ -102,8 +102,8 @@ UI.Define ("WeaponBox", "Button",
 			local color = self:GetTextColor ()
 			local lit = color == THEME.background
 			UI.SlotBadge (self.kind, THEME.padding, h / 2 - LAYOUT.BADGE, LAYOUT.BADGE, color, lit and THEME.border or THEME.background)
-			draw.SimpleText (self.caption, THEME.bodyFont, THEME.padding + LAYOUT.BADGE + LAYOUT.BADGE_GAP, h / 2, color, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
-			draw.SimpleText (self.weaponName, THEME.titleFont, THEME.padding, h / 2, color, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+			draw.SimpleText (self.caption,    THEME.bodyFont,  THEME.padding + LAYOUT.BADGE + LAYOUT.BADGE_GAP, h / 2, color, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
+			draw.SimpleText (self.weaponName, THEME.titleFont, THEME.padding,                                   h / 2, color, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
 		end
 	}
 )
@@ -180,7 +180,7 @@ UI.Define ("PlayerMenu", "DPanel",
 				local y = (h - tall) / 2
 				for i, slot in ipairs (slots) do self.slotBoxes [slot]:SetPos (x, y + (i - 1) * (LAYOUT.SLOT_HEIGHT + LAYOUT.GAP)) end
 			end
-			Column (LEFT_SLOTS, 0)
+			Column (LEFT_SLOTS,  0)
 			Column (RIGHT_SLOTS, w - LAYOUT.SLOT_WIDTH)
 		end,
 

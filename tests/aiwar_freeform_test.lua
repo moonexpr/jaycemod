@@ -39,26 +39,26 @@ local function Brief (field, scenario)
 end
 
 T.test ("a rounds mode the war does not know, or none, is fought freeform", function ()
-	T.eq (Scenario.For (nil), Freeform.Scenario, "no rounds")
-	T.eq (Scenario.For ("none"), Freeform.Scenario, "a mode without a standard objective")
-	T.eq (Scenario.For ("arena") ~= Freeform.Scenario, true, "a known mode keeps its own")
+	T.eq (Scenario.For (nil),                          Freeform.Scenario, "no rounds")
+	T.eq (Scenario.For ("none"),                       Freeform.Scenario, "a mode without a standard objective")
+	T.eq (Scenario.For ("arena") ~= Freeform.Scenario, true,              "a known mode keeps its own")
 end)
 
 T.test ("freeform needs both bases and the nav mesh's waypoints, and fights in bigger squads", function ()
 	T.eq (Freeform.Scenario:MapLacks (Field ()), nil, "may start")
 	local bare = Field ()
 	bare.waypoints = {}
-	T.eq (Freeform.Scenario:MapLacks (bare), wartactics.scenario.WAYPOINTS, "no nav mesh, no war")
-	T.eq (Freeform.Scenario.SQUAD_SIZE > AiWar.FIRE_TEAM_SIZE, true, "bigger squads")
+	T.eq (Freeform.Scenario:MapLacks (bare),                   wartactics.scenario.WAYPOINTS, "no nav mesh, no war")
+	T.eq (Freeform.Scenario.SQUAD_SIZE > AiWar.FIRE_TEAM_SIZE, true,                          "bigger squads")
 end)
 
 T.test ("every soldier explores", function ()
 	local field, scenario = Brief (Field ())
 	local entries, defense = scenario:Stances (field, field.now)
 	for _, team in ipairs ({ RED, BLUE }) do
-		T.eq (#entries [team].stance, 1, "one share")
+		T.eq (#entries [team].stance,         1,             "one share")
 		T.eq (entries [team].stance [1].role, AiWar.EXPLORE, "explore")
-		T.eq (defense [team], 0, "no defense")
+		T.eq (defense [team],                 0,             "no defense")
 	end
 end)
 
@@ -130,9 +130,9 @@ end
 
 T.test ("without TF2's team spawns, each faction joins at its HL2 deathmatch spawns, whichever its team", function ()
 	local present = Present ({ "info_player_combine", "info_player_rebel", "info_player_deathmatch" })
-	T.eq (table.concat (Spawns.Classes (AiWar.COMBINE, present), ","), "info_player_combine", "the Combine's")
-	T.eq (table.concat (Spawns.Classes (AiWar.RESISTANCE, present), ","), "info_player_rebel", "the rebels'")
-	T.eq (#Spawns.Classes (nil, present), 0, "no faction, none")
+	T.eq (table.concat (Spawns.Classes (AiWar.COMBINE, present), ","),    "info_player_combine", "the Combine's")
+	T.eq (table.concat (Spawns.Classes (AiWar.RESISTANCE, present), ","), "info_player_rebel",   "the rebels'")
+	T.eq (#Spawns.Classes (nil, present),                                 0,                     "no faction, none")
 end)
 
 T.test ("a team without its own spawns joins at hiding spots; the shared starts are the last resort", function ()
@@ -146,13 +146,13 @@ T.test ("the hiding spots are split between the teams along the map's longest si
 	-- wide along y: RED takes the low y half, BLU the high
 	local spots = { P (0, 3000), P (100, -3000), P (-100, 1000), P (50, -1000) }
 	local red, blue = Spawns.Split (spots, RED), Spawns.Split (spots, BLUE)
-	T.eq (#red, 2, "half to RED")
+	T.eq (#red,  2, "half to RED")
 	T.eq (#blue, 2, "half to BLU")
 	for _, p in ipairs (red) do T.eq (p.y < 0, true, "RED's low") end
 	for _, p in ipairs (blue) do T.eq (p.y > 0, true, "BLU's high") end
 	local odd = { P (-1000, 0), P (0, 0), P (1000, 0) }
 	T.eq (#Spawns.Split (odd, RED) + #Spawns.Split (odd, BLUE), 4, "an odd one out in the middle is both teams'")
-	T.eq (#Spawns.Split ({}, RED), 0, "no spots, none")
+	T.eq (#Spawns.Split ({}, RED),                              0, "no spots, none")
 end)
 
 -- A graph of areas: links[a] = the areas a soldier crosses to from a (a
@@ -189,9 +189,9 @@ T.test ("the largest group of bases wins; spots on one area count each", functio
 	-- two islands: 1 <-> 2 holds three spots, 7 <-> 8 two
 	local links = { [1] = { 2 }, [2] = { 1 }, [7] = { 8 }, [8] = { 7 } }
 	local spots = { Spot (7), Spot (8), Spot (1), Spot (1), Spot (2) }
-	T.eq (Areas (Spawns.Connected (spots, Neighbors (links))), "1,1,2", "the bigger island")
-	T.eq (#Spawns.Connected ({}, Neighbors (links)), 0, "no spots, none")
-	T.eq (Areas (Spawns.Connected ({ Spot (9) }, Neighbors ({}))), "9", "a lone spot is its own group")
+	T.eq (Areas (Spawns.Connected (spots, Neighbors (links))),     "1,1,2", "the bigger island")
+	T.eq (#Spawns.Connected ({}, Neighbors (links)),               0,       "no spots, none")
+	T.eq (Areas (Spawns.Connected ({ Spot (9) }, Neighbors ({}))), "9",     "a lone spot is its own group")
 end)
 
 T.test ("between equal groups, the first spot's group wins, whatever the order of areas", function ()

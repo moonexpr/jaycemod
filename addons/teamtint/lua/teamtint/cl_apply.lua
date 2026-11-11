@@ -104,5 +104,5 @@ timer.Create ("teamtint_sweep", SWEEP_SECONDS, 0, function ()
 	end
 end)
 
-cvars.AddChangeCallback ("teamtint_enable", function () TeamTint.Refresh () end, "teamtint_apply")
+cvars.AddChangeCallback ("teamtint_enable",             function () TeamTint.Refresh () end, "teamtint_apply")
 cvars.AddChangeCallback ("teamtint_bench_softwareskin", function () TeamTint.Refresh () end, "teamtint_apply")

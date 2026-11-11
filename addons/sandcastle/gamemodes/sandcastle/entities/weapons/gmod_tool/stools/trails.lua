@@ -125,25 +125,25 @@ end
 -- Add default materials to list
 -- Note: Addons can easily add to this list in their -- own file placed in autorun or something.
 --
-list.Set ("trail_materials", "#trail.plasma", "trails/plasma")
-list.Set ("trail_materials", "#trail.tube", "trails/tube")
+list.Set ("trail_materials", "#trail.plasma",   "trails/plasma")
+list.Set ("trail_materials", "#trail.tube",     "trails/tube")
 list.Set ("trail_materials", "#trail.electric", "trails/electric")
-list.Set ("trail_materials", "#trail.smoke", "trails/smoke")
-list.Set ("trail_materials", "#trail.laser", "trails/laser")
+list.Set ("trail_materials", "#trail.smoke",    "trails/smoke")
+list.Set ("trail_materials", "#trail.laser",    "trails/laser")
 list.Set ("trail_materials", "#trail.physbeam", "trails/physbeam")
-list.Set ("trail_materials", "#trail.love", "trails/love")
-list.Set ("trail_materials", "#trail.lol", "trails/lol")
+list.Set ("trail_materials", "#trail.love",     "trails/love")
+list.Set ("trail_materials", "#trail.lol",      "trails/lol")
 
 if IsMounted ("tf") then
-	list.Set ("trail_materials", "#trail.beam001_blu", "effects/beam001_blu")
-	list.Set ("trail_materials", "#trail.beam001_red", "effects/beam001_red")
-	list.Set ("trail_materials", "#trail.beam001_white", "effects/beam001_white")
-	list.Set ("trail_materials", "#trail.arrowtrail_blu", "effects/arrowtrail_blu")
-	list.Set ("trail_materials", "#trail.arrowtrail_red", "effects/arrowtrail_red")
+	list.Set ("trail_materials", "#trail.beam001_blu",            "effects/beam001_blu")
+	list.Set ("trail_materials", "#trail.beam001_red",            "effects/beam001_red")
+	list.Set ("trail_materials", "#trail.beam001_white",          "effects/beam001_white")
+	list.Set ("trail_materials", "#trail.arrowtrail_blu",         "effects/arrowtrail_blu")
+	list.Set ("trail_materials", "#trail.arrowtrail_red",         "effects/arrowtrail_red")
 	list.Set ("trail_materials", "#trail.repair_claw_trail_blue", "effects/repair_claw_trail_blue")
-	list.Set ("trail_materials", "#trail.repair_claw_trail_red", "effects/repair_claw_trail_red")
-	list.Set ("trail_materials", "#trail.australiumtrail_red", "effects/australiumtrail_red")
-	list.Set ("trail_materials", "#trail.beam_generic01", "effects/beam_generic01")
+	list.Set ("trail_materials", "#trail.repair_claw_trail_red",  "effects/repair_claw_trail_red")
+	list.Set ("trail_materials", "#trail.australiumtrail_red",    "effects/australiumtrail_red")
+	list.Set ("trail_materials", "#trail.beam_generic01",         "effects/beam_generic01")
 end
 
 local ConVarsDefault = TOOL:BuildConVarList ()
@@ -155,9 +155,9 @@ function TOOL.BuildCPanel (CPanel)
 
 	CPanel:ColorPicker ("#tool.trails.color", "trails_r", "trails_g", "trails_b", "trails_a")
 
-	CPanel:NumSlider ("#tool.trails.length", "trails_length", 0, 10)
+	CPanel:NumSlider ("#tool.trails.length",    "trails_length",    0, 10)
 	CPanel:NumSlider ("#tool.trails.startsize", "trails_startsize", 0, 128)
-	CPanel:NumSlider ("#tool.trails.endsize", "trails_endsize", 0, 128)
+	CPanel:NumSlider ("#tool.trails.endsize",   "trails_endsize",   0, 128)
 
 	CPanel:MatSelect ("trails_material", list.Get ("trail_materials"), true, 0.25, 0.25)
 

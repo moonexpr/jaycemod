@@ -14,10 +14,10 @@ TOOL.Information =
 }
 
 if CLIENT then
-	language.Add ("tool.build_point.name", "Control Point")
-	language.Add ("tool.build_point.desc", "Place control points along the map")
-	language.Add ("tool.build_point.left", "Place a control point")
-	language.Add ("tool.build_point.right", "Change who owns the point you are looking at at the start")
+	language.Add ("tool.build_point.name",   "Control Point")
+	language.Add ("tool.build_point.desc",   "Place control points along the map")
+	language.Add ("tool.build_point.left",   "Place a control point")
+	language.Add ("tool.build_point.right",  "Change who owns the point you are looking at at the start")
 	language.Add ("tool.build_point.reload", "Remove the piece you are looking at")
 end
 

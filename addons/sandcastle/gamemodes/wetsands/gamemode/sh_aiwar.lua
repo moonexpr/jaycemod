@@ -257,7 +257,7 @@ local function BuildPanel (panel)
 	WS.ServerSlider (panel, "Soldiers per side (-1: the slot list's)", "mp_aiwar_team_size")
 	WS.AiWarSlotList (panel)
 	panel:NumSlider ("Ragdolls fade after (s, 0: never)", "cl_npc_ragdoll_lifetime", 0, 120, 0)
-	panel:NumSlider ("Most ragdolls kept", "g_ragdoll_maxcount", 0, 64, 0)
+	panel:NumSlider ("Most ragdolls kept",                "g_ragdoll_maxcount",      0, 64,  0)
 	panel:Help ("Debugging the soldiers (overlays, reports, tuning): Utilities > Sandcastle > Debug NextSoldier.")
 end
 

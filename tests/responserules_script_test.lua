@@ -23,12 +23,12 @@ criteria "Half" "randomnum" ">50" weight 2
 criterion Bare health ">10,<=50"
 ]])
 	local stop = defs.criteria.ConceptCartStop
-	T.eq (stop [1], "Concept", "its key")
-	T.eq (stop [2], "TLK_CART_STOP", "its value")
-	T.eq (stop.required, true, "required")
-	T.eq (defs.criteria.Half.weight, 2, "a weight")
-	T.eq (defs.criteria.Half.required, nil, "not required")
-	T.eq (defs.criteria.Bare [2], ">10,<=50", "unquoted")
+	T.eq (stop [1],                    "Concept",       "its key")
+	T.eq (stop [2],                    "TLK_CART_STOP", "its value")
+	T.eq (stop.required,               true,            "required")
+	T.eq (defs.criteria.Half.weight,   2,               "a weight")
+	T.eq (defs.criteria.Half.required, nil,             "not required")
+	T.eq (defs.criteria.Bare [2],      ">10,<=50",      "unquoted")
 end)
 
 -- TokenWaiting: a criterion reads its options from its own line only.
@@ -42,7 +42,7 @@ T.test ("comments run to the end of the line; quoted words keep their spaces", f
 criterion "Said" "SaidIt" "!=1" required // not yet
 response "Lines" { print "the cart's stopped: back on it" }
 ]])
-	T.eq (defs.criteria.Said [2], "!=1", "past the comment")
+	T.eq (defs.criteria.Said [2],       "!=1",                            "past the comment")
 	T.eq (defs.responses.Lines [1] [2], "the cart's stopped: back on it", "the whole line")
 end)
 
@@ -59,18 +59,18 @@ response "Cart"
 }
 ]])
 	local g = defs.responses.Cart
-	T.eq (g.permitrepeats and g.sequential and g.norepeat, true, "the flags")
-	T.eq (#g, 3, "three lines")
-	T.eq (g [1] [1], "speak", "a sound")
-	T.eq (g [1].weight, 3, "weighted")
-	T.eq (g [3] [1], "print", "a print")
+	T.eq (g.permitrepeats and g.sequential and g.norepeat, true,    "the flags")
+	T.eq (#g,                                              3,       "three lines")
+	T.eq (g [1] [1],                                       "speak", "a sound")
+	T.eq (g [1].weight,                                    3,       "weighted")
+	T.eq (g [3] [1],                                       "print", "a print")
 	-- AI_ResponseParams are the group's, whichever line sets them
-	T.eq (g.params.odds, 50, "odds")
-	T.eq (g.params.soundlevel, "SNDLVL_90dB", "a sound level")
-	T.eq (g.params.respeakdelay [1], 10, "a respeak delay")
-	T.eq (g.params.speakonce, true, "speakonce")
-	T.eq (g.params.delay [1], Script.DEFAULT_DELAY [1], "the last delay set: defaultdelay")
-	T.eq (g.params.delay [2], Script.DEFAULT_DELAY [2], "to its end")
+	T.eq (g.params.odds,             50,                       "odds")
+	T.eq (g.params.soundlevel,       "SNDLVL_90dB",            "a sound level")
+	T.eq (g.params.respeakdelay [1], 10,                       "a respeak delay")
+	T.eq (g.params.speakonce,        true,                     "speakonce")
+	T.eq (g.params.delay [1],        Script.DEFAULT_DELAY [1], "the last delay set: defaultdelay")
+	T.eq (g.params.delay [2],        Script.DEFAULT_DELAY [2], "to its end")
 end)
 
 T.test ("nodelay takes no argument, and leaves no delay", function ()
@@ -78,7 +78,7 @@ T.test ("nodelay takes no argument, and leaves no delay", function ()
 response "Quick" { speak "vo/a.wav" nodelay weight 2 }
 ]])
 	T.eq (defs.responses.Quick.params.delay [2], 0, "none")
-	T.eq (defs.responses.Quick [1].weight, 2, "the option after it still read")
+	T.eq (defs.responses.Quick [1].weight,       2, "the option after it still read")
 end)
 
 T.test ("a response group on one line", function ()
@@ -86,9 +86,9 @@ T.test ("a response group on one line", function ()
 response "One" odds 25 speak "vo/a.wav"
 criterion "C" "concept" "TLK_A"
 ]])
-	T.eq (defs.responses.One [1] [2], "vo/a.wav", "its line")
-	T.eq (defs.responses.One.params.odds, 25, "its odds")
-	T.eq (defs.criteria.C ~= nil, true, "the next definition")
+	T.eq (defs.responses.One [1] [2],     "vo/a.wav", "its line")
+	T.eq (defs.responses.One.params.odds, 25,         "its odds")
+	T.eq (defs.criteria.C ~= nil,         true,       "the next definition")
 end)
 
 T.test ("a rule: its criteria and groups by line, contexts, matchonce, and inline criteria", function ()
@@ -108,12 +108,12 @@ rule "R"
 }
 ]])
 	local r = defs.rules.R
-	T.eq (table.concat (r.criteria, " "), "A B [R001]", "named, then inline")
-	T.eq (defs.criteria ["[R001]"] [1], "teamrole", "the inline criterion's key")
-	T.eq (defs.criteria ["[R001]"].required, true, "and its option")
-	T.eq (table.concat (r.responses, " "), "G H", "both groups")
+	T.eq (table.concat (r.criteria, " "),     "A B [R001]",         "named, then inline")
+	T.eq (defs.criteria ["[R001]"] [1],       "teamrole",           "the inline criterion's key")
+	T.eq (defs.criteria ["[R001]"].required,  true,                 "and its option")
+	T.eq (table.concat (r.responses, " "),    "G H",                "both groups")
 	T.eq (table.concat (r.applyContext, " "), "SaidA:1:20 SaidB:1", "both contexts")
-	T.eq (r.matchonce, true, "matchonce")
+	T.eq (r.matchonce,                        true,                 "matchonce")
 end)
 
 T.test ("an enumeration and a criterion of criteria", function ()
@@ -127,10 +127,10 @@ criterion "X" "x" "1"
 criterion "Y" "y" "1"
 criterion "Either" { X Y } required weight 2
 ]])
-	T.eq (defs.enumerations ["[npcstate::combat]"], 3, "the member, lower case")
+	T.eq (defs.enumerations ["[npcstate::combat]"],             3,     "the member, lower case")
 	T.eq (table.concat (defs.criteria.Either.subcriteria, " "), "X Y", "the criteria it holds")
-	T.eq (defs.criteria.Either.required, true, "required")
-	T.eq (defs.criteria.Either.weight, 2, "weighted")
+	T.eq (defs.criteria.Either.required,                        true,  "required")
+	T.eq (defs.criteria.Either.weight,                          2,     "weighted")
 end)
 
 T.test ("an include is read relative to the scripts folder, once", function ()
@@ -187,8 +187,8 @@ Rule CartMovingBackwardsDefenseSoldier
 	local defs = Parse ((text:gsub ('scene "scenes/Player/Soldier/low/7371.vcd"', 'speak "vo/soldier.wav"')))
 	local said = Response.System (defs):Speak (Speaker (), "TLK_CART_MOVING_BACKWARD",
 		{ teamrole = "defense", playerclass = "Soldier", randomnum = 90 }, First, 0)
-	T.eq (said.rule, "CartMovingBackwardsDefenseSoldier", "TF2's rule")
-	T.eq (defs.criteria.IsSoldier.required, true, "a quoted \"required\"")
+	T.eq (said.rule,                        "CartMovingBackwardsDefenseSoldier", "TF2's rule")
+	T.eq (defs.criteria.IsSoldier.required, true,                                "a quoted \"required\"")
 end)
 
 T.finish ()

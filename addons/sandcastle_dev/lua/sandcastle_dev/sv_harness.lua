@@ -628,9 +628,9 @@ end, "dev_harness_mode <forward|intercept|queue> [input action|clear ...]")
 dev.Command ("dev_harness_release", function () return H.release () end, "Forward the queued inputs")
 dev.Command ("dev_harness_trace", function (args) return H.trace ({ since = tonumber (args [1]), limit = tonumber (args [2]) }) end,
 	"dev_harness_trace [since] [limit]")
-dev.Command ("dev_pause", function () return H.pause () end, "Freeze gameplay (time scale 0)")
+dev.Command ("dev_pause",  function () return H.pause () end, "Freeze gameplay (time scale 0)")
 dev.Command ("dev_resume", function () return H.resume () end, "Unfreeze gameplay")
-dev.Command ("dev_step", function (args) return H.step (tonumber (args [1]) or 1) end, "dev_step [ticks]: run ticks, then freeze")
+dev.Command ("dev_step",   function (args) return H.step (tonumber (args [1]) or 1) end, "dev_step [ticks]: run ticks, then freeze")
 dev.Command ("dev_round_state", function (args) return H.set_round_state (tonumber (args [1]) or args [1]) end,
 	"dev_round_state <state name or number>")
 dev.Command ("dev_timer_set", function (args) return H.set_timer (tonumber (args [1]), args [2]) end, "dev_timer_set <seconds> [timer name]")

@@ -14,7 +14,7 @@ local Marks = WS.require ("features.aiwar.marks")
 local Tactics = wartactics.fireteam
 local team = WS.TEAM_BLUE
 
-RunConsoleCommand ("mp_winlimit", "0")
+RunConsoleCommand ("mp_winlimit",  "0")
 RunConsoleCommand ("mp_timelimit", "0")
 RunConsoleCommand ("mp_maxrounds", "0")
 
@@ -104,7 +104,7 @@ local steps =
 	end,
 	function ()
 		Note ("CONTACT\n" .. Members ())
-		Controller:Mark (Marks.POST, team, { x = at.x, y = at.y + 300, z = at.z })
+		Controller:Mark (Marks.POST,  team, { x = at.x, y = at.y + 300, z = at.z })
 		Controller:Mark (Marks.RALLY, team, { x = at.x - 200, y = at.y, z = at.z })
 		wartactics.mission.Recall (FireTeam (), wartactics.mission.CASUALTIES)
 	end,

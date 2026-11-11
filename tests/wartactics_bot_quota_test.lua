@@ -33,9 +33,9 @@ local function Settings (mode, quota, joinAfterPlayer, actors)
 end
 
 T.test ("the actors parse from ns_soldiers_actor's words, and nothing else", function ()
-	T.eq (Quota.Actors ("npc"), Quota.NPC, "npc")
-	T.eq (Quota.Actors ("BOT"), Quota.BOT, "bot, any case")
-	T.eq (Quota.Actors ("both"), nil, "never both")
+	T.eq (Quota.Actors ("npc"),  Quota.NPC, "npc")
+	T.eq (Quota.Actors ("BOT"),  Quota.BOT, "bot, any case")
+	T.eq (Quota.Actors ("both"), nil,       "never both")
 end)
 
 T.test ("NPC soldiers: no bots, whatever the quota", function ()
@@ -45,15 +45,15 @@ end)
 
 T.test ("bot soldiers: a quota of 0 fills the war's teams with bots", function ()
 	T.eq (Quota.Wanted (Settings (Quota.NORMAL, 0), Population (1, 0)), SOLDIERS, "the war's sizes")
-	T.eq (Quota.Wanted (Settings (Quota.NORMAL, 4), Population (1, 0)), 4, "a quota set is kept")
+	T.eq (Quota.Wanted (Settings (Quota.NORMAL, 4), Population (1, 0)), 4,        "a quota set is kept")
 end)
 
 T.test ("the modes parse from tf_bot_quota_mode's words, and nothing else", function ()
 	T.eq (Quota.Mode ("normal"), Quota.NORMAL, "normal")
-	T.eq (Quota.Mode ("fill"), Quota.FILL, "fill")
-	T.eq (Quota.Mode ("match"), Quota.MATCH, "match")
-	T.eq (Quota.Mode ("FILL"), Quota.FILL, "any case")
-	T.eq (Quota.Mode ("crowd"), nil, "an unknown word")
+	T.eq (Quota.Mode ("fill"),   Quota.FILL,   "fill")
+	T.eq (Quota.Mode ("match"),  Quota.MATCH,  "match")
+	T.eq (Quota.Mode ("FILL"),   Quota.FILL,   "any case")
+	T.eq (Quota.Mode ("crowd"),  nil,          "an unknown word")
 end)
 
 T.test ("normal keeps the quota of bots whoever else plays", function ()
@@ -62,14 +62,14 @@ T.test ("normal keeps the quota of bots whoever else plays", function ()
 end)
 
 T.test ("fill tops the players on the game teams up to the quota", function ()
-	T.eq (Quota.Wanted (Settings (Quota.FILL, 6), Population (2, 0)), 4, "two humans leave room for four")
+	T.eq (Quota.Wanted (Settings (Quota.FILL, 6), Population (2, 0)),    4, "two humans leave room for four")
 	T.eq (Quota.Wanted (Settings (Quota.FILL, 6), Population (2, 0, 3)), 4, "spectators are not players")
-	T.eq (Quota.Wanted (Settings (Quota.FILL, 6), Population (8, 0)), 0, "more humans than the quota: none")
+	T.eq (Quota.Wanted (Settings (Quota.FILL, 6), Population (8, 0)),    0, "more humans than the quota: none")
 end)
 
 T.test ("match keeps the quota of bots for each human on the server", function ()
-	T.eq (Quota.Wanted (Settings (Quota.MATCH, 2), Population (3, 0)), 6, "two each for three")
-	T.eq (Quota.Wanted (Settings (Quota.MATCH, 2), Population (0, 0)), 0, "none for nobody")
+	T.eq (Quota.Wanted (Settings (Quota.MATCH, 2), Population (3, 0)),    6, "two each for three")
+	T.eq (Quota.Wanted (Settings (Quota.MATCH, 2), Population (0, 0)),    0, "none for nobody")
 	T.eq (Quota.Wanted (Settings (Quota.MATCH, 2), Population (1, 0, 1)), 4, "a spectator still counts")
 end)
 
@@ -87,10 +87,10 @@ T.test ("bots never take the last free slot, so a human can still join", functio
 end)
 
 T.test ("a step adds or kicks one bot toward the quota, and rests on it", function ()
-	T.eq (Quota.Step (Settings (Quota.NORMAL, 3), Population (1, 0)), Quota.ADD, "short")
-	T.eq (Quota.Step (Settings (Quota.NORMAL, 3), Population (1, 3)), nil, "on the quota")
+	T.eq (Quota.Step (Settings (Quota.NORMAL, 3), Population (1, 0)), Quota.ADD,  "short")
+	T.eq (Quota.Step (Settings (Quota.NORMAL, 3), Population (1, 3)), nil,        "on the quota")
 	T.eq (Quota.Step (Settings (Quota.NORMAL, 3), Population (1, 5)), Quota.KICK, "over")
-	T.eq (Quota.Step (Settings (Quota.FILL, 3), Population (2, 2)), Quota.KICK, "a human joined a filled server")
+	T.eq (Quota.Step (Settings (Quota.FILL, 3), Population (2, 2)),   Quota.KICK, "a human joined a filled server")
 end)
 
 T.test ("a kicked bot comes from the team with more players, else the one with more bots", function ()
@@ -101,19 +101,19 @@ T.test ("a kicked bot comes from the team with more players, else the one with m
 			bots = bots
 		}
 	end
-	T.eq (Quota.TeamToKick ({ [Teams.RED] = Side (5, 3), [Teams.BLUE] = Side (4, 4) }), Teams.RED, "RED is larger")
+	T.eq (Quota.TeamToKick ({ [Teams.RED] = Side (5, 3), [Teams.BLUE] = Side (4, 4) }), Teams.RED,  "RED is larger")
 	T.eq (Quota.TeamToKick ({ [Teams.RED] = Side (4, 1), [Teams.BLUE] = Side (4, 3) }), Teams.BLUE, "even: BLU has more bots")
 	T.eq (Quota.TeamToKick ({ [Teams.RED] = Side (6, 0), [Teams.BLUE] = Side (2, 2) }), Teams.BLUE, "RED has no bot to kick")
-	T.eq (Quota.TeamToKick ({ [Teams.RED] = Side (1, 0), [Teams.BLUE] = Side (1, 0) }), nil, "no bots at all")
+	T.eq (Quota.TeamToKick ({ [Teams.RED] = Side (1, 0), [Teams.BLUE] = Side (1, 0) }), nil,        "no bots at all")
 end)
 
 -- A scenario may size the sides unevenly (hostage rescue: BLU 60%): a new bot
 -- joins the team furthest below its own size, so the split follows them.
 T.test ("a new bot joins the team furthest below its size; even sizes, the auto-assigned team", function ()
 	local RED, BLUE = Teams.RED, Teams.BLUE
-	T.eq (Quota.TeamToJoin ({ [RED] = 4, [BLUE] = 4 }, { [RED] = 6, [BLUE] = 10 }), BLUE, "BLU is further below")
-	T.eq (Quota.TeamToJoin ({ [RED] = 3, [BLUE] = 9 }, { [RED] = 6, [BLUE] = 10 }), RED, "RED is")
-	T.eq (Quota.TeamToJoin ({ [RED] = 4, [BLUE] = 5 }, { [RED] = 8, [BLUE] = 8 }), Teams.AutoTeam (4, 5), "even sizes: auto-assign")
+	T.eq (Quota.TeamToJoin ({ [RED] = 4, [BLUE] = 4 }, { [RED] = 6, [BLUE] = 10 }),  BLUE, "BLU is further below")
+	T.eq (Quota.TeamToJoin ({ [RED] = 3, [BLUE] = 9 }, { [RED] = 6, [BLUE] = 10 }),  RED, "RED is")
+	T.eq (Quota.TeamToJoin ({ [RED] = 4, [BLUE] = 5 }, { [RED] = 8, [BLUE] = 8 }),   Teams.AutoTeam (4, 5), "even sizes: auto-assign")
 	T.eq (Quota.TeamToJoin ({ [RED] = 6, [BLUE] = 10 }, { [RED] = 6, [BLUE] = 10 }), Teams.AutoTeam (6, 10), "both full: auto-assign")
 end)
 
@@ -123,10 +123,10 @@ end)
 T.test ("a team over its size while the other is under gives up a bot", function ()
 	local RED, BLUE = Teams.RED, Teams.BLUE
 	local sizes = { [RED] = 6, [BLUE] = 10 }
-	T.eq (Quota.TeamOverSize ({ [RED] = 8, [BLUE] = 8 }, sizes), RED, "RED over, BLU under")
+	T.eq (Quota.TeamOverSize ({ [RED] = 8, [BLUE] = 8 }, sizes),  RED, "RED over, BLU under")
 	T.eq (Quota.TeamOverSize ({ [RED] = 6, [BLUE] = 10 }, sizes), nil, "as sized")
 	T.eq (Quota.TeamOverSize ({ [RED] = 7, [BLUE] = 10 }, sizes), nil, "over, but nobody is short: the quota's to trim")
-	T.eq (Quota.TeamOverSize ({ [RED] = 5, [BLUE] = 9 }, sizes), nil, "both short: bots join")
+	T.eq (Quota.TeamOverSize ({ [RED] = 5, [BLUE] = 9 }, sizes),  nil, "both short: bots join")
 end)
 
 T.finish ()

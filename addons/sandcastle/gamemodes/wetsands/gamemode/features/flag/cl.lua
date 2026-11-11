@@ -130,15 +130,15 @@ end
 local function DrawScores (cx, h, u)
 	surface.SetDrawColor (255, 255, 255, 255)
 	local x, y, w, bh = cx + BG.x * u, h - BG.y * u, BG.w * u, BG.h * u
-	Image ("hud/objectives_flagpanel_bg_left", x, y, w, bh)
-	Image ("hud/objectives_flagpanel_bg_right", x, y, w, bh)
+	Image ("hud/objectives_flagpanel_bg_left",    x, y, w, bh)
+	Image ("hud/objectives_flagpanel_bg_right",   x, y, w, bh)
 	Image ("hud/objectives_flagpanel_bg_outline", x, y, w, bh)
 	for team, L in pairs (SCORE) do
 		local text = tostring (GetGlobal2Int ("ws_flag_caps_" .. team, 0))
 		local edge = L.align == TEXT_ALIGN_LEFT and L.x or L.x + L.w -- the side it is aligned to
 		local tx, ty = cx + edge * u, h - (L.y - L.h / 2) * u
 		draw.SimpleText (text, SCORE_FONT, tx + L.shadowX * u, ty + SCORE_SHADOW_Y * u, SHADOW, L.align, TEXT_ALIGN_CENTER)
-		draw.SimpleText (text, SCORE_FONT, tx, ty, TAN_LIGHT, L.align, TEXT_ALIGN_CENTER)
+		draw.SimpleText (text, SCORE_FONT, tx,                 ty, TAN_LIGHT, L.align, TEXT_ALIGN_CENTER)
 	end
 	surface.SetDrawColor (255, 255, 255, 255)
 	Image ("hud/objectives_flagpanel_bg_playingto", cx + PLAYING_TO_BG.x * u, h - PLAYING_TO_BG.y * u, PLAYING_TO_BG.w * u, PLAYING_TO_BG.h * u)
@@ -159,14 +159,14 @@ local function DrawStatus (f, ox, oy, u, mvm)
 		return
 	end
 	Image ("hud/objectives_flagpanel_briefcase", Box (BRIEFCASE, ox, oy, u))
-	Image (Flag.StatusIcon (f.state), Box (STATUS, ox, oy, u))
+	Image (Flag.StatusIcon (f.state),            Box (STATUS, ox, oy, u))
 end
 
 -- The carrier's view: the carried image and the arrow to its team's zone.
 local function DrawCarried (f, cx, h, u)
 	surface.SetDrawColor (255, 255, 255, 255)
 	Image ("hud/objectives_flagpanel_carried_outline", cx + CARRIED_OUTLINE.x * u, h - CARRIED_OUTLINE.y * u, CARRIED_OUTLINE.w * u, CARRIED_OUTLINE.h * u)
-	Image (Flag.CarriedImage (f.team, f.carrierTeam), cx + CARRIED.x * u, h - CARRIED.y * u, CARRIED.w * u, CARRIED.h * u)
+	Image (Flag.CarriedImage (f.team, f.carrierTeam),  cx + CARRIED.x * u,         h - CARRIED.y * u,         CARRIED.w * u,         CARRIED.h * u)
 	local zone = GetGlobal2Vector ("ws_flag_zone_" .. f.carrierTeam, vector_origin)
 	if zone == vector_origin then return end
 	local w, ah = CAPTURE_ARROW.w * u, CAPTURE_ARROW.h * u

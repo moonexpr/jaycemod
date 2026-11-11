@@ -64,7 +64,7 @@ end
 function Controller:UseMapRespawnTimes ()
 	if not WS.Active () then return false, NO_ROUNDS end
 	local rules = WS.Rules
-	rules:SetAdminRespawnWaveTime (RED, nil)
+	rules:SetAdminRespawnWaveTime (RED,  nil)
 	rules:SetAdminRespawnWaveTime (BLUE, nil)
 	WS.Notify (Notices.MapRespawnWaves ())
 	return true

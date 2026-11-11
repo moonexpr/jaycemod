@@ -42,10 +42,10 @@ local LEVELS = { 30, 60, 90 } -- hud_min_speed_level_1..3
 -- The mode ---------------------------------------------------------------------
 
 T.test ("the payload mode's members", function ()
-	T.eq (MODE.NAME, "payload", "name")
-	T.eq (MODE.HUD, Rounds.HUD_PAYLOAD, "the cart HUD")
-	T.eq (MODE.CREATES_TIME_LIMIT_TIMER, true, "a time limit timer")
-	T.eq (MODE.ANNOUNCES_TIME_ADDED, true, "time added is announced")
+	T.eq (MODE.NAME,                     "payload",          "name")
+	T.eq (MODE.HUD,                      Rounds.HUD_PAYLOAD, "the cart HUD")
+	T.eq (MODE.CREATES_TIME_LIMIT_TIMER, true,               "a time limit timer")
+	T.eq (MODE.ANNOUNCES_TIME_ADDED,     true,               "time added is announced")
 	T.eq (#MODE:CapSounds (BLU,
 		{
 			wouldWinGame = false,
@@ -58,10 +58,10 @@ end)
 T.test ("payload outranks control points, and koth outranks payload", function ()
 	T.eq (MODE.PRIORITY > ControlPoints.Mode.PRIORITY, true, "over control points")
 	local round = Rounds.New (SETTINGS)
-	T.eq (round:SetMode (ControlPoints.Mode), true, "the master's control points")
-	T.eq (round:SetMode (MODE), true, "a train watcher's payload")
+	T.eq (round:SetMode (ControlPoints.Mode), true,  "the master's control points")
+	T.eq (round:SetMode (MODE),               true,  "a train watcher's payload")
 	T.eq (round:SetMode (ControlPoints.Mode), false, "control points never replace payload")
-	T.eq (round:Mode (), MODE, "payload")
+	T.eq (round:Mode (),                      MODE,  "payload")
 end)
 
 T.test ("a race's round win plays each side its stage outcome, as Race.OutcomeLines", function ()
@@ -109,14 +109,14 @@ T.test ("a single cart: pushed faster by more pushers, it warns once per checkpo
 	local speed = Payload.TrainSpeed (cart)
 	T.eq (speed, 0.55, "one pusher")
 	cart.numCappers = 3
-	T.eq (Payload.TrainSpeed (cart), 1.0, "three pushers, full speed")
-	T.eq (Payload.SpeedLevel (95, 95, LEVELS), 3, "three arrows at full speed")
+	T.eq (Payload.TrainSpeed (cart),           1.0, "three pushers, full speed")
+	T.eq (Payload.SpeedLevel (95, 95, LEVELS), 3,   "three arrows at full speed")
 
 	local links = Links ()
 	T.eq (#Payload.AlertsDue (links, 100, true), 0, "far from the first checkpoint")
 	local due = Payload.AlertsDue (links, 1000 - Payload.ALERT_DISTANCE + 1, true)
-	T.eq (#due, 1, "within the alert distance")
-	T.eq (due [1], 1, "the first checkpoint's warning")
+	T.eq (#due,                                  1, "within the alert distance")
+	T.eq (due [1],                               1, "the first checkpoint's warning")
 	T.eq (#Payload.AlertsDue (links, 900, true), 0, "only once")
 
 	-- between nodes 4 and 5, 100 units past node 4, heading for the goal
@@ -137,7 +137,7 @@ end)
 
 T.test ("recede: left alone the cart waits tf_escort_recede_time, then rolls back until pushed again", function ()
 	local delay = Payload.RecedeDelay (false, MAP_RECEDE_TIME, RECEDE_TIME, RECEDE_TIME_OVERTIME)
-	T.eq (delay, RECEDE_TIME, "the convar's 30 s")
+	T.eq (delay,                                                              RECEDE_TIME, "the convar's 30 s")
 	T.eq (Payload.RecedeDelay (false, 12, RECEDE_TIME, RECEDE_TIME_OVERTIME), 12, "the map's train_recede_time")
 	T.eq (Payload.TimerMayExpire (
 		{
@@ -156,14 +156,14 @@ T.test ("recede: left alone the cart waits tf_escort_recede_time, then rolls bac
 		receding = false
 	}
 	local speed, receding = Payload.TrainSpeed (cart, true)
-	T.eq (speed < 0, true, "the countdown's end rolls it back")
-	T.eq (receding, true, "receding")
+	T.eq (speed < 0,                              true,                          "the countdown's end rolls it back")
+	T.eq (receding,                               true,                          "receding")
 	T.eq (Payload.SpeedLevel (-1, speed, LEVELS), Payload.SPEED_LEVEL_BACKWARDS, "the backwards arrow")
 	cart.currentSpeed, cart.receding = speed, receding
 	T.eq (Payload.TrainSpeed (cart), speed, "it keeps rolling back")
 	cart.numCappers = 1
 	speed, receding = Payload.TrainSpeed (cart)
-	T.eq (speed, 0.55, "a pusher stops the recede")
+	T.eq (speed,    0.55,  "a pusher stops the recede")
 	T.eq (receding, false, "no longer receding")
 end)
 
@@ -223,20 +223,20 @@ T.test ("overtime while pushing: the clock holds at zero until the cart stands, 
 	end
 
 	T.eq (Kinds (timer:Think (LENGTH, Q (MayExpire (LENGTH), false))), "overtime true", "pushed at zero: overtime")
-	T.eq (timer:TimeRemaining (2), 0, "held")
+	T.eq (timer:TimeRemaining (2),                                     0,               "held")
 
 	-- the pushers step off: the countdown starts with the overtime length
 	watcher.areaCapturing = false
 	watcher.waitingToRecede = true
 	local now = 2
 	local delay = Payload.RecedeDelay (true, MAP_RECEDE_TIME, RECEDE_TIME, RECEDE_TIME_OVERTIME)
-	T.eq (delay, RECEDE_TIME_OVERTIME, "tf_escort_recede_time_overtime")
+	T.eq (delay,                                                RECEDE_TIME_OVERTIME, "tf_escort_recede_time_overtime")
 	T.eq (Kinds (timer:Think (now, Q (MayExpire (now), true))), "", "still held while it waits to recede")
 
 	-- a countdown started before overtime is cut to the overtime length
 	local longAt = 40
-	T.eq (Payload.OvertimeRecedeAt (longAt, now, RECEDE_TIME_OVERTIME), now + RECEDE_TIME_OVERTIME, "shortened")
-	T.eq (Payload.OvertimeRecedeAt (now + 1, now, RECEDE_TIME_OVERTIME), now + 1, "never lengthened")
+	T.eq (Payload.OvertimeRecedeAt (longAt, now, RECEDE_TIME_OVERTIME),  now + RECEDE_TIME_OVERTIME, "shortened")
+	T.eq (Payload.OvertimeRecedeAt (now + 1, now, RECEDE_TIME_OVERTIME), now + 1,                    "never lengthened")
 
 	-- the countdown ends in overtime: the cart does not recede, the hold ends
 	watcher.waitingToRecede = false
@@ -290,10 +290,10 @@ T.test ("a race: BLU's cart is drawn first, the leader is the cart farther along
 			}
 		}
 	)
-	T.eq (carts [1].team, BLU, "BLU first")
-	T.eq (carts [1].index, 12, "then by entity index")
-	T.eq (carts [2].index, 70, "BLU's second")
-	T.eq (carts [3].team, RED, "RED last")
+	T.eq (carts [1].team,  BLU, "BLU first")
+	T.eq (carts [1].index, 12,  "then by entity index")
+	T.eq (carts [2].index, 70,  "BLU's second")
+	T.eq (carts [3].team,  RED, "RED last")
 	T.eq (Race.Leader (
 		{
 			[RED] = 1200,
@@ -338,11 +338,11 @@ T.test ("the cart HUD's checkpoints, owners and hills survive the wire", functio
 	T.eq (#decodedHills, #hills, "every hill")
 	for i, h in ipairs (hills) do
 		T.near (decodedHills [i].from, h.from, 1e-4, "hill from")
-		T.near (decodedHills [i].to, h.to, 1e-4, "hill to")
+		T.near (decodedHills [i].to,   h.to,   1e-4, "hill to")
 		T.eq (decodedHills [i].down, h.down, "hill direction")
 	end
 	T.eq (#Hud.DecodeNumbers (""), 0, "no checkpoints")
-	T.eq (#Hud.DecodeHills (""), 0, "no hills")
+	T.eq (#Hud.DecodeHills (""),   0, "no hills")
 end)
 
 local function Cart (over)
@@ -373,10 +373,10 @@ T.test ("the cart's indicator: blocked, rolling back, its pushers, or the rollba
 end)
 
 T.test ("the admin's cart speed scale is clamped to the editor's range", function ()
-	T.eq (Payload.SpeedScale (2), 2, "in range")
-	T.eq (Payload.SpeedScale (100), Payload.CART_SPEED_MAX, "clamped high")
-	T.eq (Payload.SpeedScale (0), Payload.CART_SPEED_MIN, "clamped low")
-	T.eq (Payload.CART_SPEED_DEFAULT, 1, "the map's own speed")
+	T.eq (Payload.SpeedScale (2),     2,                      "in range")
+	T.eq (Payload.SpeedScale (100),   Payload.CART_SPEED_MAX, "clamped high")
+	T.eq (Payload.SpeedScale (0),     Payload.CART_SPEED_MIN, "clamped low")
+	T.eq (Payload.CART_SPEED_DEFAULT, 1,                      "the map's own speed")
 end)
 
 -- Seams --------------------------------------------------------------------------------

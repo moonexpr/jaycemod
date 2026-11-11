@@ -69,9 +69,9 @@ return function (t)
 	Tests.KickBots ()
 	local size = GetConVar ("mp_aiwar_team_size"):GetInt ()
 	local bonusBefore = GetConVar ("mp_bonusroundtime"):GetString ()
-	RunConsoleCommand ("mp_bonusroundtime", tostring (BONUS_TIME))
+	RunConsoleCommand ("mp_bonusroundtime",                 tostring (BONUS_TIME))
 	RunConsoleCommand ("mp_arena_override_cap_enable_time", tostring (NEVER))
-	RunConsoleCommand ("mp_arena_round_time", tostring (TIE_TIME))
+	RunConsoleCommand ("mp_arena_round_time",               tostring (TIE_TIME))
 	local aiwar = WS.Feature ("aiwar")
 	-- soldiers that may not die: their health kept out of any burst's reach
 	-- (an EntityTakeDamage hook may never run: an earlier one can answer);
@@ -121,14 +121,14 @@ return function (t)
 
 	-- the capture: with nobody dying, a contested point never falls, so BLU
 	-- is held where it stands and RED's capturers take it unopposed
-	RunConsoleCommand ("mp_arena_round_time", "0")
+	RunConsoleCommand ("mp_arena_round_time",               "0")
 	RunConsoleCommand ("mp_arena_override_cap_enable_time", tostring (CAP_ENABLE))
 	t:Check ("the next arena round", NextRound (t, ROUND_TIMEOUT) ~= nil, Tests.StateName (WS.State ()))
 	for ent, entry in pairs (aiwar.soldiers) do
 		if IsValid (ent) and entry.soldier.team == WS.TEAM_BLUE then held [ent] = ent:GetPos () end
 	end
 	t:WaitFor (CAP_ENABLE + 5, function () return rounds:PointsMayBeCaptured () end)
-	t:WaitFor (SPLIT_TIMEOUT, function () return (Jobs (aiwar.war):find ("capture", 1, true)) ~= nil end)
+	t:WaitFor (SPLIT_TIMEOUT,  function () return (Jobs (aiwar.war):find ("capture", 1, true)) ~= nil end)
 	t:Info ("jobs_after_open", Jobs (aiwar.war))
 	t:Check ("once open some go for the point", (Jobs (aiwar.war):find ("capture", 1, true)) ~= nil, Jobs (aiwar.war))
 	local captured, took = t:WaitFor (CAPTURE_TIMEOUT, function () return WS.State () == S.TEAM_WIN end)
@@ -151,6 +151,6 @@ return function (t)
 
 	if startedHere then aiwar:End () end
 	RunConsoleCommand ("mp_arena_override_cap_enable_time", "-1")
-	RunConsoleCommand ("mp_arena_round_time", "0")
-	RunConsoleCommand ("mp_bonusroundtime", bonusBefore)
+	RunConsoleCommand ("mp_arena_round_time",               "0")
+	RunConsoleCommand ("mp_bonusroundtime",                 bonusBefore)
 end

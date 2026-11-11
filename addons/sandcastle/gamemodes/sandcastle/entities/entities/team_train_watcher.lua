@@ -71,7 +71,7 @@ function ENT:Initialize ()
 	-- path_track OnPass reaches the watcher by name, so a nameless one gets one
 	if self:GetName () == "" then self:SetName ("ws_train_watcher_" .. self:EntIndex ()) end
 	hook.Add ("WSRoundActive", self, self.RoundActivate)
-	hook.Add ("WSOvertime", self, self.OnOvertime)
+	hook.Add ("WSOvertime",    self, self.OnOvertime)
 end
 
 function ENT:UpdateTransmitState ()

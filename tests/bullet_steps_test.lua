@@ -11,8 +11,8 @@ end
 
 T.test ("steps run in their order, whatever order they were added in", function ()
 	local steps, log = Steps.New (), {}
-	steps:Add ("late", 30, Recorder (log, "late"))
-	steps:Add ("early", 10, Recorder (log, "early"))
+	steps:Add ("late",   30, Recorder (log, "late"))
+	steps:Add ("early",  10, Recorder (log, "early"))
 	steps:Add ("middle", 20, Recorder (log, "middle"))
 	steps:Run ("me", {})
 	T.eq (table.concat (log, " "), "early middle late", "the order")
@@ -24,15 +24,15 @@ T.test ("a shot any step changed is fired changed, and every step still sees it"
 	steps:Add ("listens", 20, Recorder (log, "listens"))
 	local data = {}
 	T.eq (steps:Run ("me", data), Steps.CHANGED, "changed")
-	T.eq (data.listens, "me", "the later step saw it")
+	T.eq (data.listens,           "me",          "the later step saw it")
 end)
 
 T.test ("a step that suppresses the shot stops it there", function ()
 	local steps, log = Steps.New (), {}
-	steps:Add ("changes", 10, Recorder (log, "changes", Steps.CHANGED))
+	steps:Add ("changes",    10, Recorder (log, "changes", Steps.CHANGED))
 	steps:Add ("suppresses", 20, Recorder (log, "suppresses", Steps.SUPPRESSED))
-	steps:Add ("after", 30, Recorder (log, "after"))
-	T.eq (steps:Run ("me", {}), Steps.SUPPRESSED, "suppressed")
+	steps:Add ("after",      30, Recorder (log, "after"))
+	T.eq (steps:Run ("me", {}),    Steps.SUPPRESSED,     "suppressed")
 	T.eq (table.concat (log, " "), "changes suppresses", "the later step never ran")
 end)
 

@@ -69,15 +69,15 @@ local function RunBoss (t, npc, spec)
 	end)
 	if not t:Check (label .. ": ForceSpawn spawns the boss", boss ~= nil, "") then return end
 	local state = npc and npc.npcs [boss]
-	t:Check (label .. ": bound to the npc controller", state ~= nil, tostring (boss))
-	t:Check (label .. ": has its npc state", state ~= nil and state:State () ~= nil, "")
+	t:Check (label .. ": bound to the npc controller", state ~= nil,                           tostring (boss))
+	t:Check (label .. ": has its npc state",           state ~= nil and state:State () ~= nil, "")
 	t:Wait (ALIVE_SECONDS)
 	local alive = IsValid (boss)
 	t:Check (label .. ": still there after " .. ALIVE_SECONDS .. " s", alive, "")
 	if not alive then return end
 	local described = state and state:Describe ()
 	t:Info (spec.template .. "_describe", described and tostring (described) or "")
-	t:Info (spec.template .. "_health", boss:Health ())
+	t:Info (spec.template .. "_health",   boss:Health ())
 
 	local killedBy = Kill (t, boss)
 	t:Check (label .. ": killed", killedBy ~= nil, killedBy and ("by " .. killedBy) or

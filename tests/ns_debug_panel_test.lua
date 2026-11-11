@@ -67,12 +67,12 @@ T.test ("the menu toggles and the panel checks every part of the overlay, and th
 	local menu, panel = ReadFile (MENU), ReadFile (PANEL)
 	local view = T.RealmSource ("nbdebug", "cl")
 	local Overlay = T.require ("features.nbdebug.ns_overlay")
-	T.eq (menu:find ("Check (parts, Overlay.LABELS [part]", 1, true) ~= nil, true, "a toggle per part")
+	T.eq (menu:find ("Check (parts, Overlay.LABELS [part]", 1, true) ~= nil,         true, "a toggle per part")
 	T.eq (panel:find ("for _, group in ipairs (Overlay.GROUPS) do", 1, true) ~= nil, true, "a section per group")
 	T.eq (panel:find ("for _, part in ipairs (group.parts) do panel:CheckBox (Overlay.LABELS [part], Overlay.ConVar (part))", 1, true) ~= nil,
 		true, "a checkbox per part, in its group's section")
 	for _, part in ipairs (Overlay.PARTS) do
-		T.eq (type (Overlay.LABELS [part]), "string", "a label for " .. part)
+		T.eq (type (Overlay.LABELS [part]),                                        "string", "a label for " .. part)
 		T.eq (view:find ("Shows (Parts." .. part:upper () .. ")", 1, true) ~= nil, true, "the overlay reads " .. part)
 	end
 end)
@@ -92,16 +92,16 @@ T.test ("the menu toggles every debug layer, and the panel keeps only showing an
 	for _, layer in ipairs (Debug.LAYERS) do
 		T.eq (menu:find ("[Debug." .. layer .. "]", 1, true) ~= nil, true, "a label for " .. layer)
 	end
-	T.eq (panel:find ('"Show All"', 1, true) ~= nil, true, "show all")
+	T.eq (panel:find ('"Show All"', 1, true) ~= nil,  true, "show all")
 	T.eq (panel:find ('"Clear All"', 1, true) ~= nil, true, "clear all")
-	T.eq (panel:find ("Toggle(", 1, true), nil, "no toggles left in the panel")
+	T.eq (panel:find ("Toggle(", 1, true),            nil,  "no toggles left in the panel")
 end)
 
 T.test ("the slot list debugs a soldier with the same menu its NPC's own context menu shows", function ()
 	local menu, slots = ReadFile (MENU), ReadFile (SLOT_LIST)
 	local debug = menu:match ('properties%.Add%s*%(%s*"ws_nb_debug",%s*(%b{})%s*%)')
-	T.eq (debug:find ("WS.NpcDebugMenu (", 1, true) ~= nil, true, "the NPC's menu is the shared one")
-	T.eq (slots:find ("WS.NpcDebugMenu (", 1, true) ~= nil, true, "so is the slot list's")
+	T.eq (debug:find ("WS.NpcDebugMenu (", 1, true) ~= nil,    true, "the NPC's menu is the shared one")
+	T.eq (slots:find ("WS.NpcDebugMenu (", 1, true) ~= nil,    true, "so is the slot list's")
 	T.eq (slots:find ("WS.NpcSelectOption (", 1, true) ~= nil, true, "and its selection toggle")
 end)
 

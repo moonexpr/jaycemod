@@ -46,7 +46,7 @@ return function (t)
 	end
 	local team = IsValid (watcher) and tonumber (watcher:Key ("teamnum", "")) or BLUE
 	if not PUSHING_TEAMS [team] then team = BLUE end
-	t:Info ("watchers", #watchers)
+	t:Info ("watchers",     #watchers)
 	t:Info ("pushing_team", team)
 	local train = IsValid (watcher) and watcher.train
 	t:Check ("a team_train_watcher with its train", IsValid (train), tostring (train))
@@ -130,5 +130,5 @@ return function (t)
 	t:Check ("pushing captures the first checkpoint", taken ~= nil,
 		string.format ("%s after %.0f s more, progress %.3f", tostring (taken), took, GetGlobal2Float ("ws_cart_1_progress", 0)))
 	t:Info ("points_at_end", Tests.DescribePoints (capture, team))
-	t:Info ("state_at_end", Tests.StateName (WS.State ()))
+	t:Info ("state_at_end",  Tests.StateName (WS.State ()))
 end

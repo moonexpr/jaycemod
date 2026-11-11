@@ -67,7 +67,7 @@ T.test ("an admin's options show on another player, never on themself", function
 	local s = Load ()
 	local admin, bob = Player ("Admin", { [Permissions.PLAYERS] = true }), Player ("Bob")
 	for _, name in ipairs ({ "ws_admin_slay", "ws_admin_kick", "ws_admin_ban", "ws_admin_bring" }) do
-		T.eq (s.added [name]:Filter (bob, admin), true, name)
+		T.eq (s.added [name]:Filter (bob, admin),   true,  name)
 		T.eq (s.added [name]:Filter (admin, admin), false, name .. " on themself")
 	end
 end)
@@ -93,14 +93,14 @@ T.test ("kick, ban and give go through the scoreboard menu's checked action", fu
 	local s = Load ()
 	local admin, bob = Player ("Admin", { [Permissions.PLAYERS] = true }), Player ("Bob")
 	s.Use ("ws_admin_kick", admin, bob)
-	s.Use ("ws_admin_ban", admin, bob, 2)
+	s.Use ("ws_admin_ban",  admin, bob, 2)
 	s.Use ("ws_admin_give", admin, bob, 100)
-	T.eq (#s.actions, 3)
+	T.eq (#s.actions,           3)
 	T.eq (s.actions [1].action, 0)
 	T.eq (s.actions [2].action, 1)
-	T.eq (s.actions [2].value, 2)
+	T.eq (s.actions [2].value,  2)
 	T.eq (s.actions [3].action, 2)
-	T.eq (s.actions [3].value, 100)
+	T.eq (s.actions [3].value,  100)
 end)
 
 T.test ("an unknown option is ignored", function ()

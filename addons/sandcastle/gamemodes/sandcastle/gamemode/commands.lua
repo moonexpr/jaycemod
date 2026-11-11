@@ -206,7 +206,7 @@ function MakeProp (ply, pos, ang, model, _, data)
 
 end
 
-duplicator.RegisterEntityClass ("prop_physics", MakeProp, "Pos", "Ang", "Model", "PhysicsObjects", "Data")
+duplicator.RegisterEntityClass ("prop_physics",             MakeProp, "Pos", "Ang", "Model", "PhysicsObjects", "Data")
 duplicator.RegisterEntityClass ("prop_physics_multiplayer", MakeProp, "Pos", "Ang", "Model", "PhysicsObjects", "Data")
 
 function MakeEffect (ply, model, data)

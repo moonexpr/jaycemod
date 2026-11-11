@@ -52,8 +52,8 @@ controller.BrushAreas = function () return {} end
 
 T.test ("the engine's flag lets go of an area under a door, and of no other", function ()
 	controller:RefreshBlockers (1)
-	T.eq (under.flagged, false, "under the door: the search may price it")
-	T.eq (beside.flagged, true, "the map's own blockers still count")
+	T.eq (under.flagged,  false, "under the door: the search may price it")
+	T.eq (beside.flagged, true,  "the map's own blockers still count")
 end)
 
 -- cp_dustbowl's stages: a capture's outputs switch gate_2nd_spawn off and cap1_fence_brush on,

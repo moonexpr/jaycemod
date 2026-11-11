@@ -436,7 +436,7 @@ T.test ("T.RealmSource is the root's text, then every part of its realm in name 
 	)
 	local source = T.FeatureTree (tree.gamemode).RealmSource
 	T.eq (source ("fixture_a", Features.SERVER), "root\npart a\npart b", "server")
-	T.eq (source ("fixture_a", Features.CLIENT), "view\nview part", "client")
+	T.eq (source ("fixture_a", Features.CLIENT), "view\nview part",      "client")
 end)
 
 T.test ("T.RealmSource of a feature with no parts is its root", function ()
@@ -452,8 +452,8 @@ end)
 T.test ("T.RealmSource refuses a realm with no root, naming it", function ()
 	local tree = FixtureTree ({ ["features/fixture_a/sv.lua"] = "root" })
 	local ok, err = pcall (T.FeatureTree (tree.gamemode).RealmSource, "fixture_a", Features.CLIENT)
-	T.eq (ok, false, "refused")
-	T.eq (tostring (err):find ("features/fixture_a/cl.lua", 1, true) ~= nil, true, "names it: " .. tostring (err))
+	T.eq (ok,                                                                false, "refused")
+	T.eq (tostring (err):find ("features/fixture_a/cl.lua", 1, true) ~= nil, true,  "names it: " .. tostring (err))
 end)
 
 T.test ("T.RealmSource and T.FeatureParts read the gamemode", function ()
@@ -472,12 +472,12 @@ T.test ("T.FeatureParts runs a part from disk in the env given, with the argumen
 	local Part = T.FeatureTree (tree.gamemode).FeatureParts ({ MARKER = "the root's env" }, "fixture_a")
 	local controller = {}
 	local n, map = Part ("sv_map", controller, 1)
-	T.eq (n, 2, "returned")
-	T.eq (map, "map", "second value")
+	T.eq (n,                 2,                "returned")
+	T.eq (map,               "map",            "second value")
 	T.eq (controller.marker, "the root's env", "read from the env")
 	for _, part in ipairs ({ "sv_broken", "sv_missing" }) do
 		local ok, err = pcall (Part, part)
-		T.eq (ok, false, part)
+		T.eq (ok,             false,                                                   part)
 		T.eq (tostring (err), "features/fixture_a/" .. part .. ".lua did not compile", part)
 	end
 end)
@@ -780,12 +780,12 @@ end)
 -- Fixtures leave nothing behind --------------------------------------------------
 
 T.test ("no fixture is under the gamemode, and the temp directory is gone", function ()
-	T.eq (fixtureCount > 0, true, "fixtures were made")
-	T.eq (TEMP:sub (1, 1), "/", "the temp directory is absolute, outside the repo")
-	T.eq (TEMP:find (T.ROOT, 1, true), nil, "the temp directory is not in the gamemode")
+	T.eq (fixtureCount > 0,            true, "fixtures were made")
+	T.eq (TEMP:sub (1, 1),             "/",  "the temp directory is absolute, outside the repo")
+	T.eq (TEMP:find (T.ROOT, 1, true), nil,  "the temp directory is not in the gamemode")
 	Same (Lines ("find " .. T.ROOT .. " -name '" .. FIXTURE_PREFIX .. "*'"), {}, "fixture paths under T.ROOT")
-	T.eq (os.execute ("rm -rf '" .. TEMP .. "'"), 0, "removed")
-	T.eq (ReadFile (TEMP), nil, "the temp directory is gone")
+	T.eq (os.execute ("rm -rf '" .. TEMP .. "'"), 0,   "removed")
+	T.eq (ReadFile (TEMP),                        nil, "the temp directory is gone")
 end)
 
 T.finish ()

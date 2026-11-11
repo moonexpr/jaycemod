@@ -25,9 +25,9 @@ local TINY =
 
 T.test ("a test belongs to the group whose pattern names it most closely", function ()
 	local suites = Suites.New (TINY, { "core_class", "core_game", "list_queue", "games_rounds" })
-	T.eq (suites:GroupOf ("core_class"), "base", "prefix")
-	T.eq (suites:GroupOf ("core_game"), "game", "an exact name over a prefix")
-	T.eq (suites:GroupOf ("list_queue"), "base", "exact")
+	T.eq (suites:GroupOf ("core_class"),                 "base", "prefix")
+	T.eq (suites:GroupOf ("core_game"),                  "game", "an exact name over a prefix")
+	T.eq (suites:GroupOf ("list_queue"),                 "base", "exact")
 	T.eq (table.concat (suites:Tests ({ "game" }), " "), "tests/core_game_test.lua tests/games_rounds_test.lua", "a group's tests, in order")
 end)
 
@@ -44,10 +44,10 @@ end)
 
 T.test ("a changed file picks the groups that claim it most closely", function ()
 	local suites = Suites.New (TINY, { "core_class", "games_rounds" })
-	T.eq (table.concat (suites:Changed ({ "lib/game/x.lua" }), " "), "game", "the closer claim")
-	T.eq (table.concat (suites:Changed ({ "lib/y.lua", "game/z.lua" }), " "), "base game", "each file's")
-	T.eq (table.concat (suites:Changed ({ "tests/games_rounds_test.lua" }), " "), "game", "a test is its group's")
-	T.eq (table.concat (suites:Changed ({ "README.md" }), " "), "", "nothing claims it")
+	T.eq (table.concat (suites:Changed ({ "lib/game/x.lua" }), " "),              "game",      "the closer claim")
+	T.eq (table.concat (suites:Changed ({ "lib/y.lua", "game/z.lua" }), " "),     "base game", "each file's")
+	T.eq (table.concat (suites:Changed ({ "tests/games_rounds_test.lua" }), " "), "game",      "a test is its group's")
+	T.eq (table.concat (suites:Changed ({ "README.md" }), " "),                   "",          "nothing claims it")
 end)
 
 local MANIFEST = dofile ("tests/suites.lua")

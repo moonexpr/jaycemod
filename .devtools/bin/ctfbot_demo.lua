@@ -9,9 +9,9 @@ local PAUSE = 6
 local HOOK = "ns_ctfbot_demo"
 local E = nextsoldier.engine
 RunConsoleCommand ("sv_gameplay_enabled", "0")
-RunConsoleCommand ("mp_timelimit", "0")
-RunConsoleCommand ("mp_winlimit", "0")
-RunConsoleCommand ("mp_maxrounds", "0")
+RunConsoleCommand ("mp_timelimit",        "0")
+RunConsoleCommand ("mp_winlimit",         "0")
+RunConsoleCommand ("mp_maxrounds",        "0")
 
 local demo = { runs = 0, captures = 0, log = {} }
 NSCtfbotDemo = demo

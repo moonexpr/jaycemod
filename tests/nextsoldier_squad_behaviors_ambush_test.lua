@@ -16,14 +16,14 @@ end
 
 T.test ("an ambush lies in wait inside, beside the entrance the enemy comes in by, hidden from its approach", function ()
 	local order, places = Lying ({ 3, 0, 0, 1 })
-	T.eq (order.kind, "Ambush", "an ambush")
+	T.eq (order.kind,     "Ambush",    "an ambush")
 	T.eq (order.entrance, R.DOORS [1], "at the entrance the most of the enemy comes in by")
 	for i = 1, 6 do
 		local place = places [i]
-		T.eq (place ~= nil, true, "placed: " .. i)
-		T.eq (R.Inside (place), true, "inside: " .. i)
-		T.eq (R.Watched (place, R.DOORS [1]), false, "out of the approach's sight: " .. i)
-		T.eq (R.Distance2D (place, R.DOORS [1]) <= Ambush.AMBUSH_REACH, true, "beside the entrance: " .. i)
+		T.eq (place ~= nil,                                             true,  "placed: " .. i)
+		T.eq (R.Inside (place),                                         true,  "inside: " .. i)
+		T.eq (R.Watched (place, R.DOORS [1]),                           false, "out of the approach's sight: " .. i)
+		T.eq (R.Distance2D (place, R.DOORS [1]) <= Ambush.AMBUSH_REACH, true,  "beside the entrance: " .. i)
 		for j = i + 1, 6 do T.eq (R.Distance2D (place, places [j]) >= R.SPACING, true, "apart: " .. i .. "," .. j) end
 	end
 end)
@@ -40,11 +40,11 @@ end)
 
 T.test ("a mission awaiting its springing, once, then fought out where it lies", function ()
 	local order = Lying ({ 3, 0, 0, 0 })
-	T.eq (Orders.Awaiting (order), true, "lying in wait")
-	T.eq (order:Spring (), true, "sprung")
-	T.eq (order:Spring (), false, "the once")
+	T.eq (Orders.Awaiting (order), true,  "lying in wait")
+	T.eq (order:Spring (),         true,  "sprung")
+	T.eq (order:Spring (),         false, "the once")
 	T.eq (Orders.Awaiting (order), false, "activated")
-	T.eq (Orders.Underway (order), true, "fought out where it lies")
+	T.eq (Orders.Underway (order), true,  "fought out where it lies")
 end)
 
 -- Three lying in wait, each on its leggings, led by the first.
@@ -65,12 +65,12 @@ T.test ("told an ambush, a member runs to its place and lies in wait there, crou
 	local me, ambush = squad [2].me, squad [2].orders
 	T.eq (ambush.name, "LegsAmbush", "the ambush")
 	ambush:Update (me)
-	T.eq (me.spot, me.place, "to its place")
+	T.eq (me.spot, me.place,     "to its place")
 	T.eq (me.gait, GIB.GAIT.RUN, "running")
 	me.at = me.place
 	ambush:Update (me)
-	T.eq (me.gait, GIB.GAIT.REST, "lying in wait")
-	T.eq (order:Sprung (), false, "not sprung")
+	T.eq (me.gait,         GIB.GAIT.REST, "lying in wait")
+	T.eq (order:Sprung (), false,         "not sprung")
 end)
 
 T.test ("an enemy seen by the entrance, its leader springs the ambush over the radio", function ()
@@ -84,7 +84,7 @@ T.test ("an enemy seen by the entrance, its leader springs the ambush over the r
 	member.orders:Update (member.me)
 	T.eq (order:Sprung (), false, "the leader springs it, not the member")
 	leader.orders:Update (leader.me)
-	T.eq (order:Sprung (), true, "sprung")
+	T.eq (order:Sprung (),                   true,        "sprung")
 	T.eq (F.Calls (leader.me, "NOW") [1].to, Radio.SQUAD, "Now!, to the squad")
 end)
 

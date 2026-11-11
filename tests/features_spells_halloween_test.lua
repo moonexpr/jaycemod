@@ -31,26 +31,26 @@ local EXPECTED =
 }
 
 T.test ("twelve spells, indexed as TF2 does", function ()
-	T.eq (S.COUNT, 12, "COUNT")
-	T.eq (S.SPELL_FIREBALL, 0, "fireball first")
+	T.eq (S.COUNT,                12,          "COUNT")
+	T.eq (S.SPELL_FIREBALL,       0,           "fireball first")
 	T.eq (S.SPELL_SKELETON_HORDE, S.COUNT - 1, "horde last")
-	T.eq (S.TIER_COMMON, 0, "common tier")
-	T.eq (S.TIER_RARE, 1, "rare tier")
-	T.defined (S.ROLL_TIME, "roll time")
+	T.eq (S.TIER_COMMON,          0,           "common tier")
+	T.eq (S.TIER_RARE,            1,           "rare tier")
+	T.defined (S.ROLL_TIME,     "roll time")
 	T.defined (S.CAST_COOLDOWN, "cooldown")
 end)
 
 T.test ("charges, kinds and speeds", function ()
 	for index = 0, S.COUNT - 1 do
 		local def, want = S.Definition (index), EXPECTED [index]
-		T.eq (def.charges, want.charges, "charges of " .. def.name)
-		T.eq (def.kind, want.kind, "kind of " .. def.name)
-		T.eq (def.speedScale, want.speedScale, "speed of " .. def.name)
+		T.eq (def.charges,                          want.charges,      "charges of " .. def.name)
+		T.eq (def.kind,                             want.kind,         "kind of " .. def.name)
+		T.eq (def.speedScale,                       want.speedScale,   "speed of " .. def.name)
 		T.eq (def.icon:sub (1, #"vgui/spellbook_"), "vgui/spellbook_", "icon of " .. def.name)
-		T.eq (def.castSound:sub (1, #"Halloween."), "Halloween.", "cast sound of " .. def.name)
+		T.eq (def.castSound:sub (1, #"Halloween."), "Halloween.",      "cast sound of " .. def.name)
 	end
 	T.eq (S.Definition (S.SPELL_SPAWN_BOSS).castSound, "Halloween.Merasmus_Spell", "the boss's sound")
-	T.eq (S.Definition (S.SPELL_SPAWN_BOSS).icon, "vgui/spellbook_boss", "the boss's icon")
+	T.eq (S.Definition (S.SPELL_SPAWN_BOSS).icon,      "vgui/spellbook_boss",      "the boss's icon")
 end)
 
 T.test ("COMMON_ROLL: indices 0-5 four times each, then lightning, athletic and meteor once", function ()
@@ -58,11 +58,11 @@ T.test ("COMMON_ROLL: indices 0-5 four times each, then lightning, athletic and 
 	local counts = {}
 	for _, index in ipairs (S.COMMON_ROLL) do counts [index] = (counts [index] or 0) + 1 end
 	for index = S.SPELL_FIREBALL, S.SPELL_STEALTH do T.eq (counts [index], 4, "four of " .. index) end
-	T.eq (counts [S.SPELL_LIGHTNING], 1, "one lightning")
-	T.eq (counts [S.SPELL_ATHLETIC], 1, "one athletic")
-	T.eq (counts [S.SPELL_METEOR], 1, "one meteor")
-	T.eq (counts [S.SPELL_TELEPORT], nil, "teleport is never common")
-	T.eq (counts [S.SPELL_SPAWN_BOSS], nil, "boss is never common")
+	T.eq (counts [S.SPELL_LIGHTNING],      1,   "one lightning")
+	T.eq (counts [S.SPELL_ATHLETIC],       1,   "one athletic")
+	T.eq (counts [S.SPELL_METEOR],         1,   "one meteor")
+	T.eq (counts [S.SPELL_TELEPORT],       nil, "teleport is never common")
+	T.eq (counts [S.SPELL_SPAWN_BOSS],     nil, "boss is never common")
 	T.eq (counts [S.SPELL_SKELETON_HORDE], nil, "horde is never common")
 end)
 
@@ -72,9 +72,9 @@ T.test ("a common roll draws one COMMON_ROLL entry", function ()
 		asked = { lo, hi }
 		return 27
 	end)
-	T.eq (asked [1], 1, "from the first entry")
-	T.eq (asked [2], 27, "to the last")
-	T.eq (index, S.SPELL_METEOR, "the last entry is meteor")
+	T.eq (asked [1], 1,              "from the first entry")
+	T.eq (asked [2], 27,             "to the last")
+	T.eq (index,     S.SPELL_METEOR, "the last entry is meteor")
 end)
 
 T.test ("a rare roll is uniform over lightning to horde", function ()
@@ -83,7 +83,7 @@ T.test ("a rare roll is uniform over lightning to horde", function ()
 		asked = { lo, hi }
 		return lo
 	end)
-	T.eq (asked [1], S.SPELL_LIGHTNING, "lightning is the lowest")
+	T.eq (asked [1], S.SPELL_LIGHTNING,      "lightning is the lowest")
 	T.eq (asked [2], S.SPELL_SKELETON_HORDE, "horde the highest")
 	for draw = S.SPELL_LIGHTNING, S.SPELL_SKELETON_HORDE do
 		local index = S.Roll (S.TIER_RARE, function () return draw end)
@@ -94,11 +94,11 @@ end)
 T.test ("each index names a strategy part that registers that index", function ()
 	for index = 0, S.COUNT - 1 do
 		local part = T.require (S.Strategy (index))
-		T.eq (part.INDEX, index, S.Strategy (index))
+		T.eq (part.INDEX,       index,      S.Strategy (index))
 		T.eq (type (part.Cast), "function", S.Strategy (index) .. " casts")
 		if S.Definition (index).kind ~= S.KIND_SELF then
-			T.eq (type (part.PROJECTILE), "string", S.Strategy (index) .. " throws a class")
-			T.eq (type (part.Impact), "function", S.Strategy (index) .. " has an impact")
+			T.eq (type (part.PROJECTILE), "string",   S.Strategy (index) .. " throws a class")
+			T.eq (type (part.Impact),     "function", S.Strategy (index) .. " has an impact")
 		end
 	end
 end)
@@ -123,16 +123,16 @@ T.test ("each spell declares how an AI could use it", function ()
 	for index = 0, S.COUNT - 1 do
 		local part = T.require (S.Strategy (index))
 		local use, name = part.USE, S.Strategy (index)
-		T.eq (use.kind, KINDS [index], name .. " kind")
-		T.eq (type (use.range), "number", name .. " range")
-		T.eq (type (use.radius), "number", name .. " radius")
+		T.eq (use.kind,          KINDS [index], name .. " kind")
+		T.eq (type (use.range),  "number",      name .. " range")
+		T.eq (type (use.radius), "number",      name .. " radius")
 		local thrown = S.Definition (index).kind ~= S.KIND_SELF
-		T.eq (use.selfOnly, not thrown, name .. " needs no target unless thrown")
-		T.eq (use.needsLineOfSight, thrown, name .. " is thrown at what it sees")
+		T.eq (use.selfOnly,         not thrown, name .. " needs no target unless thrown")
+		T.eq (use.needsLineOfSight, thrown,     name .. " is thrown at what it sees")
 		if thrown then T.eq (use.range > 0, true, name .. " reaches") end
 	end
 	T.eq (T.require ("features.spells.overheal").USE.radius, 250, "overheal reaches 250 around")
-	T.eq (T.require ("features.spells.fireball").USE.range, S.THROW_RANGE, "a fireball flies a throw's range")
+	T.eq (T.require ("features.spells.fireball").USE.range,  S.THROW_RANGE, "a fireball flies a throw's range")
 	T.eq (T.require ("features.spells.lightning").USE.range, S.PROJECTILE_SPEED * 0.4 * 5, "the orb's 5 s at 0.4 speed")
 end)
 

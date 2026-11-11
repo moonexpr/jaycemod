@@ -4,8 +4,8 @@ local T = dofile ("tests/harness.lua")
 local Leap = nextsoldier.locomotion.leap
 
 T.defined (Leap.CLEARANCE, "CLEARANCE")
-T.defined (Leap.OVER, "OVER")
-T.defined (Leap.DURATION, "DURATION")
+T.defined (Leap.OVER,      "OVER")
+T.defined (Leap.DURATION,  "DURATION")
 
 local function P (x, y, z) return { x = x, y = y, z = z } end
 local function Horizontal (a, b) return math.sqrt ((b.x - a.x) ^ 2 + (b.y - a.y) ^ 2) end
@@ -13,9 +13,9 @@ local function Horizontal (a, b) return math.sqrt ((b.x - a.x) ^ 2 + (b.y - a.y)
 T.test ("the arc starts where the walker stands and ends past the lip, above it", function ()
 	local from, ledge = P (0, 0, 0), P (20, 0, 40)
 	local start, finish = Leap.Arc (from, ledge, 0), Leap.Arc (from, ledge, 1)
-	T.eq (start.x, 0, "x at the start")
-	T.eq (start.z, 0, "z at the start")
-	T.eq (finish.x, 20 + Leap.OVER, "past the lip")
+	T.eq (start.x,  0,                   "x at the start")
+	T.eq (start.z,  0,                   "z at the start")
+	T.eq (finish.x, 20 + Leap.OVER,      "past the lip")
 	T.eq (finish.z, 40 + Leap.CLEARANCE, "above it")
 end)
 
@@ -41,7 +41,7 @@ end)
 
 T.test ("the arc keeps the walker's heading in any direction", function ()
 	local p = Leap.Arc (P (100, 100, 10), P (100, 80, 50), 1)
-	T.eq (p.x, 100, "no sideways drift")
+	T.eq (p.x, 100,            "no sideways drift")
 	T.eq (p.y, 80 - Leap.OVER, "on past the lip, along -y")
 end)
 
@@ -54,8 +54,8 @@ end)
 
 T.test ("a ledge straight above leaves the walker where it is across", function ()
 	local p = Leap.Arc (P (5, 5, 0), P (5, 5, 40), 1)
-	T.eq (p.x, 5, "x")
-	T.eq (p.y, 5, "y")
+	T.eq (p.x, 5,                   "x")
+	T.eq (p.y, 5,                   "y")
 	T.eq (p.z, 40 + Leap.CLEARANCE, "above it")
 end)
 
@@ -77,15 +77,15 @@ end)
 T.test ("a vault rises straight up first, above the top, before crossing it", function ()
 	local from, top, land = P (0, 0, 160), P (16, 0, 192), P (56, 0, 8)
 	local rising = Leap.Vault (from, top, land, Leap.VAULT_RISE)
-	T.eq (rising.x, 0, "not across yet")
+	T.eq (rising.x, 0,                      "not across yet")
 	T.eq (rising.z, top.z + Leap.CLEARANCE, "above the top")
 end)
 
 T.test ("a vault crosses over the top, then comes down onto the landing", function ()
 	local from, top, land = P (0, 0, 160), P (16, 0, 192), P (56, 0, 8)
 	local over = Leap.Vault (from, top, land, Leap.VAULT_CROSS)
-	T.eq (over.x > top.x, true, "past the top")
-	T.eq (over.z, top.z + Leap.CLEARANCE, "still above it")
+	T.eq (over.x > top.x, true,                   "past the top")
+	T.eq (over.z,         top.z + Leap.CLEARANCE, "still above it")
 	local finish = Leap.Vault (from, top, land, 1)
 	T.eq (finish.x .. " " .. finish.y .. " " .. finish.z, "56 0 8", "on the landing")
 	local late = Leap.Vault (from, top, land, 2)
@@ -109,8 +109,8 @@ T.test ("a climb lands on the area above, nearest the walker, not at the ledge's
 		pos = { x = 200, y = 0, z = 60 },
 		area = { GetClosestPointOnArea = function (_, point) asked = point return lip end }
 	}
-	T.eq (Leap.Landing (after, from, true), lip, "the lip, however far on the path goes")
-	T.eq (asked, from, "nearest where it stands")
+	T.eq (Leap.Landing (after, from, true), lip,  "the lip, however far on the path goes")
+	T.eq (asked,                            from, "nearest where it stands")
 end)
 
 T.test ("a gap lands where the path goes on", function ()

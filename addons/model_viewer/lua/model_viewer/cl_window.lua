@@ -100,7 +100,7 @@ function PANEL:BuildStage ()
 	row:SetTall (ROW_TALL)
 	row:DockPadding (0, 2, 0, 2)
 	Button (row, "Previous", function () self:Step (-1) end)
-	Button (row, "Pause", function (button)
+	Button (row, "Pause",    function (button)
 		self.stage.paused = not self.stage.paused
 		button:SetText (self.stage.paused and "Play" or "Pause")
 	end)

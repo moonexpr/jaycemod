@@ -65,20 +65,20 @@ local function Draw (w, h)
 	Font (u)
 	local ox, oy = w / 2 + PANEL.x * u, PANEL.y * u
 	surface.SetDrawColor (255, 255, 255, 255)
-	Image ("hud/vip_track", ox + BAR.x * u, oy + BAR.y * u, BAR.w * u, BAR.h * u)
-	Image ("hud/vip_home", ox + HOME.x * u, oy + HOME.y * u, HOME.w * u, HOME.h * u)
-	Image ("hud/vip_car", ox + GOAL.x * u, oy + GOAL.y * u, GOAL.w * u, GOAL.h * u)
+	Image ("hud/vip_track", ox + BAR.x * u,  oy + BAR.y * u,  BAR.w * u,  BAR.h * u)
+	Image ("hud/vip_home",  ox + HOME.x * u, oy + HOME.y * u, HOME.w * u, HOME.h * u)
+	Image ("hud/vip_car",   ox + GOAL.x * u, oy + GOAL.y * u, GOAL.w * u, GOAL.h * u)
 	for _, marker in ipairs (Hud.Markers (hostages)) do
 		local cx = ox + (BAR.x + marker.at * BAR.w) * u
 		local tint = TINTS [marker.tint]
 		surface.SetDrawColor (tint.r, tint.g, tint.b, tint.a)
-		Image ("hud/vip_civ_bottom", cx - MARKER.w / 2 * u, oy + MARKER.y * u, MARKER.w * u, MARKER.h * u)
-		Image ("hud/vip_civ", cx - CIV.w / 2 * u, oy + (MARKER.y + CIV.y) * u, CIV.w * u, CIV.h * u)
+		Image ("hud/vip_civ_bottom", cx - MARKER.w / 2 * u, oy + MARKER.y * u,           MARKER.w * u, MARKER.h * u)
+		Image ("hud/vip_civ",        cx - CIV.w / 2 * u,    oy + (MARKER.y + CIV.y) * u, CIV.w * u,    CIV.h * u)
 	end
 	local text = "Rescued " .. Hud.Tally (hostages)
 	local tx, ty = w / 2, oy + TALLY_Y * u
-	draw.SimpleText (text, FONT, tx + u, ty + u, SHADOW, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-	draw.SimpleText (text, FONT, tx, ty, TAN_LIGHT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText (text, FONT, tx + u, ty + u, SHADOW,    TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText (text, FONT, tx,     ty,     TAN_LIGHT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end
 
 local View = { Draw = Draw }

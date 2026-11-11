@@ -43,7 +43,7 @@ local function Kinds (events)
 end
 
 T.test ("total time scales with required cappers under mp_capstyle 1", function ()
-	T.eq (C.TotalTime (10, true, 2), 40)
+	T.eq (C.TotalTime (10, true, 2),  40)
 	T.eq (C.TotalTime (10, false, 2), 10)
 end)
 
@@ -55,9 +55,9 @@ end)
 T.test ("a capture starts when a team that may cap stands on the point", function ()
 	local s = C.New (RED)
 	T.eq (Kinds (C.Step (s, Input (0, 0, 1))), "start:blu,numcappers:1,capturestart:blu")
-	T.eq (s.capturing, true)
-	T.eq (s.cappingTeam, BLU)
-	T.eq (s.timeRemaining, 20)
+	T.eq (s.capturing,                         true)
+	T.eq (s.cappingTeam,                       BLU)
+	T.eq (s.timeRemaining,                     20)
 end)
 
 T.test ("the owner cannot start capturing its own point", function ()
@@ -76,14 +76,14 @@ T.test ("team_startcap: too few players do not start a capture", function ()
 	local s = C.New (RED)
 	local i = Input (0, 0, 1)
 	i.startRequired [BLU] = 2
-	T.eq (Kinds (C.Step (s, i)), "")
+	T.eq (Kinds (C.Step (s, i)),                                                               "")
 	T.eq (Kinds (C.Step (s, Input (0.1, 0, 2, { startRequired = { [RED] = 1, [BLU] = 2 } }))), "start:blu,numcappers:2,capturestart:blu")
 end)
 
 T.test ("mp_capstyle 0: team_numcap players are needed to start", function ()
 	local s = C.New (RED)
 	local over = { scales = false, numRequired = { [RED] = 1, [BLU] = 2 } }
-	T.eq (Kinds (C.Step (s, Input (0, 0, 1, over))), "")
+	T.eq (Kinds (C.Step (s, Input (0, 0, 1, over))),   "")
 	T.eq (Kinds (C.Step (s, Input (0.1, 0, 2, over))), "start:blu,numcappers:2,capturestart:blu")
 end)
 
@@ -93,8 +93,8 @@ T.test ("one capper takes the whole scaled time, then the point is captured", fu
 	for t = 1, 19 do C.Step (s, Input (t, 0, 1)) end
 	T.near (s.timeRemaining, 1)
 	T.eq (Kinds (C.Step (s, Input (20, 0, 1))), "end:blu,owner:blu,numcappers:0")
-	T.eq (s.owner, BLU)
-	T.eq (s.capturing, false)
+	T.eq (s.owner,                              BLU)
+	T.eq (s.capturing,                          false)
 end)
 
 T.test ("each extra capper adds a diminishing share of the rate", function ()
@@ -117,16 +117,16 @@ T.test ("mp_blockstyle 1: defenders pause the capture and zero the count, -1 for
 	C.Step (s, Input (1, 0, 1))
 	local before = s.timeRemaining
 	T.eq (Kinds (C.Step (s, Input (2, 1, 1))), "numcappers:0b,blocked:true")
-	T.eq (s.timeRemaining, before)
-	T.eq (s.blocked, true)
-	T.eq (s.capturing, true)
+	T.eq (s.timeRemaining,                     before)
+	T.eq (s.blocked,                           true)
+	T.eq (s.capturing,                         true)
 end)
 
 T.test ("a block names the team whose capture it stops", function ()
 	local s = C.New (RED)
 	C.Step (s, Input (0, 0, 1, { blockstyle = C.BLOCKSTYLE_BREAK }))
 	local events = C.Step (s, Input (1, 1, 1, { blockstyle = C.BLOCKSTYLE_BREAK }))
-	T.eq (events [2].kind, "blocked")
+	T.eq (events [2].kind,    "blocked")
 	T.eq (events [2].capping, BLU)
 end)
 
@@ -142,14 +142,14 @@ T.test ("the capture resumes when the defenders leave", function ()
 	C.Step (s, Input (0, 0, 1))
 	C.Step (s, Input (0.1, 1, 1))
 	T.eq (Kinds (C.Step (s, Input (0.2, 0, 1))), "numcappers:1,blocked:false")
-	T.eq (s.blocked, false)
+	T.eq (s.blocked,                             false)
 end)
 
 T.test ("mp_blockstyle 0: a block breaks the capture", function ()
 	local s = C.New (RED)
 	C.Step (s, Input (0, 0, 1, { blockstyle = C.BLOCKSTYLE_BREAK }))
 	T.eq (Kinds (C.Step (s, Input (1, 1, 1, { blockstyle = C.BLOCKSTYLE_BREAK }))), "numcappers:1,blocked:true,break:blu,numcappers:0")
-	T.eq (s.capturing, false)
+	T.eq (s.capturing,                                                              false)
 end)
 
 T.test ("an empty owned point deteriorates over mp_capdeteriorate_time", function ()
@@ -225,7 +225,7 @@ T.test ("CaptureCurrentCP ends a running capture and does nothing otherwise", fu
 	T.eq (Kinds (C.CaptureCurrent (s)), "")
 	C.Step (s, Input (0, 0, 1))
 	T.eq (Kinds (C.CaptureCurrent (s)), "end:blu,owner:blu,numcappers:0")
-	T.eq (s.owner, BLU)
+	T.eq (s.owner,                      BLU)
 end)
 
 -- An admin's Set Team (sh_editors_point.lua): the area ends a
@@ -234,7 +234,7 @@ end)
 T.test ("CaptureFor ends a capture for the team, as a finished one, whatever was running", function ()
 	local s = C.New (RED)
 	T.eq (Kinds (C.CaptureFor (s, BLU)), "end:blu,owner:blu,numcappers:0", "nothing running")
-	T.eq (s.owner, BLU)
+	T.eq (s.owner,     BLU)
 	T.eq (s.capturing, false)
 	local other = C.New (NOBODY)
 	C.Step (other, Input (0, 0, 1))
@@ -260,11 +260,11 @@ end)
 
 T.test ("respawn adjustments move from the old owner to the new one", function ()
 	local adjust = C.SpawnAdjustments (RED, BLU, { [RED] = 4, [BLU] = -2 })
-	T.eq (#adjust, 2)
-	T.eq (adjust [1].team, RED)
-	T.eq (adjust [1].seconds, -4)
-	T.eq (adjust [2].team, BLU)
-	T.eq (adjust [2].seconds, -2)
+	T.eq (#adjust,                                                     2)
+	T.eq (adjust [1].team,                                             RED)
+	T.eq (adjust [1].seconds,                                          -4)
+	T.eq (adjust [2].team,                                             BLU)
+	T.eq (adjust [2].seconds,                                          -2)
 	T.eq (#C.SpawnAdjustments (NOBODY, BLU, { [RED] = 0, [BLU] = 0 }), 0)
 end)
 
@@ -303,9 +303,9 @@ T.test ("a map's point_capture_*_sound keyvalues replace the defaults", function
 		progress = "Map.Loop",
 		interrupted = "Map.Held"
 	}
-	T.eq (Sounds (Event ("start", "team", BLU), NO_FLAGS, sounds), "true|Map.Start|Map.Loop")
+	T.eq (Sounds (Event ("start", "team", BLU), NO_FLAGS, sounds),     "true|Map.Start|Map.Loop")
 	T.eq (Sounds (Event ("blocked", "value", true), NO_FLAGS, sounds), "true|nil|Map.Held")
-	T.eq (Sounds (Event ("end", "team", BLU), NO_FLAGS, sounds), "true|Map.Stop|nil")
+	T.eq (Sounds (Event ("end", "team", BLU), NO_FLAGS, sounds),       "true|Map.Stop|nil")
 end)
 
 T.test ("a capture starting plays the start sound and loops the progress sound", function ()
@@ -316,7 +316,7 @@ T.test ("a capture starting plays the start sound and loops the progress sound",
 end)
 
 T.test ("a block loops the interrupted sound, and its end restarts the progress loop", function ()
-	T.eq (Sounds (Event ("blocked", "value", true)), "true|nil|" .. Capture.SOUND_INTERRUPTED)
+	T.eq (Sounds (Event ("blocked", "value", true)),  "true|nil|" .. Capture.SOUND_INTERRUPTED)
 	T.eq (Sounds (Event ("blocked", "value", false)), "true|" .. Capture.SOUND_START .. "|" .. Capture.SOUND_PROGRESS)
 end)
 
@@ -330,16 +330,16 @@ T.test ("a broken capture stops the loop and plays the end sound", function ()
 end)
 
 T.test ("events without sounds change nothing", function ()
-	T.eq (Sounds (Event ("numcappers", "n", 1)), "false|nil|nil")
+	T.eq (Sounds (Event ("numcappers", "n", 1)),        "false|nil|nil")
 	T.eq (Sounds (Event ("capturestart", "team", BLU)), "false|nil|nil")
 end)
 
 T.test ("a point with no cap sounds only stops its loop", function ()
 	local flags = Capture.SF_NO_CAP_SOUNDS + Capture.SF_HIDE_MODEL
-	T.eq (Sounds (Event ("start", "team", BLU), flags), "true|nil|nil")
+	T.eq (Sounds (Event ("start", "team", BLU), flags),     "true|nil|nil")
 	T.eq (Sounds (Event ("blocked", "value", true), flags), "true|nil|nil")
-	T.eq (Sounds (Event ("end", "team", BLU), flags), "true|nil|nil")
-	T.eq (Sounds (Event ("break", "team", BLU), flags), "true|nil|nil")
+	T.eq (Sounds (Event ("end", "team", BLU), flags),       "true|nil|nil")
+	T.eq (Sounds (Event ("break", "team", BLU), flags),     "true|nil|nil")
 end)
 
 -- CaptureThink's m_Blockers: a block is told with its first defender,
@@ -350,9 +350,9 @@ T.test ("a defender is told of once a capture attempt while they stay on the poi
 	C.Step (s, Input (0, 1, 0))
 	local on = { alice = true }
 	local function OnPoint (b) return on [b] == true end
-	T.eq (C.TellBlock (s, "alice", OnPoint), true, "the first block")
+	T.eq (C.TellBlock (s, "alice", OnPoint), true,  "the first block")
 	T.eq (C.TellBlock (s, "alice", OnPoint), false, "again, still on the point")
-	T.eq (C.TellBlock (s, "bob", OnPoint), true, "another defender")
+	T.eq (C.TellBlock (s, "bob", OnPoint),   true,  "another defender")
 	on.alice = false
 	C.TellBlock (s, "bob", OnPoint)
 	on.alice = true
@@ -367,7 +367,7 @@ T.test ("a new capture attempt tells every defender again", function ()
 	C.Step (s, Input (1, 0, 0))
 	C.Step (s, Input (30, 0, 0))
 	C.Step (s, Input (31, 1, 0))
-	T.eq (s.capturing, true, "a new attempt")
+	T.eq (s.capturing,                       true, "a new attempt")
 	T.eq (C.TellBlock (s, "alice", OnPoint), true, "told again")
 end)
 

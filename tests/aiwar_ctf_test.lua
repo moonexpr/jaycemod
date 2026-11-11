@@ -52,9 +52,9 @@ end
 local function Stage (field, member) return field.doctrine.ROLES [member.role].Stage (field, member) end
 
 T.test ("CTF has its own scenario, and needs flags on the map", function ()
-	T.eq (Scenario.For (T.require ("features.flag.model").Mode.NAME), Ctf.Scenario, "the ctf mode's")
+	T.eq (Scenario.For (T.require ("features.flag.model").Mode.NAME),                  Ctf.Scenario, "the ctf mode's")
 	T.eq (Ctf.Scenario:MapLacks ({ bases = { [RED] = P (0, 0), [BLUE] = P (1, 0) } }), wartactics.scenario.FLAGS, "no flags")
-	T.eq (Ctf.Scenario:MapLacks (Field ()), nil, "flags and bases")
+	T.eq (Ctf.Scenario:MapLacks (Field ()),                                            nil, "flags and bases")
 end)
 
 -- Couriers ---------------------------------------------------------------------
@@ -64,7 +64,7 @@ T.test ("a courier goes for the enemy's flag where it lies, at home or dropped",
 	local courier = Member (RED, AiWar.COURIER, 0, P (1000, 0))
 	T.eq (Distance (Goal (field, courier), BLUE_HOME), 0, "on the flag at home")
 	local dropped = Briefed (Field ({ [RED] = Flag (RED, RED_HOME), [BLUE] = Flag (BLUE, BLUE_HOME, Ctf.DROPPED, P (2500, 300)) }))
-	T.eq (Distance (Goal (dropped, courier), P (2500, 300)), 0, "on the dropped flag")
+	T.eq (Distance (Goal (dropped, courier), P (2500, 300)),          0,    "on the dropped flag")
 	T.eq (dropped.doctrine.ROLES [AiWar.COURIER].arrive <= Ctf.TOUCH, true, "close enough to touch it")
 end)
 
@@ -83,8 +83,8 @@ T.test ("a courier carrying the flag runs it to its capture zone, stopping for n
 	local field = Briefed (Field ({ [RED] = Flag (RED, RED_HOME), [BLUE] = Flag (BLUE, BLUE_HOME, Ctf.CARRIED, P (3000, 0), carrier, RED) }))
 	local courier = Member (RED, AiWar.COURIER, 0, P (3000, 0), carrier)
 	local role = field.doctrine.ROLES [AiWar.COURIER]
-	T.eq (Distance (Goal (field, courier), P (250, 100)), 0, "home to its zone")
-	T.eq (role.Urgent (field, courier), true, "it rushes")
+	T.eq (Distance (Goal (field, courier), P (250, 100)), 0,    "home to its zone")
+	T.eq (role.Urgent (field, courier),                   true, "it rushes")
 end)
 
 -- CTFBotAttackFlagDefenders / CTFBotEscortFlagCarrier: while a teammate
@@ -111,10 +111,10 @@ T.test ("couriers near a teammate carrying the flag escort it, at most MAX_ESCOR
 	scenario:ChooseEscorts (field, members)
 	for i = 1, Ctf.MAX_ESCORTS do T.eq (Stage (field, near [i]), "EscortFlagCarrier", "escort " .. i) end
 	T.eq (Stage (field, near [Ctf.MAX_ESCORTS + 1]), "AttackFlagDefenders", "one too many")
-	T.eq (Stage (field, far), "AttackFlagDefenders", "too far to join")
+	T.eq (Stage (field, far),                        "AttackFlagDefenders", "too far to join")
 	local defenders = field.doctrine.ROLES [AiWar.COURIER].STAGES.AttackFlagDefenders
 	T.eq (Distance (defenders.Goal (field, far), BLUE_HOME) <= Ctf.GUARD_RING + 1e-6, true, "at the enemy's flag stand")
-	T.eq (field.doctrine.ROLES [AiWar.COURIER].Urgent (field, near [1]), false, "escorts fight on the way")
+	T.eq (field.doctrine.ROLES [AiWar.COURIER].Urgent (field, near [1]),              false, "escorts fight on the way")
 end)
 
 T.test ("an escort keeps escorting until it falls ESCORT_GIVE_UP behind", function ()
@@ -139,11 +139,11 @@ T.test ("any soldier that picks up the enemy's flag delivers it as a courier", f
 		local field = Briefed (Carried (carrier.handle))
 		local d = field.doctrine
 		T.eq (d.SIDES [d.Side (field, carrier)], "CaptureFlagCourier", job .. ": a courier now")
-		T.eq (Stage (field, carrier), "ReturnHome", job .. ": home")
+		T.eq (Stage (field, carrier),            "ReturnHome",         job .. ": home")
 		local deliver = d.ROLES [job].STAGES.ReturnHome
-		T.eq (Distance (deliver.Goal (field, carrier), P (250, 100)), 0, job .. ": to the zone")
-		T.eq (deliver.arrive <= Ctf.TOUCH, true, job .. ": into it")
-		T.eq (deliver.Urgent (field, carrier), true, job .. ": stopping for nothing")
+		T.eq (Distance (deliver.Goal (field, carrier), P (250, 100)), 0,    job .. ": to the zone")
+		T.eq (deliver.arrive <= Ctf.TOUCH,                            true, job .. ": into it")
+		T.eq (deliver.Urgent (field, carrier),                        true, job .. ": stopping for nothing")
 	end
 end)
 
@@ -161,7 +161,7 @@ T.test ("a defender guards its dropped flag, and runs down whoever carries it", 
 	local dropped = Briefed (Field ({ [RED] = Flag (RED, RED_HOME, Ctf.DROPPED, P (1500, 0)), [BLUE] = Flag (BLUE, BLUE_HOME) }))
 	T.near (Distance (Goal (dropped, defender), P (1500, 0)), Ctf.GUARD_RING, 1e-6, "by the dropped flag")
 	local stolen = Briefed (Field ({ [RED] = Flag (RED, RED_HOME, Ctf.CARRIED, P (1800, 200), {}, BLUE), [BLUE] = Flag (BLUE, BLUE_HOME) }))
-	T.eq (Distance (Goal (stolen, defender), P (1800, 200)), 0, "on the carrier")
+	T.eq (Distance (Goal (stolen, defender), P (1800, 200)),                  0,    "on the carrier")
 	T.eq (stolen.doctrine.ROLES [AiWar.CTF_DEFEND].Urgent (stolen, defender), true, "in a hurry")
 end)
 
@@ -173,12 +173,12 @@ T.test ("an operative holds a remote base on the way the enemy's carrier would r
 	T.eq (outpost ~= nil, true, "an outpost")
 	local fromHome = Distance (outpost, RED_HOME)
 	T.eq (fromHome >= Ctf.OUTPOST_MIN and fromHome <= Ctf.OUTPOST_MAX, true, "out from the flag: " .. fromHome)
-	T.eq (outpost.y, 0, "on the carrier's way, not off to the side")
+	T.eq (outpost.y,                                                   0, "on the carrier's way, not off to the side")
 	local operative = Member (RED, AiWar.OPERATIVE, 1, P (500, 0))
 	T.eq (Distance (Goal (field, operative), outpost) <= Ctf.OUTPOST_RADIUS, true, "in the outpost")
 	local center, radius = field.doctrine.ROLES [AiWar.OPERATIVE].Zone (field, operative)
-	T.eq (Distance (center, outpost), 0, "its zone's centre")
-	T.eq (radius, Ctf.OUTPOST_RADIUS, "its zone's radius")
+	T.eq (Distance (center, outpost), 0,                  "its zone's centre")
+	T.eq (radius,                     Ctf.OUTPOST_RADIUS, "its zone's radius")
 	local again = Briefed (Field (), scenario)
 	T.eq (Distance (again.objectives [RED].outpost, outpost), 0, "the same base each tick")
 end)
@@ -199,10 +199,10 @@ T.test ("each job is its own side action; its medics side with the defenders", f
 	local field = Briefed (Field ())
 	local d = field.doctrine
 	local function SideName (role) return d.SIDES [d.Side (field, Member (RED, role))] end
-	T.eq (SideName (AiWar.COURIER), "CaptureFlagCourier", "courier")
-	T.eq (SideName (AiWar.CTF_DEFEND), "CaptureFlagDefender", "defender")
-	T.eq (SideName (AiWar.OPERATIVE), "CaptureFlagOperative", "operative")
-	T.eq (SideName (AiWar.MEDIC), "CaptureFlagDefender", "medic")
+	T.eq (SideName (AiWar.COURIER),    "CaptureFlagCourier",   "courier")
+	T.eq (SideName (AiWar.CTF_DEFEND), "CaptureFlagDefender",  "defender")
+	T.eq (SideName (AiWar.OPERATIVE),  "CaptureFlagOperative", "operative")
+	T.eq (SideName (AiWar.MEDIC),      "CaptureFlagDefender",  "medic")
 end)
 
 T.test ("a courier retrieves the flag, escorts a teammate carrying it, or returns home with it", function ()
@@ -210,7 +210,7 @@ T.test ("a courier retrieves the flag, escorts a teammate carrying it, or return
 	local courier = Member (RED, AiWar.COURIER, 0, P (1000, 0), carrier)
 	T.eq (Stage (Briefed (Field ()), courier), "RetrieveFlag", "at home")
 	local carried = Briefed (Field ({ [RED] = Flag (RED, RED_HOME), [BLUE] = Flag (BLUE, BLUE_HOME, Ctf.CARRIED, P (3000, 0), carrier, RED) }))
-	T.eq (Stage (carried, courier), "ReturnHome", "carrying it")
+	T.eq (Stage (carried, courier),                                     "ReturnHome",          "carrying it")
 	T.eq (Stage (carried, Member (RED, AiWar.COURIER, 1, P (2000, 0))), "AttackFlagDefenders", "a teammate carrying it, no escorts chosen")
 end)
 
@@ -227,7 +227,7 @@ T.test ("an operative establishes its outpost, then holds it; with none it guard
 	local field = Briefed (Field ())
 	local outpost = field.objectives [RED].outpost
 	T.eq (Stage (field, Member (RED, AiWar.OPERATIVE, 0, P (0, 0))), "EstablishOutpost", "on its way")
-	T.eq (Stage (field, Member (RED, AiWar.OPERATIVE, 0, outpost)), "HoldOutpost", "there")
+	T.eq (Stage (field, Member (RED, AiWar.OPERATIVE, 0, outpost)),  "HoldOutpost",      "there")
 	local bare = Field ()
 	bare.waypoints = { P (0, 0) }
 	Briefed (bare)
@@ -236,8 +236,8 @@ end)
 
 T.test ("a team's lanes lead to the enemy's flag", function ()
 	local field, scenario = Briefed (Field ())
-	T.eq (Distance (scenario:Front (field, RED), BLUE_HOME), 0, "RED's")
-	T.eq (next (scenario:SetupAttacks (field)), nil, "no setup gates to come out of")
+	T.eq (Distance (scenario:Front (field, RED), BLUE_HOME), 0,   "RED's")
+	T.eq (next (scenario:SetupAttacks (field)),              nil, "no setup gates to come out of")
 end)
 
 local function Weights (stance)
@@ -250,15 +250,15 @@ end
 -- both teams' together, reach two thirds of the capture limit (2 of 3:
 -- one each, or two by either).
 T.test ("mid-game is the teams' captures together at two thirds of the capture limit, rounded up", function ()
-	T.eq (Ctf.MidGameAt (3), 2, "2 of 3")
-	T.eq (Ctf.MidGameAt (5), 4, "4 of 5")
-	T.eq (Ctf.MidGameAt (10), 7, "7 of 10")
-	T.eq (Ctf.MidGameAt (0), Ctf.MidGameAt (Ctf.DEFAULT_CAPLIMIT), "no limit: TF2's default")
-	T.eq (Ctf.MidGame ({ [RED] = 1, [BLUE] = 0 }, 3), false, "one capture of 3")
-	T.eq (Ctf.MidGame ({ [RED] = 1, [BLUE] = 1 }, 3), true, "one each")
-	T.eq (Ctf.MidGame ({ [RED] = 0, [BLUE] = 2 }, 3), true, "two by BLU")
-	T.eq (Ctf.MidGame ({ [RED] = 2, [BLUE] = 1 }, 5), false, "three of 5")
-	T.eq (Ctf.MidGame ({ [RED] = 2, [BLUE] = 2 }, 5), true, "four of 5")
+	T.eq (Ctf.MidGameAt (3),                          2,                                    "2 of 3")
+	T.eq (Ctf.MidGameAt (5),                          4,                                    "4 of 5")
+	T.eq (Ctf.MidGameAt (10),                         7,                                    "7 of 10")
+	T.eq (Ctf.MidGameAt (0),                          Ctf.MidGameAt (Ctf.DEFAULT_CAPLIMIT), "no limit: TF2's default")
+	T.eq (Ctf.MidGame ({ [RED] = 1, [BLUE] = 0 }, 3), false,                                "one capture of 3")
+	T.eq (Ctf.MidGame ({ [RED] = 1, [BLUE] = 1 }, 3), true,                                 "one each")
+	T.eq (Ctf.MidGame ({ [RED] = 0, [BLUE] = 2 }, 3), true,                                 "two by BLU")
+	T.eq (Ctf.MidGame ({ [RED] = 2, [BLUE] = 1 }, 5), false,                                "three of 5")
+	T.eq (Ctf.MidGame ({ [RED] = 2, [BLUE] = 2 }, 5), true,                                 "four of 5")
 end)
 
 local function Scored (flags, red, blue)
@@ -275,11 +275,11 @@ end
 T.test ("early on a team sends couriers and operatives, no defenders; a stolen flag sends more operatives", function ()
 	local scenario = Ctf.Scenario:New ()
 	local early = Weights (Stances (Scored (nil, 1, 0), scenario) [RED].stance)
-	T.eq (early [AiWar.CTF_DEFEND], nil, "no defenders yet")
+	T.eq (early [AiWar.CTF_DEFEND],                        nil,  "no defenders yet")
 	T.eq (early [AiWar.COURIER] > early [AiWar.OPERATIVE], true, "couriers first")
 	local stolen = Scored ({ [RED] = Flag (RED, RED_HOME, Ctf.CARRIED, P (1800, 0), {}, BLUE), [BLUE] = Flag (BLUE, BLUE_HOME) }, 0, 1)
 	local hot = Stances (stolen, scenario) [RED]
-	T.eq (Weights (hot.stance) [AiWar.CTF_DEFEND], nil, "still none")
+	T.eq (Weights (hot.stance) [AiWar.CTF_DEFEND],                          nil,  "still none")
 	T.eq (Weights (hot.stance) [AiWar.OPERATIVE] > early [AiWar.OPERATIVE], true, "more operatives to intercept")
 end)
 
@@ -287,9 +287,9 @@ T.test ("mid-game defenders join; a stolen flag puts more on defense at once", f
 	local scenario = Ctf.Scenario:New ()
 	local entries = Stances (Scored (nil, 0, 2), scenario)
 	local calm = Weights (entries [RED].stance)
-	T.eq (calm [AiWar.CTF_DEFEND] > 0, true, "defenders now, on both sides")
-	T.eq (calm [AiWar.COURIER] > calm [AiWar.CTF_DEFEND], true, "couriers still first")
-	T.eq (entries [RED].critical, false, "no hurry")
+	T.eq (calm [AiWar.CTF_DEFEND] > 0,                    true,  "defenders now, on both sides")
+	T.eq (calm [AiWar.COURIER] > calm [AiWar.CTF_DEFEND], true,  "couriers still first")
+	T.eq (entries [RED].critical,                         false, "no hurry")
 	local stolen = Scored ({ [RED] = Flag (RED, RED_HOME, Ctf.CARRIED, P (1800, 0), {}, BLUE), [BLUE] = Flag (BLUE, BLUE_HOME) }, 0, 2)
 	local hot = Stances (stolen, scenario)
 	T.eq (Weights (hot [RED].stance) [AiWar.CTF_DEFEND] > calm [AiWar.CTF_DEFEND], true, "more defenders")

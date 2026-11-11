@@ -95,9 +95,9 @@ end
 function TFHud.DrawBossFrame (frame, unit)
 	local band, line = frame.band, frame.line
 	local c = Hud.BOSS_BAND_COLOR
-	Fill ({ x = band.x, y = band.y, w = band.w, h = line.y - band.y }, c)
+	Fill ({ x = band.x, y = band.y, w = band.w, h = line.y - band.y },                            c)
 	Fill ({ x = band.x, y = line.y + line.h, w = band.w, h = band.y + band.h - line.y - line.h }, c)
-	Fill ({ x = band.x, y = line.y, w = line.x - band.x, h = line.h }, c)
+	Fill ({ x = band.x, y = line.y, w = line.x - band.x, h = line.h },                            c)
 	Fill ({ x = line.x + line.w, y = line.y, w = band.x + band.w - line.x - line.w, h = line.h }, c)
 	local t = Hud.BOSS_LINE_COLOR
 	surface.SetDrawColor (t.r, t.g, t.b, t.a)
@@ -107,8 +107,8 @@ end
 
 -- A line centred on y, in TanLight (or color), over its drop shadow.
 function TFHud.Shadowed (text, font, x, y, alignX, color)
-	draw.SimpleText (text, font, x + 1, y + 1, color_black, alignX, TEXT_ALIGN_CENTER)
-	draw.SimpleText (text, font, x, y, color or TAN_LIGHT, alignX, TEXT_ALIGN_CENTER)
+	draw.SimpleText (text, font, x + 1, y + 1, color_black,        alignX, TEXT_ALIGN_CENTER)
+	draw.SimpleText (text, font, x,     y,     color or TAN_LIGHT, alignX, TEXT_ALIGN_CENTER)
 end
 
 -- The objectives' stack at the foot of the screen (ws.tf_hud's

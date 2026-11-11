@@ -10,8 +10,8 @@ local FILES =
 
 T.test ("an archive written reads back the same files, in order", function ()
 	local archive = Gma.Read (Gma.Write ("name", FILES))
-	T.eq (archive.name, "name", "its name")
-	T.eq (#archive.files, 2, "both files")
+	T.eq (archive.name,   "name", "its name")
+	T.eq (#archive.files, 2,      "both files")
 	for i, f in ipairs (FILES) do
 		T.eq (archive.files [i].path, f.path, "path " .. i)
 		T.eq (archive.files [i].data, f.data, "data " .. i)
@@ -22,8 +22,8 @@ end)
 -- the files' bytes, and the CRC32 of everything before it.
 T.test ("an archive is gmad's layout, ending in the CRC of what precedes it", function ()
 	local bytes = Gma.Write ("name", FILES)
-	T.eq (bytes:sub (1, 4), "GMAD", "magic")
-	T.eq (bytes:byte (5), Gma.VERSION, "version")
+	T.eq (bytes:sub (1, 4), "GMAD",      "magic")
+	T.eq (bytes:byte (5),   Gma.VERSION, "version")
 	local body, tail = bytes:sub (1, -5), bytes:sub (-4)
 	T.eq (Buffer.Reader (tail):Int32 () % 2 ^ 32, Buffer.Crc32 (body), "the trailing CRC")
 end)

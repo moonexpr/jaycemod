@@ -10,12 +10,12 @@ local Teams = gameplay.teams
 local RED, BLUE = Teams.RED, Teams.BLUE
 
 T.test ("each change of a hostage's state is an event, or none", function ()
-	T.eq (Announcer.Event (Rescue.HELD, Rescue.FOLLOWING), Announcer.TAKEN, "taken")
-	T.eq (Announcer.Event (Rescue.FOLLOWING, Rescue.HELD), Announcer.LET_GO, "let go")
+	T.eq (Announcer.Event (Rescue.HELD, Rescue.FOLLOWING),    Announcer.TAKEN,   "taken")
+	T.eq (Announcer.Event (Rescue.FOLLOWING, Rescue.HELD),    Announcer.LET_GO,  "let go")
 	T.eq (Announcer.Event (Rescue.FOLLOWING, Rescue.RESCUED), Announcer.RESCUED, "rescued")
-	T.eq (Announcer.Event (Rescue.HELD, Rescue.KILLED), Announcer.KILLED, "killed held")
-	T.eq (Announcer.Event (Rescue.FOLLOWING, Rescue.KILLED), Announcer.KILLED, "killed following")
-	T.eq (Announcer.Event (Rescue.HELD, Rescue.HELD), nil, "no change")
+	T.eq (Announcer.Event (Rescue.HELD, Rescue.KILLED),       Announcer.KILLED,  "killed held")
+	T.eq (Announcer.Event (Rescue.FOLLOWING, Rescue.KILLED),  Announcer.KILLED,  "killed following")
+	T.eq (Announcer.Event (Rescue.HELD, Rescue.HELD),         nil,               "no change")
 end)
 
 T.test ("each side hears its own line of each event, one of the VIP mode's", function ()
@@ -31,7 +31,7 @@ end)
 
 T.test ("BLU's taking is TF2 Classified's VIP_OurTeamHasFlag, RED's its VIP_TheirTeamHasFlag", function ()
 	T.eq (Announcer.Lines (Announcer.TAKEN, BLUE) [1], "vo/announcer_sd_possession02.mp3", "ours")
-	T.eq (Announcer.Lines (Announcer.TAKEN, RED) [1], "vo/announcer_sd_possession05.mp3", "theirs")
+	T.eq (Announcer.Lines (Announcer.TAKEN, RED) [1],  "vo/announcer_sd_possession05.mp3", "theirs")
 end)
 
 T.test ("every line is listed once, for the server to precache", function ()

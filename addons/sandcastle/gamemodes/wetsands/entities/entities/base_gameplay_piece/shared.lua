@@ -26,8 +26,8 @@ local EDIT_TYPES = { Bool = "Boolean", Int = "Int", Float = "Float", String = "G
 local HELP_WIDTH = 60
 
 function ENT:SetupDataTables ()
-	self:NetworkVar ("Int", 0, "PieceId")
-	self:NetworkVar ("Int", 1, "NodeId")
+	self:NetworkVar ("Int",    0, "PieceId")
+	self:NetworkVar ("Int",    1, "NodeId")
 	self:NetworkVar ("String", 0, "BodyModel")
 	self:NetworkVar ("Vector", 0, "BoxMins")
 	self:NetworkVar ("Vector", 1, "BoxMaxs")

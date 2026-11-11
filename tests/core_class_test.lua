@@ -20,8 +20,8 @@ T.test ("a subclass overrides what it defines and inherits the rest", function (
 	local Bird = Class.Extend (Base, { legs = 2 })
 	function Bird:Speak () return "tweet" end
 	local bird = Class.New (Bird)
-	T.eq (bird:Describe (), "tweet on 2 legs", "its own Speak and legs, the base's Describe")
-	T.eq (Class.New (Base):Describe (), "... on 4 legs", "the base is untouched")
+	T.eq (bird:Describe (),             "tweet on 2 legs", "its own Speak and legs, the base's Describe")
+	T.eq (Class.New (Base):Describe (), "... on 4 legs",   "the base is untouched")
 end)
 
 T.test ("a subclass's instances keep the metamethods of its ancestors", function ()
@@ -34,10 +34,10 @@ T.test ("a subclass's instances keep the metamethods of its ancestors", function
 			__call = function (_, word) return "chirp " .. word end
 		}
 	)
-	T.eq (tostring (Class.New (Bird)), "an animal on 2 legs", "__tostring, a level down")
-	T.eq (Class.New (Bird) ("hello"), "... hello", "__call, a level down")
+	T.eq (tostring (Class.New (Bird)),  "an animal on 2 legs", "__tostring, a level down")
+	T.eq (Class.New (Bird) ("hello"),   "... hello",           "__call, a level down")
 	T.eq (tostring (Class.New (Robin)), "an animal on 2 legs", "two levels down")
-	T.eq (Class.New (Robin) ("hello"), "chirp hello", "unless the subclass defines its own")
+	T.eq (Class.New (Robin) ("hello"),  "chirp hello",         "unless the subclass defines its own")
 end)
 
 T.test ("a class's own __index function is its subclasses' too", function ()
@@ -50,13 +50,13 @@ T.test ("a class's own __index function is its subclasses' too", function ()
 	local Sub = Class.Extend (Base)
 	local sub = Class.New (Sub)
 	T.eq (sub.anything, "looked up anything", "the lookup reaches the subclass's instances")
-	T.eq (sub:Name (), "method", "and still finds the methods")
+	T.eq (sub:Name (),  "method",             "and still finds the methods")
 end)
 
 T.test ("an instance starts from the fields it is given", function ()
 	local Base = Animal ()
 	local pet = Class.New (Base, { legs = 3, name = "Tripod" })
-	T.eq (pet.name, "Tripod", "its own field")
+	T.eq (pet.name,        "Tripod",        "its own field")
 	T.eq (pet:Describe (), "... on 3 legs", "its own legs")
 end)
 
@@ -65,12 +65,12 @@ T.test ("an instance is a member of its class and every ancestor", function ()
 	local Bird = Class.Extend (Base)
 	local Other = Animal ()
 	local bird = Class.New (Bird)
-	T.eq (Class.IsA (bird, Bird), true, "its class")
-	T.eq (Class.IsA (bird, Base), true, "an ancestor")
+	T.eq (Class.IsA (bird, Bird),             true,  "its class")
+	T.eq (Class.IsA (bird, Base),             true,  "an ancestor")
 	T.eq (Class.IsA (Class.New (Base), Bird), false, "not a descendant")
-	T.eq (Class.IsA (bird, Other), false, "an unrelated class")
-	T.eq (Class.IsA (Bird, Base), true, "a subclass is one too")
-	T.eq (Class.IsA (5, Base), false, "a number")
+	T.eq (Class.IsA (bird, Other),            false, "an unrelated class")
+	T.eq (Class.IsA (Bird, Base),             true,  "a subclass is one too")
+	T.eq (Class.IsA (5, Base),                false, "a number")
 end)
 
 T.test ("a guard refuses new keys on a class's subclasses and their instances", function ()
@@ -109,7 +109,7 @@ T.test ("constructing runs each class's own Init, base first, with the arguments
 	function Leaf:Init (name) log [#log + 1] = "leaf " .. self.name end
 	local leaf = Class.Construct (Leaf, "x")
 	T.eq (table.concat (log, ", "), "base x, leaf x", "in order, once each")
-	T.eq (Class.IsA (leaf, Base), true, "an instance")
+	T.eq (Class.IsA (leaf, Base),   true,             "an instance")
 end)
 
 T.test ("destroying runs each class's own Destroy, most derived first", function ()

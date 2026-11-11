@@ -30,7 +30,7 @@ T.test ("every kind's helper is a folder entity on the base", function ()
 	for _, kind in ipairs (Builder.KINDS) do
 		local class = Classes [kind]
 		T.eq (class.Base, "base_gameplay_piece", kind)
-		T.eq (class.Kind, kind, kind .. "'s kind")
+		T.eq (class.Kind, kind,                  kind .. "'s kind")
 		for _, file in ipairs ({ "shared.lua", "init.lua", "cl_init.lua" }) do
 			T.eq (assert (loadfile (ENTITIES .. "entities/" .. Builder.CLASSES [kind] .. "/" .. file)) ~= nil, true, file)
 		end
@@ -52,9 +52,9 @@ T.test ("a helper declares its properties as edited network variables", function
 	local seen = {}
 	for _, prop in ipairs (Classes [Builder.POINT].Properties) do
 		local var = declared [prop.name]
-		T.eq (var ~= nil, true, prop.name)
-		T.eq (var.netType, Builder.NETWORK_TYPES [prop.type], prop.name .. " type")
-		T.eq (var.options.Edit.title, prop.title, prop.name .. " title")
+		T.eq (var ~= nil,             true,                              prop.name)
+		T.eq (var.netType,            Builder.NETWORK_TYPES [prop.type], prop.name .. " type")
+		T.eq (var.options.Edit.title, prop.title,                        prop.name .. " title")
 		local slotKey = var.netType .. var.slot
 		T.eq (seen [slotKey], nil, prop.name .. " has a slot of its own")
 		seen [slotKey] = true
@@ -68,12 +68,12 @@ T.test ("a property with help has it on its row, wrapped, and a row type that sh
 	piece.NetworkVar = function (_, _, _, name, options) edits [name] = options and options.Edit end
 	piece.NetworkVarNotify = function () end
 	piece:SetupDataTables ()
-	T.eq (edits.CapLayout.type, "HelpGeneric", "a text field")
-	T.eq (edits.ScoreStyle.type, "HelpCombo", "a choice")
-	T.eq (edits.SwitchTeams.type, "HelpBoolean", "a switch")
-	T.eq (edits.TimerLength.type, "HelpInt", "a whole number")
-	T.eq (edits.PartialCapRate.type, "HelpFloat", "a number")
-	T.eq (edits.CapLayout.help:find ("\n", 1, true) ~= nil, true, "wrapped")
+	T.eq (edits.CapLayout.type,                             "HelpGeneric", "a text field")
+	T.eq (edits.ScoreStyle.type,                            "HelpCombo",   "a choice")
+	T.eq (edits.SwitchTeams.type,                           "HelpBoolean", "a switch")
+	T.eq (edits.TimerLength.type,                           "HelpInt",     "a whole number")
+	T.eq (edits.PartialCapRate.type,                        "HelpFloat",   "a number")
+	T.eq (edits.CapLayout.help:find ("\n", 1, true) ~= nil, true,          "wrapped")
 end)
 
 T.test ("a property without help keeps the plain row", function ()
@@ -82,7 +82,7 @@ T.test ("a property without help keeps the plain row", function ()
 	piece.NetworkVar = function (_, _, _, name, options) edits [name] = options and options.Edit end
 	piece.NetworkVarNotify = function () end
 	piece:SetupDataTables ()
-	T.eq (edits.TeamNum.type, "Combo", "a choice")
+	T.eq (edits.TeamNum.type,       "Combo",   "a choice")
 	T.eq (edits.StartDisabled.type, "Boolean", "a switch")
 end)
 
@@ -97,7 +97,7 @@ T.test ("a volume is given its box", function ()
 	local piece, vars = NewPiece (Builder.ROOM)
 	local mins, maxs = Vector (-1, -2, 0), Vector (1, 2, 3)
 	piece:Configure (4, { mins = mins, maxs = maxs })
-	T.eq (piece:Id (), 4, "its id")
+	T.eq (piece:Id (),  4,    "its id")
 	T.eq (vars.BoxMins, mins, "mins")
 	T.eq (vars.BoxMaxs, maxs, "maxs")
 end)
@@ -107,7 +107,7 @@ T.test ("updating a helper sets the properties it is given and keeps the rest", 
 	piece:Initialize ()
 	local returnTime = vars.ReturnTime
 	piece:Update ({ TeamNum = 3 })
-	T.eq (vars.TeamNum, 3, "the team")
+	T.eq (vars.TeamNum,    3,          "the team")
 	T.eq (vars.ReturnTime, returnTime, "what it was not given")
 end)
 
@@ -124,7 +124,7 @@ T.test ("a sign's model follows its properties, its skin too", function ()
 	local sign, vars = NewPiece (Builder.SIGN, { props = { Arrow = "right", Small = true, SignSkin = 4 } })
 	sign:Settle ()
 	T.eq (vars.Model, "models/props_gameplay/sign_gameplay01_witharrow_r_sm.mdl", "the model")
-	T.eq (vars.Skin, 4, "the skin")
+	T.eq (vars.Skin,  4,                                                          "the skin")
 end)
 
 T.test ("a spawner shows the model picked, or the first", function ()
@@ -153,8 +153,8 @@ T.test ("the duplicator knows every class, and hands the paste to the builder", 
 	for _, kind in ipairs (Builder.KINDS) do T.eq (Fake.registered [Builder.CLASSES [kind]], true, kind) end
 	local piece = NewPiece (Builder.SPAWN)
 	piece:OnDuplicated ({ nodeIndex = 12 })
-	T.eq (builder.adopted, piece, "adopted")
-	T.eq (piece.savedNodeIndex, 12, "its node's old index kept for the paste's end")
+	T.eq (builder.adopted,      piece, "adopted")
+	T.eq (piece.savedNodeIndex, 12,    "its node's old index kept for the paste's end")
 end)
 
 T.test ("a pasted helper finds its node among what was pasted", function ()
@@ -164,9 +164,9 @@ T.test ("a pasted helper finds its node among what was pasted", function ()
 	local deleted
 	node.DeleteOnRemove = function (_, ent) deleted = ent end
 	helper:PostEntityPaste (nil, helper, { [12] = node })
-	T.eq (vars.NodeId, 31, "its node's id now")
+	T.eq (vars.NodeId,             31,     "its node's id now")
 	T.eq (rawget (node, "helper"), helper, "the node knows it")
-	T.eq (deleted, helper, "and takes it along when removed")
+	T.eq (deleted,                 helper, "and takes it along when removed")
 end)
 
 T.test ("copying leaves out what cannot be saved, and notes a helper's node", function ()
@@ -178,10 +178,10 @@ T.test ("copying leaves out what cannot be saved, and notes a helper's node", fu
 	T.eq (helper.nodeIndex, 12, "by its entity index, as the duplicator keys them")
 	local data = { Inputs = {}, Outputs = {}, nodeEnt = node, helper = node }
 	helper:OnEntityCopyTableFinish (data)
-	T.eq (data.Inputs, nil, "wire's inputs")
+	T.eq (data.Inputs,  nil, "wire's inputs")
 	T.eq (data.Outputs, nil, "wire's outputs")
 	T.eq (data.nodeEnt, nil, "an entity")
-	T.eq (data.helper, nil, "an entity")
+	T.eq (data.helper,  nil, "an entity")
 end)
 
 T.test ("wires are saved, and restored with what was pasted", function ()
@@ -198,9 +198,9 @@ T.test ("wires are saved, and restored with what was pasted", function ()
 	T.eq (stored.WireDupeInfo, "links", "stored")
 	piece.EntityMods = { WireDupeInfo = "links" }
 	piece:PostEntityPaste ("ply", piece, { [5] = "five" })
-	T.eq (applied.info, "links", "applied")
-	T.eq (applied.lookup (5), "five", "found among those pasted")
-	T.eq (applied.lookup (6, "none"), "none", "or the default")
+	T.eq (applied.info,               "links", "applied")
+	T.eq (applied.lookup (5),         "five",  "found among those pasted")
+	T.eq (applied.lookup (6, "none"), "none",  "or the default")
 	WireLib = nil
 end)
 
@@ -213,10 +213,10 @@ T.test ("with Wiremod a helper has its class's ports", function ()
 	}
 	local piece = NewPiece (Builder.POINT)
 	piece:Initialize ()
-	T.eq (created.inputs, Classes [Builder.POINT].WirePorts.inputs, "inputs")
-	T.eq (created.outputs, Classes [Builder.POINT].WirePorts.outputs, "outputs")
-	T.eq (rawget (piece, "Inputs"), "in", "held where the wire tool looks")
-	T.eq (rawget (piece, "Outputs"), "out", "held where the wire tool looks")
+	T.eq (created.inputs,            Classes [Builder.POINT].WirePorts.inputs,  "inputs")
+	T.eq (created.outputs,           Classes [Builder.POINT].WirePorts.outputs, "outputs")
+	T.eq (rawget (piece, "Inputs"),  "in",                                      "held where the wire tool looks")
+	T.eq (rawget (piece, "Outputs"), "out",                                     "held where the wire tool looks")
 	WireLib = nil
 end)
 
@@ -226,7 +226,7 @@ T.test ("an input fires at the entity its game has for it", function ()
 	compiled [piece:CompiledName ()] = { Fire = function (_, input, param) fired [#fired + 1] = { input, param } end }
 	piece:TriggerInput ("Team", 3)
 	T.eq (fired [1] [1], "SetTeam", "the input")
-	T.eq (fired [1] [2], "3", "the value")
+	T.eq (fired [1] [2], "3",       "the value")
 	piece:TriggerInput ("Reset", 0)
 	T.eq (#fired, 1, "a pulse's off asks nothing")
 	compiled [piece:CompiledName ()] = nil
@@ -249,7 +249,7 @@ T.test ("the scenario's inputs go to the gamerules", function ()
 	WS.Rules = { Fire = function (_, input, param) fired = { input, param } end }
 	NewPiece (Builder.SCENARIO):TriggerInput ("RedRespawnTime", 6)
 	T.eq (fired [1], "SetRedTeamRespawnWaveTime", "the input")
-	T.eq (fired [2], "6", "the value")
+	T.eq (fired [2], "6",                         "the value")
 	WS.Rules = nil
 end)
 
@@ -260,8 +260,8 @@ T.test ("the entity's values reach the outputs", function ()
 	compiled [piece:CompiledName ()] = {}
 	piece.WireStatus = function () return { Owner = 3 } end
 	piece.NextThink = function (_, at) nextThink = at end
-	T.eq (piece:Think (), true, "thinks on")
-	T.eq (told.Owner, 3, "told")
+	T.eq (piece:Think (),   true,     "thinks on")
+	T.eq (told.Owner,       3,        "told")
 	T.eq (type (nextThink), "number", "its next think")
 	compiled [piece:CompiledName ()] = nil
 	WireLib = nil
@@ -272,7 +272,7 @@ T.test ("without Wiremod a helper makes no ports and asks nothing", function ()
 	local piece = NewPiece (Builder.SPAWN)
 	piece:Initialize ()
 	T.eq (rawget (piece, "Inputs"), nil, "no inputs")
-	T.eq (piece:Think (), nil, "no think")
+	T.eq (piece:Think (),           nil, "no think")
 	piece:PreEntityCopy ()
 	piece:OnRemove ()
 end)
@@ -289,15 +289,15 @@ end)
 T.test ("in a game a helper goes, a track stays underfoot, a sign stands", function ()
 	local flag, vars = NewPiece (Builder.FLAG)
 	flag:SetInGame (true)
-	T.eq (vars.NoDraw, true, "hidden")
+	T.eq (vars.NoDraw,   true, "hidden")
 	T.eq (vars.NotSolid, true, "stops no bullet")
 	local node, nodeVars = NewPiece (Builder.NODE)
 	node:SetInGame (true)
-	T.eq (nodeVars.NoDraw, nil, "its rails show")
+	T.eq (nodeVars.NoDraw,   nil,  "its rails show")
 	T.eq (nodeVars.NotSolid, true, "stops no bullet")
 	local sign, signVars = NewPiece (Builder.SIGN)
 	sign:SetInGame (true)
-	T.eq (signVars.NoDraw, nil, "a sign shows")
+	T.eq (signVars.NoDraw,   nil, "a sign shows")
 	T.eq (signVars.NotSolid, nil, "a sign stands")
 end)
 
@@ -316,11 +316,11 @@ T.test ("every tool is in the Gameplay category and clicks through the builder",
 			GetClientInfo = function () return "left" end
 		}
 		Load (ENTITIES .. "weapons/gmod_tool/stools/" .. name .. ".lua", "TOOL", TOOL)
-		T.eq (TOOL.Category, "Gameplay", name .. " category")
-		T.eq (TOOL:LeftClick ({}), true, name .. " left")
-		T.eq (TOOL:RightClick ({}), true, name .. " right")
-		T.eq (TOOL:Reload ({}), true, name .. " reload")
-		T.eq (#calls, 3, name .. " three actions")
+		T.eq (TOOL.Category,           "Gameplay", name .. " category")
+		T.eq (TOOL:LeftClick ({}),     true,       name .. " left")
+		T.eq (TOOL:RightClick ({}),    true,       name .. " right")
+		T.eq (TOOL:Reload ({}),        true,       name .. " reload")
+		T.eq (#calls,                  3,          name .. " three actions")
 		T.eq (type (TOOL.BuildCPanel), "function", name .. " panel")
 		WS.Feature = feature
 	end

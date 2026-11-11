@@ -65,7 +65,7 @@ T.defined (NavStairs.PLAYER_CLIP, "PLAYER_CLIP")
 
 T.test ("a player clip slanted along one axis is a stair: which way it runs and rises", function ()
 	local slope = NavStairs.Slope (GorgeStair ())
-	T.eq (slope.along, "y")
+	T.eq (slope.along,  "y")
 	T.eq (slope.across, "x")
 	T.eq (slope.rising, -1, "up toward lower y")
 	T.eq (slope.lo.x .. "," .. slope.hi.x, "-6524,-6404")
@@ -126,8 +126,8 @@ T.test ("an area warped across the flight's foot is no floor, and goes with the 
 			Area (77, -6500, 1125, -6425, 1150, 96, 96, {})
 		}
 	)
-	T.eq (Sorted (plan.remove), "11")
-	T.eq (Sorted (plan.connect), "10,77")
+	T.eq (Sorted (plan.remove),          "11")
+	T.eq (Sorted (plan.connect),         "10,77")
 	T.eq (plan.lo.y .. "," .. plan.hi.y, "1150,1375")
 end)
 
@@ -232,7 +232,7 @@ T.test ("a flight with nothing on it is bridged as wide as its ends meet", funct
 			Area (77, -6475, 1125, -6400, 1150, 96, 96, {})
 		}
 	)
-	T.eq (#plan.remove, 0)
+	T.eq (#plan.remove,                  0)
 	T.eq (plan.lo.x .. "," .. plan.hi.x, "-6475,-6425")
 end)
 
@@ -240,7 +240,7 @@ T.test ("a stair along x rising toward higher x", function ()
 	-- z = x - 1000
 	local brush = Brush (P (1000, 0, 0), P (1200, 100, 200), { Side (-ROOT2, 0, ROOT2, -1000 * ROOT2) })
 	local slope = NavStairs.Slope (brush)
-	T.eq (slope.along, "x")
+	T.eq (slope.along,  "x")
 	T.eq (slope.rising, 1)
 	local function AlongX (id, x0, x1, zLowX, zHighX, links)
 		return
@@ -258,8 +258,8 @@ T.test ("a stair along x rising toward higher x", function ()
 	)
 	T.eq (Sorted (plan.remove), "2")
 	T.eq (plan.lo.x .. "," .. plan.hi.x, "1018,1200", "where the clip is a step above the floor")
-	T.near (plan.z.nw, 18, 0.01)
-	T.near (plan.z.sw, 18, 0.01)
+	T.near (plan.z.nw, 18,  0.01)
+	T.near (plan.z.sw, 18,  0.01)
 	T.near (plan.z.ne, 200, 0.01)
 	T.near (plan.z.se, 200, 0.01)
 end)

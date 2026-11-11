@@ -16,8 +16,8 @@ local function Names (shown)
 end
 
 T.test ("nothing shows without a condition, nor once it ends", function ()
-	T.eq (Names (Effects.Shown (Ends ({}), 5)), "", "none")
-	T.eq (Names (Effects.Shown (Ends ({ [C.URINE] = 5 }), 5)), "", "ended")
+	T.eq (Names (Effects.Shown (Ends ({}), 5)),                "",      "none")
+	T.eq (Names (Effects.Shown (Ends ({ [C.URINE] = 5 }), 5)), "",      "ended")
 	T.eq (Names (Effects.Shown (Ends ({ [C.URINE] = 6 }), 5)), "urine", "still wet")
 end)
 
@@ -37,13 +37,13 @@ end)
 -- TF2 picks a team's effect by GetTeamNumber: BLU's, else RED's.
 T.test ("a team effect is its team's colour, RED's for anyone else", function ()
 	local crit = Effects.Shown (Ends ({ [C.CRITBOOSTED] = 10 }), 0) [1]
-	T.eq (Effects.Particle (crit, Teams.RED), "critgun_weaponmodel_red", "RED")
-	T.eq (Effects.Particle (crit, Teams.BLUE), "critgun_weaponmodel_blu", "BLU")
+	T.eq (Effects.Particle (crit, Teams.RED),        "critgun_weaponmodel_red", "RED")
+	T.eq (Effects.Particle (crit, Teams.BLUE),       "critgun_weaponmodel_blu", "BLU")
 	T.eq (Effects.Particle (crit, Teams.UNASSIGNED), "critgun_weaponmodel_red", "no team")
 	local wet = Effects.Shown (Ends ({ [C.URINE] = 10 }), 0) [1]
 	T.eq (Effects.Particle (wet, Teams.BLUE), "peejar_drips", "one for all")
 	local uber = Effects.Shown (Ends ({ [C.INVULNERABLE] = 10 }), 0) [1]
-	T.eq (Effects.Particle (uber, Teams.RED), nil, "a material, no particle")
+	T.eq (Effects.Particle (uber, Teams.RED),  nil,                            "a material, no particle")
 	T.eq (Effects.Material (uber, Teams.BLUE), "models/effects/invulnfx_blue", "BLU's uber")
 end)
 
@@ -72,10 +72,10 @@ end)
 -- view), and one who dies burning burns on as a corpse.
 T.test ("burning is TF2's: the holder's overlay, flames for others, a burning corpse", function ()
 	local burning = Effects.Shown (Ends ({ [C.BURNING] = 10 }), 0) [1]
-	T.eq (burning.overlay, "effects/imcookin", "the holder's screen")
-	T.eq (burning.thirdPersonOnly, true, "not over their own view")
-	T.eq (burning.corpse, "burningplayer_corpse", "the corpse burns")
-	T.eq (burning.ignite, "Fire.Engulf", "the sound of catching fire")
+	T.eq (burning.overlay,         "effects/imcookin",     "the holder's screen")
+	T.eq (burning.thirdPersonOnly, true,                   "not over their own view")
+	T.eq (burning.corpse,          "burningplayer_corpse", "the corpse burns")
+	T.eq (burning.ignite,          "Fire.Engulf",          "the sound of catching fire")
 	local crit = Effects.Shown (Ends ({ [C.CRITBOOSTED] = 10 }), 0) [1]
 	T.eq (crit.thirdPersonOnly, nil, "a crit glows in first person too (the view model)")
 end)
@@ -84,9 +84,9 @@ end)
 -- (TF_SCREEN_OVERLAY_MATERIAL_BLEED); nothing shows on the body.
 T.test ("bleeding is TF2's: the bleeder's own screen bleeds", function ()
 	local bleeding = Effects.Shown (Ends ({ [C.BLEEDING] = 10 }), 0)
-	T.eq (Names (bleeding), "bleeding", "shown")
-	T.eq (bleeding [1].overlay, "effects/bleed_overlay", "the holder's screen")
-	T.eq (bleeding [1].particle, nil, "no particle")
+	T.eq (Names (bleeding),      "bleeding",              "shown")
+	T.eq (bleeding [1].overlay,  "effects/bleed_overlay", "the holder's screen")
+	T.eq (bleeding [1].particle, nil,                     "no particle")
 end)
 
 -- C_TFPlayer::UpdateMarkedForDeathEffect: item_fx.pcf's mark_for_death,
@@ -96,12 +96,12 @@ T.test ("a mark for death is TF2's: its particle over the head, for others only"
 	local marked = Effects.Shown (Ends ({ [C.MARKED_FOR_DEATH] = 10 }), 0)
 	T.eq (Names (marked), "marked", "shown")
 	local mark = marked [1]
-	T.eq (Effects.Particle (mark, Teams.RED), "mark_for_death", "TF2's particle")
-	T.eq (mark.file, "particles/item_fx.pcf", "from its file")
-	T.eq (mark.on, Effects.OVERHEAD, "over the head")
-	T.eq (mark.above, 20, "the eyes and 20 more")
-	T.eq (mark.othersOnly, true, "not to its holder")
-	T.eq (mark.overlay, nil, "no overlay")
+	T.eq (Effects.Particle (mark, Teams.RED), "mark_for_death",        "TF2's particle")
+	T.eq (mark.file,                          "particles/item_fx.pcf", "from its file")
+	T.eq (mark.on,                            Effects.OVERHEAD,        "over the head")
+	T.eq (mark.above,                         20,                      "the eyes and 20 more")
+	T.eq (mark.othersOnly,                    true,                    "not to its holder")
+	T.eq (mark.overlay,                       nil,                     "no overlay")
 end)
 
 -- OnAddMadMilk: the drips; TF2 left its milk screen overlay commented out,
@@ -109,12 +109,12 @@ end)
 T.test ("Mad Milk drips but leaves its holder's screen clear", function ()
 	local milk = Effects.Shown (Ends ({ [C.MAD_MILK] = 10 }), 0) [1]
 	T.eq (Effects.Particle (milk, Teams.RED), "peejar_drips_milk", "the drips")
-	T.eq (milk.overlay, nil, "no overlay")
+	T.eq (milk.overlay,                       nil,                 "no overlay")
 end)
 
 T.test ("catching a condition plays its effect's ignite sound, if it has one", function ()
 	T.eq (Effects.IgniteSound (C.BURNING), "Fire.Engulf", "catching fire")
-	T.eq (Effects.IgniteSound (C.URINE), nil, "Jarate has none")
+	T.eq (Effects.IgniteSound (C.URINE),   nil,           "Jarate has none")
 end)
 
 -- The C menu's Conditions: each toggles one, and the client must see which
@@ -124,7 +124,7 @@ T.test ("each condition the menu toggles is networked and found by its number", 
 	for _, cond in ipairs (Effects.NETWORKED) do networked [cond] = true end
 	T.eq (#Effects.TOGGLES > 0, true, "some")
 	for _, toggle in ipairs (Effects.TOGGLES) do
-		T.eq (networked [toggle.cond], true, toggle.label .. " networked")
+		T.eq (networked [toggle.cond],      true,   toggle.label .. " networked")
 		T.eq (Effects.Toggle (toggle.cond), toggle, toggle.label .. " found")
 	end
 	T.eq (Effects.Toggle (C.HALLOWEEN_THRILLER), nil, "the dance is no toggle")

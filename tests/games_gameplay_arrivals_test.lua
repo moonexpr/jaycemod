@@ -17,12 +17,12 @@ end)
 
 T.test ("a file older than MAX_AGE expects nobody: the server stopped between maps", function ()
 	local text = Arrivals.Write ({ ALICE }, NOW)
-	T.eq (#Arrivals.Read (text, NOW + Arrivals.MAX_AGE), 1, "fresh")
+	T.eq (#Arrivals.Read (text, NOW + Arrivals.MAX_AGE),     1, "fresh")
 	T.eq (#Arrivals.Read (text, NOW + Arrivals.MAX_AGE + 1), 0, "stale")
 end)
 
 T.test ("no file, or one not written here, expects nobody", function ()
-	T.eq (#Arrivals.Read ("", NOW), 0, "none")
+	T.eq (#Arrivals.Read ("", NOW),                 0, "none")
 	T.eq (#Arrivals.Read ("hello\n" .. ALICE, NOW), 0, "not ours")
 end)
 

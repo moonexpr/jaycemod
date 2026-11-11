@@ -5,7 +5,7 @@ local T = dofile ("tests/harness.lua")
 local Hazards = wartactics.hazards
 
 T.defined (Hazards.THRESHOLD, "THRESHOLD")
-T.defined (Hazards.VERSION, "VERSION")
+T.defined (Hazards.VERSION,   "VERSION")
 
 local WHERE = { x = 10, y = 20, z = 30 }
 
@@ -13,25 +13,25 @@ T.test ("an area is disabled once it has forced THRESHOLD respawns, and says so 
 	local hazards = Hazards.New ()
 	for i = 1, Hazards.THRESHOLD - 1 do
 		T.eq (hazards:Record (7, Hazards.FELL, WHERE), false, "respawn " .. i .. ": not yet")
-		T.eq (hazards:IsDisabled (7), false, "still open after " .. i)
+		T.eq (hazards:IsDisabled (7),                  false, "still open after " .. i)
 	end
-	T.eq (hazards:Record (7, Hazards.FELL, WHERE), true, "the last: disabled now")
-	T.eq (hazards:IsDisabled (7), true, "disabled")
+	T.eq (hazards:Record (7, Hazards.FELL, WHERE), true,  "the last: disabled now")
+	T.eq (hazards:IsDisabled (7),                  true,  "disabled")
 	T.eq (hazards:Record (7, Hazards.FELL, WHERE), false, "again: already disabled")
 end)
 
 T.test ("each area counts its own respawns, and its causes", function ()
 	local hazards = Hazards.New ()
-	hazards:Record (1, Hazards.FELL, WHERE)
+	hazards:Record (1, Hazards.FELL,      WHERE)
 	hazards:Record (1, Hazards.RECOVERED, WHERE)
-	hazards:Record (2, Hazards.FELL, WHERE)
+	hazards:Record (2, Hazards.FELL,      WHERE)
 	local entries = hazards:Entries ()
-	T.eq (#entries, 2, "two areas")
-	T.eq (entries [1].id, 1, "in id order")
-	T.eq (entries [1].count, 2, "area 1 twice")
-	T.eq (entries [1].causes [Hazards.FELL], 1, "once by a fall")
+	T.eq (#entries,                               2, "two areas")
+	T.eq (entries [1].id,                         1, "in id order")
+	T.eq (entries [1].count,                      2, "area 1 twice")
+	T.eq (entries [1].causes [Hazards.FELL],      1, "once by a fall")
 	T.eq (entries [1].causes [Hazards.RECOVERED], 1, "once recovered")
-	T.eq (entries [2].count, 1, "area 2 once")
+	T.eq (entries [2].count,                      1, "area 2 once")
 end)
 
 T.test ("an unknown cause is our bug", function ()
@@ -44,7 +44,7 @@ T.test ("the disabled areas are given as a set the caller may keep", function ()
 	hazards:Record (4, Hazards.FELL, WHERE)
 	local disabled = hazards:Disabled ()
 	T.eq (disabled [3], true, "3")
-	T.eq (disabled [4], nil, "not 4")
+	T.eq (disabled [4], nil,  "not 4")
 	disabled [5] = true
 	T.eq (hazards:IsDisabled (5), false, "a copy")
 end)
@@ -55,10 +55,10 @@ T.test ("inspected areas are cleared: one, or all", function ()
 		hazards:Record (1, Hazards.FELL, WHERE)
 		hazards:Record (2, Hazards.FELL, WHERE)
 	end
-	T.eq (hazards:Clear (1), true, "cleared 1")
-	T.eq (hazards:IsDisabled (1), false, "1 open again")
+	T.eq (hazards:Clear (1),                       true,  "cleared 1")
+	T.eq (hazards:IsDisabled (1),                  false, "1 open again")
 	T.eq (hazards:Record (1, Hazards.FELL, WHERE), false, "counted afresh")
-	T.eq (hazards:Clear (9), false, "nothing to clear")
+	T.eq (hazards:Clear (9),                       false, "nothing to clear")
 	hazards:ClearAll ()
 	T.eq (#hazards:Entries (), 0, "none left")
 end)
@@ -68,12 +68,12 @@ T.test ("saved and read back, the hazards are as they were", function ()
 	for _ = 1, Hazards.THRESHOLD do hazards:Record (12, Hazards.FELL, WHERE) end
 	hazards:Record (13, Hazards.RECOVERED, { x = 1, y = 2, z = 3 })
 	local back = Hazards.Decode (Hazards.Encode (hazards))
-	T.eq (back:IsDisabled (12), true, "12 disabled")
+	T.eq (back:IsDisabled (12), true,  "12 disabled")
 	T.eq (back:IsDisabled (13), false, "13 open")
 	local entries = back:Entries ()
-	T.eq (entries [1].count, Hazards.THRESHOLD, "its count")
-	T.eq (entries [1].where.y, 20, "where it is")
-	T.eq (entries [2].causes [Hazards.RECOVERED], 1, "its causes")
+	T.eq (entries [1].count,                      Hazards.THRESHOLD, "its count")
+	T.eq (entries [1].where.y,                    20,                "where it is")
+	T.eq (entries [2].causes [Hazards.RECOVERED], 1,                 "its causes")
 end)
 
 T.test ("a save of another version is refused", function ()
@@ -85,9 +85,9 @@ end)
 -- Separated: a team whose spawns no longer reach the objective it fights
 -- for, with the disabled areas closed; a team with no objective is not.
 T.test ("the war is separated when a team cannot reach its objective", function ()
-	T.eq (Hazards.Separated ({ { team = 2, reaches = true }, { team = 3, reaches = true } }), false, "both reach")
-	T.eq (Hazards.Separated ({ { team = 2, reaches = true }, { team = 3, reaches = false } }), true, "one cut off")
-	T.eq (Hazards.Separated ({}), false, "no objective")
+	T.eq (Hazards.Separated ({ { team = 2, reaches = true }, { team = 3, reaches = true } }),  false, "both reach")
+	T.eq (Hazards.Separated ({ { team = 2, reaches = true }, { team = 3, reaches = false } }), true,  "one cut off")
+	T.eq (Hazards.Separated ({}),                                                              false, "no objective")
 end)
 
 -- An area whose closing cuts a team off from its objective is a keystone: the
@@ -96,12 +96,12 @@ end)
 T.test ("a keystone area is spared: open again, and never disabled after", function ()
 	local h = Hazards.New ()
 	for _ = 1, Hazards.THRESHOLD do h:Record (7, Hazards.FELL, WHERE) end
-	T.eq (h:IsDisabled (7), true, "disabled")
-	T.eq (h:Spare (7), true, "spared")
+	T.eq (h:IsDisabled (7), true,  "disabled")
+	T.eq (h:Spare (7),      true,  "spared")
 	T.eq (h:IsDisabled (7), false, "open again")
 	for _ = 1, Hazards.THRESHOLD * 3 do T.eq (h:Record (7, Hazards.FELL, WHERE), false, "never disabled again") end
 	T.eq (h:IsDisabled (7), false, "still open")
-	T.eq (h:Spare (99), false, "an area never laid on is not spared")
+	T.eq (h:Spare (99),     false, "an area never laid on is not spared")
 end)
 
 T.test ("a spared area stays spared through a save", function ()
@@ -110,14 +110,14 @@ T.test ("a spared area stays spared through a save", function ()
 	h:Spare (7)
 	local back = Hazards.Decode (Hazards.Encode (h))
 	T.eq (back:Record (7, Hazards.RECOVERED, WHERE), false, "spared")
-	T.eq (back:Entries () [1].spared, true, "kept")
+	T.eq (back:Entries () [1].spared,                true,  "kept")
 end)
 
 T.test ("being recovered from an area is noted, and never closes it: that is a body's failure", function ()
 	local hazards = Hazards.New ()
 	local at = { x = 0, y = 0, z = 0 }
 	for _ = 1, Hazards.THRESHOLD * 3 do T.eq (hazards:Record (7, Hazards.RECOVERED, at), false, "not closed") end
-	T.eq (hazards:IsDisabled (7), false, "open")
+	T.eq (hazards:IsDisabled (7),                            false,                 "open")
 	T.eq (hazards:Entries () [1].causes [Hazards.RECOVERED], Hazards.THRESHOLD * 3, "still counted, for who inspects it")
 end)
 
@@ -140,9 +140,9 @@ T.test ("a saved area closed only by recoveries opens again as it loads", functi
 		}
 	}
 	local hazards = Hazards.Decode (saved)
-	T.eq (hazards:IsDisabled (1), false, "recoveries: open")
-	T.eq (hazards:IsDisabled (2), true, "deaths: still closed")
-	T.eq (hazards:Entries () [1].count, 13, "its record kept")
+	T.eq (hazards:IsDisabled (1),       false, "recoveries: open")
+	T.eq (hazards:IsDisabled (2),       true,  "deaths: still closed")
+	T.eq (hazards:Entries () [1].count, 13,    "its record kept")
 end)
 
 T.finish ()

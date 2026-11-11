@@ -356,7 +356,7 @@ T.test ("the Lua implementation's answers are the expected ones", function ()
 	T.eq (seen ["a calculator refuses a destination or opening the caller's hull cannot fit"].lua,
 		"-1 | 100 | 100 | -1", "hull clearance")
 	T.eq (seen ["a calculator closes what its Told holds: areas, links one way, enemy rooms"].lua, "-1 | -1 | 100 | -1 | 100", "calculator told")
-	T.eq (seen ["a calculator's Told is a copy: changing the tables after changes nothing"].lua, "100", "told copied")
+	T.eq (seen ["a calculator's Told is a copy: changing the tables after changes nothing"].lua,   "100", "told copied")
 	T.eq (seen ["a search told a Told runs as one told its tables"].lua,
 		"found 1 5 3 4 | true | failed 1 2 3 | true | found 1 5 3 4 | true", "search told a Told")
 	T.eq (seen ["a search's Told is a copy: changing the tables after changes nothing"].lua, "1 2 3 4", "search's Told copied")

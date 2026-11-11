@@ -36,9 +36,9 @@ end
 
 function ENT:SetupDataTables ()
 
-	self:NetworkVar ("Float", 0, "SunSize", { KeyName = "sunsize", Edit = { type = "Float", min = 0, max = 100, order = 1 } })
-	self:NetworkVar ("Float", 1, "OverlaySize", { KeyName = "overlaysize", Edit = { type = "Float", min = 0, max = 200, order = 2 } })
-	self:NetworkVar ("Vector", 0, "SunColor", { KeyName = "suncolor", Edit = { type = "VectorColor", order = 3 } })
+	self:NetworkVar ("Float",  0, "SunSize",      { KeyName = "sunsize", Edit = { type = "Float", min = 0, max = 100, order = 1 } })
+	self:NetworkVar ("Float",  1, "OverlaySize",  { KeyName = "overlaysize", Edit = { type = "Float", min = 0, max = 200, order = 2 } })
+	self:NetworkVar ("Vector", 0, "SunColor",     { KeyName = "suncolor", Edit = { type = "VectorColor", order = 3 } })
 	self:NetworkVar ("Vector", 1, "OverlayColor", { KeyName = "overlaycolor", Edit = { type = "VectorColor", order = 4 } })
 
 	if SERVER then
@@ -50,9 +50,9 @@ function ENT:SetupDataTables ()
 		self:SetSunColor (Vector (1, 1, 1))
 
 		-- Call this function when something changes these variables
-		self:NetworkVarNotify ("SunSize", self.OnVariableChanged)
-		self:NetworkVarNotify ("OverlaySize", self.OnVariableChanged)
-		self:NetworkVarNotify ("SunColor", self.OnVariableChanged)
+		self:NetworkVarNotify ("SunSize",      self.OnVariableChanged)
+		self:NetworkVarNotify ("OverlaySize",  self.OnVariableChanged)
+		self:NetworkVarNotify ("SunColor",     self.OnVariableChanged)
 		self:NetworkVarNotify ("OverlayColor", self.OnVariableChanged)
 
 	end
@@ -87,7 +87,7 @@ function ENT:OnVariableChanged (name, old, new)
 
 	if not IsValid (self.EnvSun) then return end
 
-	self.EnvSun:SetKeyValue ("size", self:GetSunSize ())
+	self.EnvSun:SetKeyValue ("size",        self:GetSunSize ())
 	self.EnvSun:SetKeyValue ("overlaysize", self:GetOverlaySize ())
 
 	local overlay = self:GetOverlayColor ()

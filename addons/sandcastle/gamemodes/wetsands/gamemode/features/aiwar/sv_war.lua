@@ -326,7 +326,7 @@ local function Repause ()
 end
 
 cvars.AddChangeCallback ("ns_soldiers_paused", Repause, "ws_aiwar")
-hook.Add ("WSServerIdle", "ws_aiwar", Repause)
+hook.Add ("WSServerIdle",   "ws_aiwar", Repause)
 hook.Add ("WSServerActive", "ws_aiwar", Repause)
 
 cvars.AddChangeCallback ("ns_squads_auto_enabled", function (_, _, value)

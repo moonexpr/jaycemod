@@ -11,7 +11,7 @@ end)
 T.test ("the capture's crits boost every hit while they last, then go", function ()
 	local capper = {}
 	P.AddCond (capper, P.COND.CRITBOOSTED_CTF_CAPTURE, 10, 0)
-	T.eq (P.CritBoosted (capper, 5), true, "five seconds in")
+	T.eq (P.CritBoosted (capper, 5),  true,  "five seconds in")
 	T.eq (P.CritBoosted (capper, 11), false, "after ten")
 end)
 

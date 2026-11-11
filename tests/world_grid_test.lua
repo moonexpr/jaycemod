@@ -14,32 +14,32 @@ end
 
 T.test ("near a point are the items in its cell and the eight around it", function ()
 	local grid = Grid.New (100)
-	grid:Put (P (50, 50), "here")
+	grid:Put (P (50, 50),   "here")
 	grid:Put (P (150, 150), "diagonal")
-	grid:Put (P (-50, 50), "west")
-	grid:Put (P (250, 50), "two cells east")
+	grid:Put (P (-50, 50),  "west")
+	grid:Put (P (250, 50),  "two cells east")
 	grid:Put (P (50, -150), "two cells north")
 	T.eq (Visited (grid, P (10, 10)), "diagonal here west", "the 3x3 block")
 end)
 
 T.test ("a visit that answers true stops the search and says so", function ()
 	local grid = Grid.New (100)
-	grid:Put (P (0, 0), "a")
+	grid:Put (P (0, 0),  "a")
 	grid:Put (P (10, 0), "b")
 	local visits = 0
 	local found = grid:Near (P (0, 0), function ()
 		visits = visits + 1
 		return true
 	end)
-	T.eq (found, true, "found")
-	T.eq (visits, 1, "stopped at the first")
-	T.eq (grid:Near (P (0, 0), function () end), false, "nothing answered true")
+	T.eq (found,                                                       true,  "found")
+	T.eq (visits,                                                      1,     "stopped at the first")
+	T.eq (grid:Near (P (0, 0), function () end),                       false, "nothing answered true")
 	T.eq (Grid.New (100):Near (P (0, 0), function () return true end), false, "an empty grid")
 end)
 
 T.test ("negative coordinates fall in their own cells", function ()
 	local grid = Grid.New (100)
-	grid:Put (P (-1, -1), "just below zero")
+	grid:Put (P (-1, -1),     "just below zero")
 	grid:Put (P (-250, -250), "far")
 	T.eq (Visited (grid, P (-50, -50)), "just below zero", "the far one is two cells off")
 end)
@@ -56,14 +56,14 @@ T.test ("a box goes in every cell it covers", function ()
 end)
 
 T.test ("a cell's size is a positive number", function ()
-	T.eq (pcall (Grid.New, 0), false, "zero")
+	T.eq (pcall (Grid.New, 0),  false, "zero")
 	T.eq (pcall (Grid.New, -5), false, "negative")
 end)
 
 T.test ("thinning keeps the first point in each cube, in order", function ()
 	local points = { P (10, 10, 0), P (20, 20, 0), P (10, 10, 600), P (600, 10), P (30, 30) }
 	local kept = Grid.Thin (points, 512)
-	T.eq (#kept, 3, "three cubes")
+	T.eq (#kept,    3,          "three cubes")
 	T.eq (kept [1], points [1], "the first of the first cube")
 	T.eq (kept [2], points [3], "a cube above")
 	T.eq (kept [3], points [4], "a cube east; a missing z is 0")
@@ -81,8 +81,8 @@ T.test ("positions may be any value answering x and y, as GMod's Vector does", f
 	local grid = Grid.New (100)
 	grid:Put (Vector (10, 10, 0), "a")
 	local found = grid:Near (Vector (50, 50, 0), function (item) return item == "a" end)
-	T.eq (found, true, "found near a Vector")
-	T.eq (#Grid.Thin ({ Vector (1, 1, 1), Vector (2, 2, 2), Vector (500, 1, 1) }, 100), 2, "thinned Vectors")
+	T.eq (found,                                                                        true, "found near a Vector")
+	T.eq (#Grid.Thin ({ Vector (1, 1, 1), Vector (2, 2, 2), Vector (500, 1, 1) }, 100), 2,    "thinned Vectors")
 end)
 
 local function Xs (points)
@@ -115,7 +115,7 @@ T.test ("Spread stops at limit, and reads each item's point through position", f
 end)
 
 T.test ("Spread refuses a spacing that is not positive", function ()
-	T.eq (pcall (Grid.Spread, {}, 0), false, "zero")
+	T.eq (pcall (Grid.Spread, {}, 0),  false, "zero")
 	T.eq (pcall (Grid.Spread, {}, -3), false, "negative")
 end)
 
@@ -162,11 +162,11 @@ T.test ("Isolated stops at limit, reads points through position and refuses a ba
 	for i = 1, 10 do items [i] = { at = { x = i * 100, y = 0 } } end
 	local at = function (item) return item.at end
 	local kept = Grid.Isolated (items, 10, 4, at)
-	T.eq (#kept, 4, "limit")
-	T.eq (kept [4], items [4], "the items given, in order")
-	T.eq (#Grid.Isolated (items, 10, 0, at), 0, "a limit of 0")
-	T.eq (#Grid.Isolated (items, 10, math.huge, at), 10, "an infinite limit is none")
-	T.eq (pcall (Grid.Isolated, {}, 0), false, "a spacing of 0")
+	T.eq (#kept,                                     4,         "limit")
+	T.eq (kept [4],                                  items [4], "the items given, in order")
+	T.eq (#Grid.Isolated (items, 10, 0, at),         0,         "a limit of 0")
+	T.eq (#Grid.Isolated (items, 10, math.huge, at), 10,        "an infinite limit is none")
+	T.eq (pcall (Grid.Isolated, {}, 0),              false,     "a spacing of 0")
 end)
 
 T.test ("Isolated is what comparing every point with every earlier one gives", function ()

@@ -7,11 +7,11 @@ local FILE = "ns_war_round.txt"
 local STILL_SPEED, STILL_SECONDS, HELD_SECONDS = 30, 3, 5
 
 local War = WS.Feature ("aiwar")
-RunConsoleCommand ("mp_winlimit", "1")
+RunConsoleCommand ("mp_winlimit",      "1")
 RunConsoleCommand ("tf_flag_caplimit", "1")
-RunConsoleCommand ("mp_timelimit", "0")
-RunConsoleCommand ("mp_maxrounds", "0")
-War:SetSlotCount (WS.TEAM_RED, 0)
+RunConsoleCommand ("mp_timelimit",     "0")
+RunConsoleCommand ("mp_maxrounds",     "0")
+War:SetSlotCount (WS.TEAM_RED,  0)
 War:SetSlotCount (WS.TEAM_BLUE, BLU_SIZE)
 War:Hazards ()
 RunConsoleCommand ("ns_hazards_clear", "all")

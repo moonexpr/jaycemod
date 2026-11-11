@@ -37,7 +37,7 @@ return function (t)
 	local clocks = {}
 	for team, name in pairs (CLOCK_NAMES) do
 		clocks [team] = ents.FindByName (name) [1]
-		t:Check (name .. " exists", IsValid (clocks [team]), tostring (clocks [team]))
+		t:Check (name .. " exists",            IsValid (clocks [team]),                  tostring (clocks [team]))
 		t:Check (name .. " is the team clock", rounds:TeamClock (team) == clocks [team], tostring (rounds:TeamClock (team)))
 	end
 	if not (IsValid (clocks [RED]) and IsValid (clocks [BLUE])) then return end

@@ -15,10 +15,10 @@ TOOL.Information =
 }
 
 if CLIENT then
-	language.Add ("tool.build_flag.name", "Flag")
-	language.Add ("tool.build_flag.desc", "Place capturable flags and their capture zones")
-	language.Add ("tool.build_flag.left", "Place the team's flag (double-click one to give it this team)")
-	language.Add ("tool.build_flag.right", "Place the team's capture zone, where it brings the enemy's flag")
+	language.Add ("tool.build_flag.name",   "Flag")
+	language.Add ("tool.build_flag.desc",   "Place capturable flags and their capture zones")
+	language.Add ("tool.build_flag.left",   "Place the team's flag (double-click one to give it this team)")
+	language.Add ("tool.build_flag.right",  "Place the team's capture zone, where it brings the enemy's flag")
 	language.Add ("tool.build_flag.reload", "Remove the piece you are looking at")
 end
 

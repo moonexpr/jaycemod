@@ -23,6 +23,8 @@ The rules, measured on gcompute's and glib's 670 files:
       )
 - A run of assignments (or table fields) written with `=` aligned is kept
   aligned; trailing comments written aligned are kept aligned.
+- A run of one-line calls to one callee with as many arguments sets each
+  argument in a column, unless that would push a line under 120 over it.
 - Double quotes; `--` comments with a space; at most one blank line.
 - No GMod syntax: `!=` `&&` `||` `!` `//` `/* */` become `~=` `and` `or`
   `not` `--` `--[[ ]]`. No `;` ending a line, no parentheses around a whole
@@ -54,6 +56,7 @@ NUMBER = re.compile(
 NAME = re.compile(r"[^\W\d]\w*")
 LONG_OPEN = re.compile(r"\[(=*)\[")
 INDENT = "\t"
+LINE_LIMIT = 120
 
 
 class FormatError(Exception):
@@ -402,6 +405,36 @@ class Line:
         last = len(self.toks) - 1
         return last if last > 0 and self.toks[last].kind == "comment" else None
 
+    def call(self):
+        """A line that is one call, whole: (its callee, its argument count), and where each argument
+        after the first begins."""
+        toks = self.toks
+        end = len(toks) - 1 if toks[-1].kind == "comment" else len(toks)
+        if toks[0].kind != "name" or not toks[end - 1].is_op(")"):
+            return None
+        i = 1
+        while i + 1 < end and toks[i].is_op(".", ":") and toks[i + 1].kind == "name":
+            i += 2
+        if not toks[i].is_op("("):
+            return None
+        depth, starts = 0, []
+        for k in range(i, end):
+            t = toks[k]
+            if t.opens:
+                depth += 1
+            elif t.closes:
+                depth -= 1
+                if depth == 0 and k != end - 1:
+                    return None
+            elif t.is_op(",") and depth == 1:
+                starts.append(k + 1)
+        if not starts:
+            return None
+        return ("".join(t.text for t in toks[:i]), len(starts)), starts
+
+    def width(self):
+        return len(self.text().expandtabs(4))
+
 
 def indent_lines(toks):
     rows, row = [], []
@@ -445,16 +478,17 @@ def indent_lines(toks):
     return lines
 
 
-def runs(lines, member):
-    """Runs of consecutive lines at one indent that `member` admits."""
+def runs(lines, member, key=lambda found: None):
+    """Runs of consecutive lines at one indent that `member` admits, alike in `key` of what it found."""
     run = []
     for line in lines:
-        if line.toks and member(line) is not None and (not run or run[0].indent == line.indent):
+        found = member(line) if line.toks else None
+        if found is not None and run and run[0].indent == line.indent and key(found) == key(member(run[0])):
             run.append(line)
             continue
         if len(run) > 1:
             yield run
-        run = [line] if line.toks and member(line) is not None else []
+        run = [line] if found is not None else []
     if len(run) > 1:
         yield run
 
@@ -463,7 +497,24 @@ def authored_aligned(ws):
     return "\t" in ws or len(ws) >= 2
 
 
+def align_arguments(run):
+    """A run of calls to one callee: each argument in a column, as far as the line limit allows."""
+    count = run[0].call()[0][1]
+    for column in range(count):
+        starts = [line.call()[1][column] for line in run]
+        before = [(line.seps[start], line.width()) for line, start in zip(run, starts)]
+        target = max(line.width_to(start) for line, start in zip(run, starts))
+        for line, start in zip(run, starts):
+            line.seps[start] = " " * (target - line.width_to(start) + 1)
+        if any(width <= LINE_LIMIT < line.width() for line, (_, width) in zip(run, before)):
+            for line, start, (sep, _) in zip(run, starts, before):
+                line.seps[start] = sep
+            return
+
+
 def align(lines):
+    for run in runs(lines, Line.call, key=lambda found: found[0]):
+        align_arguments(run)
     for run in runs(lines, Line.assignment):
         if not any(authored_aligned(line.toks[line.assignment()].ws) for line in run):
             continue

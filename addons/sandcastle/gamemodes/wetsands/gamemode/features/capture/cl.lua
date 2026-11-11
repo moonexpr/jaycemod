@@ -235,15 +235,15 @@ local function DrawSweep (material, x, y, size, progress, alpha)
 	mesh.Begin (MATERIAL_QUADS, 1)
 	local function Corner (px, py, u, v, mu, mv)
 		mesh.Position (Vector (px, py, 0))
-		mesh.TexCoord (0, u, v)
+		mesh.TexCoord (0, u,  v)
 		mesh.TexCoord (1, mu, mv)
 		mesh.Color (255, 255, 255, alpha)
 		mesh.AdvanceVertex ()
 	end
-	Corner (x, y, u0, 0, 0, 0)
-	Corner (x + w, y, 1, 0, progress, 0)
-	Corner (x + w, y + size, 1, 1, progress, 1)
-	Corner (x, y + size, u0, 1, 0, 1)
+	Corner (x,     y,        u0, 0, 0,        0)
+	Corner (x + w, y,        1,  0, progress, 0)
+	Corner (x + w, y + size, 1,  1, progress, 1)
+	Corner (x,     y + size, u0, 1, 0,        1)
 	mesh.End ()
 	cam.End2D ()
 end
@@ -344,7 +344,7 @@ end
 -- A capture panel's box: TF2's white rounded border round a dark fill.
 local function PanelBox (x, y, boxW, boxH)
 	draw.RoundedBox (CORNER, x - PANEL_BORDER, y - PANEL_BORDER, boxW + 2 * PANEL_BORDER, boxH + 2 * PANEL_BORDER, PANEL_EDGE)
-	draw.RoundedBox (CORNER, x, y, boxW, boxH, PANEL_FILL)
+	draw.RoundedBox (CORNER, x,                y,                boxW,                    boxH, PANEL_FILL)
 end
 
 -- The object the player caps at, the panel's anchor in the world: the
@@ -416,7 +416,7 @@ hook.Add ("PostDrawTranslucentRenderables", "ws_capture_panel", function (_, sky
 	local at = anchor:LocalToWorld (Vector (0, 0, anchor:OBBMaxs ().z + ANCHOR_LIFT))
 	local facing = EyeAngles ()
 	facing:RotateAroundAxis (facing:Forward (), 90)
-	facing:RotateAroundAxis (facing:Right (), 90)
+	facing:RotateAroundAxis (facing:Right (),   90)
 	cam.Start3D2D (at, facing, PANEL_SCALE)
 	DrawPanelAt (ply, rank, 0, 0)
 	cam.End3D2D ()

@@ -38,11 +38,11 @@ T.test ("a cube is a hull of its size about its origin, traced where it stands",
 	local origin = V (10, 20, 30)
 	local tr = Trace.New (engine).Cube (origin, 16)
 	local spec = engine.asked [1].spec
-	T.eq (engine.asked [1].kind, "hull", "a hull")
-	T.eq (spec.start, origin, "from its origin")
-	T.eq (spec.endpos, origin, "to it")
-	T.eq (Corners (spec), "-8,-8,-8 8,8,8", "its size about it")
-	T.eq (tr.spec, spec, "the engine's answer")
+	T.eq (engine.asked [1].kind, "hull",           "a hull")
+	T.eq (spec.start,            origin,           "from its origin")
+	T.eq (spec.endpos,           origin,           "to it")
+	T.eq (Corners (spec),        "-8,-8,-8 8,8,8", "its size about it")
+	T.eq (tr.spec,               spec,             "the engine's answer")
 end)
 
 T.test ("a trace takes the engine's mask and collision group and filters nothing, unless told", function ()
@@ -50,14 +50,14 @@ T.test ("a trace takes the engine's mask and collision group and filters nothing
 	local traces = Trace.New (engine)
 	traces.Cube (V (0, 0, 0), 4)
 	local spec = engine.asked [1].spec
-	T.eq (spec.mask, MASK, "the engine's mask")
+	T.eq (spec.mask,           MASK,  "the engine's mask")
 	T.eq (spec.collisiongroup, GROUP, "its group")
-	T.eq (#spec.filter, 0, "no filter")
+	T.eq (#spec.filter,        0,     "no filter")
 	local filter = { "me" }
 	traces.Cube (V (0, 0, 0), 4, 1, 5, filter)
 	spec = engine.asked [2].spec
-	T.eq (spec.mask .. "," .. spec.collisiongroup, "1,5", "as told")
-	T.eq (spec.filter, filter, "its filter")
+	T.eq (spec.mask .. "," .. spec.collisiongroup, "1,5",  "as told")
+	T.eq (spec.filter,                             filter, "its filter")
 end)
 
 T.test ("a player is Source's standing hull, scaled, on its feet at its origin", function ()
@@ -82,7 +82,7 @@ T.test ("with no origin, a shape is a preset: called on an origin, it traces the
 	T.eq (#engine.asked, 0, "nothing traced yet")
 	fits (V (5, 0, 0))
 	T.eq (engine.asked [1].spec.start.x, 5, "there")
-	T.eq (engine.asked [1].spec.mask, 7, "as preset")
+	T.eq (engine.asked [1].spec.mask,    7, "as preset")
 end)
 
 T.test ("a preset's Each is a generator over origins: each traced as it is reached", function ()
@@ -91,12 +91,12 @@ T.test ("a preset's Each is a generator over origins: each traced as it is reach
 	local spots = Spots (3)
 	local next, seen = fits:Each (spots), {}
 	local tr, origin, i = next ()
-	T.eq (#engine.asked, 1, "one traced for the first step")
-	T.eq (origin, spots [1], "the first origin")
-	T.eq (i, 1, "its place")
+	T.eq (#engine.asked, 1,         "one traced for the first step")
+	T.eq (origin,        spots [1], "the first origin")
+	T.eq (i,             1,         "its place")
 	T.eq (tr.spec.start, spots [1], "traced there")
 	for tr2, at in next do seen [#seen + 1] = tr2.spec.start == at end
-	T.eq (#seen, 2, "the rest, in a for loop")
+	T.eq (#seen,   2,   "the rest, in a for loop")
 	T.eq (next (), nil, "then done")
 end)
 
@@ -113,8 +113,8 @@ T.test ("a sphere is rays from its centre out to its radius, the nearest hit wha
 		if spec.endpos.z < -40 then return 0.75 end
 	end)
 	local tr, all = Trace.New (engine).Sphere (V (0, 0, 0), 50)
-	T.eq (#all, Trace.SPHERE_RAYS, "a ray each")
-	T.eq (engine.asked [1].kind, "line", "lines")
+	T.eq (#all,                  Trace.SPHERE_RAYS, "a ray each")
+	T.eq (engine.asked [1].kind, "line",            "lines")
 	for _, asked in ipairs (engine.asked) do
 		T.near (Geometry.Length (asked.spec.endpos), 50, 1e-9, "out to its radius")
 	end
@@ -131,8 +131,8 @@ T.test ("a frustum is rays from its eye across its view, the nearest hit what it
 	local tr, all = Trace.New (engine).Frustum (V (0, 0, 0), { forward = V (1, 0, 0), fov = 90, range = 100, cols = 3, rows = 3 })
 	T.eq (#all, 9, "a ray each")
 	local middle = engine.asked [5].spec
-	T.near (middle.endpos.x, 100, 1e-9, "the middle straight ahead")
-	T.near (middle.endpos.y, 0, 1e-9, "the middle straight ahead")
+	T.near (middle.endpos.x,                100, 1e-9, "the middle straight ahead")
+	T.near (middle.endpos.y,                0,   1e-9, "the middle straight ahead")
 	T.near (engine.asked [1].spec.endpos.y, 100, 1e-9, "a 90 degree view's left edge")
 	T.eq (tr.Fraction, 0.5, "the nearest hit, on its left")
 end)

@@ -194,7 +194,7 @@ function TOOL.BuildCPanel (CPanel)
 	CPanel:NumSlider ("#tool.emitter.scale", "emitter_scale", 0, 6)
 	CPanel:ControlHelp ("#tool.emitter.scale.help")
 
-	CPanel:CheckBox ("#tool.emitter.toggle", "emitter_toggle")
+	CPanel:CheckBox ("#tool.emitter.toggle",  "emitter_toggle")
 	CPanel:CheckBox ("#tool.emitter.starton", "emitter_starton")
 
 	local matselect = CPanel:MatSelect ("emitter_effect", nil, true, 0.25, 0.25)

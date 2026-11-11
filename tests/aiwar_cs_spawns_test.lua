@@ -15,12 +15,12 @@ end
 
 T.test ("each team has the spawn class of its CS:S side", function ()
 	local present = Present ({ "info_player_terrorist", "info_player_counterterrorist" })
-	T.eq (table.concat (Spawns.TeamClasses (RED, present), ","), "info_player_terrorist", "RED")
+	T.eq (table.concat (Spawns.TeamClasses (RED, present), ","),  "info_player_terrorist",        "RED")
 	T.eq (table.concat (Spawns.TeamClasses (BLUE, present), ","), "info_player_counterterrorist", "BLU")
 end)
 
 T.test ("a map without them gives a team none, and an unassigned team none", function ()
-	T.eq (#Spawns.TeamClasses (RED, Present ({ "info_player_counterterrorist" })), 0, "no terrorists' spawns")
+	T.eq (#Spawns.TeamClasses (RED, Present ({ "info_player_counterterrorist" })),       0, "no terrorists' spawns")
 	T.eq (#Spawns.TeamClasses (Teams.UNASSIGNED, Present ({ "info_player_terrorist" })), 0, "no team")
 end)
 

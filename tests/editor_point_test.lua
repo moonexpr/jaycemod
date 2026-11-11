@@ -49,10 +49,10 @@ T.test ("its entries show on a point's proxy and on the props of its base, nowhe
 	local proxy = Ent ("ws_proxy", "point")
 	for _, name in ipairs ({ "ws_point_owner", "ws_point_team", "ws_point_lock" }) do
 		local match = added [name].match
-		T.eq (match (proxy), true, name)
-		T.eq (match (Ent ("prop_dynamic", nil, nil, proxy)), true, name .. ": its base")
-		T.eq (match (Ent ("ws_proxy", "cart")), false, name .. ": a cart's proxy")
-		T.eq (match (Ent ("prop_dynamic")), false, name .. ": another prop")
+		T.eq (match (proxy),                                 true,  name)
+		T.eq (match (Ent ("prop_dynamic", nil, nil, proxy)), true,  name .. ": its base")
+		T.eq (match (Ent ("ws_proxy", "cart")),              false, name .. ": a cart's proxy")
+		T.eq (match (Ent ("prop_dynamic")),                  false, name .. ": another prop")
 	end
 end)
 
@@ -65,7 +65,7 @@ T.test ("Set Owner gives the point to RED, BLU or nobody", function ()
 	added = Load (capture)
 	local point = {}
 	T.eq (added.ws_point_owner.run (nil, Ent ("ws_proxy", "point", point), BLUE), true)
-	T.eq (capture.calls [1] [1], "owner")
+	T.eq (capture.calls [1] [1],                                                  "owner")
 	T.eq (capture.calls [1] [2], point, "the proxy's point")
 	T.eq (capture.calls [1] [3], BLUE)
 end)
@@ -75,9 +75,9 @@ T.test ("Lock or Unlock, from the proxy or the base", function ()
 	local added = Load (capture)
 	local point = {}
 	local proxy = Ent ("ws_proxy", "point", point)
-	added.ws_point_lock.run (nil, proxy, 1)
+	added.ws_point_lock.run (nil, proxy,                                 1)
 	added.ws_point_lock.run (nil, Ent ("prop_dynamic", nil, nil, proxy), 0)
-	T.eq (capture.calls [1] [3], true, "locked")
+	T.eq (capture.calls [1] [3], true,  "locked")
 	T.eq (capture.calls [2] [2], point, "through its base")
 	T.eq (capture.calls [2] [3], false, "unlocked")
 end)
@@ -93,12 +93,12 @@ T.test ("Set Team captures it for RED or BLU, with its outputs, and says why not
 	T.eq (table.concat (values, ","), RED .. "," .. BLUE)
 	local point = {}
 	T.eq (added.ws_point_team.run (nil, Ent ("ws_proxy", "point", point), RED), true)
-	T.eq (capture.calls [1] [1], "capture")
-	T.eq (capture.calls [1] [2], point)
-	T.eq (capture.calls [1] [3], RED)
+	T.eq (capture.calls [1] [1],                                                "capture")
+	T.eq (capture.calls [1] [2],                                                point)
+	T.eq (capture.calls [1] [3],                                                RED)
 	capture.refuse = "points cannot be captured now"
 	local ok, why = added.ws_point_team.run (nil, Ent ("ws_proxy", "point", point), BLUE)
-	T.eq (ok, false)
+	T.eq (ok,  false)
 	T.eq (why, "points cannot be captured now")
 end)
 

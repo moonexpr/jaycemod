@@ -9,17 +9,17 @@ AccessorFunc (ENT, "Texture", "FlashlightTexture")
 -- Set up our data table
 function ENT:SetupDataTables ()
 
-	self:NetworkVar ("Bool", 0, "On", { KeyName = "on", Edit = { type = "Boolean", order = 1, title = "#entedit.enabled" } })
-	self:NetworkVar ("Bool", 1, "Toggle", { KeyName = "toggle", Edit = { type = "Boolean", order = 2, title = "#tool.lamp.toggle" } })
-	self:NetworkVar ("Float", 0, "LightFOV", { KeyName = "fov", Edit = { type = "Float", order = 3, min = 10, max = 170, title = "#tool.lamp.fov" } })
-	self:NetworkVar ("Float", 1, "Distance", { KeyName = "dist", Edit = { type = "Float", order = 4, min = 64, max = 2048, title = "#tool.lamp.distance" } })
+	self:NetworkVar ("Bool",  0, "On",         { KeyName = "on", Edit = { type = "Boolean", order = 1, title = "#entedit.enabled" } })
+	self:NetworkVar ("Bool",  1, "Toggle",     { KeyName = "toggle", Edit = { type = "Boolean", order = 2, title = "#tool.lamp.toggle" } })
+	self:NetworkVar ("Float", 0, "LightFOV",   { KeyName = "fov", Edit = { type = "Float", order = 3, min = 10, max = 170, title = "#tool.lamp.fov" } })
+	self:NetworkVar ("Float", 1, "Distance",   { KeyName = "dist", Edit = { type = "Float", order = 4, min = 64, max = 2048, title = "#tool.lamp.distance" } })
 	self:NetworkVar ("Float", 2, "Brightness", { KeyName = "bright", Edit = { type = "Float", order = 5, min = 0, max = 8, title = "#tool.lamp.brightness" } })
 
 	if SERVER then
-		self:NetworkVarNotify ("On", self.OnUpdateLight)
-		self:NetworkVarNotify ("LightFOV", self.OnUpdateLight)
+		self:NetworkVarNotify ("On",         self.OnUpdateLight)
+		self:NetworkVarNotify ("LightFOV",   self.OnUpdateLight)
 		self:NetworkVarNotify ("Brightness", self.OnUpdateLight)
-		self:NetworkVarNotify ("Distance", self.OnUpdateLight)
+		self:NetworkVarNotify ("Distance",   self.OnUpdateLight)
 	end
 
 end
@@ -149,8 +149,8 @@ if SERVER then
 		self.flashlight:SetLocalAngles (lightInfo.Angle)
 
 		self.flashlight:SetKeyValue ("enableshadows", 1)
-		self.flashlight:SetKeyValue ("nearz", lightInfo.NearZ)
-		self.flashlight:SetKeyValue ("lightfov", math.Clamp (self:GetLightFOV (), 10, 170))
+		self.flashlight:SetKeyValue ("nearz",         lightInfo.NearZ)
+		self.flashlight:SetKeyValue ("lightfov",      math.Clamp (self:GetLightFOV (), 10, 170))
 
 		local dist = self:GetDistance ()
 		if not game.SinglePlayer () then dist = math.Clamp (dist, 64, 2048) end
@@ -200,7 +200,7 @@ if SERVER then
 		if not IsValid (self.flashlight) then return end
 
 		self.flashlight:Input ("SpotlightTexture", NULL, NULL, self:GetFlashlightTexture ())
-		self.flashlight:Input ("FOV", NULL, NULL, tostring (math.Clamp (self:GetLightFOV (), 10, 170)))
+		self.flashlight:Input ("FOV",              NULL, NULL, tostring (math.Clamp (self:GetLightFOV (), 10, 170)))
 
 		local dist = self:GetDistance ()
 		if not game.SinglePlayer () then dist = math.Clamp (dist, 64, 2048) end
@@ -268,7 +268,7 @@ function ENT:DrawEffects ()
 		local Col = self:GetColor ()
 		Col.a = Alpha
 
-		render.DrawSprite (LightPos, Size, Size, Col)
+		render.DrawSprite (LightPos, Size,       Size,       Col)
 		render.DrawSprite (LightPos, Size * 0.4, Size * 0.4, Color (255, 255, 255, Alpha))
 
 	end

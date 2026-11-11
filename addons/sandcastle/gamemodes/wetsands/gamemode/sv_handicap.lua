@@ -44,4 +44,4 @@ function WS.ClearHandicap ()
 end
 
 hook.Add ("WSTeamsScrambled", HOOK, WS.ClearHandicap)
-hook.Add ("WSGameBegin", HOOK, WS.ClearHandicap)
+hook.Add ("WSGameBegin",      HOOK, WS.ClearHandicap)

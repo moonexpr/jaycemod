@@ -83,15 +83,15 @@ function TagModel:Set (who)
 	local notices = {}
 	if self:Announces () then
 		if who ~= nil and who ~= self.it then
-			Say (notices, PRINT_TALK, who, WARN_VICTIM)
+			Say (notices, PRINT_TALK,   who, WARN_VICTIM)
 			Say (notices, PRINT_CENTER, who, WARN_VICTIM)
-			Sound (notices, SOUND_TO, who, YOU_ARE_IT_SOUND)
+			Sound (notices, SOUND_TO,   who, YOU_ARE_IT_SOUND)
 			Sound (notices, SOUND_FROM, who, SCREAM_SOUND)
 		end
 		local old = self.it
 		if old ~= nil and old ~= who and self.world:IsAlive (old) then
 			Sound (notices, SOUND_TO, old, TAGGED_OTHER_SOUND)
-			Say (notices, PRINT_TALK, old, LOST_AGGRO)
+			Say (notices, PRINT_TALK,   old, LOST_AGGRO)
 			Say (notices, PRINT_CENTER, old, LOST_AGGRO)
 		end
 	end

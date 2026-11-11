@@ -44,7 +44,7 @@ return function (t)
 	for i, bot in ipairs (bots) do
 		if i <= redSize then red [#red + 1] = bot else blue [#blue + 1] = bot end
 	end
-	t:Join (red, RED)
+	t:Join (red,  RED)
 	t:Join (blue, BLUE)
 
 	local states, last = {}, nil
@@ -57,6 +57,6 @@ return function (t)
 		return state == S.RND_RUNNING
 	end)
 	t:Info ("states_seen", states)
-	t:Info ("in_setup", WS.InSetup ())
+	t:Info ("in_setup",    WS.InSetup ())
 	t:Check ("the rounds reach RND_RUNNING", running ~= nil, table.concat (states, " > "))
 end

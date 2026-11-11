@@ -18,7 +18,7 @@ local function Lines (command)
 end
 
 T.test ("the chart sees the soldier through the soldier port", function ()
-	T.eq (Behavior.CHART.port, Behavior.PORT)
+	T.eq (Behavior.CHART.port,                          Behavior.PORT)
 	T.eq (table.concat (Behavior.PORT:Methods (), " "), table.concat (Behavior.METHODS, " "))
 end)
 

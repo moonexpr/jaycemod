@@ -266,7 +266,7 @@ function Controller:BattleLines (field, team)
 			shape = Inspect.Shape (points, facing)
 		}
 	end
-	Add ("posts", field.posts and field.posts [team], self.scenario.GUARDS_ALL_ROUND)
+	Add ("posts",         field.posts and field.posts [team],               self.scenario.GUARDS_ALL_ROUND)
 	Add ("forward posts", field.forwardPosts and field.forwardPosts [team], false)
 	return lines
 end

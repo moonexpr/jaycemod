@@ -13,7 +13,7 @@ SWEP.Secondary = { ClipSize = -1, DefaultClip = -1, Automatic = false, Ammo = "n
 local RELEASE, FORWARD = 0.1, 16
 
 function SWEP:SetupDataTables ()
-	self:NetworkVar ("Bool", 0, "Pulled")
+	self:NetworkVar ("Bool",  0, "Pulled")
 	self:NetworkVar ("Float", 0, "ThrowAt")
 end
 

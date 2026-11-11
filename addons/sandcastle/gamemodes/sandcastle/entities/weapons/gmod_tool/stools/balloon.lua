@@ -234,14 +234,14 @@ function TOOL.BuildCPanel (CPanel)
 
 end
 
-list.Set ("BalloonModels", "normal", { model = "models/maxofs2d/balloon_classic.mdl", skin = 0 })
+list.Set ("BalloonModels", "normal",       { model = "models/maxofs2d/balloon_classic.mdl", skin = 0 })
 list.Set ("BalloonModels", "normal_skin1", { model = "models/maxofs2d/balloon_classic.mdl", skin = 1 })
 list.Set ("BalloonModels", "normal_skin2", { model = "models/maxofs2d/balloon_classic.mdl", skin = 2 })
 list.Set ("BalloonModels", "normal_skin3", { model = "models/maxofs2d/balloon_classic.mdl", skin = 3 })
 
-list.Set ("BalloonModels", "gman", { model = "models/maxofs2d/balloon_gman.mdl", nocolor = true })
+list.Set ("BalloonModels", "gman",    { model = "models/maxofs2d/balloon_gman.mdl", nocolor = true })
 list.Set ("BalloonModels", "mossman", { model = "models/maxofs2d/balloon_mossman.mdl", nocolor = true })
 
-list.Set ("BalloonModels", "dog", { model = "models/balloons/balloon_dog.mdl" })
+list.Set ("BalloonModels", "dog",   { model = "models/balloons/balloon_dog.mdl" })
 list.Set ("BalloonModels", "heart", { model = "models/balloons/balloon_classicheart.mdl" })
-list.Set ("BalloonModels", "star", { model = "models/balloons/balloon_star.mdl" })
+list.Set ("BalloonModels", "star",  { model = "models/balloons/balloon_star.mdl" })

@@ -11,7 +11,7 @@ ENT.Base = "base_anim"
 ENT.RenderGroup = RENDERGROUP_BOTH
 
 function ENT:SetupDataTables ()
-	self:NetworkVar ("Int", 0, "RoomTeam")
+	self:NetworkVar ("Int",  0, "RoomTeam")
 	self:NetworkVar ("Bool", 0, "RoomActive")
 	self:NetworkVar ("Bool", 1, "Enabled")
 	-- CFuncRespawnRoomVisualizer::SetActive: solid, or a trigger that stops nobody.

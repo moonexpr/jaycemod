@@ -166,7 +166,7 @@ T.test ("a Combine NextBot on RED (the gamemode's answer) wears RED's copies", f
 	soldier.team = "red"
 	timers.teamtint_sweep ()
 	Check (soldier.sub [0] == "!teamtint_red_models_combine_soldier_combinesoldiersheet", "the sheet wears RED's copy: " .. tostring (soldier.sub [0]))
-	Check (soldier.sub [1] == nil, "the eye is left alone")
+	Check (soldier.sub [1] == nil,                                                        "the eye is left alone")
 	entry = TeamTint.materials ["red|models/combine_soldier/combinesoldiersheet"]
 	Check (entry and entry.strategy == "baked", "the sheet is baked (its RED texture exists)")
 	Check (entry.material.params ["$basetexture"] == "teamtint/red/models/combine_soldier/combinesoldiersheet", "it wears the baked base")
@@ -190,8 +190,8 @@ T.test ("a knob turned rewrites the copies", function ()
 	before = cloth.material.recomputed
 	convars.teamtint_rim_boost:SetString ("5")
 	Check (cloth.material.params ["$rimlightboost"] == 5, "rim boost written live")
-	Check (cloth.material.recomputed > before, "recomputed")
-	Check (TeamTint.tuning.base.rim_boost == 5, "kept in the tuning for all")
+	Check (cloth.material.recomputed > before,            "recomputed")
+	Check (TeamTint.tuning.base.rim_boost == 5,           "kept in the tuning for all")
 end)
 
 T.test ("a scope: armour's own value, cloth keeps all's", function ()
@@ -201,7 +201,7 @@ T.test ("a scope: armour's own value, cloth keeps all's", function ()
 	Check (entry.material.params ["$rimlightboost"] == 7 and cloth.material.params ["$rimlightboost"] == 5, "armour 7, cloth still 5")
 	convars.teamtint_scope:SetString ("all")
 	Check (convars.teamtint_rim_boost:GetString () == "5", "back on all: 5")
-	Check (TeamTint.tuning.classes.armor.rim_boost == 7, "loading a scope wrote nothing")
+	Check (TeamTint.tuning.classes.armor.rim_boost == 7,   "loading a scope wrote nothing")
 end)
 
 T.test ("the views swap the copies' parameters and the lighting", function ()
@@ -244,7 +244,7 @@ end)
 
 T.test ("the bench swaps in $softwareskin copies", function ()
 	convars.teamtint_bench_softwareskin:SetString ("1")
-	Check (soldier.sub [0] == "!teamtint_red_ss_models_combine_soldier_combinesoldiersheet", "bench copy")
+	Check (soldier.sub [0] == "!teamtint_red_ss_models_combine_soldier_combinesoldiersheet",               "bench copy")
 	Check (created.teamtint_red_ss_models_combine_soldier_combinesoldiersheet.kv ["$softwareskin"] == "1", "with $softwareskin")
 	convars.teamtint_bench_softwareskin:SetString ("0")
 	Check (soldier.sub [0] == "!teamtint_red_models_combine_soldier_combinesoldiersheet", "bench off")
@@ -262,7 +262,7 @@ T.test ("the export writes each copy as a VMT", function ()
 		if path:find ("^teamtint/export/red/") then exported = text end
 	end
 	Check (exported and exported:find ('"$lightwarptexture" "teamtint/lightwarp"', 1, true), "an exported VMT")
-	Check (TeamTint.ConvarText ():find ("teamtint_rim_boost", 1, true), "the knobs as text")
+	Check (TeamTint.ConvarText ():find ("teamtint_rim_boost", 1, true),                      "the knobs as text")
 end)
 
 T.finish ()

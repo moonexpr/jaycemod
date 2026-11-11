@@ -20,8 +20,8 @@ T.test ("two points, either side of the blocker, square to the way", function ()
 	T.eq (#points, 2, "both sides")
 	local out = 20 + 16 + Locomotion.DETOUR_MARGIN
 	for i, p in ipairs (points) do
-		T.near (p.x, center.x, 1e-9, i .. ": level with the blocker along the way")
-		T.near (math.abs (p.y), out, 1e-9, i .. ": its extent, the walker's and the margin out")
+		T.near (p.x,            center.x, 1e-9, i .. ": level with the blocker along the way")
+		T.near (math.abs (p.y), out,      1e-9, i .. ": its extent, the walker's and the margin out")
 		T.eq (p.z, from.z, i .. ": at the walker's height")
 	end
 	T.eq (points [1].y * points [2].y < 0, true, "opposite sides")

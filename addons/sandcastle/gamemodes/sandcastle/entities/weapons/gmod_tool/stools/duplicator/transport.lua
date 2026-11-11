@@ -46,7 +46,7 @@ if SERVER then
 			-- print( "S [ " .. i .. " / " .. parts .. " ] Size: " .. size .. " Start: " .. start .. " End: " .. endbyte )
 
 			net.Start ("ReceiveDupe")
-			net.WriteUInt (i, 8)
+			net.WriteUInt (i,     8)
 			net.WriteUInt (parts, 8)
 
 			net.WriteUInt (size, 32)

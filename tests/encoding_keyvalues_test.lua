@@ -26,8 +26,8 @@ end)
 
 T.test ("quoted strings take the escapes and may span lines", function ()
 	T.eq (Pairs ('{ "k" "a\\nb\\t\\"c\\"\\\\" }'), ':k=a\nb\t"c"\\', "escapes")
-	T.eq (Pairs ('{ "k" "two\nlines" }'), ":k=two\nlines", "spanning lines")
-	T.eq (Pairs ('{ "k" "\\q" }'), ":k=q", "an unknown escape is its character")
+	T.eq (Pairs ('{ "k" "two\nlines" }'),          ":k=two\nlines",  "spanning lines")
+	T.eq (Pairs ('{ "k" "\\q" }'),                 ":k=q",           "an unknown escape is its character")
 end)
 
 T.test ("an unterminated string runs to the end", function ()

@@ -72,8 +72,8 @@ local function Fell (victim)
 	if enemy and Controller.intel [enemy] then Controller.intel [enemy]:Gone (victim) end
 end
 
-hook.Add ("OnNPCKilled", "ws_aiwar_intel", Fell)
-hook.Add ("PlayerDeath", "ws_aiwar_intel", Fell)
+hook.Add ("OnNPCKilled",   "ws_aiwar_intel", Fell)
+hook.Add ("PlayerDeath",   "ws_aiwar_intel", Fell)
 hook.Add ("EntityRemoved", "ws_aiwar_intel", function (ent)
 	if not Controller.intel then return end
 	for _, intel in pairs (Controller.intel) do intel:Gone (ent) end

@@ -738,6 +738,6 @@ function dev.check_restore ()
 	}
 end
 
-dev.Command ("dev_check_restore", function () return dev.check_restore () end, "capture, disturb, apply, diff (result in dev.last_check_restore)")
-dev.Command ("dev_state", function (args) return dev.state ({ verbose = args [1] == "verbose" }) end, "dev_state [verbose]")
+dev.Command ("dev_check_restore",   function () return dev.check_restore () end, "capture, disturb, apply, diff (result in dev.last_check_restore)")
+dev.Command ("dev_state",           function (args) return dev.state ({ verbose = args [1] == "verbose" }) end, "dev_state [verbose]")
 dev.Command ("dev_check_roundtrip", function () return dev.check_roundtrip () end, "capture, apply, capture, diff")

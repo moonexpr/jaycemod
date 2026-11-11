@@ -99,19 +99,19 @@ for i, entry in ipairs (STRATEGIES) do
 				first = first or string.format ("area %d rise %s: Lua %.17g, native %.17g", step.areaId, step.heightChange, lua, native)
 			end
 		end
-		T.eq (first, nil, name .. ": first mismatch")
-		T.eq (mismatches, 0, name .. ": mismatches")
+		T.eq (first,                                 nil,  name .. ": first mismatch")
+		T.eq (mismatches,                            0,    name .. ": mismatches")
 		T.eq (impassable > 0 and impassable < STEPS, true, name .. ": the steps reach both answers")
 	end)
 end
 
 T.test ("a model without its jump rule, or without a limit, is refused", function ()
 	local ok, why = pcall (Native.Walker, { stepHeight = 18, jumpHeight = 56, deathDropHeight = 100 })
-	T.eq (ok, false, "no jump rule")
-	T.eq (why:find ("jumpAdded", 1, true) ~= nil, true, "names the rule")
+	T.eq (ok,                                     false, "no jump rule")
+	T.eq (why:find ("jumpAdded", 1, true) ~= nil, true,  "names the rule")
 	ok, why = pcall (Native.Walker, { jumpHeight = 56, deathDropHeight = 100, jumpScaled = 2 })
-	T.eq (ok, false, "no step height")
-	T.eq (why:find ("stepHeight", 1, true) ~= nil, true, "names the limit")
+	T.eq (ok,                                      false, "no step height")
+	T.eq (why:find ("stepHeight", 1, true) ~= nil, true,  "names the limit")
 end)
 
 T.finish ()

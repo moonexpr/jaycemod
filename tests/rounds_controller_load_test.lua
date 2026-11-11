@@ -124,8 +124,8 @@ T.test ("a map loaded in Sandbox has the world hold its spawn doors open", funct
 	map.EnsureProxy = function () end
 	map.ActivateTimers = function () end
 	map:SetUpMap ()
-	T.eq (started, true, "Sandbox mode initialized")
-	T.eq (openedAt, 0, "the world opened the doors at map setup")
+	T.eq (started,  true, "Sandbox mode initialized")
+	T.eq (openedAt, 0,    "the world opened the doors at map setup")
 	local Kind = T.require ("features.world.doors").KIND
 	local asked = {}
 	for _, kind in ipairs (openedKinds) do asked [kind] = true end
@@ -170,7 +170,7 @@ T.test ("a timer the gamerules made is forgotten as it is unbound", function ()
 		controller [field] = ent
 		controller:UnbindTimer (ent)
 		T.eq (controller [field] == ent, false, field .. " let go")
-		T.eq (controller.timers [ent], nil, field .. " unbound")
+		T.eq (controller.timers [ent],   nil,   field .. " unbound")
 	end
 end)
 
@@ -235,17 +235,17 @@ end
 T.test ("a map without an objective gets Sandcastle's gamerules, running no rounds", function ()
 	local map = Map (false)
 	map.controller:EnsureProxy ()
-	T.eq (map:Made (), "ws_gamerules/ws_gamerules", "made")
-	T.eq (map.ws.Rules, map.created [1], "WS.Rules")
-	T.eq (map.published.ws_rounds_active, false, "no rounds")
+	T.eq (map:Made (),                    "ws_gamerules/ws_gamerules", "made")
+	T.eq (map.ws.Rules,                   map.created [1],             "WS.Rules")
+	T.eq (map.published.ws_rounds_active, false,                       "no rounds")
 end)
 
 T.test ("a map with an objective and no tf_gamerules gets one, named as TF2 names it, running rounds", function ()
 	local map = Map (true)
 	map.controller:EnsureProxy ()
-	T.eq (map:Made (), "tf_gamerules/tf_gamerules", "made")
-	T.eq (map.ws.Rules, map.created [1], "WS.Rules")
-	T.eq (map.published.ws_rounds_active, true, "rounds")
+	T.eq (map:Made (),                    "tf_gamerules/tf_gamerules", "made")
+	T.eq (map.ws.Rules,                   map.created [1],             "WS.Rules")
+	T.eq (map.published.ws_rounds_active, true,                        "rounds")
 end)
 
 T.test ("a map's own tf_gamerules are its rules, and none are made beside them", function ()
@@ -253,7 +253,7 @@ T.test ("a map's own tf_gamerules are its rules, and none are made beside them",
 	local own = map.Entity ("tf_gamerules")
 	own:Spawn ()
 	map.controller:EnsureProxy ()
-	T.eq (map:Made (), "", "none made")
+	T.eq (map:Made (),  "",  "none made")
 	T.eq (map.ws.Rules, own, "WS.Rules")
 end)
 
@@ -273,9 +273,9 @@ T.test ("gamerules removed by a cleanup are made again after it, rounds as they 
 		map:Remove (map.created [1], false)
 		T.eq (#map.created, 1, "none made during the cleanup")
 		map.controller:AfterCleanup ()
-		T.eq (map:Made (), case.made .. " " .. case.made, "made again")
-		T.eq (map.ws.Rules, map.created [2], "WS.Rules")
-		T.eq (map.published.ws_rounds_active, case.rounds, "rounds as they stood")
+		T.eq (map:Made (),                    case.made .. " " .. case.made, "made again")
+		T.eq (map.ws.Rules,                   map.created [2],               "WS.Rules")
+		T.eq (map.published.ws_rounds_active, case.rounds,                   "rounds as they stood")
 	end
 end)
 
@@ -296,9 +296,9 @@ T.test ("gamerules removed outside a cleanup are replaced at once under their na
 	own:SetName ("tf_gamerules")
 	own:Spawn ()
 	map:Remove (own, true)
-	T.eq (map:Made (), "ws_gamerules/tf_gamerules", "replaced")
-	T.eq (map.ws.Rules, map.created [1], "WS.Rules")
-	T.eq (map.published.ws_rounds_active, true, "the rounds go on")
+	T.eq (map:Made (),                    "ws_gamerules/tf_gamerules", "replaced")
+	T.eq (map.ws.Rules,                   map.created [1],             "WS.Rules")
+	T.eq (map.published.ws_rounds_active, true,                        "the rounds go on")
 end)
 
 -- A game begun on a map without rounds (games.system.gamemode's loadRounds)
@@ -308,16 +308,16 @@ T.test ("a game begun on a map without rounds runs them on its gamerules", funct
 	local map = Map (false)
 	map.controller:EnsureProxy ()
 	map.controller:EnsureRules ()
-	T.eq (map:Made (), "ws_gamerules/ws_gamerules", "no other gamerules")
-	T.eq (map.published.ws_rounds_active, true, "rounds")
+	T.eq (map:Made (),                    "ws_gamerules/ws_gamerules", "no other gamerules")
+	T.eq (map.published.ws_rounds_active, true,                        "rounds")
 end)
 
 T.test ("a game begun before the map was set up makes its gamerules", function ()
 	local map = Map (false)
 	map.controller:EnsureRules ()
-	T.eq (map:Made (), "ws_gamerules/ws_gamerules", "made")
-	T.eq (map.ws.Rules, map.created [1], "WS.Rules")
-	T.eq (map.published.ws_rounds_active, true, "rounds")
+	T.eq (map:Made (),                    "ws_gamerules/ws_gamerules", "made")
+	T.eq (map.ws.Rules,                   map.created [1],             "WS.Rules")
+	T.eq (map.published.ws_rounds_active, true,                        "rounds")
 end)
 
 -- Without rounds there are no respawn waves: a death is Sandbox's, the

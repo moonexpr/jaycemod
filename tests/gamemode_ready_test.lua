@@ -25,16 +25,16 @@ local function Q (over)
 end
 
 T.test ("MvM readies each defender, every other mode its teams", function ()
-	T.eq (Ready.Kind (true), Ready.PLAYER, "MvM")
-	T.eq (Ready.Kind (false), Ready.TEAM, "the rest")
+	T.eq (Ready.Kind (true),  Ready.PLAYER, "MvM")
+	T.eq (Ready.Kind (false), Ready.TEAM,   "the rest")
 end)
 
 T.test ("a team ready-up ends the wait once every team with players is ready", function ()
-	T.eq (Ready.Met (Q ()), false, "BLU not ready")
-	T.eq (Ready.Met (Q ({ teamReady = { [RED] = false, [BLUE] = true } })), true, "BLU ready, RED has nobody")
+	T.eq (Ready.Met (Q ()),                                                 false, "BLU not ready")
+	T.eq (Ready.Met (Q ({ teamReady = { [RED] = false, [BLUE] = true } })), true,  "BLU ready, RED has nobody")
 	local both = { [RED] = 2, [BLUE] = 1 }
 	T.eq (Ready.Met (Q ({ humans = both, teamReady = { [RED] = false, [BLUE] = true } })), false, "RED has players, not ready")
-	T.eq (Ready.Met (Q ({ humans = both, teamReady = { [RED] = true, [BLUE] = true } })), true, "both ready")
+	T.eq (Ready.Met (Q ({ humans = both, teamReady = { [RED] = true, [BLUE] = true } })),  true,  "both ready")
 end)
 
 T.test ("a team ready-up needs somebody on a team, and the players being there is enough on its own", function ()
@@ -52,24 +52,24 @@ T.test ("an MvM ready-up waits for the players, then for every defender to ready
 	end
 	T.eq (M ({ have = 3, need = 6, readyDefenders = 2 }), false, "too few, all ready")
 	T.eq (M ({ have = 6, need = 6, readyDefenders = 1 }), false, "enough, one not ready")
-	T.eq (M ({ have = 6, need = 6, readyDefenders = 2 }), true, "enough, all ready")
+	T.eq (M ({ have = 6, need = 6, readyDefenders = 2 }), true,  "enough, all ready")
 	T.eq (M ({ have = 6, need = 6, readyDefenders = 0, humans = { [RED] = 0, [BLUE] = 0 } }), true,
 		"no defender to ready: the count alone, as before")
 end)
 
 T.test ("MvM's ready toggle is enabled only once its players are there", function ()
 	T.eq (Ready.Enabled (Q ({ kind = Ready.PLAYER, have = 5, need = 6 })), false, "waiting for players")
-	T.eq (Ready.Enabled (Q ({ kind = Ready.PLAYER, have = 6, need = 6 })), true, "enough")
-	T.eq (Ready.Enabled (Q ({ kind = Ready.TEAM, have = 1, need = 6 })), true, "a team readies at any count")
+	T.eq (Ready.Enabled (Q ({ kind = Ready.PLAYER, have = 6, need = 6 })), true,  "enough")
+	T.eq (Ready.Enabled (Q ({ kind = Ready.TEAM, have = 1, need = 6 })),   true,  "a team readies at any count")
 end)
 
 T.test ("who may toggle: a team's player its team, an MvM defender themself", function ()
-	T.eq (Ready.MayToggle (Ready.TEAM, BLUE, RED), true, "BLU")
-	T.eq (Ready.MayToggle (Ready.TEAM, RED, RED), true, "RED")
+	T.eq (Ready.MayToggle (Ready.TEAM, BLUE, RED),       true,  "BLU")
+	T.eq (Ready.MayToggle (Ready.TEAM, RED, RED),        true,  "RED")
 	T.eq (Ready.MayToggle (Ready.TEAM, UNASSIGNED, RED), false, "no team")
-	T.eq (Ready.MayToggle (Ready.TEAM, SPECTATOR, RED), false, "a spectator")
-	T.eq (Ready.MayToggle (Ready.PLAYER, RED, RED), true, "a defender")
-	T.eq (Ready.MayToggle (Ready.PLAYER, BLUE, RED), false, "an invader")
+	T.eq (Ready.MayToggle (Ready.TEAM, SPECTATOR, RED),  false, "a spectator")
+	T.eq (Ready.MayToggle (Ready.PLAYER, RED, RED),      true,  "a defender")
+	T.eq (Ready.MayToggle (Ready.PLAYER, BLUE, RED),     false, "an invader")
 end)
 
 T.finish ()

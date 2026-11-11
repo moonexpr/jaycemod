@@ -6,10 +6,10 @@ ENT.Editable = true
 
 function ENT:SetupDataTables ()
 
-	self:NetworkVar ("Int", 0, "Key")
+	self:NetworkVar ("Int",  0, "Key")
 	self:NetworkVar ("Bool", 0, "On")
-	self:NetworkVar ("Bool", 1, "IsToggle", { KeyName = "tg", Edit = { type = "Boolean", order = 1, title = "#tool.button.toggle" } })
-	self:NetworkVar ("String", 0, "Label", { KeyName = "lbl", Edit = { type = "Generic", order = 2, title = "#tool.button.text" } })
+	self:NetworkVar ("Bool",   1, "IsToggle", { KeyName = "tg", Edit = { type = "Boolean", order = 1, title = "#tool.button.toggle" } })
+	self:NetworkVar ("String", 0, "Label",    { KeyName = "lbl", Edit = { type = "Generic", order = 2, title = "#tool.button.text" } })
 
 	if SERVER then
 		self:SetOn (false)
