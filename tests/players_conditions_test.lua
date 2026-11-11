@@ -67,4 +67,19 @@ T.test("a victim marked for death takes mini-crits", function()
 	T.eq(after, P.HIT_NORMAL, "nor once the mark is gone")
 end)
 
+-- TF_COND_OFFENSEBUFF: the attacker deals mini-crits.
+T.test("an attacker with the offense buff deals mini-crits, a crit boost still crits", function()
+	T.eq(C.OFFENSEBUFF, 16, "TF_COND_OFFENSEBUFF")
+	local buffed = {}
+	P.AddCond(buffed, C.OFFENSEBUFF, -1, 0)
+	local scale, kind = P.Hit({}, buffed, 1, {})
+	T.eq(kind, P.HIT_MINICRIT, "a mini-crit")
+	T.eq(scale, P.MINICRIT_MULTIPLIER, "its damage")
+	local _, own = P.Hit({}, buffed, 1, { selfHarm = true })
+	T.eq(own, P.HIT_NORMAL, "not on themselves")
+	P.AddCond(buffed, C.CRITBOOSTED, -1, 0)
+	local _, crit = P.Hit({}, buffed, 1, {})
+	T.eq(crit, P.HIT_CRIT, "the crit wins")
+end)
+
 T.finish()

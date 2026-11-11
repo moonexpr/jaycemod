@@ -345,7 +345,7 @@ T.test("the boss bindings load nothing at top level", function()
 		"headless_hatman.lua",
 		"eyeball_boss.lua",
 		"teleport_vortex.lua",
-		"tf_projectile_rocket.lua",
+		"ent_projectile_rocket.lua",
 	}
 	for _, file in ipairs(files) do
 		for line in ReadFile(ENTITIES .. file):gmatch("[^\n]+") do

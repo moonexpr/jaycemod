@@ -5,8 +5,8 @@ local WEAPON_HELPER = "player_class/simple_weapon_loadout.lua"
 local CLASS_FILES = {
 	{ path = "player_class/player_combatant.lua", name = "player_combatant", base = "player_sandbox", driver = true },
 	{ path = "player_class/player_combatant_cstrike.lua", name = "player_combatant_cstrike", base = "player_base", driver = true },
-	{ path = "player_class/player_sandcastle.lua", name = "player_sandcastle", base = "player_sandbox", driver = true },
-	{ path = "player_class/player_spectator.lua", name = "player_spectator", base = "player_sandbox" },
+	{ path = "player_class/player_sandcastle.lua", name = "player_sandcastle", base = "player_default", driver = true },
+	{ path = "player_class/player_spectator.lua", name = "player_spectator", base = "player_default" },
 }
 
 local file = assert(io.open(ROOT .. "shared.lua"))
@@ -37,6 +37,7 @@ T.test("selected player classes register under distinct names and bases", functi
 			WS = { TEAM_UNASSIGNED = 0, TEAM_SPECTATOR = 1 },
 			DEFINE_BASECLASS = function() end,
 			GM = gamemode,
+			TauntCamera = function() return {} end,
 			player_manager = {
 				RegisterClass = function(name, definition, base)
 					registered = { name = name, definition = definition, base = base }
@@ -47,6 +48,30 @@ T.test("selected player classes register under distinct names and bases", functi
 		T.eq(registered.name, class.name, class.path .. " class name")
 		T.eq(registered.base, class.base, class.path .. " base class")
 		T.eq(type(registered.definition), "table", class.path .. " class definition")
+	end
+end)
+
+-- A parent nothing registers is an empty table: the class has no SetupDataTables,
+-- and player_manager fails on it each time a player is given the class.
+T.test("every player class's parent is a registered class", function()
+	local registered = { player_default = "player_default", player_sandbox = "player_default" }
+	for _, class in ipairs(CLASS_FILES) do
+		local env = setmetatable({
+			WS = { TEAM_UNASSIGNED = 0, TEAM_SPECTATOR = 1 },
+			DEFINE_BASECLASS = function() end,
+			GM = gamemode,
+			TauntCamera = function() return {} end,
+			hook = { Add = function() end },
+			player_manager = {
+				RegisterClass = function(name, _, base) registered[name] = base end,
+			},
+		}, { __index = _G })
+		setfenv(assert(loadfile(ROOT .. class.path)), env)()
+	end
+	for name, base in pairs(registered) do
+		if name ~= "player_default" then
+			T.eq(registered[base] ~= nil, true, name .. "'s parent " .. tostring(base) .. " is registered")
+		end
 	end
 end)
 
@@ -130,6 +155,7 @@ T.test("default combatant, CS:S combatant, and Sandcastle use their weapon drive
 		local env = setmetatable({
 			DEFINE_BASECLASS = function() end,
 			GM = gamemode,
+			TauntCamera = function() return {} end,
 			player_manager = {
 				RegisterClass = function(_, registered) definition = registered end,
 			},
@@ -159,6 +185,74 @@ T.test("default combatant, CS:S combatant, and Sandcastle use their weapon drive
 		T.eq(Contains(captured.weapons, "weapon_physgun"), path == "player_class/player_sandcastle.lua",
 			path .. " preserves its physgun policy")
 	end
+end)
+
+T.test("player_sandcastle is player_sandbox's sibling, without its move code", function()
+	local base = { spawned = 0, modelled = 0 }
+	function base.Spawn() base.spawned = base.spawned + 1 end
+	function base.SetModel() base.modelled = base.modelled + 1 end
+	local camera = {}
+	for _, method in ipairs({ "ShouldDrawLocalPlayer", "CreateMove", "CalcView" }) do
+		camera[method] = function() return true end
+	end
+	local definition
+	local env = setmetatable({
+		DEFINE_BASECLASS = function() end,
+		BaseClass = base,
+		GM = gamemode,
+		TauntCamera = function() return camera end,
+		string = setmetatable({
+			Explode = function(_, text)
+				local parts = {}
+				for part in text:gmatch("%S+") do parts[#parts + 1] = part end
+				return parts
+			end,
+		}, { __index = string }),
+		Vector = function(text)
+			local length = text == "0 0 0" and 0 or 1
+			return { text = text, x = text, Length = function() return length end }
+		end,
+		player_manager = {
+			RegisterClass = function(_, registered) definition = registered end,
+		},
+	}, { __index = _G })
+	-- DEFINE_BASECLASS makes a local in the game; here the same name reads from env
+	setfenv(assert(loadfile(ROOT .. "player_class/player_sandcastle.lua")), env)()
+
+	for _, method in ipairs({ "StartMove", "Move", "FinishMove" }) do
+		T.eq(definition[method], nil, method .. " is left to player_default")
+	end
+	for _, speed in ipairs({ "SlowWalkSpeed", "WalkSpeed", "RunSpeed", "DuckSpeed", "UnDuckSpeed" }) do
+		T.eq(type(definition[speed]), "number", speed .. " is the class's own")
+	end
+
+	local info = { cl_playercolor = "1 0 0", cl_weaponcolor = "0 0 0", cl_playerbodygroups = "2 x" }
+	local ply = { groups = {} }
+	function ply:GetInfo(name) return info[name] end
+	function ply:GetInfoNum() return 3 end
+	function ply:SetSkin(skin) self.skin = skin end
+	function ply:GetNumBodyGroups() return 3 end
+	function ply:SetBodygroup(index, value) self.groups[index] = value end
+	function ply:SetPlayerColor(color) self.playerColor = color end
+	function ply:SetWeaponColor(color) self.weaponColor = color end
+	function ply:IsPlayingTaunt() return false end
+	local class = { Player = ply, TauntCam = definition.TauntCam }
+
+	definition.Spawn(class)
+	T.eq(base.spawned, 1, "Spawn runs player_default's")
+	T.eq(ply.playerColor.text, "1 0 0", "the player's colour is their setting")
+	T.eq(ply.weaponColor.x, 0.001, "a black weapon colour is lifted off zero")
+
+	definition.SetModel(class)
+	T.eq(base.modelled, 1, "SetModel runs player_default's")
+	T.eq(ply.skin, 3, "the skin is the player's setting")
+	T.eq(ply.groups[0], 2, "a bodygroup is the player's setting")
+	T.eq(ply.groups[1], 0, "an unreadable bodygroup is the first")
+	T.eq(ply.groups[2], 0, "a missing bodygroup is the first")
+
+	T.eq(definition.ShouldDrawLocal(class), true, "the taunt camera draws the player")
+	T.eq(definition.CreateMove(class, {}), true, "the taunt camera takes the command")
+	T.eq(definition.CalcView(class, {}), true, "the taunt camera takes the view")
 end)
 
 T.finish()

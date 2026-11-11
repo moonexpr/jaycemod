@@ -572,6 +572,30 @@ T.test("the scenario's properties reach the master, the clock and the rules", fu
 	T.eq(Of(specs, "game_round_win")[1].keys.TeamNum, tostring(RED), "who the clock's end favours")
 end)
 
+T.test("team timers make the game King of the Hill, tf_logic_koth in place of the round clock", function()
+	local specs = Builder.Compile({
+		Piece(1, Builder.POINT),
+		Piece(2, Builder.SCENARIO, { props = { TeamTimers = true, TeamTimerLength = 120, TeamUnlockPoint = 15, TimerLength = 300 } }),
+	}).specs
+	local logic = Of(specs, "tf_logic_koth")[1]
+	T.eq(logic.keys.timer_length, "120", "each team's clock")
+	T.eq(logic.keys.unlock_point, "15", "when the point unlocks")
+	T.eq(#Of(specs, "team_round_timer"), 0, "no round clock")
+	T.eq(#Of(specs, "game_round_win"), 0, "the team clocks end the round")
+	T.eq(#Of(specs, "team_control_point_master"), 1, "the point is still played under a master")
+end)
+
+T.test("without team timers the game has its round clock and no King of the Hill", function()
+	local specs = Builder.Compile({ Piece(1, Builder.POINT), Piece(2, Builder.SCENARIO) }).specs
+	T.eq(#Of(specs, "tf_logic_koth"), 0, "no logic")
+	T.eq(#Of(specs, "team_round_timer"), 1, "the round clock")
+end)
+
+T.test("team timers without a point make nothing", function()
+	local specs = Builder.Compile({ Piece(1, Builder.SCENARIO, { props = { TeamTimers = true } }) }).specs
+	T.eq(#Of(specs, "tf_logic_koth"), 0, "there is no hill")
+end)
+
 T.test("the scenario tells the rules what a map's outputs would", function()
 	local inputs = Builder.Compile({
 		Piece(1, Builder.SCENARIO, { props = { RedRespawn = 8, BluRespawn = 0, RedGoal = "Hold the bridge", StalemateOnTimelimit = true } }),
@@ -590,6 +614,13 @@ T.test("every field of the scenario has Hammer's help", function()
 		T.eq(type(prop.help), "string", prop.name)
 		Holds(#prop.help > 0, prop.name .. " says something")
 	end
+end)
+
+T.test("a control point's index and group say what they do", function()
+	local help = {}
+	for _, prop in ipairs(Classes[Builder.POINT].Properties) do help[prop.name] = prop.help end
+	T.eq(type(help.PointIndex), "string", "the index")
+	T.eq(type(help.Group), "string", "the group")
 end)
 
 T.test("the scenario's goals are chosen from TF2's own, or none", function()

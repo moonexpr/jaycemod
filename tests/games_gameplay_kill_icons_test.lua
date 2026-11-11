@@ -143,6 +143,13 @@ T.test("a prop's kill shows the gravity gun and its box, whatever kind of prop i
 	end
 end)
 
+-- Sandcastle's rocket and pipe have their own class names; TF2's icons keep TF2's.
+T.test("Sandcastle's rocket and pipe show TF2's icons for them", function()
+	local icons = Icons.Over(Icons.Parse(TEXTURES), Icons.Parse(OWN))
+	T.eq(Icons.For(icons, "ent_projectile_rocket"), icons.tf_projectile_rocket, "the rocket")
+	T.eq(Icons.HL2.ent_projectile_pipe, "tf_projectile_pipe", "the pipe")
+end)
+
 T.test("a pumpkin bomb's kill shows the pumpkin, the pumpkin spell's too", function()
 	local icons = Icons.Over(Icons.Parse(TEXTURES), Icons.Parse(OWN))
 	T.eq(Icons.For(icons, "tf_pumpkin_bomb"), icons.tf_pumpkin_bomb)
@@ -165,7 +172,7 @@ T.test("the shipped layout has every icon an alias or boss names, on sheets that
 	for _, name in pairs(Icons.HL2) do names[name] = true end
 	for name in pairs(Icons.BOSSES) do names[name] = true end
 	for _, own in ipairs({ "weapon_frag", "weapon_crowbar", "weapon_stunstick", "tf_pumpkin_bomb" }) do names[own] = true end
-	local TF2 = { flamethrower = true, obj_sentrygun = true, righteous_bison = true }
+	local TF2 = { flamethrower = true, obj_sentrygun = true, righteous_bison = true, tf_projectile_rocket = true, tf_projectile_pipe = true }
 	for name in pairs(names) do
 		if not TF2[name] then T.eq(icons[name] ~= nil, true, name) end
 	end

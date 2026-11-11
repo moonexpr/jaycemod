@@ -55,4 +55,33 @@ T.test("a sound's file is its path past the sound characters", function()
 	T.eq(SoundPaths.File("player/x.wav"), "player/x.wav", "none")
 end)
 
+-- pl_upward's timer fires On5MinRemain at an ambient_generic of the line the
+-- client's countdown speaks too: two speakers, so CHAN_VOICE2 cuts neither off.
+T.test("a line the countdown speaks is known by its script's name or any of its files", function()
+	local lines = SoundPaths.Lines({ "Announcer.RoundEnds5minutes" }, function()
+		return { "vo/announcer_ends_5min.mp3" }
+	end)
+	T.eq(SoundPaths.Speaks(lines, "Announcer.RoundEnds5minutes"), true, "the script")
+	T.eq(SoundPaths.Speaks(lines, "announcer.roundends5MINUTES"), true, "a script's name has no case")
+	T.eq(SoundPaths.Speaks(lines, "vo/announcer_ends_5min.mp3"), true, "the file")
+	T.eq(SoundPaths.Speaks(lines, "vo/announcer_ends_5min.wav"), true, "the file before TF2 made it an .mp3")
+	T.eq(SoundPaths.Speaks(lines, ")vo/announcer_ends_5min.wav"), true, "past a sound character")
+end)
+
+T.test("any other sound is not the countdown's", function()
+	local lines = SoundPaths.Lines({ "Announcer.RoundEnds5minutes" }, function()
+		return { "vo/announcer_ends_5min.mp3" }
+	end)
+	T.eq(SoundPaths.Speaks(lines, "Announcer.RoundEnds2minutes"), false, "another script")
+	T.eq(SoundPaths.Speaks(lines, "eotl_sounds/eotl_riser_long_3.wav"), false, "a map's own sound")
+end)
+
+T.test("a script with one file, or none loaded, gives the lines what it has", function()
+	local lines = SoundPaths.Lines({ "A.One", "B.Missing" }, function(name)
+		return name == "A.One" and { "vo/one.mp3" } or {}
+	end)
+	T.eq(SoundPaths.Speaks(lines, "vo/one.wav"), true, "its file")
+	T.eq(SoundPaths.Speaks(lines, "B.Missing"), true, "its name still")
+end)
+
 T.finish()

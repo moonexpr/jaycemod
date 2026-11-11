@@ -1,7 +1,7 @@
 local T = dofile("tests/harness.lua")
 local ROOT = T.ROOT
 
-local function Load(server)
+local function Load(server, client)
 	local definition
 	local ws = {
 		TEAM_UNASSIGNED = 0,
@@ -23,6 +23,8 @@ local function Load(server)
 		IN_ATTACK2 = 2,
 		FL_NOTARGET = 1024,
 		SERVER = server,
+		CLIENT = client,
+		LocalPlayer = function() return players[1] end,
 		IsValid = function(value) return value ~= nil and value.valid ~= false end,
 		DEFINE_BASECLASS = function() end,
 		hook = { Add = function(event, name, fn) hooks[event .. ":" .. name] = fn end },
@@ -56,6 +58,13 @@ local function Load(server)
 	function ply:EntIndex() return self.index end
 	function ply:SetPos(pos) self.pos = pos end
 	function ply:SetEyeAngles(angles) self.angles = angles end
+	function ply:EyeAngles() return self.eye or "the client's aim" end
+	function ply:SetNW2Angle(key, angles) self.nw2 = self.nw2 or {} self.nw2[key] = angles end
+	function ply:GetNW2Angle(key, default)
+		local held = self.nw2 and self.nw2[key]
+		if held == nil then return default end
+		return held
+	end
 	function ply:SetFOV(fov) self.fov = fov end
 	players[1] = ply
 
@@ -68,12 +77,16 @@ local function Load(server)
 			IsPlayer = function() return false end,
 			GetClass = function() return "info_observer_point" end,
 			GetPos = function() return { x = index, y = 0, z = 0 } end,
-			GetAngles = function() return { p = 0, y = index, r = 0 } end,
+			GetAngles = function(self)
+			self.angles = self.angles or { p = 0, y = index, r = 0 }
+			return self.angles
+		end,
 			FOV = function() return 90 end,
 		}
 	end
 
 	return ws.Spectator, ply, {
+		class = definition,
 		hooks = hooks,
 		timers = timers,
 		players = players,
@@ -167,6 +180,162 @@ T.test("observer cycling wraps through team points and living teammates", functi
 	ply.team = 1
 	T.eq(spectator.CanUsePoint(ply, point), true, "spectator team may use any observer point")
 	T.eq(state.hooks["PlayerUse:player_spectator"](ply), false, "spectators cannot use map entities")
+end)
+
+local function NewCmd()
+	local cmd = { mouseX = 7, mouseY = -3, angles = "the client's aim" }
+	function cmd:SetMouseX(x) self.mouseX = x end
+	function cmd:SetMouseY(y) self.mouseY = y end
+	function cmd:SetViewAngles(angles) self.angles = angles end
+	return cmd
+end
+
+local function NewMove()
+	local mv = { angles = "the client's aim", moveAngles = "the client's aim" }
+	function mv:SetAngles(angles) self.angles = angles end
+	function mv:SetMoveAngles(angles) self.moveAngles = angles end
+	return mv
+end
+
+T.test("a fixed camera's move ignores the mouse in every move step", function()
+	local spectator, ply, state = Load(true)
+	ply.team = 2
+	ply.playerClass = "player_spectator"
+	local point = state.NewPoint(10, 2)
+	spectator.Observe(ply, point)
+	local held = ply:GetNW2Angle("wsSpectatorFixedAngles")
+	T.eq(held.y, 10, "the camera's angles are networked to the client")
+
+	local cmd, mv = NewCmd(), NewMove()
+	state.class.StartMove({ Player = ply }, mv, cmd)
+	T.eq(cmd.mouseX, 0, "StartMove drops mouse x")
+	T.eq(cmd.mouseY, 0, "StartMove drops mouse y")
+	T.eq(cmd.angles, held, "StartMove holds the command's aim")
+	T.eq(mv.angles, held, "StartMove holds the move's angles")
+	T.eq(mv.moveAngles, held, "StartMove holds the move's direction")
+
+	mv = NewMove()
+	T.eq(state.class.Move({ Player = ply }, mv), true, "a fixed camera skips the engine's movement")
+	T.eq(mv.angles, held, "Move holds the move's angles")
+
+	mv = NewMove()
+	T.eq(state.class.FinishMove({ Player = ply }, mv), nil,
+		"the engine still finishes the move, which records the buttons KeyPress reads")
+	T.eq(mv.angles, held, "FinishMove leaves the player the held angles")
+end)
+
+T.test("other observer modes keep the mouse and the engine's movement", function()
+	local _, ply, state = Load(true)
+	ply.playerClass = "player_spectator"
+	for _, mode in ipairs({ 4, 5, 6 }) do
+		ply.observerMode = mode
+		local cmd, mv = NewCmd(), NewMove()
+		state.class.StartMove({ Player = ply }, mv, cmd)
+		T.eq(cmd.mouseX, 7, "mouse kept in mode " .. mode)
+		T.eq(cmd.angles, "the client's aim", "aim kept in mode " .. mode)
+		T.eq(state.class.Move({ Player = ply }, mv), nil, "engine moves in mode " .. mode)
+		T.eq(state.class.FinishMove({ Player = ply }, mv), nil, "engine finishes in mode " .. mode)
+		T.eq(mv.angles, "the client's aim", "angles kept in mode " .. mode)
+	end
+end)
+
+T.test("a fixed camera with no target holds the view it was entered with", function()
+	local spectator, ply = Load(true)
+	ply.team = 2
+	ply.eye = { p = 1, y = 2, r = 0 }
+	spectator.Observe(ply, nil)
+	T.eq(ply:GetNW2Angle("wsSpectatorFixedAngles"), ply.eye, "no target: Observe holds the view")
+
+	ply.team = 0
+	ply.eye = { p = 3, y = 4, r = 0 }
+	spectator.SpawnAsSpectator(ply)
+	T.eq(ply:GetNW2Angle("wsSpectatorFixedAngles"), ply.eye, "unassigned spawn holds the view")
+
+	ply.eye = { p = 5, y = 6, r = 0 }
+	spectator.Enter(ply, 0)
+	T.eq(ply:GetNW2Angle("wsSpectatorFixedAngles"), ply.eye, "unassigned team holds the view")
+end)
+
+T.test("the point camera's Think snaps the view only when the point turns", function()
+	local spectator, ply, state = Load(true)
+	ply.team = 2
+	ply.playerClass = "player_spectator"
+	local point = state.NewPoint(10, 2)
+	spectator.Observe(ply, point)
+	local snaps = 0
+	function ply:SetEyeAngles(angles) self.angles = angles snaps = snaps + 1 end
+
+	local think = state.hooks["Think:player_spectator_point_camera"]
+	think()
+	think()
+	T.eq(snaps, 0, "a still camera sends no angle fix, so nothing fights the client")
+
+	local turned = { p = 0, y = 90, r = 0 }
+	point.GetAngles = function() return turned end
+	think()
+	T.eq(snaps, 1, "a camera that turned moves the view once")
+	T.eq(ply:GetNW2Angle("wsSpectatorFixedAngles"), turned, "the turned angles are networked")
+	think()
+	T.eq(snaps, 1, "and no more")
+end)
+
+T.test("both realms hold the command before the engine reads its angles into the eyes", function()
+	for _, server in ipairs({ true, false }) do
+		local _, ply, state = Load(server, not server)
+		local start = state.hooks["StartCommand:player_spectator"]
+		ply.playerClass = "player_spectator"
+		ply.observerMode = 3
+		local held = { p = 0, y = 45, r = 0 }
+		ply:SetNW2Angle("wsSpectatorFixedAngles", held)
+
+		local cmd = NewCmd()
+		start(ply, cmd)
+		T.eq(cmd.angles, held, "a fixed camera's command holds the aim")
+		T.eq(cmd.mouseX, 0, "and carries no mouse")
+
+		ply.observerMode = 6
+		cmd = NewCmd()
+		start(ply, cmd)
+		T.eq(cmd.angles, "the client's aim", "roaming keeps its aim")
+
+		ply.observerMode = 3
+		ply.playerClass = "player_combatant"
+		cmd = NewCmd()
+		start(ply, cmd)
+		T.eq(cmd.angles, "the client's aim", "another class keeps its aim")
+	end
+end)
+
+T.test("the client's mouse never reaches a fixed camera's view", function()
+	local _, ply, state = Load(false, true)
+	local apply = state.hooks["InputMouseApply:player_spectator"]
+	ply.playerClass = "player_spectator"
+	ply.observerMode = 3
+	local held = { p = 0, y = 45, r = 0 }
+	ply:SetNW2Angle("wsSpectatorFixedAngles", held)
+
+	local cmd = NewCmd()
+	T.eq(apply(cmd, 7, -3, "the client's aim"), true, "the engine does not apply the mouse")
+	T.eq(cmd.mouseX, 0, "mouse x dropped")
+	T.eq(cmd.mouseY, 0, "mouse y dropped")
+	T.eq(cmd.angles, held, "the view stays where the server holds it")
+
+	cmd = NewCmd()
+	state.class.CreateMove({ Player = ply }, cmd)
+	T.eq(cmd.angles, held, "CreateMove sends the held aim")
+	T.eq(cmd.mouseX, 0, "CreateMove sends no mouse")
+
+	ply.observerMode = 6
+	cmd = NewCmd()
+	T.eq(apply(cmd, 7, -3, "the client's aim"), nil, "roaming keeps the mouse")
+	T.eq(cmd.mouseX, 7, "roaming's mouse kept")
+	state.class.CreateMove({ Player = ply }, cmd)
+	T.eq(cmd.angles, "the client's aim", "roaming's aim kept")
+
+	ply.observerMode = 3
+	ply.playerClass = "player_combatant"
+	cmd = NewCmd()
+	T.eq(apply(cmd, 7, -3, "the client's aim"), nil, "another class keeps the mouse")
 end)
 
 T.finish()

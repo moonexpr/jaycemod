@@ -381,6 +381,15 @@ T.test("setup counts down 'mission begins', normal time 'mission ends', and setu
 	T.eq(Timer.StartsRound(true, true), false, "still in setup")
 end)
 
+T.test("the countdown's lines are every line of both phases, and not the siren", function()
+	local lines = {}
+	for _, name in ipairs(Timer.CountdownLines()) do lines[name] = true end
+	T.eq(lines["Announcer.RoundEnds5minutes"], true, "normal time's")
+	T.eq(lines["Announcer.RoundEnds2minutes"], true, "normal time's too")
+	T.eq(lines["Announcer.RoundBegins60Seconds"], true, "setup's")
+	T.eq(lines["Ambient.Siren"], nil, "the siren is not spoken")
+end)
+
 -- SetActiveTimer
 
 local function Timers(list)
