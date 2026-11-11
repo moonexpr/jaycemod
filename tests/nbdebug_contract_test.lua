@@ -124,8 +124,10 @@ T.test ("the shared path generator rejects areas and openings the agent's collis
 	T.eq (nextsoldier:find ("Walkable(fromArea:ComputeAdjacentConnectionHeightChange(area)", 1, true) ~= nil, true, "default generator rejects a rise beyond the body's jump")
 	T.eq (warSoldier:find ("Base ().GetPathGenerator (self, self.NSPathCost () or NoPath)", 1, true) ~= nil, true, "combat costs go through the shared generator")
 	T.eq (botSoldier:find ("WS.NavHullClearance (self.ent, WS.ClipMasks ().brushes)", 1, true) ~= nil, true, "bot players use their player hull")
-	T.eq (botSoldier:find ("not clearance:Area (area)", 1, true) ~= nil, true, "bot player routes reject an unfit area")
-	T.eq (botSoldier:find ("not clearance:Link (fromArea, area)", 1, true) ~= nil, true, "bot player routes reject an unfit opening")
+	T.eq (botSoldier:find ("fits = clearance:Area (area)", 1, true) ~= nil, true, "bot player routes reject an unfit area")
+	T.eq (botSoldier:find ("fits = clearance:Link (fromArea, area)", 1, true) ~= nil, true, "bot player routes reject an unfit opening")
+	T.eq (botSoldier:find ("return cost (area, fromArea, ladder, elevator, length, fits)", 1, true) ~= nil, true,
+		"and pass the verdict to the native price")
 	T.eq (pathfollower:find ("FitsArea", 1, true), nil, "the probe adds no clearance rule")
 end)
 

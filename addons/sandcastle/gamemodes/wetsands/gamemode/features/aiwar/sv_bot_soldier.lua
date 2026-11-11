@@ -14,8 +14,7 @@ local Movement = gameplay.movement
 local RouteWalk = nextsoldier.locomotion.route_walk
 local Locomotion = nextsoldier.locomotion
 local Geometry = math.geometry
-local Teams = gameplay.teams
-local Movement = gameplay.movement
+local TFBot = WS.require ("foundation.wetsands.path.tfbot")
 local ToVector, Point = Map.ToVector, Map.Point
 local DoorOpenable = Map.DoorOpenable
 local WALK_MAXS, WALK_LIFT, WALK_MAX_RISE = Map.WALK_MAXS, Map.WALK_LIFT, Map.WALK_MAX_RISE
@@ -43,13 +42,11 @@ local SETTLE_DELAY = 0.5
 local DIRECT_RANGE = 256
 local FIRST_PLAN = 0.3
 -- What a player's body climbs and falls (RouteCost): a stair step, a crouch
--- jump (JumpReachOf), the fall it survives unhurt; a jump costs
--- JUMP_PENALTY times its length more (CTFBotPathCost).
+-- jump (JumpReachOf), the fall it survives unhurt.
 local STEP_HEIGHT, SAFE_DROP = 18, 300
 -- A straight walk's floor is looked for from a step above its line to two
 -- below (CanWalkTo): a stair up or down the way is floor, a ledge's edge not.
 local FOOTING_ABOVE, FOOTING_BELOW = Vector (0, 0, STEP_HEIGHT), Vector (0, 0, 2 * STEP_HEIGHT)
-local JUMP_PENALTY = 2
 
 -- A goal off the mesh is walked to as the nearest point of an area within
 -- OFF_MESH_NEAR of it (a flag a unit past its area's edge: ctf_2fort's
@@ -94,6 +91,7 @@ function BotSoldier.New (ent, controller, team, reaction)
 			hopUntil = 0,
 			steer = nil, -- the point its body makes for (Steer)
 			walk = nil, -- the route of its own it walks (nextsoldier.locomotion.route_walk)
+			plan = nil, -- its route being planned (PlanRoute), or nil
 			-- its first route waits a moment: a navigator just made knows no nav area yet
 			nextPlan = CurTime () + FIRST_PLAN,
 			mayFire = false, -- its orders let it fire at its contact (sv_bots.lua asks them)
@@ -170,42 +168,40 @@ local function JumpReachOf (ply)
 	return Movement.JumpReach (ply:GetJumpPower (), gravity, stand.z, duck.z)
 end
 
--- The price of a step from fromArea into area (Path:Compute's generator),
--- or -1 where a player of my team may not go: an area its doors or brushes
--- close to it (the npc feature's blockers, the doors the war found shut),
--- the enemy's spawn rooms (their visualizers stop players), a rise higher
--- than a crouch jump, a drop farther than a safe fall. A step up past a
--- stair costs JUMP_PENALTY times its length more (CTFBotPathCost's).
+-- What a route is priced by (Path:Compute's generator), or nil until the mesh is ready to price
+-- one: TF2's bots' own cost (wetsands.path.tfbot: a jump dearer than its length, the enemy's
+-- spawn rooms closed, their visualizers stopping players) priced natively over what its team
+-- knows (the npc controller's EngineCost: the areas its doors and brushes close to it, the links
+-- a clip or a wall's end refuses) and the doors the war found shut to it, at its own body's
+-- limits: a stair, its crouch jump, the fall it survives unhurt, and ladders. Each step is told
+-- whether its body fits the area and the opening into it; a ladder has no opening.
 function BotSoldier:RouteCost ()
-	local controller, team = self.controller, self.team
-	local npcs = WS.Feature ("npc")
-	local enemy = Teams.EnemyOf (team)
-	local reach = JumpReachOf (self.ent)
+	local ply, team = self.ent, self.team
+	local limits =
+	{
+		stepHeight = STEP_HEIGHT,
+		jumpHeight = JumpReachOf (ply),
+		deathDropHeight = SAFE_DROP,
+		ladders = true
+	}
+	local cost = WS.Feature ("npc"):EngineCost (team, TFBot, limits,
+		{
+			entIndex = ply:EntIndex (),
+			now = CurTime (),
+			team = team,
+			route = TFBot.FASTEST_ROUTE,
+			miniBoss = false,
+			roundWon = false
+		}, self.controller:ShutDoorAreas (team))
+	if not cost then return nil end
 	local clearance = WS.NavHullClearance (self.ent, WS.ClipMasks ().brushes)
-	return function (area, fromArea, ladder, _, length)
-		if not IsValid (fromArea) then return 0 end
-		if npcs:NavBlocks (area, team) or controller:ShutDoorIn (area, team) or npcs:SpawnRoomTeam (area) == enemy then return -1 end
-		if not clearance:Area (area) then return -1 end
-		-- a link its body does not fit through, or that crosses a clip or a wall's end
-		if not IsValid (ladder) and (not WS.NavLinkCrossable (fromArea, area)
-			or not clearance:Link (fromArea, area)) then return -1 end
-		local distance
-		if IsValid (ladder) then
-			distance = ladder:GetLength ()
-		elseif length > 0 then
-			distance = length
-		else
-			distance = area:GetCenter ():Distance (fromArea:GetCenter ())
+	return function (area, fromArea, ladder, elevator, length)
+		local fits
+		if fromArea then
+			fits = clearance:Area (area)
+			if fits and not ladder then fits = clearance:Link (fromArea, area) end
 		end
-		local cost = distance + fromArea:GetCostSoFar ()
-		local rise = fromArea:ComputeAdjacentConnectionHeightChange (area)
-		if rise > STEP_HEIGHT then
-			if rise > reach then return -1 end
-			cost = cost + JUMP_PENALTY * distance
-		elseif rise < -SAFE_DROP then
-			return -1
-		end
-		return cost
+		return cost (area, fromArea, ladder, elevator, length, fits)
 	end
 end
 
@@ -228,7 +224,7 @@ function BotSoldier:Pin (p)
 	self.pin = p
 	self.moveTarget, self.gait = p, "run"
 	-- the route it was on goes; the new one is planned once it has settled
-	self.walk, self.steer, self.nextPlan = nil, nil, CurTime () + SETTLE_DELAY
+	self.walk, self.plan, self.steer, self.nextPlan = nil, nil, nil, CurTime () + SETTLE_DELAY
 end
 
 function BotSoldier:Unpin ()
@@ -257,6 +253,49 @@ function BotSoldier:MeshGoal (goal)
 	return goal
 end
 
+-- Its route to goal from pos, planned in the war's planning time (the controller's plans, a
+-- list.schedule run a slice a tick) and not in the look that asks: the engine's search, one
+-- step that cannot give way, then the clean-up for its own body, which gives way between its
+-- traces once the tick's slice is spent. The route is its to walk when the plan is done;
+-- until then it keeps the one it has. A plan dropped meanwhile (self.plan another's or none:
+-- set down elsewhere, pinned) or whose bot is gone traces no more and leaves nothing.
+function BotSoldier:PlanRoute (goal, cost, pos)
+	local plans = self.controller.plans
+	local plan = {}
+	self.plan = plan
+	local function Mine () return self.plan == plan and IsValid (self.ent) end
+	local function Planned ()
+		if not Mine () then return end
+		local route, found = self:Navigator ():PlanRoute (ToVector (goal), cost)
+		local points = {}
+		for i, v in ipairs (route or {}) do points [i] = Point (v) end
+		-- whether the clean-up goes on: asked before each of its traces
+		local dropped = false
+		local function Going ()
+			if not dropped and plans:CheckYield () and not Mine () then dropped = true end
+			return not dropped
+		end
+		-- each point where its body fits, then its turns pushed out off the inside walls
+		-- until its body passes them (the map's walls, not who stands there now)
+		points = self:StandOnRoute (points, Going)
+		points = Locomotion.RoundCorners (points, function (a, b)
+			return Going () and self:WalkClear (ToVector (a), ToVector (b), Unmoving)
+		end)
+		if dropped or not Mine () then return end
+		-- the engine's trivial path, straight from its start to the goal, is a route when it
+		-- found one (both in one area); where it found no way it is none
+		if route and not found and RouteWalk.Trivial (points, pos, DIRECT_RANGE) then route = nil end
+		self.walk = route and RouteWalk.New (points) or nil
+	end
+	plans:Spawn (function ()
+		-- however it ends (done, dropped, or failed: our bug, raised where the plans are run),
+		-- the bot may ask for its next route
+		local ok, why = xpcall (Planned, debug.traceback)
+		if self.plan == plan then self.plan = nil end
+		if not ok then error (why, 0) end
+	end)
+end
+
 -- Every look (sv_bots.lua): the point its body makes for now (steer) on
 -- its way to its move target. A route is planned from where its navigator
 -- knows it stands (Path:Compute starts at the navigator's last known area),
@@ -265,7 +304,7 @@ function BotSoldier:Steer (now)
 	local goal = self.moveTarget and self:MeshGoal (self.moveTarget)
 	local pos = Point (self.ent:GetPos ())
 	if self.lookedFrom and Geometry.Distance (pos, self.lookedFrom) > TELEPORTED then
-		self.walk, self.nextPlan = nil, now + SETTLE_DELAY
+		self.walk, self.plan, self.nextPlan = nil, nil, now + SETTLE_DELAY
 	end
 	self.lookedFrom = pos
 	-- no nearer its waypoint for a while (fallen off beneath its route,
@@ -276,20 +315,12 @@ function BotSoldier:Steer (now)
 		self.steer = not self:HasEnemy () and self:Spread (self.ent:GetPos ()) or nil
 		return
 	end
-	if now >= self.nextPlan and self:Navigator ():Settled () then
+	-- one route at a time, and none while it cannot be priced (the mesh not ready): the route
+	-- it has is kept meanwhile, and it asks at its next look
+	local cost = not self.plan and now >= self.nextPlan and self:Navigator ():Settled () and self:RouteCost ()
+	if cost then
 		self.nextPlan = now + REPATH_LEAST + math.random () * (REPATH_MOST - REPATH_LEAST)
-		local route, found = self:Navigator ():PlanRoute (ToVector (goal), self:RouteCost ())
-		local points = {}
-		for i, v in ipairs (route or {}) do points [i] = Point (v) end
-		-- each point where its body fits, then its turns pushed out off the inside walls
-		-- until its body passes them
-		points = self:StandOnRoute (points)
-		-- (the map's, not who stands there now)
-		points = Locomotion.RoundCorners (points, function (a, b) return self:WalkClear (ToVector (a), ToVector (b), Unmoving) end)
-		-- the engine's trivial path, straight from its start to the goal, is a route when it
-		-- found one (both in one area); where it found no way it is none
-		if route and not found and RouteWalk.Trivial (points, pos, DIRECT_RANGE) then route = nil end
-		self.walk = route and RouteWalk.New (points) or nil
+		self:PlanRoute (goal, cost, pos)
 	end
 	if self:RangeTo (goal) <= DIRECT_RANGE and self:CanWalkTo (goal) then
 		self.steer = goal

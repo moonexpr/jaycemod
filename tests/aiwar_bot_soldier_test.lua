@@ -29,6 +29,7 @@ local environment = setmetatable (
 			TraceLine = function (trace) return { Hit = trace.start.z ~= trace.endpos.z } end
 		},
 		MASK_PLAYERSOLID = 1,
+		IsValid = function (ent) return ent ~= nil and ent.gone ~= true end,
 		CurTime = function () return 1 end,
 		WS =
 		{
@@ -61,7 +62,14 @@ local Map =
 }
 local BotSoldier = setfenv (assert (loadfile (SOURCE)), environment) (Map, {})
 
-local function NewSoldier (route, found)
+-- The war's planning time as these tests' looks need it: a plan made as it is asked for.
+local AT_ONCE =
+{
+	Spawn = function (_, plan) plan () end,
+	CheckYield = function () return false end
+}
+
+local function NewSoldier (route, found, plans)
 	local navigator =
 	{
 		Settled = function () return true end,
@@ -73,6 +81,7 @@ local function NewSoldier (route, found)
 	local soldier = setmetatable (
 		{
 			moveTarget = goal,
+			controller = { plans = plans or AT_ONCE },
 			ent =
 			{
 				GetPos = function () return position end,
@@ -176,6 +185,231 @@ T.test ("with nowhere to be it steps aside from a teammate, unless it has a figh
 	soldier:Steer (2)
 	T.eq (soldier.steer, nil, "the fight is its body's to steer")
 	nextsoldier.engine = engine
+end)
+
+-- Its routes' price: the npc controller's EngineCost, a fake here that keeps what it was asked and
+-- answers with the fit each step was told.
+local function Pricing (ready)
+	local asked = {}
+	local shut = { areas = { [7] = true }, stamp = 3 }
+	local npcs =
+	{
+		BlockerGeneration = function () return 0 end,
+		EngineCost = function (_, team, strategy, limits, bot, also)
+			asked.team, asked.strategy, asked.limits, asked.bot, asked.also = team, strategy, limits, bot, also
+			if not ready then return nil end
+			return function (_, _, _, _, _, fits) return fits end
+		end
+	}
+	local clearance =
+	{
+		Area = function (_, area) return area.fits end,
+		Link = function (_, _, area)
+			asked.links = (asked.links or 0) + 1
+			return area.opening
+		end
+	}
+	local feature, hull, masks = environment.WS.Feature, environment.WS.NavHullClearance, environment.WS.ClipMasks
+	local convar, reach = environment.GetConVarNumber, environment.gameplay.movement.JumpReach
+	environment.WS.Feature = function () return npcs end
+	environment.WS.NavHullClearance = function () return clearance end
+	environment.WS.ClipMasks = function () return { brushes = 1 } end
+	environment.GetConVarNumber = function () return 800 end
+	environment.gameplay.movement.JumpReach = function (power) return power / 4 end
+	local soldier = setmetatable (
+		{
+			team = 3,
+			controller = { ShutDoorAreas = function (_, team) return team == 3 and shut or nil end },
+			ent =
+			{
+				EntIndex = function () return 12 end,
+				GetHull = function () return Vec (-24, -24, 0), Vec (24, 24, 82) end,
+				GetHullDuck = function () return Vec (-24, -24, 0), Vec (24, 24, 62) end,
+				GetGravity = function () return 1 end,
+				GetJumpPower = function () return 280 end
+			}
+		}, BotSoldier)
+	local cost = soldier:RouteCost ()
+	environment.WS.Feature, environment.WS.NavHullClearance, environment.WS.ClipMasks = feature, hull, masks
+	environment.GetConVarNumber, environment.gameplay.movement.JumpReach = convar, reach
+	return cost, asked, shut
+end
+
+T.test ("its routes are priced as TF2's bots' are, at its body's limits, past the doors shut to its team", function ()
+	local TFBot = T.require ("foundation.wetsands.path.tfbot")
+	local _, asked, shut = Pricing (true)
+	T.eq (asked.team, 3, "for its team")
+	T.eq (asked.strategy, TFBot, "TF2's bot's cost")
+	T.eq (asked.also, shut, "the doors the war found shut to its team are closed to it")
+	T.eq (asked.limits.jumpHeight, 70, "it climbs what its own crouch jump reaches")
+	T.eq (asked.limits.ladders, true, "and ladders, as a player does")
+	T.eq (asked.limits.stepHeight > 0 and asked.limits.stepHeight < asked.limits.jumpHeight, true, "a stair is no jump")
+	T.eq (asked.limits.deathDropHeight > asked.limits.jumpHeight, true, "it drops farther than it climbs")
+	T.eq (asked.bot.team, 3, "the enemy's spawn rooms are closed to its team")
+	T.eq (asked.bot.route, TFBot.FASTEST_ROUTE, "the shortest way, no scatter")
+	T.eq (asked.bot.roundWon, false, "and stay closed")
+	T.eq (asked.bot.entIndex, 12, "its own")
+end)
+
+T.test ("each step is told whether its body fits: the area, and the opening into it but for a ladder's", function ()
+	local cost, asked = Pricing (true)
+	local from, ladder = { fits = true, opening = true }, {}
+	T.eq (cost ({ fits = true, opening = true }, nil),   nil,   "its first area: nothing to fit through")
+	T.eq (cost ({ fits = true, opening = true }, from),  true,  "an area and opening it fits")
+	T.eq (cost ({ fits = false, opening = true }, from), false, "an area its body does not fit in")
+	T.eq (cost ({ fits = true, opening = false }, from), false, "an opening its body does not pass")
+	local links = asked.links
+	T.eq (cost ({ fits = true, opening = false }, from, ladder), true,  "a ladder has no opening to pass")
+	T.eq (asked.links,                                           links, "so none is measured")
+end)
+
+T.test ("while its routes cannot be priced yet it plans none, and plans as soon as they can", function ()
+	T.eq (Pricing (false), nil, "no price while the mesh is not ready")
+	local soldier = NewSoldier ({ { x = 200, y = 50, z = 0 }, goal })
+	local navigator = soldier:Navigator ()
+	local kept = { Next = function () return nil end, Stalled = function () return false end }
+	soldier.walk = kept
+	soldier.RouteCost = function () return nil end
+	soldier:Steer (1)
+	T.eq (navigator.plans, nil,  "the engine is not asked for a route it cannot price")
+	T.eq (soldier.walk,    kept, "the route it had is kept")
+	soldier.RouteCost = function () return function () end end
+	soldier:Steer (1.1)
+	T.eq (navigator.plans, 1, "planned at its next look, not a whole interval later")
+end)
+
+-- A route with turns enough to clean up, and a clock every hull trace of the clean-up takes a
+-- millisecond of: the war's planning time (list.schedule) is then spent within a few traces.
+local WINDING =
+{
+	{ x = 0, y = 0, z = 0 },
+	{ x = 300, y = 0, z = 0 },
+	{ x = 300, y = 300, z = 0 },
+	{ x = 600, y = 300, z = 0 },
+	{ x = 600, y = 600, z = 0 },
+	{ x = 900, y = 600, z = 0 }
+}
+local PLANNING_SLICE = 0.002
+
+local function Planning ()
+	local clock = { at = 0 }
+	function clock:Now () return self.at end
+	local plans = list.schedule.New (clock)
+	local soldier = NewSoldier (WINDING, true, plans)
+	local hull = environment.util.TraceHull
+	local traced = 0
+	environment.util.TraceHull = function (trace)
+		traced = traced + 1
+		clock.at = clock.at + 0.001
+		return hull (trace)
+	end
+	local function Run ()
+		local runs = 0
+		while plans:Count () > 0 do
+			plans:Run (PLANNING_SLICE)
+			runs = runs + 1
+			if runs > 1000 then error ("the plan never finished") end
+		end
+		return runs
+	end
+	local function Done ()
+		environment.util.TraceHull = hull
+		return traced
+	end
+	return soldier, plans, Run, Done
+end
+
+T.test ("a look asks for its route and goes on: the route is planned in the war's planning time", function ()
+	local soldier, plans, Run, Done = Planning ()
+	local navigator = soldier:Navigator ()
+	soldier:Steer (1)
+	T.eq (navigator.plans, nil, "the look did not search")
+	T.eq (soldier.walk,    nil, "nor has it a route yet")
+	plans:Run (PLANNING_SLICE)
+	T.eq (navigator.plans, 1, "the planning time did")
+	Run ()
+	T.eq (soldier.walk ~= nil, true, "and its route is its to walk")
+	T.eq (Done () > 0,         true, "cleaned up for its body on the way")
+end)
+
+T.test ("a plan's clean-up gives way once the planning time is spent, and goes on in the next", function ()
+	local soldier, plans, Run, Done = Planning ()
+	soldier:Steer (1)
+	plans:Run (PLANNING_SLICE)
+	T.eq (soldier.walk,   nil, "not finished in one slice")
+	T.eq (plans:Count (), 1,   "still under way")
+	Run ()
+	Done ()
+	T.eq (soldier.walk ~= nil, true, "finished in those after")
+end)
+
+T.test ("a plan takes as many slices as its clean-up needs, none of them much over", function ()
+	local soldier, plans, Run, Done = Planning ()
+	soldier:Steer (1)
+	local runs = Run ()
+	local traced = Done ()
+	T.eq (soldier.walk ~= nil, true, "finished")
+	T.eq (runs > 1,            true, "over more than one slice")
+	-- a millisecond a trace: a slice lets through the traces its time holds and the one that spends it
+	T.eq (traced <= runs * (PLANNING_SLICE / 0.001 + 1), true, "no slice ran on past its time")
+end)
+
+T.test ("it asks for one route at a time, however many looks pass while it is planned", function ()
+	local soldier, plans, Run, Done = Planning ()
+	local navigator = soldier:Navigator ()
+	soldier:Steer (1)
+	soldier:Steer (10)
+	soldier:Steer (20)
+	Run ()
+	Done ()
+	T.eq (navigator.plans, 1, "one search")
+end)
+
+T.test ("set down elsewhere while its route is planned, the plan is dropped and not walked", function ()
+	local soldier, plans, Run, Done = Planning ()
+	soldier:Steer (1)
+	plans:Run (PLANNING_SLICE)
+	soldier.ent.GetPos = function () return { x = 5000, y = 5000, z = 0 } end
+	soldier:Steer (1.2)
+	Run ()
+	Done ()
+	T.eq (soldier.walk, nil, "a route from where it no longer stands is no route")
+end)
+
+T.test ("a bot gone while its route is planned ends the plan quietly", function ()
+	local soldier, plans, Run, Done = Planning ()
+	soldier:Steer (1)
+	plans:Run (PLANNING_SLICE)
+	local before = Done ()
+	soldier.ent.gone = true
+	local traced = 0
+	local hull = environment.util.TraceHull
+	environment.util.TraceHull = function (trace)
+		traced = traced + 1
+		return hull (trace)
+	end
+	Run ()
+	environment.util.TraceHull = hull
+	T.eq (before > 0,   true, "it was under way")
+	T.eq (traced,       0,    "nothing more is traced for a body that is not there")
+	T.eq (soldier.walk, nil,  "and no route is kept")
+end)
+
+T.test ("a plan that fails is raised where the plans are run, and its bot asks again", function ()
+	local soldier, plans, Run, Done = Planning ()
+	local navigator = soldier:Navigator ()
+	local planRoute = navigator.PlanRoute
+	navigator.PlanRoute = function () error ("the search broke") end
+	soldier:Steer (1)
+	local ok, why = pcall (plans.Run, plans, PLANNING_SLICE)
+	T.eq (ok,                                                               false, "our bug is not swallowed")
+	T.eq (string.find (tostring (why), "the search broke", 1, true) ~= nil, true,  "and says what broke")
+	navigator.PlanRoute = planRoute
+	soldier:Steer (10)
+	Run ()
+	Done ()
+	T.eq (navigator.plans,     1,    "it asked again")
+	T.eq (soldier.walk ~= nil, true, "and has its route")
 end)
 
 T.finish ()

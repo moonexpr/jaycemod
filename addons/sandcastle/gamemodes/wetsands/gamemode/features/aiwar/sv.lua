@@ -27,6 +27,7 @@ local Controller =
 	hazardStore = nil, -- where the map's nav hazards are kept between loads (HazardFile, below)
 	musterStore = nil, -- where the map's musters are kept between loads (MusterFile, below)
 	roomStore = nil, -- where the map's rooms are kept between loads (RoomFile, below)
+	plans = nil, -- the bots' routes being planned, a list.schedule (below; sv_bot_soldier.lua's PlanRoute)
 	-- rooms = nil, -- the map's wartactics.rooms partition, read or found when first asked (Rooms)
 	-- roomsFinding = nil, -- the transaction finding them, on the slow lane (Rooms)
 	-- classes = nil, -- the room classes, trees, breaches and ambushes from the incursion (Classes)
@@ -142,6 +143,14 @@ Controller.roomStore = RoomFile
 
 Controller.hazardStore = HazardFile
 
+-- The bots' routes being planned (sv_bot_soldier.lua's PlanRoute), run a slice a tick
+-- (sv_bots.lua). Kept across a reload of the feature: plans under way go on.
+local PlanClock = {}
+
+function PlanClock:Now () return SysTime () end
+
+Controller.plans = Controller.plans or list.schedule.New (PlanClock)
+
 local Part = WS.FeatureParts (getfenv (1), "aiwar")
 local Map = Part ("sv_map", Controller)
 local Soldier, ARRIVED = Part ("sv_soldier", Map)
@@ -150,6 +159,7 @@ Controller.Soldier = Soldier
 Controller.BotSoldier = Part ("sv_bot_soldier", Map, Soldier)
 Part ("sv_relations", Controller, Map)
 Part ("sv_enlist",    Controller, Map)
+Part ("sv_fighters",  Controller, Map)
 Part ("sv_bots",      Controller, Map)
 Part ("sv_responserules", Controller)
 Part ("sv_gestures",      Controller)

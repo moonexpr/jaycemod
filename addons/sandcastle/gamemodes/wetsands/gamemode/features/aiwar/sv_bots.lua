@@ -9,7 +9,8 @@
 -- rounds' rules (freezes, stuns, humiliation) reach their keys as anyone's.
 --
 -- A bot soldier (sv_bot_soldier.lua) looks around every LOOK_INTERVAL (its
--- nextsoldier.senses.vision), and every tick its body
+-- nextsoldier.senses.vision), the bots' looks spread over the ticks
+-- (features.aiwar.looks), and every tick its body
 -- (nextsoldier.body.player_body) presses its keys (StartCommand).
 local Controller, Map = ...
 local Quota = wartactics.bot_quota
@@ -17,6 +18,7 @@ local Vision = nextsoldier.senses.vision
 local Teams = gameplay.teams
 local HL2Path = WS.require ("foundation.wetsands.path.hl2")
 local Arms = WS.require ("features.aiwar.arms")
+local Looks = WS.require ("features.aiwar.looks")
 local Marksmanship = WS.require ("features.aiwar.marksmanship")
 local Orders = WS.require ("features.aiwar.ns_behaviors")
 local Profiles = WS.require ("features.aiwar.profiles")
@@ -62,6 +64,9 @@ end
 
 -- How often the quota is kept (MaintainBotQuota's think) and a bot looks.
 local QUOTA_INTERVAL, LOOK_INTERVAL = 1, 0.2
+-- A tick's slice for the bots' routes being planned (the controller's plans): one search, or
+-- as much of a route's clean-up as fits.
+local PLAN_SECONDS = 0.002
 -- How far a bot sees, and its field of view: TF2's bots see 90 degrees.
 local SIGHT_RANGE = 4000
 local FOV_COS = math.cos (math.rad (45))
@@ -243,7 +248,7 @@ function Controller:NewBotSoldier (ply, team)
 end
 
 -- The new entry's soldier: which of two enemies is the more dangerous is
--- its orders' (SelectMoreDangerousThreat), else the nearer; it looks at once.
+-- its orders' (SelectMoreDangerousThreat), else the nearer; it is due a look at once.
 function Controller:ReadyBot (ply, entry)
 	local soldier = entry.soldier
 	soldier.better = function (a, b)
@@ -327,40 +332,6 @@ function Controller:KitBot (ply, soldier, kit)
 end
 
 -- Looking ------------------------------------------------------------------------
-
-local function IsGM13Entity (ent)
-	local class = ent:GetClass ()
-	return string.sub (class, 1, 5) == "gm13_" or string.sub (class, 1, 4) == "sev_"
-end
-
--- The live fighters of each game team, players (bots included), the war's
--- NPC soldiers, its buildings, and those a hook WSWarFighters(fighters) adds.
-function Controller:Fighters ()
-	local fighters = { [RED] = {}, [BLUE] = {} }
-	for _, ply in ipairs (player.GetAll ()) do
-		local list = fighters [WS.TeamOf (ply)]
-		if list and ply:Alive () then list [#list + 1] = ply end
-	end
-	for ent, entry in pairs (self.soldiers) do
-		local list = fighters [entry.soldier.team]
-		if list and IsValid (ent) and not ent:IsPlayer () and ent:Health () > 0 then list [#list + 1] = ent end
-	end
-	for _, ent in ents.Iterator () do
-		if IsValid (ent) and not self.soldiers [ent] and ent:Health () > 0 then
-			if ent.GetObjTeam then
-				-- a building (base_obj) fights for its team, an enemy the other's soldiers target
-				local list = fighters [ent:GetObjTeam ()]
-				if list then list [#list + 1] = ent end
-			elseif ent:IsNPC () or ent:IsNextBot () or IsGM13Entity (ent) then
-				fighters [RED] [#fighters [RED] + 1] = ent
-				fighters [BLUE] [#fighters [BLUE] + 1] = ent
-			end
-		end
-	end
-	-- others a mode makes fight for a side (an armed hostage: features.hostage)
-	hook.Run ("WSWarFighters", fighters)
-	return fighters
-end
 
 -- Tells a bot's orders what its vision saw, and the war its contacts (its
 -- call-outs: sv_responserules.lua).
@@ -450,16 +421,22 @@ function Controller:FeelAhead (ply, soldier)
 	soldier.doorAhead = DoorOpenable (door) and door or false
 end
 
--- Every look due, the fighters gathered once for all of them.
+local function NextLook (entry) return entry.soldier.nextLook end
+
+-- This tick's share of the looks due (features.aiwar.looks: a wave's bots come due together, and
+-- are spread over the ticks), the fighters gathered once for all of them.
 function Controller:LookAround (now)
-	local fighters
+	local lookers = {}
 	for ply, entry in pairs (self.soldiers) do
+		if IsValid (ply) and ply:IsPlayer () and ply:Alive () then lookers [#lookers + 1] = entry end
+	end
+	local share = Looks.Share (#lookers, LOOK_INTERVAL, engine.TickInterval ())
+	local fighters
+	for _, entry in ipairs (Looks.Due (lookers, now, share, NextLook)) do
 		local soldier = entry.soldier
-		if IsValid (ply) and ply:IsPlayer () and ply:Alive () and now >= soldier.nextLook then
-			soldier.nextLook = now + LOOK_INTERVAL
-			fighters = fighters or self:Fighters ()
-			self:Look (ply, entry, fighters [Teams.EnemyOf (soldier.team)] or {}, now)
-		end
+		soldier.nextLook = now + LOOK_INTERVAL
+		fighters = fighters or self:Fighters (now)
+		self:Look (soldier.ent, entry, fighters [Teams.EnemyOf (soldier.team)] or {}, now)
 	end
 end
 
@@ -552,6 +529,7 @@ hook.Add ("Think", "ws_aiwar_bots", function ()
 		end
 	end
 	if not Controller.paused then Controller:LookAround (now) end
+	Controller.plans:Run (PLAN_SECONDS)
 end)
 
 -- After the spawn's own setup (the gamemode's loadout and model), so the

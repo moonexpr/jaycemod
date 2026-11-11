@@ -14,6 +14,8 @@ local SOLE, FOOTHOLD, LANDING_SLACK = 2, 18, 24
 
 local function Point (v) return { x = v.x, y = v.y, z = v.z } end
 
+local function Always () return true end
+
 -- How far off its way its group's push leans it, and the least push it moves aside for: its
 -- teammates do not block it (they pass through), so this is spread, never a wall.
 local PUSH_LEAD, PUSH_LEAST = 64, 0.15
@@ -110,8 +112,12 @@ function Apply (class, world)
 		return { x = pos.x + x / length * PUSH_LEAD, y = pos.y + y / length * PUSH_LEAD, z = pos.z }
 	end
 
-	-- The route with each point its body cannot stand on moved to where it can.
-	function class:StandOnRoute (points)
-		return Locomotion.StandPoints (points, function (q) return self:Stands (q) end, function (p, q) return self:Reaches (p, q) end)
+	-- The route with each point its body cannot stand on moved to where it can. going(), when
+	-- given, is asked before each trace (a plan made over several ticks gives way there): once
+	-- it says no, nothing more is traced and the route is not to be used.
+	function class:StandOnRoute (points, going)
+		going = going or Always
+		return Locomotion.StandPoints (points, function (q) return going () and self:Stands (q) end,
+			function (p, q) return going () and self:Reaches (p, q) end)
 	end
 end
