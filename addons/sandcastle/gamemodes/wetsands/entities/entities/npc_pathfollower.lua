@@ -736,11 +736,14 @@ function ENT:NSLegsSeats (place, radius)
 end
 
 -- What it builds for its squad (nextsoldier.squad.behaviors.fortify): on its bench, every kind of
--- object; set down for its team at, facing toward facing, where the object fits. A teleporter's
+-- object; set down for its team at, facing toward facing, on the floor there or, where a boxed object
+-- does not fit, at the nearest spot round it that it fits (Seat). A teleporter's
 -- two ends link as they are built (obj_teleporter).
 local OBJECTS =
 {
-	sentry = { "obj_sentrygun" },
+	-- a sentry of its NSSentryLevel (obj_sentrygun's SetLevel), else level 1
+	sentry = { "obj_sentrygun", setup = function (object, me) if me.NSSentryLevel then object:SetLevel (me.NSSentryLevel) end end },
+	dispenser = { "obj_dispenser" },
 	door = { "obj_door" },
 	teleporter_entrance = { "obj_teleporter", false },
 	teleporter_exit = { "obj_teleporter", true }
@@ -748,21 +751,100 @@ local OBJECTS =
 
 function ENT:NSLegsBuilds (kind) return OBJECTS [kind] ~= nil end
 
+-- Where an object may stand near a spot: on the floor under it, then, for an object with a box of its
+-- own (base_obj's HullMins and HullMaxs), round it, nearest first. A door has none: it goes in its
+-- doorway or not at all.
+local SEAT_RINGS, SEAT_STEPS, FLOOR_LOOK = { 32, 64, 96 }, 8, Vector (0, 0, 64)
+-- base_obj's: how far above its origin the space it needs starts.
+local FLOOR_CLEAR = 2
+
+local function Floor (spot)
+	local tr = util.TraceLine ({ start = spot + FLOOR_LOOK, endpos = spot - FLOOR_LOOK, mask = MASK_SOLID_BRUSHONLY })
+	return tr.Hit and not tr.StartSolid and tr.HitPos or nil
+end
+
+-- The first spot near pos where class's box stands clear (as its Fits asks, by a trace alone, so
+-- nothing is made to be tried), or pos's floor for a class with no box of its own.
+local function Seat (class, pos)
+	local mins, maxs = scripted_ents.GetMember (class, "HullMins"), scripted_ents.GetMember (class, "HullMaxs")
+	if not mins then return Floor (pos) end
+	local clearMins = Vector (mins.x, mins.y, FLOOR_CLEAR)
+	local function Clear (seat)
+		return seat and not util.TraceHull ({ start = seat, endpos = seat, mins = clearMins, maxs = maxs, mask = MASK_SOLID }).Hit
+	end
+	local seat = Floor (pos)
+	if Clear (seat) then return seat end
+	for _, radius in ipairs (SEAT_RINGS) do
+		for i = 0, SEAT_STEPS - 1 do
+			local angle = i / SEAT_STEPS * 2 * math.pi
+			seat = Floor (pos + Vector (math.cos (angle) * radius, math.sin (angle) * radius, 0))
+			if Clear (seat) then return seat end
+		end
+	end
+	return nil
+end
+
 function ENT:NSLegsBuild (kind, at, facing)
 	local entry = OBJECTS [kind]
 	if not entry then error ("no object of kind " .. tostring (kind), 2) end
 	local pos = Vector (at.x, at.y, at.z)
+	local seat = Seat (entry [1], pos)
+	if not seat then return nil end
 	local object = ents.Create (entry [1])
 	if entry [2] ~= nil then object:SetIsExit (entry [2]) end
+	if entry.setup then entry.setup (object, self) end
 	object:SetObjTeam (self:NSTeam ())
 	object:SetBuilder (self)
-	object:SetPos (pos)
+	object:SetPos (seat)
 	object:SetAngles (Angle (0, (Vector (facing.x, facing.y, pos.z) - pos):Angle ().y, 0))
 	object:Spawn ()
 	object:Activate ()
-	if object:Fits () then return true end
+	if object:Fits () then return object end
 	object:Remove ()
-	return false
+	return nil
+end
+
+-- Whether what it set down still stands.
+function ENT:NSLegsStands (object) return IsValid (object) end
+
+-- Whether what stands is its own: it built it (base_obj's Builder).
+function ENT:NSLegsOwns (object) return IsValid (object) and object:GetBuilder () == self end
+
+-- Its team's buildings within TEND_REACH, the one needing it most (gameplay.buildings' Upkeep), looked
+-- over every TEND_LOOK: where it stands, or nil with all whole.
+local TEND_LOOK = 0.5
+local WRENCH_SOUND = "weapons/wrench_hit_build_success1.wav"
+
+function ENT:NSLegsTend ()
+	local Buildings, now = gameplay.buildings, CurTime ()
+	if now >= (self.nsTendLook or 0) then
+		self.nsTendLook = now + TEND_LOOK
+		local team, near = self:NSTeam (), {}
+		for _, ent in ipairs (ents.FindInSphere (self:GetPos (), Buildings.TEND_REACH)) do
+			if ent.Wrench and Buildings.Tends (ent:GetObjTeam (), team) then
+				near [#near + 1] = { constructed = ent:Constructed (), health = ent:Health (), max = ent:GetMaxHealth (), ent = ent }
+			end
+		end
+		local worst = Buildings.Upkeep (near)
+		self.nsTending = worst and worst.ent
+	end
+	if not IsValid (self.nsTending) then return nil end
+	local at = self.nsTending:GetPos ()
+	return { x = at.x, y = at.y, z = at.z }
+end
+
+-- Its wrench on the building it tends: whether that is within reach, struck at the wrench's pace.
+function ENT:NSLegsWrench ()
+	local Buildings, building = gameplay.buildings, self.nsTending
+	if not IsValid (building) then return false end
+	local eye = self:EyePos ()
+	if building:NearestPoint (eye):Distance (eye) > Buildings.WRENCH_RANGE then return false end
+	local now = CurTime ()
+	if now >= (self.nsNextSwing or 0) then
+		self.nsNextSwing = now + Buildings.WRENCH_INTERVAL
+		if building:Wrench (self) then self:EmitSound (WRENCH_SOUND) end
+	end
+	return true
 end
 
 -- Where its squad's mode sends it, at the gait it says, its way there kept out of keepOut's nav areas

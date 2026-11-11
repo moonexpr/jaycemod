@@ -6,7 +6,9 @@
 --
 -- What they ask of the soldier: HasTheFlag(), IsFlagHome(), GetsFlagAsItSpawns(),
 -- SecondsAlive(), PickUpFlag(), FlagToFetch() -> where it lies or nil,
--- FlagCaptureZone() -> where it is or nil, FollowPath(goal), Now(), RoundMode().
+-- FlagCaptureZone() -> where it is or nil, FollowPath(goal), Now(), RoundMode();
+-- and, for its team's buildings (TF2's engineer keeping its nest up), BuildingToTend() -> where
+-- the one needing it most stands or nil, WithinWrenchReach(spot), SwingAt(spot).
 local Action = nextsoldier.behavior.action
 local ipairs = ipairs
 module ("nextsoldier.behavior.ctfbot")
@@ -26,6 +28,21 @@ end
 
 function Taunt:Update (me)
 	if me:Now () >= self.endsAt then return self:Done ("Taunt finished") end
+	return self:Continue ()
+end
+
+-- An engineer's upkeep (CTFBotEngineerBuild's, without building): to the building of its team
+-- needing it most, swinging its wrench at it until all are whole.
+TendBuildings = Action.Extend ("TendBuildings")
+
+function TendBuildings:Update (me)
+	local spot = me:BuildingToTend ()
+	if not spot then return self:Done ("Nothing left to tend") end
+	if me:WithinWrenchReach (spot) then
+		me:SwingAt (spot)
+	else
+		me:FollowPath (spot)
+	end
 	return self:Continue ()
 end
 
@@ -95,6 +112,11 @@ function InitialAction (engine, compiled)
 							when = function (me) return me:HasTheFlag () end,
 							action = function () return DeliverFlag:New () end,
 							reason = "I've picked up the flag! Running it in..."
+						},
+						{
+							when = function (me) return not me:HasTheFlag () and me:BuildingToTend () ~= nil end,
+							action = function () return TendBuildings:New () end,
+							reason = "A building needs tending"
 						}
 					}
 				}

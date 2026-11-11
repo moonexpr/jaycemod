@@ -95,6 +95,12 @@ T.test ("an enemy is hurt, a teammate is not, and the attacker hurts itself", fu
 	T.eq (e:DamageTo (Victim ({ team = Teams.HALLOWEEN })), DAMAGE, "a skeleton")
 end)
 
+T.test ("a blast sparing its attacker hurts it no more than a teammate (a sentry's rocket, its builder)", function ()
+	local e = Explosion ({ spareAttacker = true })
+	T.eq (e:DamageTo (Victim ({ team = Teams.RED, isAttacker = true })), nil,    "its builder")
+	T.eq (e:DamageTo (Victim ({ team = Teams.BLUE })),                   DAMAGE, "enemy")
+end)
+
 T.test ("forced friendly fire hurts teammates too", function ()
 	local e = Explosion ({ forceFriendlyFire = true })
 	T.eq (e:DamageTo (Victim ({ team = Teams.RED })), DAMAGE, "teammate")

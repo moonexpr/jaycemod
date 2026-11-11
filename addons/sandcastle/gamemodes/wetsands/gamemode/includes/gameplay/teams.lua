@@ -184,12 +184,13 @@ function BonusCrits (state, winner, team)
 	return winner >= FIRST_GAME_TEAM and team == winner
 end
 
--- Whether a team's fighters crit for standing alone: the last of it alive in an arena round, or the
--- one against two in any round. own and enemy: { roster, alive }, a team's fighters and those living.
+-- Whether a team's fighters crit for standing alone: the last of it alive in an arena round or in
+-- sudden death (a stalemate fought out, no respawns), with an enemy left to fight; one fighting one
+-- or two alone is its team's last. Never in any other round's play. own and enemy: { roster, alive },
+-- a team's fighters and those living.
 function LastStandCrits (state, arena, own, enemy)
-	if state ~= STATE.RND_RUNNING and state ~= STATE.STALEMATE then return false end
-	if arena and own.alive == 1 and enemy.alive > 0 then return true end
-	return own.roster == 1 and enemy.roster == 2
+	local fought = state == STATE.STALEMATE or (arena and state == STATE.RND_RUNNING)
+	return fought and own.alive == 1 and enemy.alive > 0
 end
 
 -- mp_friendlyfire (CTFGameRules::FPlayerCanTakeDamage): with it off, a hit

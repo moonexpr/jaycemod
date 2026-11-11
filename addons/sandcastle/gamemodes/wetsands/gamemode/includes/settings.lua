@@ -49,8 +49,8 @@ SETTINGS:Range ("ns_squads_max",          1,  8,    NEXTSOLDIER)
 SETTINGS:Range ("ws_nodegraph_max_nodes", 64, 8192, NEXTSOLDIER)
 
 -- Gameplay rules: winning, bonus rounds, teams, votes and reports, respawns.
-SETTINGS:Range ("mp_winlimit",  0, 100,  RULES)
-SETTINGS:Range ("mp_maxrounds", 0, 100,  RULES)
+SETTINGS:Range ("mp_winlimit",  0, 25,   RULES)
+SETTINGS:Range ("mp_maxrounds", 0, 25,   RULES)
 SETTINGS:Range ("mp_timelimit", 0, 1440, RULES)
 SETTINGS:Switch ("mp_match_end_at_timelimit", RULES)
 SETTINGS:Switch ("mp_stalemate_enable",       RULES)

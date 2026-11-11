@@ -41,6 +41,7 @@ function NewState (config, now)
 		crit = config.crit == true,
 		team = config.team,
 		attacker = config.attacker,
+		spareAttacker = config.spareAttacker == true,
 		radius = config.radius or ROCKET_RADIUS
 	}
 end
@@ -63,6 +64,7 @@ function Blast (state, origin)
 		damage = state.damage,
 		attackerTeam = state.team,
 		attacker = state.attacker,
+		spareAttacker = state.spareAttacker,
 		halfFalloff = false,
 		forceFriendlyFire = false,
 		crit = state.crit

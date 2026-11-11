@@ -29,6 +29,42 @@ T.test("the winners of a round or of the match are crit boosted; nobody else is"
 	T.eq(L.BonusCrits(STATE.RND_RUNNING, RED, RED), false, "a round running")
 end)
 
+-- A fighter alone, in arena or sudden death (a stalemate fought out, no respawns): crits for the
+-- last of a team alive, and for one against one or two.
+local function Side(roster, alive) return { roster = roster, alive = alive } end
+
+T.test("the last of a team alive in arena or sudden death crits", function()
+	T.eq(L.LastStandCrits(STATE.STALEMATE, true, Side(6, 1), Side(6, 4)), true, "the last, in arena")
+	T.eq(L.LastStandCrits(STATE.RND_RUNNING, true, Side(6, 1), Side(6, 4)), true, "an arena round running")
+	T.eq(L.LastStandCrits(STATE.STALEMATE, false, Side(6, 1), Side(6, 4)), true, "the last, in sudden death")
+	T.eq(L.LastStandCrits(STATE.STALEMATE, true, Side(6, 2), Side(6, 4)), false, "two still up")
+	T.eq(L.LastStandCrits(STATE.STALEMATE, true, Side(6, 1), Side(6, 1)), true, "both the last")
+	T.eq(L.LastStandCrits(STATE.STALEMATE, true, Side(6, 1), Side(6, 0)), false, "nobody left to fight")
+end)
+
+T.test("one against one or two crits in arena or sudden death, dead or alive around it", function()
+	T.eq(L.LastStandCrits(STATE.STALEMATE, false, Side(1, 1), Side(2, 2)), true, "the one")
+	T.eq(L.LastStandCrits(STATE.STALEMATE, false, Side(1, 1), Side(2, 1)), true, "one of the two down")
+	T.eq(L.LastStandCrits(STATE.STALEMATE, false, Side(2, 2), Side(1, 1)), false, "not the two")
+	T.eq(L.LastStandCrits(STATE.STALEMATE, false, Side(1, 1), Side(1, 1)), true, "one against one: both")
+	T.eq(L.LastStandCrits(STATE.STALEMATE, false, Side(1, 1), Side(0, 0)), false, "one against nobody")
+	T.eq(L.LastStandCrits(STATE.STALEMATE, false, Side(1, 1), Side(3, 3)), true, "one against three: the last too")
+	T.eq(L.LastStandCrits(STATE.RND_RUNNING, true, Side(1, 1), Side(2, 2)), true, "in arena too")
+end)
+
+T.test("any other round's play crits nobody standing alone", function()
+	T.eq(L.LastStandCrits(STATE.RND_RUNNING, false, Side(6, 1), Side(6, 4)), false, "the last alive")
+	T.eq(L.LastStandCrits(STATE.RND_RUNNING, false, Side(1, 1), Side(2, 2)), false, "one against two")
+	T.eq(L.LastStandCrits(STATE.RND_RUNNING, false, Side(1, 1), Side(1, 1)), false, "one against one")
+end)
+
+T.test("nobody stands alone outside a round being fought", function()
+	for _, state in ipairs({ STATE.PREROUND, STATE.TEAM_WIN, STATE.GAME_OVER, STATE.BETWEEN_RNDS }) do
+		T.eq(L.LastStandCrits(state, true, Side(6, 1), Side(6, 4)), false, "arena")
+		T.eq(L.LastStandCrits(state, true, Side(1, 1), Side(2, 2)), false, "one against two")
+	end
+end)
+
 -- mp_friendlyfire (CTFGameRules::FPlayerCanTakeDamage): off, a teammate's
 -- hit hurts nobody but its attacker; those of no team are anyone's.
 T.test("without friendly fire teammates cannot hurt each other; anyone else can", function()

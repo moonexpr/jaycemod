@@ -2,10 +2,12 @@
 -- (features.aiwar.marks), each through the war's own inputs: posts are the field's posts for
 -- the team, rallies where its recalled squads regroup (both read by the orders from the field),
 -- an area to avoid closed as a disabled hazard is, an enemy seen a contact reported to the
--- team's squads; a squad's next mission, the room and kind it is issued for; and the ways out of
+-- team's squads; a camp (a spot an enemy kills its members from again and again) marked as the
+-- war goes, a label for what its squads will throw and fire explosives at; a squad's next mission, the room and kind it is issued for; and the ways out of
 -- a room, for the legs' panic.
 local Controller = ...
 local Marks = WS.require ("features.aiwar.marks")
+local Camps = WS.require ("features.aiwar.camps")
 local Tactics = wartactics.fireteam
 local Mission = wartactics.mission
 local Rooms = wartactics.rooms
@@ -72,6 +74,23 @@ function Controller:MarksThink (now)
 		end
 	end
 end
+
+-- A kill while the war is on: an enemy killing again and again from one spot (features.aiwar.camps)
+-- makes it a CAMP mark of its victims' team. A building's kills (a sentry's, credited to its
+-- builder) are the building's: it is what camps.
+function Controller:NoteKill (victim, attacker, inflictor)
+	if IsValid (inflictor) and inflictor.GetObjTeam then attacker = inflictor end
+	if not (self.war and IsValid (victim) and IsValid (attacker) and attacker ~= victim) then return end
+	local killerTeam, victimTeam = WS.TeamNumber (attacker), WS.LastTeamNumber (victim)
+	if not (Teams.EnemyOf (victimTeam) and killerTeam == Teams.EnemyOf (victimTeam)) then return end
+	self.camps = self.camps or Camps.New ()
+	local at = attacker:GetPos ()
+	local camp = self.camps:Kill (attacker, killerTeam, victimTeam, { x = at.x, y = at.y, z = at.z }, CurTime ())
+	if camp then self:Mark (Marks.CAMP, camp.team, camp.pos) end
+end
+
+hook.Add ("PlayerDeath", "ws_aiwar_camps", function (victim, inflictor, attacker) Controller:NoteKill (victim, attacker, inflictor) end)
+hook.Add ("OnNPCKilled", "ws_aiwar_camps", function (victim, attacker, inflictor) Controller:NoteKill (victim, attacker, inflictor) end)
 
 -- A squad's next mission by hand: kind (a wartactics.mission kind) in the room at pos, or
 -- ADVANCE for none; the squad lets its mission go and asks afresh. Returns true, or false and why.

@@ -35,6 +35,13 @@ end)
 -- A kill the player took part in is marked as theirs. A client still
 -- loading has no player yet (me nil), and no kill is theirs: not even a
 -- death with no killer, whose attacker is nil too.
+-- TF2's object_destroyed row: the building's name, its builder's after it.
+T.test ("a building destroyed is named with its builder, as TF2 names it", function ()
+	T.eq (Feed.ObjectVictim ("Sentry Gun", "Tender"), "Sentry Gun (Tender)", "with its builder")
+	T.eq (Feed.ObjectVictim ("Sentry Gun", ""),       "Sentry Gun",          "built by nobody known")
+	T.eq (Feed.ObjectVictim ("Sentry Gun", nil),      "Sentry Gun",          "nor a name at all")
+end)
+
 T.test ("a kill is mine when I am its killer or its victim", function ()
 	T.eq (Feed.Mine ("Alice", "Alice", "Bob"), true,  "my kill")
 	T.eq (Feed.Mine ("Bob", "Alice", "Bob"),   true,  "my death")

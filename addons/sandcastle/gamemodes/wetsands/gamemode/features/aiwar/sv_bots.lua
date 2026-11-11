@@ -334,7 +334,7 @@ local function IsGM13Entity (ent)
 end
 
 -- The live fighters of each game team, players (bots included), the war's
--- NPC soldiers, and those a hook WSWarFighters(fighters) adds.
+-- NPC soldiers, its buildings, and those a hook WSWarFighters(fighters) adds.
 function Controller:Fighters ()
 	local fighters = { [RED] = {}, [BLUE] = {} }
 	for _, ply in ipairs (player.GetAll ()) do
@@ -346,10 +346,15 @@ function Controller:Fighters ()
 		if list and IsValid (ent) and not ent:IsPlayer () and ent:Health () > 0 then list [#list + 1] = ent end
 	end
 	for _, ent in ents.Iterator () do
-		if IsValid (ent) and not self.soldiers [ent] and ent:Health () > 0
-			and (ent:IsNPC () or ent:IsNextBot () or IsGM13Entity (ent)) then
-			fighters [RED] [#fighters [RED] + 1] = ent
-			fighters [BLUE] [#fighters [BLUE] + 1] = ent
+		if IsValid (ent) and not self.soldiers [ent] and ent:Health () > 0 then
+			if ent.GetObjTeam then
+				-- a building (base_obj) fights for its team, an enemy the other's soldiers target
+				local list = fighters [ent:GetObjTeam ()]
+				if list then list [#list + 1] = ent end
+			elseif ent:IsNPC () or ent:IsNextBot () or IsGM13Entity (ent) then
+				fighters [RED] [#fighters [RED] + 1] = ent
+				fighters [BLUE] [#fighters [BLUE] + 1] = ent
+			end
 		end
 	end
 	-- others a mode makes fight for a side (an armed hostage: features.hostage)

@@ -2,7 +2,8 @@
 -- player.CreateNextSoldier runs nextsoldier.behavior.ctfbot's tree, and this is the
 -- soldier those actions see, its keys pressed each tick as a player's. GMod has no
 -- player locomotion for a NextBotPlayer, so its moves are ours: routes from a navigator
--- (ws_bot_navigator), its keys from its body (nextsoldier.body.player_body).
+-- (ws_bot_navigator), its keys from its body (nextsoldier.body.player_body). Each carries a
+-- wrench (weapon_wrench) and keeps its team's buildings near it up (ctfbot's TendBuildings).
 --   WS.AddNextSoldier(team[, name]) -> the bot, or nil without the binary or a slot
 --   ns_soldier_add red|blue [name]
 local CTFBot = nextsoldier.behavior.ctfbot
@@ -12,6 +13,7 @@ local Locomotion = nextsoldier.locomotion
 local Movement = gameplay.movement
 local BotSteering = WS.require ("features.npc.bot_steering")
 local TFBot = WS.require ("foundation.wetsands.path.tfbot")
+local Buildings = gameplay.buildings
 
 -- A route is planned again this often, as TF2's actions do theirs, its goal moved or not.
 local REPLAN_LEAST, REPLAN_MOST = 1, 2
@@ -27,6 +29,10 @@ local OFF_MESH_NEAR = 96
 local LIFT, RISE, SWEEP_HEIGHT = Vector (0, 0, 20), 40, 36
 local FOOTING_ABOVE, FOOTING_BELOW = Vector (0, 0, 18), Vector (0, 0, 36)
 local DIRECT_RANGE = 256
+-- Its team's buildings are looked over this often for one to tend; a swing it is told of holds
+-- its wrench's key this long.
+local TEND_LOOK, SWING_HOLD = 0.5, 0.2
+local WRENCH = "weapon_wrench"
 -- Its body is TF2's, so it is priced as TF2's bots are: a stair's step, its crouch
 -- jump, the fall it survives unhurt, and no ladder (its keys climb none).
 local LIMITS = { stepHeight = Movement.TF2.stepHeight, jumpHeight = Movement.CrouchJump (Movement.TF2), deathDropHeight = 300 }
@@ -50,6 +56,50 @@ end
 
 local function Point (v) return { x = v.x, y = v.y, z = v.z } end
 local function ToVector (p) return Vector (p.x, p.y, p.z) end
+
+-- Its team's buildings within TEND_REACH, the one needing it most (gameplay.buildings' Upkeep):
+-- only with a wrench to tend it.
+function Soldier:BuildingToTend ()
+	local ply, now = self.ent, CurTime ()
+	if now >= (self.nextTendLook or 0) then
+		self.nextTendLook = now + TEND_LOOK
+		self.tending = nil
+		if ply:HasWeapon (WRENCH) then
+			local team, near = WS.TeamNumber (ply), {}
+			for _, ent in ipairs (ents.FindInSphere (ply:GetPos (), Buildings.TEND_REACH)) do
+				if ent.Wrench and Buildings.Tends (ent:GetObjTeam (), team) then
+					near [#near + 1] = { constructed = ent:Constructed (), health = ent:Health (), max = ent:GetMaxHealth (), ent = ent }
+				end
+			end
+			local worst = Buildings.Upkeep (near)
+			self.tending = worst and worst.ent
+		end
+	end
+	if not IsValid (self.tending) then return nil end
+	return self.tending:GetPos ()
+end
+
+function Soldier:WithinWrenchReach ()
+	local eye = self.ent:EyePos ()
+	return IsValid (self.tending) and self.tending:NearestPoint (eye):Distance (eye) <= Buildings.WRENCH_RANGE
+end
+
+function Soldier:SwingAt ()
+	self.swingUntil = CurTime () + SWING_HOLD
+end
+
+-- Told to swing: its wrench out, its eyes on the building, its attack key down.
+function Soldier:Swinging (cmd, now)
+	local ply, building = self.ent, self.tending
+	if not (IsValid (building) and now < (self.swingUntil or 0)) then return false end
+	local wrench = ply:GetWeapon (WRENCH)
+	if not IsValid (wrench) then return false end
+	if ply:GetActiveWeapon () ~= wrench then ply:SelectWeapon (WRENCH) end
+	local aim = (building:WorldSpaceCenter () - ply:EyePos ()):Angle ()
+	cmd:SetViewAngles (aim)
+	ply:SetEyeAngles (aim)
+	return true
+end
 
 function Soldier:WalkClear (from, to)
 	if math.abs (to.z - from.z) > RISE then return false end
@@ -179,8 +229,9 @@ function Soldier:Drive (cmd)
 	if out.duck then buttons = bit.bor (buttons, IN_DUCK) end
 	if out.jump then buttons = bit.bor (buttons, IN_JUMP) end
 	if out.use then buttons = bit.bor (buttons, IN_USE) end
-	cmd:SetButtons (buttons)
 	if not self.head then ply:SetEyeAngles (Angle (out.pitch, out.yaw, 0)) end
+	if self:Swinging (cmd, now) then buttons = bit.bor (buttons, IN_ATTACK) end
+	cmd:SetButtons (buttons)
 end
 
 -- Its head, configured once and Rust's after: a request's priority, the seconds it holds
@@ -260,7 +311,12 @@ end)
 
 hook.Add ("PlayerSpawn", "ws_next_soldiers", function (ply)
 	local soldier = soldiers [ply]
-	if soldier then soldier.spawnedAt, soldier.walk = CurTime (), nil end
+	if not soldier then return end
+	soldier.spawnedAt, soldier.walk, soldier.tending = CurTime (), nil, nil
+	-- its wrench, to keep its team's buildings up, once its loadout is given
+	timer.Simple (0, function ()
+		if IsValid (ply) and ply:Alive () and not ply:HasWeapon (WRENCH) then ply:Give (WRENCH, true) end
+	end)
 end)
 
 concommand.Add ("ns_soldier_add", function (ply, _, args)

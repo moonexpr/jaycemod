@@ -61,11 +61,12 @@ function Controller:FireWeaponMimic (ent, mimic, count)
 end
 
 -- A player's team; an entity that takes sides reports its own through
--- GetTeamNumber (base_nextsoldier_combat does); anything else has none.
+-- GetTeamNumber (base_nextsoldier_combat does); anything else, the team it
+-- fights for (WS.TeamNumber: a team's NPCs and buildings), or none.
 function Controller:TeamOf (ent)
 	if ent:IsPlayer () then return ent:Team () end
 	if ent.GetTeamNumber then return ent:GetTeamNumber () end
-	return WS.TEAM_UNASSIGNED
+	return WS.TeamNumber (ent)
 end
 
 -- Whether ent's centre is inside an active func_respawnroom of any team.

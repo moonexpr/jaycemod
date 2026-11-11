@@ -57,6 +57,13 @@ T.test ("every setting names the privilege that may change it", function ()
 	T.eq (Settings.SETTINGS.tf_weapon_criticals.guard, Permissions.GAMEPLAY, "a superadmin toggle")
 end)
 
+T.test ("the match's win limit and round limit may be 0, no limit", function ()
+	T.eq (Settings.SETTINGS.mp_winlimit.min,  0, "mp_winlimit")
+	T.eq (Settings.SETTINGS.mp_maxrounds.min, 0, "mp_maxrounds")
+	T.defined (Settings.SETTINGS.mp_winlimit.max,  "mp_winlimit's most")
+	T.defined (Settings.SETTINGS.mp_maxrounds.max, "mp_maxrounds' most")
+end)
+
 T.test ("GMod's host-only NPCs and Server menu options are settings, behind server_options", function ()
 	local Permissions = system.permissions
 	for _, name in ipairs (Settings.PROXIED) do

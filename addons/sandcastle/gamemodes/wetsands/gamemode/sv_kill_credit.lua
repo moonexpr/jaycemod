@@ -12,7 +12,8 @@
 -- counted as ws_assists (the scoreboard's column and points) and named in
 -- the kill feed beside the killer (game_kill_assist). A victim slammed dead
 -- into a surface (ws/sv_hits.lua's strike, WS.MarkSlammed) shows the
--- impact's icon (features.aiwar.kill_feed's SLAMMED).
+-- impact's icon (features.aiwar.kill_feed's SLAMMED). A building destroyed is told to the
+-- kill feed too (game_object_destroyed).
 local Credit = gameplay.kill_credit
 local Feed = WS.require ("features.aiwar.kill_feed")
 local E = WS.Events
@@ -123,6 +124,32 @@ function GM:SendDeathNotice (attacker, inflictor, victim, flags)
 		}
 	)
 end
+
+-- What struck, as GMod's death notices name it: a player's weapon in hand when the player struck.
+local function InflictorClass (attacker, inflictor)
+	if IsValid (attacker) and attacker:IsPlayer () and (inflictor == attacker or not IsValid (inflictor)) then
+		local weapon = attacker:GetActiveWeapon ()
+		if IsValid (weapon) then return weapon:GetClass () end
+	end
+	if IsValid (inflictor) then return inflictor:GetClass () end
+	return IsValid (attacker) and attacker:GetClass () or "worldspawn"
+end
+
+-- A building destroyed, for the kill feed (game_object_destroyed).
+hook.Add ("WSObjectDestroyed", "ws_kill_credit", function (object, attacker, inflictor)
+	local builder = object:GetBuilder ()
+	local killer = IsValid (attacker) and (attacker:IsPlayer () or attacker:IsNPC () or attacker:IsNextBot ()) and attacker or nil
+	E.Fire ("game_object_destroyed",
+		{
+			object = object.PrintName,
+			builder = IsValid (builder) and NoticeName (GAMEMODE, builder) or "",
+			team = object:GetObjTeam (),
+			killer = killer and NoticeName (GAMEMODE, killer) or "",
+			killerTeam = killer and killer:IsPlayer () and killer:Team () or Feed.NPC_TEAM,
+			inflictor = InflictorClass (attacker, inflictor)
+		}
+	)
+end)
 
 -- A life's damagers are forgotten with it.
 hook.Add ("PlayerSpawn", "ws_kill_credit", function (ply)

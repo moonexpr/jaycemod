@@ -107,7 +107,8 @@ local Weapons = nextsoldier.body.weapons
 -- were tuned against.
 local SIGHT_RANGE, FOV_COS = 15000, math.cos(math.rad(150 / 2))
 local NOTICE_NEAR = 200
--- What any of them may look at: the players, NPCs and NextBots, gathered
+-- What any of them may look at: the players, NPCs and NextBots, and what
+-- else a mode marks as fought (ent.NSCombatant: a team's sentry), gathered
 -- once a COMBATANTS_EVERY seconds for every bot's looks.
 local COMBATANTS_EVERY = 1
 local combatants, combatantsAt = {}, -math.huge
@@ -116,7 +117,7 @@ local function Combatants(now)
 	if now - combatantsAt < COMBATANTS_EVERY then return combatants end
 	combatants, combatantsAt = {}, now
 	for _, ent in ents.Iterator() do
-		if ent:IsPlayer() or ent:IsNPC() or ent:IsNextBot() then combatants[#combatants + 1] = ent end
+		if ent:IsPlayer() or ent:IsNPC() or ent:IsNextBot() or ent.NSCombatant then combatants[#combatants + 1] = ent end
 	end
 	return combatants
 end

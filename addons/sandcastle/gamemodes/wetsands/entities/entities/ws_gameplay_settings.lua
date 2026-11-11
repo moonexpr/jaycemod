@@ -19,7 +19,7 @@ local TIME_MAX = 7200
 local RESPAWN_MAX = 60
 local BOTH_DEFAULT = 10 -- mp_respawnwavetime's default
 local SCORE_MAX = 100
-local WIN_LIMIT_MAX, MAX_ROUNDS_MAX, TIME_LIMIT_MAX = 100, 100, 240
+local WIN_LIMIT_MAX, MAX_ROUNDS_MAX, TIME_LIMIT_MAX = 25, 25, 240
 
 -- A win condition: one of the rounds' convars (0: none).
 local function WinCondition (name, convar, title, max)

@@ -28,9 +28,17 @@ function ENT:ObjDataTables ()
 	self:NetworkVar ("Bool", 0, "Open")
 end
 
+-- A body's team in either realm: a player's own; else, on a client, what the server told it
+-- (WS.SetTeamMember's ws_team), its team record being the server's.
+local function TeamOf (ent)
+	if SERVER then return WS.TeamNumber (ent) end
+	if ent:IsPlayer () then return ent:Team () end
+	return ent:GetNW2Int ("ws_team", TF_TEAM_UNASSIGNED)
+end
+
 function ENT:Blocks (ent)
 	if not (ent:IsPlayer () or ent:IsNPC () or ent:IsNextBot ()) then return true end
-	return not Buildings.Passes (self:GetObjTeam (), WS.TeamNumber (ent))
+	return not Buildings.Passes (self:GetObjTeam (), TeamOf (ent))
 end
 
 hook.Add ("ShouldCollide", "ws_obj_door", function (a, b)

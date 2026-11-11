@@ -42,9 +42,11 @@ function Explosion:DistanceTo (center, origin, direct)
 end
 
 -- Teammates are spared, except the attacker itself, unless friendly fire is
--- forced; a blast with no team has no teammates.
+-- forced; a blast with no team has no teammates. A blast sparing its attacker
+-- (a sentry's rocket, its builder the scorer) spares it whatever else.
 local function Spared (config, victim)
-	if victim.isAttacker or config.forceFriendlyFire then return false end
+	if victim.isAttacker then return config.spareAttacker == true end
+	if config.forceFriendlyFire then return false end
 	return config.attackerTeam ~= Teams.UNASSIGNED and victim.team == config.attackerTeam
 end
 

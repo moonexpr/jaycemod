@@ -131,6 +131,7 @@ local MARKS =
 	{ "enemy", "Enemy: its team's squads have seen one here", "mark" },
 	{ "avoid", "Avoid: the areas here are closed to every team", "mark" },
 	{ "danger", "Danger: its team's squads near it retreat from it", "mark" },
+	{ "camp", "Camp: an enemy kills its team from here again and again (the war marks these itself)", "mark" },
 	{ "assault", "Mission: the selection's squads assault the room here", "mission" },
 	{ "topple", "Mission: the selection's squads topple the room here", "mission" },
 	{ "ambush", "Mission: the selection's squads ambush in the room here", "mission" },
@@ -158,7 +159,7 @@ if CLIENT then
 	local YES_COLOR, NO_COLOR = Color (120, 255, 120), Color (255, 140, 140)
 	local QUERY_LINE_HEIGHT, QUERY_OFFSET = 16, 24
 	local MARK_COLORS = { [2] = Color (255, 110, 100), [3] = Color (110, 170, 255) }
-	local MARK_NAMES = { post = "POST", rally = "RALLY", enemy = "ENEMY SEEN", avoid = "AVOID" }
+	local MARK_NAMES = { post = "POST", rally = "RALLY", enemy = "ENEMY SEEN", avoid = "AVOID", camp = "CAMP" }
 
 	-- What the follower under the crosshair answers, on its bench.
 	function TOOL:DrawHUD ()

@@ -67,6 +67,8 @@ T.test("a rocket's blast is TF_ROCKET_RADIUS with its damage, team, attacker and
 	})
 	T.eq(amount, 50 * Combat.CRIT_MULTIPLIER, "a crit rocket's direct hit")
 	T.eq(Rocket.Blast(NewRocket({ radius = 200 }).state, V(0, 0, 0)).radius, 200, "a launcher's own radius")
+	T.eq(blast.spareAttacker, false, "its attacker hurt by it")
+	T.eq(Rocket.Blast(NewRocket({ spareAttacker = true }).state, V(0, 0, 0)).spareAttacker, true, "a sentry's: its builder spared")
 end)
 
 T.test("a rocket trails smoke, and a crit one its team's crit glow or the eyeball's", function()
@@ -208,7 +210,7 @@ end
 local function Rockets(me)
 	local rockets = {}
 	for _, args in ipairs(me:Called("SpawnEntity")) do
-		if args[1] == "tf_projectile_rocket" then rockets[#rockets + 1] = args end
+		if args[1] == "ent_projectile_rocket" then rockets[#rockets + 1] = args end
 	end
 	return rockets
 end

@@ -6,7 +6,8 @@
 -- named by its kind (Notice: every kind is one class, npc_nextsoldier),
 -- each given its display name (ws/cl_kill_feed.lua). Control points'
 -- captures and defenses have rows of their own, as in TF2 (Objective), and
--- a death to the world credited to an enemy reads "finished off" (Credited).
+-- a death to the world credited to an enemy reads "finished off" (Credited). A building destroyed
+-- is named with its builder (ObjectVictim).
 local concat, floor, ipairs, pairs, sub = table.concat, math.floor, ipairs, pairs, string.sub
 local AiWar = require ("features.aiwar.model")
 local Icons = gameplay.kill_icons
@@ -106,6 +107,13 @@ function WithAssister (row, assister, assisterTeam, me)
 	row.assister = assister
 	row.assisterTeam = assisterTeam
 	row.mine = row.mine or (me ~= nil and assister == me)
+end
+
+-- A building destroyed (TF2's object_destroyed): its name, then its builder's in brackets when
+-- one is known.
+function ObjectVictim (name, builder)
+	if builder == nil or builder == "" then return name end
+	return name .. " (" .. builder .. ")"
 end
 
 -- Whether a notice is the player's own (me: their name, or nil while their

@@ -11,7 +11,8 @@
 -- (WS.KillFeedObjective, from the capture view). A death to the world
 -- credited to an enemy reads "finished off" under the skull, as TF2's
 -- assisted suicide. An assisted kill names its assister beside the killer,
--- "killer + assister" (game_kill_assist). Each shows for LIFETIME
+-- "killer + assister" (game_kill_assist). A building destroyed is a row
+-- naming it with its builder (game_object_destroyed). Each shows for LIFETIME
 -- seconds (hud_deathnotice_time).
 local Feed = WS.require ("features.aiwar.kill_feed")
 local AiWar = WS.require ("features.aiwar.model")
@@ -122,6 +123,24 @@ E.Listen ("game_kill_assist", "ws_kill_feed", function (fields)
 	if row == nil or row.victim ~= Name (fields.victim) then return end
 	local sides = AiWar.Sides (GetGlobal2Int (AiWar.SIDES_KEY, AiWar.FACTIONS [AiWar.COMBINE].home))
 	Feed.WithAssister (row, Name (fields.assister), Feed.Team (fields.assister, fields.team, sides), Me ())
+end)
+
+-- A building destroyed: its killer, what struck, and the building named with its builder, in its
+-- team's colour (TF2's object_destroyed).
+E.Listen ("game_object_destroyed", "ws_kill_feed", function (fields)
+	local me = Me ()
+	local sides = AiWar.Sides (GetGlobal2Int (AiWar.SIDES_KEY, AiWar.FACTIONS [AiWar.COMBINE].home))
+	local killer = fields.killer ~= "" and fields.killer or nil
+	Push (
+		{
+			killer = Name (killer),
+			killerTeam = Feed.Team (killer, fields.killerTeam, sides),
+			victim = Feed.ObjectVictim (WS.Localize (fields.object) or fields.object, Name (fields.builder)),
+			victimTeam = fields.team,
+			icon = NoticeIcon (nil, 0, fields.inflictor, killer),
+			mine = Feed.Mine (me, killer, fields.builder)
+		}
+	)
 end)
 
 -- A point captured or defended (features.aiwar.kill_feed's Objective): kind,

@@ -8,11 +8,33 @@ local OUTLINE_BLUR, OUTLINE_PASSES = 2, 1
 local outlines = CreateClientConVar ("cl_friendly_outline", "1", true, false,
 	"Outline your teammates in their team's colour", 0, 1)
 
+-- Where the base gamemode draws a target id: under the crosshair.
+local TARGET_ID_DROP, LINE_HEIGHT = 30, 20
+
+-- A teammate's building (base_obj): its name, then its health or how far up it is.
+local function DrawBuilding (building)
+	local lines = Id.BuildingLines (WS.Localize (building.PrintName) or building.PrintName, building:GetObjHealth (), building:GetObjMaxHealth (), building:Constructed ())
+	local x, y = ScrW () / 2, ScrH () / 2 + TARGET_ID_DROP
+	local color = WS.TeamColor [building:GetObjTeam ()] or color_white
+	for i, line in ipairs (lines) do
+		draw.SimpleText (line, i == 1 and "TargetID" or "TargetIDSmall", x, y, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
+		y = y + LINE_HEIGHT
+	end
+end
+
 -- A true answer keeps the base gamemode's HUDDrawTargetID from drawing.
 hook.Add ("HUDDrawTargetID", "ws_friendly_id", function ()
 	local me = LocalPlayer ()
 	local target = me:GetEyeTrace ().Entity
-	if IsValid (target) and target:IsPlayer () and Id.Enemy (WS.TeamPlay (), me:Team (), target:Team ()) then return true end
+	if not IsValid (target) then return end
+	if target:IsPlayer () then
+		if Id.Enemy (WS.TeamPlay (), me:Team (), target:Team ()) then return true end
+		return
+	end
+	if target.GetObjHealth and Id.SeesBuilding (WS.TeamPlay (), me:Team (), target:GetObjTeam (), target:GetBuilder () == me) then
+		DrawBuilding (target)
+		return true
+	end
 end)
 
 hook.Add ("PreDrawHalos", "ws_friendly_id", function ()

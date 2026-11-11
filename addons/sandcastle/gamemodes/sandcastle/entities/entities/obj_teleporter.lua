@@ -7,6 +7,8 @@ AddCSLuaFile ()
 ENT.Base = "base_obj"
 ENT.Kind = "teleporter"
 ENT.Model = "models/buildables/teleporter.mdl"
+-- TF2's TELEPORTER_MINS and TELEPORTER_MAXS: its model has no collision shape for a bullet to hit.
+ENT.HullMins, ENT.HullMaxs = Vector (-24, -24, 0), Vector (24, 24, 12)
 ENT.PrintName = "Teleporter"
 ENT.Spawnable = true
 ENT.Category = "Sandcastle"

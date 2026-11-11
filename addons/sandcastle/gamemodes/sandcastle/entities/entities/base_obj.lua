@@ -1,11 +1,11 @@
 -- base_obj: what a support unit builds (CBaseObject, tf/baseobject_shared.cpp), the base of
--- obj_sentrygun, obj_teleporter and obj_door. Its builder sets its team and itself before Spawn
+-- obj_sentrygun, obj_teleporter, obj_dispenser and obj_door. Its builder sets its team and itself before Spawn
 -- (SetObjTeam, SetBuilder); it goes up over its kind's construction time (gameplay.buildings), its
 -- model's build animation paced to that, and does its work only once built (IsBuilt). It is harmed
 -- by its enemies and the world, never its own team, and is destroyed at no health:
--- WSObjectDestroyed(object, attacker) is run, then it is gone.
--- It is in its team's faction (GetFactions), so a soldier knows it for a friend or a foe; one that
--- fights (NSCombatant, a sentry's) is looked at as soldiers look at each other. A subclass names its
+-- WSObjectDestroyed(object, attacker, inflictor) is run, then it is gone.
+-- It is in its team's faction (GetFactions), so a soldier knows it for a friend or a foe, and a
+-- combatant (NSCombatant): soldiers look at it as at each other, the enemy's to fight it. A subclass names its
 -- Kind and Model (and BuildModel, where another model holds the animation; HullMins and HullMaxs, to
 -- be a solid box where its model has no collision shape), and works in ObjThink once built.
 AddCSLuaFile ()
@@ -15,12 +15,17 @@ ENT.Base = "base_anim"
 ENT.Spawnable = false
 ENT.RenderGroup = RENDERGROUP_BOTH
 ENT.AutomaticFrameAdvance = true
+-- The enemy's soldiers fight it as they fight each other.
+ENT.NSCombatant = true
 
 local Buildings = gameplay.buildings
 local Factions = WS.require ("includes.factions")
 
 -- TF2's buildables are skinned RED 0, BLU 1.
 local SKINS = { [TEAM_RED] = 0, [TEAM_BLUE] = 1 }
+-- Why its placer's building was not set down, sent their client to word: its name (a TF2 token)
+-- and the price they could not pay, or no price where there was no room.
+local REFUSED = "ws_obj_refused"
 -- How far above its origin the space it needs starts.
 local FLOOR_CLEAR = 2
 
@@ -28,10 +33,13 @@ function ENT:SetupDataTables ()
 	self:NetworkVar ("Int",    0, "ObjTeam")
 	self:NetworkVar ("Float",  0, "BuiltAt")
 	self:NetworkVar ("Entity", 0, "Builder")
+	-- Its health, which the engine keeps from clients, for a teammate's target id.
+	self:NetworkVar ("Int", 1, "ObjHealth")
+	self:NetworkVar ("Int", 2, "ObjMaxHealth")
 	self:ObjDataTables ()
 end
 
--- A subclass's own network vars, after the base's: Int and Float from 1, Entity from 1.
+-- A subclass's own network vars, after the base's: Int from 3, Float and Entity from 1.
 function ENT:ObjDataTables () end
 
 -- Its team's faction, for a NextBot's disposition toward it.
@@ -52,7 +60,7 @@ if SERVER then
 		local charged = WS.EconomyEnabled ()
 		local price = Buildings.SPAWN_PRICE [self.Kind]
 		if charged and not WS.Affords (WS.Money (ply), price) then
-			ply:ChatPrint ("A " .. self.PrintName .. " costs $" .. price)
+			net2.Send (REFUSED, { name = self.PrintName, price = price }, { to = ply })
 			return
 		end
 		local ent = ents.Create (class)
@@ -65,7 +73,7 @@ if SERVER then
 		ent:Activate ()
 		if not ent:Fits () then
 			ent:Remove ()
-			ply:ChatPrint ("There is no room for a " .. self.PrintName .. " here")
+			net2.Send (REFUSED, { name = self.PrintName }, { to = ply })
 			return
 		end
 		if charged then WS.SpendMoney (ply, price) end
@@ -98,8 +106,10 @@ if SERVER then
 		self:SetMoveType (MOVETYPE_NONE)
 		local phys = self:GetPhysicsObject ()
 		if IsValid (phys) then phys:EnableMotion (false) end
-		self:SetMaxHealth (Buildings.HEALTH [self.Kind])
+		self:SetMaxHealth (self:ObjMaxHealth ())
+		self:SetObjMaxHealth (self:GetMaxHealth ())
 		self:SetHealth (self:GetMaxHealth ())
+		self:SetObjHealth (self:Health ())
 		self:SetBuiltAt (CurTime ())
 		Play (self, ACT_OBJ_ASSEMBLING, Buildings.BUILD_TIME [self.Kind])
 		self:ObjInitialize ()
@@ -107,15 +117,18 @@ if SERVER then
 
 	function ENT:ObjInitialize () end
 
+	-- Its health whole: its kind's, unless a subclass says otherwise (a sentry's by its level).
+	function ENT:ObjMaxHealth () return Buildings.HEALTH [self.Kind] end
+
 	-- Whether it stands clear where it was set down: nothing solid within its bounds above FLOOR_CLEAR
-	-- (a model may sink a little into the floor it stands on) but a soldier building it. A player
-	-- must stand clear, or be stuck inside it.
+	-- (a model may sink a little into the floor it stands on), its builder included: whoever stands
+	-- there would be stuck inside it.
 	function ENT:Fits ()
-		local pos, mins, builder = self:GetPos (), self:OBBMins (), self:GetBuilder ()
+		local pos, mins = self:GetPos (), self:OBBMins ()
 		local tr = util.TraceHull (
 			{
 				start = pos, endpos = pos, mins = Vector (mins.x, mins.y, FLOOR_CLEAR), maxs = self:OBBMaxs (),
-				mask = MASK_SOLID, filter = builder:IsPlayer () and { self } or { self, builder }
+				mask = MASK_SOLID, filter = self
 			}
 		)
 		return not tr.Hit
@@ -126,15 +139,30 @@ if SERVER then
 		local team = IsValid (attacker) and WS.TeamNumber (attacker) or TF_TEAM_UNASSIGNED
 		if not Buildings.Harms (self:GetObjTeam (), team) then return 0 end
 		self:SetHealth (self:Health () - dmg:GetDamage ())
+		self:SetObjHealth (self:Health ())
 		if self:Health () <= 0 and not self.objDestroyed then
 			self.objDestroyed = true
 			local effect = EffectData ()
 			effect:SetOrigin (self:WorldSpaceCenter ())
 			util.Effect ("Explosion", effect)
-			hook.Run ("WSObjectDestroyed", self, attacker)
+			hook.Run ("WSObjectDestroyed", self, attacker, dmg:GetInflictor ())
 			self:Remove ()
 		end
 		return dmg:GetDamage ()
+	end
+
+	-- A wrench's hit from wielder: a teammate's hurries it going up and mends it once built. Whether it
+	-- did either.
+	function ENT:Wrench (wielder)
+		if not Buildings.Tends (self:GetObjTeam (), WS.TeamNumber (wielder)) then return false end
+		if not self:IsBuilt () then
+			self:SetBuiltAt (Buildings.Hurried (self.Kind, self:GetBuiltAt (), CurTime ()))
+			return true
+		end
+		if self:Health () >= self:GetMaxHealth () then return false end
+		self:SetHealth (Buildings.Repaired (self:Health (), self:GetMaxHealth ()))
+		self:SetObjHealth (self:Health ())
+		return true
 	end
 
 	function ENT:Think ()
@@ -143,6 +171,7 @@ if SERVER then
 				self.objUp = true
 				Wear (self, self.Model)
 				Play (self, ACT_OBJ_RUNNING)
+				self:ObjBuilt ()
 			end
 			self:ObjThink ()
 		end
@@ -151,4 +180,24 @@ if SERVER then
 	end
 
 	function ENT:ObjThink () end
+
+	-- What a subclass does as it is built, once.
+	function ENT:ObjBuilt () end
+end
+
+if CLIENT then
+	-- A TF2 token in the player's language (WS.Localize, Wetsands'), or as it is.
+	local function Word (token) return WS.Localize and WS.Localize (token) or token end
+
+	net2.Receive (REFUSED, function (refusal)
+		local name = Word (refusal.name)
+		if refusal.price then
+			chat.AddText ("A " .. name .. " costs $" .. refusal.price)
+		else
+			chat.AddText ("There is no room for a " .. name .. " here")
+		end
+	end)
+
+	-- The names the spawn menu shows are TF2's tokens: worded before it is built.
+	if WS and WS.Localize then WS.Localize ("#TF_Object_Sentry") end
 end

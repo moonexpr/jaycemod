@@ -16,7 +16,8 @@ local PREPARE_TIME = 5
 local ROUND_TIME = 300
 local OVER_TIME = 8
 
-local winlimit = CreateConVar ("mp_winlimit", "3", { FCVAR_ARCHIVE, FCVAR_NOTIFY }, "Rounds a team must win to take the match", 1)
+-- 0: no limit, as TF2's (a map whose captures score plays to its round limit instead)
+local winlimit = CreateConVar ("mp_winlimit", "3", { FCVAR_ARCHIVE, FCVAR_NOTIFY }, "Rounds a team must win to take the match (0: no limit)", 0)
 
 local match
 local declared
@@ -98,14 +99,9 @@ local function Announce (winner)
 	)
 end
 
--- The round is over, scored: each realm's listeners present it (the
--- gamemode's RoundWinAnnounce on clients). TF2's teamplay_round_win.
-local function Announce (winner)
-	game_events.Fire ("teamplay_round_win",
-		{
-			team = winner or TF_TEAM_UNASSIGNED -- the team that won, TF_TEAM_UNASSIGNED for a stalemate
-		}
-	)
+-- Whether a team with score wins takes the match under winlimit (0: no limit).
+function TakesMatch (score, limit)
+	return limit > 0 and score >= limit
 end
 
 -- Whether this round took the match.
@@ -121,7 +117,7 @@ local function Finish (winner)
 	AddTeamScore ({ team = winner, score = 1, event = "round_win" })
 	Announce (winner)
 	coroutine.wait (OVER_TIME)
-	return team.GetScore (winner) >= winlimit:GetInt ()
+	return TakesMatch (team.GetScore (winner), winlimit:GetInt ())
 end
 
 local function PlayMatch ()

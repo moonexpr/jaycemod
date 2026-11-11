@@ -8,7 +8,7 @@ local ZONE, INTEL = { x = 900 }, { x = 200 }
 
 -- A soldier with `fields` over what one just spawned in MvM, its bomb at home, answers.
 local function Me (fields)
-	local me = { carrying = false, home = true, atSpawn = true, age = 0, zone = ZONE, fetch = nil, now = 0, walked = {}, picked = 0, mode = "mvm" }
+	local me = { carrying = false, home = true, atSpawn = true, age = 0, zone = ZONE, fetch = nil, now = 0, walked = {}, picked = 0, mode = "mvm", tend = nil, reach = false, swung = {} }
 	for key, value in pairs (fields or {}) do me [key] = value end
 	function me:HasTheFlag () return self.carrying end
 	function me:IsFlagHome () return self.home end
@@ -20,6 +20,9 @@ local function Me (fields)
 	function me:FollowPath (goal) self.walked [#self.walked + 1] = goal return "moving" end
 	function me:Now () return self.now end
 	function me:RoundMode () return self.mode end
+	function me:BuildingToTend () return self.tend end
+	function me:WithinWrenchReach (spot) return self.reach end
+	function me:SwingAt (spot) self.swung [#self.swung + 1] = spot end
 	return me
 end
 
@@ -61,6 +64,31 @@ T.test ("with the flag the scenario monitor's interrupt buries what it runs unde
 	T.eq (interrupt.when (Me ({ carrying = true })), true,                                        "the flag")
 	T.eq (interrupt.action ().name,                  "DeliverFlag",                               "its delivery")
 	T.eq (interrupt.reason,                          "I've picked up the flag! Running it in...", "TF2's reason")
+end)
+
+local SENTRY = { x = 400 }
+
+T.test ("a building of its team to tend buries what it runs under its tending, but for the flag", function ()
+	local interrupt = CTFBot.InitialAction (ENGINE, CTFBot.Compile (wartactics.scenarios)).scenario.interrupts [2]
+	T.eq (interrupt.when (Me ()),                                   false,           "nothing to tend")
+	T.eq (interrupt.when (Me ({ tend = SENTRY })),                  true,            "a building")
+	T.eq (interrupt.when (Me ({ tend = SENTRY, carrying = true })), false,           "the flag first")
+	T.eq (interrupt.action ().name,                                 "TendBuildings", "its tending")
+end)
+
+T.test ("a building to tend out of reach is walked to, one within it swung at", function ()
+	local far = Me ({ tend = SENTRY })
+	Named (CTFBot.TendBuildings:New ():Update (far), Action.CONTINUE)
+	T.eq (far.walked [1], SENTRY, "walked to")
+	T.eq (#far.swung,     0,      "not swung at from afar")
+	local near = Me ({ tend = SENTRY, reach = true })
+	Named (CTFBot.TendBuildings:New ():Update (near), Action.CONTINUE)
+	T.eq (near.swung [1], SENTRY, "swung at")
+	T.eq (#near.walked,   0,      "stood at")
+end)
+
+T.test ("tending is done when every building is whole", function ()
+	Named (CTFBot.TendBuildings:New ():Update (Me ()), Action.DONE, nil, "Nothing left to tend")
 end)
 
 T.test ("a robot just spawned is given the flag at home, as CTFBotFetchFlag does", function ()

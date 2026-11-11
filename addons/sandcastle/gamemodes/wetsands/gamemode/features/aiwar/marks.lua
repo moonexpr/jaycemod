@@ -1,10 +1,12 @@
 -- What the Path Follower stool tells the war by hand, each mark of a team at a point: a POST
 -- its defenders hold (the field's posts), a RALLY a recalled squad regroups at, an ENEMY its
 -- squads have seen there (a contact), an area to AVOID (closed to every team, as a hazard), a
--- DANGER its squads retreat from (an object, or a place in a room).
+-- DANGER its squads retreat from (an object, or a place in a room), a CAMP an enemy has killed its
+-- members from again and again (features.aiwar.camps finds them as the war goes): the spots its
+-- squads' grenades and rockets are for.
 -- Positions are plain { x, y, z } tables.
 --   New() -> marks: Add(kind, team, pos), RemoveNear(pos, reach) -> how many, All(), Of(team,
---   kind), Posts(team), Rallies(team) (nil for none), DangerNear(team, pos, reach) (the nearest
+--   kind), Posts(team), Rallies(team), Camps(team) (nil for none), DangerNear(team, pos, reach) (the nearest
 --   of the team's dangers within reach of pos, across the ground; nil for none), Version() (each
 --   change counts), Encode()
 --   -> text; Decode(text) -> marks as { kind, team, pos }.
@@ -12,9 +14,9 @@ local ipairs, setmetatable, error, tostring, tonumber = ipairs, setmetatable, er
 local concat, format = table.concat, string.format
 module (...)
 
-POST, RALLY, ENEMY, AVOID, DANGER = "post", "rally", "enemy", "avoid", "danger"
-KINDS = { POST, RALLY, ENEMY, AVOID, DANGER }
-local KNOWN = { [POST] = true, [RALLY] = true, [ENEMY] = true, [AVOID] = true, [DANGER] = true }
+POST, RALLY, ENEMY, AVOID, DANGER, CAMP = "post", "rally", "enemy", "avoid", "danger", "camp"
+KINDS = { POST, RALLY, ENEMY, AVOID, DANGER, CAMP }
+local KNOWN = { [POST] = true, [RALLY] = true, [ENEMY] = true, [AVOID] = true, [DANGER] = true, [CAMP] = true }
 
 local Marks = {}
 Marks.__index = Marks
@@ -58,6 +60,7 @@ end
 
 function Marks:Posts (team) return Points (self, team, POST) end
 function Marks:Rallies (team) return Points (self, team, RALLY) end
+function Marks:Camps (team) return Points (self, team, CAMP) end
 
 function Marks:DangerNear (team, pos, reach)
 	local nearest, best = nil, reach * reach

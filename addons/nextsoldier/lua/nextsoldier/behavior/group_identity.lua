@@ -597,6 +597,10 @@ local function StackAt (room, entrance, count, spacing, admitAt)
 		entrance, count, spacing)
 end
 
+-- count places by entrance out of room's sight (the ground outside it the room does not see, nearest
+-- it, as an assault stages): where to keep what the room's fight must not find.
+function Hidden (room, entrance, count, spacing, admitAt) return StackAt (room, entrance, count, spacing, admitAt) end
+
 -- The members (indices of starts) split over entrances: each entrance first takes the nearest
 -- left (the farthest from them choosing first), so none is empty while members last; the rest
 -- each the nearest entrance with room for its share. -> member -> entrance index.

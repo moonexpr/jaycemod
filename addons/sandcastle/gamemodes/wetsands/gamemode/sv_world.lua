@@ -241,9 +241,11 @@ function WS.SetTeamMember (ent, team)
 	if team then WS.JoinTeamFaction (ent, team) end
 end
 
--- A player's own team, else the team an entity fights for, else UNASSIGNED.
+-- A player's own team, a building's (base_obj's GetObjTeam), else the team an entity fights for,
+-- else UNASSIGNED.
 function WS.TeamNumber (ent)
 	if ent:IsPlayer () then return ent:Team () end
+	if ent.GetObjTeam then return ent:GetObjTeam () end
 	return teamMembers [ent] or WS.TEAM_UNASSIGNED
 end
 
@@ -251,6 +253,7 @@ end
 -- go as it dies (OnNPCKilled), maybe before its killer is credited.
 function WS.LastTeamNumber (ent)
 	if ent:IsPlayer () then return ent:Team () end
+	if ent.GetObjTeam then return ent:GetObjTeam () end
 	return lastTeams [ent] or WS.TEAM_UNASSIGNED
 end
 
