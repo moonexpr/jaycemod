@@ -4,7 +4,13 @@
 			"path": "."
 		},
 		{
-			"path": "../../Library/Application Support/CrossOver/Bottles/GModServer/drive_c/Steam/steamapps/common/GarrysModServer"
+			"path": "../../Library/Application Support/CrossOver/Bottles/GModServer/drive_c/Steam/steamapps/common/GarrysModServer/garrysmod/addons"
+		},
+		{
+			"path": "../../Library/Application Support/CrossOver/Bottles/Steam/drive_c/Steam/steamapps/common/GarrysMod/garrysmod/cfg"
+		},
+		{
+			"path": "../sandcastle-native-state/native/nextsoldier"
 		}
 	],
 	"settings": {
