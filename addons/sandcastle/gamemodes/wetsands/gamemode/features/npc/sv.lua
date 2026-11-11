@@ -31,6 +31,7 @@ local Controller =
 	searches = Scheduler.New ({ Now = function () return SysTime () end }), -- the Lua route searches still running, each a task
 	neighbors = {}, -- nav area id -> its floor neighbours' ids (read again when seams are linked: WSNavLinked)
 	centers = {}, -- nav area id -> its centre
+	ladders = {}, -- nav area id -> its nav ladders as the searches' links (sv_routes.lua's LaddersOf)
 	-- navMesh = nil, -- the mesh as route searches walk it (a wetsands.navsearch mesh), set by sv_routes once built
 	navMeshGeneration = 0, -- counts the mesh's link changes (WSNavLinked): a snapshot of an older one is dropped
 	-- navUncrossable = nil, -- nav area id -> id -> true: the links WS.NavLinkCrossable refuses, gathered with navMesh
@@ -182,6 +183,7 @@ end
 -- are stale.
 hook.Add ("WSNavLinked", "ws_npc_blockers", function ()
 	Controller.neighbors = {}
+	Controller.ladders = {}
 	Controller.navMesh, Controller.navUncrossable = nil, nil
 	Controller.navMeshGeneration = Controller.navMeshGeneration + 1
 	Controller:NoteBlockerChange (nil)

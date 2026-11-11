@@ -23,7 +23,7 @@
 --   New{ clock, term, capacity } -> a memo (an expiring cache), keys -> its
 --     newest REGIONS_PER_KEY regions
 --   memo:Key(request) -> the key; request = { strategy, limits, bot,
---     ignoreBlockers, crossable }, as features/npc/sv_routes.lua takes it
+--     ignoreBlockers, crossable, body }, as features/npc/sv_routes.lua takes it
 --   memo:Learn(key, region, generation)
 --   memo:Unreachable(key, start, goal, open(id), crossable(fromId, toId),
 --     generation, known(since)) -> a region holding start and not goal whose
@@ -148,6 +148,7 @@ ReachMemo = Class.Extend (Expiring.Expiring,
 					Number (request.strategy),
 					Number (request.limits),
 					Number (request.crossable),
+					Number (request.body),
 					request.ignoreBlockers and YES or NO,
 					bot.team,
 					bot.roundWon and YES or NO,

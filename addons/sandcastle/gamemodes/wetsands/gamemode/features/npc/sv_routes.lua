@@ -7,6 +7,7 @@ local NavSearch = wetsands.navsearch
 local Portal = nextsoldier.world.portal
 local Path = wetsands.path
 local ReachMemo = nextsoldier.locomotion.reach_memo
+local RouteLadders = WS.require ("features.npc.route_ladders")
 
 local NOBODY = WS.TEAM_UNASSIGNED
 
@@ -160,6 +161,45 @@ function NavGraph:Neighbors (id)
 	return ids
 end
 
+-- An area's nav ladders as links of the searches' mesh (features.npc.route_ladders' Links: none
+-- where the floor already goes), kept until the mesh's links change: each { to, length, handle =
+-- { ladder (the CNavLadder), up } }. Up a ladder from the area at its foot to each area at its
+-- head; down it from an area at its head to the one at its foot.
+local LADDER_UP, LADDER_DOWN = 0, 1
+local LADDER_HEADS = { "GetTopForwardArea", "GetTopLeftArea", "GetTopRightArea", "GetTopBehindArea" }
+
+local function LaddersOf (id)
+	local links = Controller.ladders [id]
+	if links then return links end
+	local area, found, linked = Area (id), {}, {}
+	for _, ladder in ipairs (area:GetLaddersAtSide (LADDER_UP)) do
+		for _, head in ipairs (LADDER_HEADS) do
+			local top = ladder [head] (ladder)
+			if IsValid (top) then
+				found [#found + 1] = { to = top:GetID (), length = ladder:GetLength (), handle = { ladder = ladder, up = true } }
+			end
+		end
+	end
+	for _, ladder in ipairs (area:GetLaddersAtSide (LADDER_DOWN)) do
+		local foot = ladder:GetBottomArea ()
+		if IsValid (foot) then
+			found [#found + 1] = { to = foot:GetID (), length = ladder:GetLength (), handle = { ladder = ladder, up = false } }
+		end
+	end
+	for _, to in ipairs (NavGraph:Neighbors (id)) do linked [to] = true end
+	links = RouteLadders.Links (found, linked, id)
+	Controller.ladders [id] = links
+	return links
+end
+
+-- The ladder a route takes from one area to another ({ ladder, up }), or nil where it walks.
+local function LadderBetween (fromId, toId)
+	for _, link in ipairs (LaddersOf (fromId)) do
+		if link.to == toId then return link.handle end
+	end
+	return nil
+end
+
 function NavGraph:Cost (fromId, toId, costSoFar)
 	if self.crossable and not self.crossable (Area (fromId), Area (toId)) then return Path.IMPASSABLE end
 	self.controller:FillStep (self.step, Area (toId), Area (fromId), nil, Center (toId):Distance (Center (fromId)), costSoFar, self.traversable)
@@ -203,6 +243,8 @@ function Controller:NavMeshReady ()
 					uncrossable [id] [to] = true
 				end
 			end
+			-- its ladders, for the walkers that climb (a bot player)
+			for _, link in ipairs (LaddersOf (id)) do mesh:Ladder (id, link.to, link.length) end
 			scheduler:CheckYield ()
 		end
 		mesh:Seal ()
@@ -214,7 +256,10 @@ end
 -- request = { from, to (positions), strategy, limits, bot (the strategy's,
 -- with team), avoid(area) -> bool (optional: areas to route around, as
 -- if blocked; the goal's area is never avoided), crossable(fromArea,
--- area) -> bool (optional: links to route around), ignoreBlockers (optional:
+-- area) -> bool (optional: links to route around), body (optional: the
+-- walker's own, { Area(area), Link(fromArea, area) } -> whether it fits: an
+-- area or an opening it does not is routed around; a ladder has no opening),
+-- ignoreBlockers (optional:
 -- route through doors shut to the team and solid brushes), onDone(route, found) } where route is the list of nav areas
 -- from the start's to the goal's (found), or to the one that came closest
 -- when the goal is out of reach, and nil when either end is off the mesh.
@@ -321,7 +366,7 @@ function Controller:RequestRoute (request)
 	end
 	local team = request.bot.team or NOBODY
 	self:RefreshBlockers (CurTime ())
-	local avoid, goalId = request.avoid, goal:GetID ()
+	local avoid, body, goalId = request.avoid, request.body, goal:GetID ()
 	local closed = self:ClosedFor (team, request.ignoreBlockers)
 	local graph = setmetatable (
 		{
@@ -335,9 +380,18 @@ function Controller:RequestRoute (request)
 			traversable = function (area)
 				local id = area:GetID ()
 				if closed [id] then return false end
+				if body and not body:Area (area) then return false end
 				return not (avoid and id ~= goalId and avoid (area))
 			end
 		}, NavGraph)
+	-- the request's own rule for a link, with its body's: a ladder has no opening to fit
+	local crossable = request.crossable
+	if body then
+		graph.crossable = function (from, to)
+			if crossable and not crossable (from, to) then return false end
+			return LadderBetween (from:GetID (), to:GetID ()) ~= nil or body:Link (from, to)
+		end
+	end
 	local startId, searchGoal, generation = start:GetID (), goalId, self.blockerGeneration
 	local key = REACH:GetBool () and self.reach:Key (request) or nil
 	local region = key and self.reach:Unreachable (key, startId, goalId,
@@ -367,8 +421,11 @@ function Controller:RequestRoute (request)
 	local toldUncrossable
 	local rules =
 	{
-		traversable = avoid and function (id) return graph.traversable (Area (id)) end or nil,
-		crossable = request.crossable and not mapCrossable and function (from, to) return graph.crossable (Area (from), Area (to)) end or nil
+		traversable = (avoid or body) and function (id) return graph.traversable (Area (id)) end or nil,
+		crossable = request.crossable and not mapCrossable and function (from, to) return graph.crossable (Area (from), Area (to)) end
+		-- told the map's uncrossable links, a body is asked only whether it fits the rest
+			or body and function (from, to) return LadderBetween (from, to) ~= nil or body:Link (Area (from), Area (to)) end
+			or nil
 	}
 	local scheduler = self.searches
 	scheduler:Spawn (function ()
@@ -474,6 +531,16 @@ local function LanePoints (points, from, to, crossing, dir)
 	points [#points + 1] = entry
 end
 
+-- A ladder's points on a route, up or down it (route_ladders' Points: before its foot, at its
+-- head), added to points; the last of them, where the route goes on from.
+local function Climb (points, climb)
+	local ladder = climb.ladder
+	for _, p in ipairs (RouteLadders.Points (ladder:GetBottom (), ladder:GetTop (), ladder:GetNormal (), climb.up)) do
+		points [#points + 1] = Vector (p.x, p.y, p.z)
+	end
+	return points [#points]
+end
+
 -- The points along a route: each crossing into the next area, then the
 -- goal (or the nearest the route came). For a lane (middles): each
 -- opening crossed at its middle, from inside the area left to inside the
@@ -484,8 +551,15 @@ function Controller:RouteWaypoints (areas, goal, found, start, middles)
 	local pos = start or areas [1]:GetCenter ()
 	for i = 2, #areas do
 		local dir
-		pos, dir = Crossing (areas [i - 1], areas [i], pos, middles)
-		if middles and dir then
+		local climb = LadderBetween (areas [i - 1]:GetID (), areas [i]:GetID ())
+		if climb then
+			pos = Climb (points, climb)
+		else
+			pos, dir = Crossing (areas [i - 1], areas [i], pos, middles)
+		end
+		if climb then
+			-- its points are laid
+		elseif middles and dir then
 			LanePoints (points, areas [i - 1], areas [i], pos, dir)
 			pos = points [#points]
 		else
