@@ -1,9 +1,8 @@
 -- The gamemode's entities win on the dedicated server (server_root.py). GMod
 -- registers an addon's lua/entities/<name> after the gamemode's
 -- entities/entities/<name>, so a Workshop archive the server mounts that
--- ships an entity of the same name replaces the gamemode's (the TF2 Weapon
--- Pack's tf_projectile_rocket and tf_projectile_pipe). Once every entity is
--- registered, each such clash is registered again from the gamemode's own
+-- ships an entity of the same name replaces the gamemode's. Once every entity
+-- is registered, each such clash is registered again from the gamemode's own
 -- file, on the server and on each client.
 if SERVER then AddCSLuaFile() end
 

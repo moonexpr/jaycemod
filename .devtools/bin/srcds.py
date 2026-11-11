@@ -21,7 +21,7 @@ The server runs from GarrysModServer beside it, which `start` builds out of
 symlinks (server_root.py): its addons/, data/, cache/ and console log are
 its own, so it writes nothing in the shared install. It runs secure (VAC),
 on Steam (sv_lan 0: a LAN server is never secure), with the Workshop, and
-without SourceTV (-nohltv). (It once ran
+without SourceTV (-nohltv) unless started --sourcetv. (It once ran
 -insecure -noworkshop -nosteam, from a crash in steamclient64.dll while it
 mounted the Workshop; the Workshop addons it needs, DrGBase among them, are
 still mounted from the operator's downloads by server_root's autorun.) Its console must be a terminal: with a pipe or
@@ -116,9 +116,21 @@ ALL_INTERFACES = "0.0.0.0"
 # from there. --ip 127.0.0.1 keeps it to this Mac.
 DEFAULT_BIND_HOST = ALL_INTERFACES
 
+def main_checkout(repo: Path) -> Path:
+    """The checkout that owns repo's .git: repo itself, or for a worktree (whose
+    .git is a file naming <main>/.git/worktrees/<name>) the main checkout."""
+    dot_git = repo / ".git"
+    if dot_git.is_dir():
+        return repo
+    gitdir = Path(dot_git.read_text().removeprefix("gitdir:").strip())
+    return gitdir.parents[2]
+
+
 REPO = Path(__file__).resolve().parents[2]
 ARTIFACTS = REPO / ".devtools" / "artifacts"
-PASSWORD_FILE = ARTIFACTS / "rcon_password"
+# one password for every checkout: they all drive the same instances and ports,
+# and a worktree's own would be refused by servers another checkout started
+PASSWORD_FILE = main_checkout(REPO) / ".devtools" / "artifacts" / "rcon_password"
 # the main server's Steam game server login token (GSLT), the operator's; gitignored
 STEAM_ACCOUNT_FILE = ARTIFACTS / "steam_account_token"
 PID_FILE = ARTIFACTS / "srcds.pid"
@@ -214,6 +226,7 @@ class ServerConfig:
     ip: str = LOCALHOST  # the address it binds, game and RCON alike
     p2p: bool = True  # -p2p: public, anyone joins through Steam's relays (connect p2p:<steamid64>)
     steam_account: str = ""  # a game server login token; empty logs on anonymously
+    sourcetv: bool = False  # SourceTV up from the first map (server-side demos), else -nohltv
 
     def __post_init__(self):
         if not MAP_NAME.match(self.map):
@@ -238,13 +251,16 @@ def command_line(install: Install, config: ServerConfig) -> List[str]:
     ] + list(config.convars)
     if config.steam_account:
         convars.append(("sv_setsteamaccount", config.steam_account))
+    if config.sourcetv:
+        convars.append(("tv_enable", "1"))
     argv = [
         str(install.wine), "--bottle", install.bottle, "--no-gui", "--no-update",
         "--workdir", install.gmod_windows,
         "--cx-app", install.gmod_windows + "\\" + SERVER_EXE,
         "-console", "-game", "garrysmod", "-port", str(config.port),
-        "-nohltv",
     ]
+    if not config.sourcetv:
+        argv.append("-nohltv")
     if not config.lua_refresh:
         argv.append("-disableluarefresh")
     if config.p2p:
@@ -660,12 +676,12 @@ def rcon_command(instance: Instance, text: str, timeout: float = 10) -> str:
 
 def make_server(map_name: str, port: int, lua_refresh: bool = True, maxplayers: int = DEFAULT_MAXPLAYERS,
                 ip: Optional[str] = None, instance: Instance = MAIN, p2p: bool = True,
-                gamemode: str = "sandcastle") -> Server:
+                gamemode: str = "sandcastle", sourcetv: bool = False) -> Server:
     """ip: the address to bind; by default the running server's (rcon, stop), else 127.0.0.1."""
     install = Install.discover(instance)
     ip = ip or started_host(instance)
     config = ServerConfig(map_name, port, password(), maxplayers, lua_refresh=lua_refresh, ip=ip, p2p=p2p,
-                          steam_account=steam_account(instance), gamemode=gamemode)
+                          steam_account=steam_account(instance), gamemode=gamemode, sourcetv=sourcetv)
     return Server(install, config, reach_address(ip), instance)
 
 
@@ -690,6 +706,8 @@ def main() -> int:
                        help="leave out -p2p: no joining through Steam's relays, only at the address")
     start.add_argument("--gamemode", default="sandcastle",
                        help="the gamemode to run; base loads quickest, for engineering what needs no game")
+    start.add_argument("--sourcetv", action="store_true",
+                       help="run SourceTV, without which the server records no demo (sv_demo_autorecord)")
     rcon = sub.add_parser("rcon")
     rcon.add_argument("command")
     sub.add_parser("stop")
@@ -701,7 +719,7 @@ def main() -> int:
         if args.action == "start":
             port = args.port or files.port
             server = make_server(args.map, port, args.lua_refresh, args.maxplayers, bind_address(args.ip), instance,
-                                 args.p2p, args.gamemode)
+                                 args.p2p, args.gamemode, args.sourcetv)
             server.start()
             if args.console:
                 open_console(files.log)

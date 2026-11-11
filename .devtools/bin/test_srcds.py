@@ -73,6 +73,12 @@ class CommandLine(unittest.TestCase):
         self.assertNotIn("-condebug", self.argv)
         self.assertIn("-nohltv", self.argv)
 
+    def test_sourcetv_runs_only_when_asked_for(self):
+        self.assertNotIn("+tv_enable", self.argv)
+        argv = command_line(INSTALL, dataclasses.replace(self.config, sourcetv=True))
+        self.assertNotIn("-nohltv", argv)
+        self.assertEqual(argv[argv.index("+tv_enable") + 1], "1")
+
     def test_logs_on_with_the_game_server_token_when_it_has_one(self):
         self.assertNotIn("+sv_setsteamaccount", self.argv)
         argv = command_line(INSTALL, dataclasses.replace(self.config, steam_account="ABC123"))
@@ -354,6 +360,29 @@ class Client(unittest.TestCase):
         server = FakeRconServer("pw")
         with self.assertRaises(AuthFailed):
             RconClient.connect("127.0.0.1", server.port, "nope", timeout=2)
+
+
+class SharedPassword(unittest.TestCase):
+    """Every checkout of the repo drives the same instances on the same ports,
+    so they all read one RCON password: the main checkout's."""
+
+    def test_a_worktree_reads_the_main_checkouts_password(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            main = Path(tmp) / "main"
+            worktree = Path(tmp) / "feature"
+            (main / ".git" / "worktrees" / "feature").mkdir(parents=True)
+            worktree.mkdir()
+            (worktree / ".git").write_text(f"gitdir: {main}/.git/worktrees/feature\n")
+            self.assertEqual(srcds.main_checkout(worktree), main)
+
+    def test_the_main_checkout_is_its_own(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            main = Path(tmp) / "main"
+            (main / ".git").mkdir(parents=True)
+            self.assertEqual(srcds.main_checkout(main), main)
+
+    def test_the_password_file_is_the_main_checkouts(self):
+        self.assertEqual(srcds.PASSWORD_FILE, srcds.main_checkout(srcds.REPO) / ".devtools" / "artifacts" / "rcon_password")
 
 
 if __name__ == "__main__":
