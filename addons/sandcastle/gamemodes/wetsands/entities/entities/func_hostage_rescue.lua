@@ -8,6 +8,6 @@ ENT.Type = "brush"
 ENT.Base = "base_brush2"
 
 -- Whether ent's centre is inside it, while it is enabled.
-function ENT:Holds(ent)
-	return self.enabled and self:WorldToLocal(ent:WorldSpaceCenter()):WithinAABox(self:OBBMins(), self:OBBMaxs())
+function ENT:Holds (ent)
+	return self.enabled and self:WorldToLocal (ent:WorldSpaceCenter ()):WithinAABox (self:OBBMins (), self:OBBMaxs ())
 end

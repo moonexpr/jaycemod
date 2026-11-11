@@ -34,7 +34,7 @@
 -- is opened again; the node a search came from is not expanded back into.
 local Heap = tree.heap
 local ipairs, setmetatable = ipairs, setmetatable
-module(...)
+module (...)
 
 RUNNING, FOUND, FAILED = "running", "found", "failed"
 
@@ -50,83 +50,84 @@ local MIN_STEP_SCALE, MIN_STEP_ADD = 1.00001, 0.00001
 local Search = {}
 Search.__index = Search
 
-local function Approach(self, node, distance)
+local function Approach (self, node, distance)
 	if self.closestDistance == nil or distance < self.closestDistance then
 		self.closest = node
 		self.closestDistance = distance
 	end
 end
 
-local function Open(self, node, total)
+local function Open (self, node, total)
 	local entry = { node = node }
-	self.entryOf[node] = entry
-	self.open:Push(total, entry)
+	self.entryOf [node] = entry
+	self.open:Push (total, entry)
 end
 
 -- The next live entry's node, or nil when the open list is empty.
-local function Next(self)
+local function Next (self)
 	local open = self.open
-	while open:Size() > 0 do
-		local entry = open:Pop()
-		if self.entryOf[entry.node] == entry then
-			self.entryOf[entry.node] = nil
+	while open:Size () > 0 do
+		local entry = open:Pop ()
+		if self.entryOf [entry.node] == entry then
+			self.entryOf [entry.node] = nil
 			return entry.node
 		end
 	end
 	return nil
 end
 
-local function Relax(self, node, nextNode)
+local function Relax (self, node, nextNode)
 	local graph = self.graph
-	local cost = graph:Cost(node, nextNode, self.costSoFar[node])
+	local cost = graph:Cost (node, nextNode, self.costSoFar [node])
 	if cost ~= cost then cost = NAN_COST end
 	if cost < 0 then return end
-	local floor = self.costSoFar[node] * MIN_STEP_SCALE + MIN_STEP_ADD
+	local floor = self.costSoFar [node] * MIN_STEP_SCALE + MIN_STEP_ADD
 	if cost < floor then cost = floor end
-	local known = self.entryOf[nextNode] ~= nil or self.closed[nextNode]
-	if known and self.costSoFar[nextNode] <= cost then return end
-	local remaining = graph:Estimate(nextNode, self.goal)
-	Approach(self, nextNode, remaining)
-	self.costSoFar[nextNode] = cost
-	self.closed[nextNode] = nil
-	self.parent[nextNode] = node
-	Open(self, nextNode, cost + remaining)
+	local known = self.entryOf [nextNode] ~= nil or self.closed [nextNode]
+	if known and self.costSoFar [nextNode] <= cost then return end
+	local remaining = graph:Estimate (nextNode, self.goal)
+	Approach (self, nextNode, remaining)
+	self.costSoFar [nextNode] = cost
+	self.closed [nextNode] = nil
+	self.parent [nextNode] = node
+	Open (self, nextNode, cost + remaining)
 end
 
-local function Expand(self, node)
-	local parent = self.parent[node]
-	for _, nextNode in ipairs(self.graph:Neighbors(node)) do
-		if nextNode ~= parent and nextNode ~= node then Relax(self, node, nextNode) end
+local function Expand (self, node)
+	local parent = self.parent [node]
+	for _, nextNode in ipairs (self.graph:Neighbors (node)) do
+		if nextNode ~= parent and nextNode ~= node then Relax (self, node, nextNode) end
 	end
-	self.closed[node] = true
+	self.closed [node] = true
 end
 
-function New(graph, start, goal, maxExpanded)
-	local search = setmetatable({
-		graph = graph,
-		start = start,
-		goal = goal,
-		maxExpanded = maxExpanded or MAX_EXPANDED,
-		expanded = 0,
-		status = RUNNING,
-		parent = {},
-		closest = start,
-		costSoFar = { [start] = 0 },
-	}, Search)
+function New (graph, start, goal, maxExpanded)
+	local search = setmetatable (
+		{
+			graph = graph,
+			start = start,
+			goal = goal,
+			maxExpanded = maxExpanded or MAX_EXPANDED,
+			expanded = 0,
+			status = RUNNING,
+			parent = {},
+			closest = start,
+			costSoFar = { [start] = 0 }
+		}, Search)
 	if start == goal then
 		search.status = FOUND
 		return search
 	end
-	search.open, search.entryOf, search.closed = Heap(), {}, {}
-	local estimate = graph:Estimate(start, goal)
-	Approach(search, start, estimate)
-	Open(search, start, estimate)
+	search.open, search.entryOf, search.closed = Heap (), {}, {}
+	local estimate = graph:Estimate (start, goal)
+	Approach (search, start, estimate)
+	Open (search, start, estimate)
 	return search
 end
 
-function Search:Step(budget)
+function Search:Step (budget)
 	while self.status == RUNNING and budget > 0 do
-		local node = Next(self)
+		local node = Next (self)
 		if node == nil then
 			self.status = FAILED
 		elseif node == self.goal then
@@ -137,32 +138,32 @@ function Search:Step(budget)
 		else
 			self.expanded = self.expanded + 1
 			budget = budget - 1
-			Expand(self, node)
+			Expand (self, node)
 		end
 	end
 	return self.status
 end
 
-function Search:Route(last)
+function Search:Route (last)
 	local node = last or self.closest
 	local reversed = { node }
-	while self.parent[node] ~= nil do
-		node = self.parent[node]
-		reversed[#reversed + 1] = node
+	while self.parent [node] ~= nil do
+		node = self.parent [node]
+		reversed [#reversed + 1] = node
 	end
 	local route = {}
-	for i = #reversed, 1, -1 do route[#route + 1] = reversed[i] end
+	for i = #reversed, 1, -1 do route [#route + 1] = reversed [i] end
 	return route
 end
 
-function Search:CostSoFar(node)
-	return self.costSoFar[node]
+function Search:CostSoFar (node)
+	return self.costSoFar [node]
 end
 
-function Find(graph, start, goal, maxExpanded)
-	local search = New(graph, start, goal, maxExpanded)
-	while search:Step(search.maxExpanded + 1) == RUNNING do end
-	local closest = search:Route()
+function Find (graph, start, goal, maxExpanded)
+	local search = New (graph, start, goal, maxExpanded)
+	while search:Step (search.maxExpanded + 1) == RUNNING do end
+	local closest = search:Route ()
 	if search.status == FOUND then return closest, closest end
 	return nil, closest
 end

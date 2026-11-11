@@ -8,61 +8,65 @@
 -- controller: a split must not change which methods swap.
 --
 --   luajit .devtools/bin/hotswap_listing.lua capture   (from the repo root)
-local T = dofile("tests/harness.lua")
+local T = dofile ("tests/harness.lua")
 
-local feature = assert(arg[1], "usage: hotswap_listing.lua <feature>")
+local feature = assert (arg [1], "usage: hotswap_listing.lua <feature>")
 local ROOT_FILE = "features/" .. feature .. "/sv.lua"
 
 local stubs = {}
-local function Stub(name)
-	if not stubs[name] then
-		local stub = setmetatable({}, {})
-		getmetatable(stub).__index = function() return stub end
-		getmetatable(stub).__call = function() return stub end
-		stubs[name] = stub
+local function Stub (name)
+	if not stubs [name] then
+		local stub = setmetatable ({}, {})
+		getmetatable (stub).__index = function () return stub end
+		getmetatable (stub).__call = function () return stub end
+		stubs [name] = stub
 	end
-	return stubs[name]
+	return stubs [name]
 end
 
 -- Globals: the real ones, then a stub per missing name.
-local globals = setmetatable({}, {
-	__index = function(_, name)
-		local value = _G[name]
-		if value == nil then return Stub(name) end
-		return value
-	end,
-})
+local globals = setmetatable ({},
+	{
+		__index = function (_, name)
+			local value = _G [name]
+			if value == nil then return Stub (name) end
+			return value
+		end
+	}
+)
 
-local events = setmetatable({}, { __index = function(_, name) return Stub("WS.Events." .. name) end })
+local events = setmetatable ({}, { __index = function (_, name) return Stub ("WS.Events." .. name) end })
 local CHUNK_ENV = globals
-local WS = setmetatable({
-	FeatureParts = T.FeatureParts,
-	Events = events,
-	Feature = function(name) return Stub("feature " .. name) end,
-}, { __index = function(_, name) return Stub("WS." .. name) end })
+local WS = setmetatable (
+	{
+		FeatureParts = T.FeatureParts,
+		Events = events,
+		Feature = function (name) return Stub ("feature " .. name) end
+	}, { __index = function (_, name) return Stub ("WS." .. name) end })
 -- hotswap.lua reads the module environment off WS.require's upvalues, and
 -- files through the loader's WS.LoaderFile and WS.ModuleFile
-function WS.require(name)
+function WS.require (name)
 	local _ = CHUNK_ENV
-	return T.require(name)
+	return T.require (name)
 end
 WS.LoaderFile = T.File
 WS.ModuleFile = T.Path
 
-local liveEnv = setmetatable({ WS = WS }, { __index = globals })
-local live = setfenv(assert(loadfile(T.ROOT .. ROOT_FILE)), liveEnv)()
-WS.Feature = function(name)
+local liveEnv = setmetatable ({ WS = WS }, { __index = globals })
+local live = setfenv (assert (loadfile (T.ROOT .. ROOT_FILE)), liveEnv) ()
+WS.Feature = function (name)
 	if name == feature then return live end
-	return Stub("feature " .. name)
+	return Stub ("feature " .. name)
 end
 
 local commands = {}
-local hotswapEnv = setmetatable({
-	WS = WS,
-	_G = globals,
-	CompileFile = function(path) return assert(loadfile(path)) end,
-	concommand = { Add = function(name, fn) commands[name] = fn end },
-	IsValid = function(v) return v ~= nil end,
-}, { __index = _G })
-setfenv(assert(loadfile(".devtools/bin/server_root/hotswap.lua")), hotswapEnv)()
-commands.ws_hotswap_feature(nil, nil, { feature })
+local hotswapEnv = setmetatable (
+	{
+		WS = WS,
+		_G = globals,
+		CompileFile = function (path) return assert (loadfile (path)) end,
+		concommand = { Add = function (name, fn) commands [name] = fn end },
+		IsValid = function (v) return v ~= nil end
+	}, { __index = _G })
+setfenv (assert (loadfile (".devtools/bin/server_root/hotswap.lua")), hotswapEnv) ()
+commands.ws_hotswap_feature (nil, nil, { feature })

@@ -18,7 +18,7 @@
 local setmetatable = setmetatable
 local Teams = gameplay.teams
 local Snapshot = world.snapshot
-module(...)
+module (...)
 
 -- The CCPTimerLogic constructor.
 LENGTH_DEFAULT = 60
@@ -31,29 +31,32 @@ local PointTimerModel = {}
 PointTimerModel.__index = PointTimerModel
 
 -- endTime is CountdownTimer's timestamp, nil when invalidated.
-function New(config)
-	return setmetatable({
-		length = config.length or LENGTH_DEFAULT,
-		team = config.team or TEAM_DEFAULT,
-		endTime = nil,
-	}, PointTimerModel)
+function New (config)
+	return setmetatable (
+		{
+			length = config.length or LENGTH_DEFAULT,
+			team = config.team or TEAM_DEFAULT,
+			endTime = nil
+		}, PointTimerModel)
 end
 
 -- The timer as plain data (games.world.snapshot), its end kept as
 -- seconds from now (none while it waits).
-local SNAPSHOT = Snapshot.Spec({
-	name = "point_timer",
-	times = { "endTime" },
-})
+local SNAPSHOT = Snapshot.Spec (
+	{
+		name = "point_timer",
+		times = { "endTime" }
+	}
+)
 
-function PointTimerModel:Snapshot(now) return Snapshot.Take(self, SNAPSHOT, now) end
-function PointTimerModel:Restore(snapshot, now) Snapshot.Apply(self, snapshot, SNAPSHOT, now) end
+function PointTimerModel:Snapshot (now) return Snapshot.Take (self, SNAPSHOT, now) end
+function PointTimerModel:Restore (snapshot, now) Snapshot.Apply (self, snapshot, SNAPSHOT, now) end
 
-function PointTimerModel:Team() return self.team end
-function PointTimerModel:EndTime() return self.endTime end
+function PointTimerModel:Team () return self.team end
+function PointTimerModel:EndTime () return self.endTime end
 
 -- CCPTimerLogic::TimerMayExpire
-function PointTimerModel:MayExpire(teamMayCapture)
+function PointTimerModel:MayExpire (teamMayCapture)
 	return not teamMayCapture
 end
 
@@ -62,7 +65,7 @@ end
 -- 15/10/5-second flags it keeps fire no output (their COutputEvents are
 -- never fired), so they are not kept here. CountdownTimer::IsElapsed is
 -- strict: the countdown runs out after its end time, not at it.
-function PointTimerModel:Think(now, q)
+function PointTimerModel:Think (now, q)
 	if q.roundWon then self.endTime = nil end
 	if not q.teamMayCapture then
 		self.endTime = nil
@@ -70,11 +73,12 @@ function PointTimerModel:Think(now, q)
 	end
 	if self.endTime == nil then
 		self.endTime = now + self.length
-		return {
+		return
+		{
 			{
 				kind = START,
-				endTime = self.endTime,
-			},
+				endTime = self.endTime
+			}
 		}
 	end
 	-- the point must be fully owned by its owner before the reset

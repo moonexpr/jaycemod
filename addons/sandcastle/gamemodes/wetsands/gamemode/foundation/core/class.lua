@@ -18,14 +18,15 @@
 -- This is the Lua twin, which clients run; a server with native/foundation
 -- has the native one in its place, which keeps this contract.
 local error, getmetatable, ipairs, pairs, rawget, rawset, setmetatable, type = error, getmetatable, ipairs, pairs, rawget, rawset, setmetatable, type
-module(...)
+module (...)
 
 -- A guard's refusal blames the assignment.
 local ASSIGNER = 2
 
 -- Lua reads an instance's metamethods from its class alone, never through
 -- __index, so a subclass takes a copy of each of its parent's.
-local INHERITED = {
+local INHERITED =
+{
 	__newindex = true,
 	__call = true,
 	__tostring = true,
@@ -40,64 +41,64 @@ local INHERITED = {
 	__mul = true,
 	__div = true,
 	__mod = true,
-	__pow = true,
+	__pow = true
 }
 
-function Extend(parent, fields)
+function Extend (parent, fields)
 	local class = {}
 	if parent then
-		for key, value in pairs(parent) do
-			if INHERITED[key] then class[key] = value end
+		for key, value in pairs (parent) do
+			if INHERITED [key] then class [key] = value end
 		end
-		local index = rawget(parent, "__index")
+		local index = rawget (parent, "__index")
 		if index ~= parent then class.__index = index end
 	end
-	for key, value in pairs(fields or {}) do class[key] = value end
-	if rawget(class, "__index") == nil then class.__index = class end
-	return setmetatable(class, parent)
+	for key, value in pairs (fields or {}) do class [key] = value end
+	if rawget (class, "__index") == nil then class.__index = class end
+	return setmetatable (class, parent)
 end
 
-function New(class, fields)
-	return setmetatable(fields or {}, class)
+function New (class, fields)
+	return setmetatable (fields or {}, class)
 end
 
-function IsA(value, class)
-	if type(value) ~= "table" then return false end
-	local ancestor = getmetatable(value)
+function IsA (value, class)
+	if type (value) ~= "table" then return false end
+	local ancestor = getmetatable (value)
 	while ancestor do
 		if ancestor == class then return true end
-		ancestor = getmetatable(ancestor)
+		ancestor = getmetatable (ancestor)
 	end
 	return false
 end
 
-function Guard(class, check)
-	rawset(class, "__newindex", function(target, key, value)
-		local why = check(key, value)
-		if why then error(why, ASSIGNER) end
-		rawset(target, key, value)
+function Guard (class, check)
+	rawset (class, "__newindex", function (target, key, value)
+		local why = check (key, value)
+		if why then error (why, ASSIGNER) end
+		rawset (target, key, value)
 	end)
 	return class
 end
 
 -- The own methods called `name` along value's line of classes, most derived first.
-local function Line(class, name)
+local function Line (class, name)
 	local methods = {}
 	while class do
-		local method = rawget(class, name)
-		if method then methods[#methods + 1] = method end
-		class = getmetatable(class)
+		local method = rawget (class, name)
+		if method then methods [#methods + 1] = method end
+		class = getmetatable (class)
 	end
 	return methods
 end
 
-function Construct(class, ...)
-	local instance = setmetatable({}, class)
-	local inits = Line(class, "Init")
-	for i = #inits, 1, -1 do inits[i](instance, ...) end
+function Construct (class, ...)
+	local instance = setmetatable ({}, class)
+	local inits = Line (class, "Init")
+	for i = #inits, 1, -1 do inits [i] (instance, ...) end
 	return instance
 end
 
-function Destroy(instance, ...)
-	for _, destroy in ipairs(Line(getmetatable(instance), "Destroy")) do destroy(instance, ...) end
+function Destroy (instance, ...)
+	for _, destroy in ipairs (Line (getmetatable (instance), "Destroy")) do destroy (instance, ...) end
 end

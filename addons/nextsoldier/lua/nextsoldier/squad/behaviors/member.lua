@@ -12,36 +12,36 @@
 local Action = nextsoldier.behavior.action
 local Orders = nextsoldier.squad.orders
 local Command = nextsoldier.squad.interactions.command
-module("nextsoldier.squad.behaviors.member")
+module ("nextsoldier.squad.behaviors.member")
 
-SquadMember = Action.Extend("SquadMember")
-SquadMemberListen = Action.Extend("SquadMemberListen")
-SquadMemberCombat = Action.Extend("SquadMemberCombat")
+SquadMember = Action.Extend ("SquadMember")
+SquadMemberListen = Action.Extend ("SquadMemberListen")
+SquadMemberCombat = Action.Extend ("SquadMemberCombat")
 
-local function Listening(me) return Orders.Awaiting(me:NSLegsOrder()) end
+local function Listening (me) return Orders.Awaiting (me:NSLegsOrder ()) end
 
-function SquadMember:InitialContainedAction(me)
-	if Listening(me) then return SquadMemberListen:New() end
-	return SquadMemberCombat:New()
+function SquadMember:InitialContainedAction (me)
+	if Listening (me) then return SquadMemberListen:New () end
+	return SquadMemberCombat:New ()
 end
 
-function SquadMember:Update(me)
-	local order = me:NSLegsOrder()
-	local call = order and Command.Abandon(order, me)
-	if call then me:NSLegsSay(call.text, call) end
-	return self:Continue()
+function SquadMember:Update (me)
+	local order = me:NSLegsOrder ()
+	local call = order and Command.Abandon (order, me)
+	if call then me:NSLegsSay (call.text, call) end
+	return self:Continue ()
 end
 
-function SquadMemberListen:Update(me)
-	if Listening(me) then return self:Continue() end
-	return self:ChangeTo(SquadMemberCombat:New(), "Activated")
+function SquadMemberListen:Update (me)
+	if Listening (me) then return self:Continue () end
+	return self:ChangeTo (SquadMemberCombat:New (), "Activated")
 end
 
-function SquadMemberListen:ShouldAttack() return Action.ANSWER_NO end
+function SquadMemberListen:ShouldAttack () return Action.ANSWER_NO end
 
-function SquadMemberCombat:Update(me)
-	if not Listening(me) then return self:Continue() end
-	return self:ChangeTo(SquadMemberListen:New(), "On a mission")
+function SquadMemberCombat:Update (me)
+	if not Listening (me) then return self:Continue () end
+	return self:ChangeTo (SquadMemberListen:New (), "On a mission")
 end
 
-function SquadMemberCombat:ShouldAttack() return Action.ANSWER_YES end
+function SquadMemberCombat:ShouldAttack () return Action.ANSWER_YES end

@@ -41,7 +41,7 @@ local Class = core.class
 local Expiring = cache.expiring
 local Geometry = math.geometry
 local concat, ipairs, pairs, rawget, setmetatable, type = table.concat, ipairs, pairs, rawget, setmetatable, type
-module("nextsoldier.locomotion.reach_memo")
+module ("nextsoldier.locomotion.reach_memo")
 
 REGIONS_PER_KEY = 4
 
@@ -49,80 +49,84 @@ local YES, NO = 1, 0
 
 -- Strategies, limits and crossable rules by number, so a key is a short
 -- string of numbers.
-local numbers = setmetatable({}, { __mode = "k" })
+local numbers = setmetatable ({}, { __mode = "k" })
 local counted = 0
 
-local function Number(value)
+local function Number (value)
 	if value == nil then return NO end
-	local n = numbers[value]
+	local n = numbers [value]
 	if not n then
 		counted = counted + 1
 		n = counted
-		numbers[value] = n
+		numbers [value] = n
 	end
 	return n
 end
 
 -- Regions ----------------------------------------------------------------------------
 
-local function Size(region)
+local function Size (region)
 	return region.size
 end
 
-RegionClass = Class.Extend(nil, {
-	__index = function(region, key)
-		if type(key) == "number" then return rawget(region, "reached")[key] == true end
-		return RegionClass[key]
-	end,
-	__len = Size,
-	__tostring = function(region) return "region from " .. region.start .. ": " .. region.size .. " areas" end,
-	Size = Size,
-	RouteTo = function(self, id)
-		local parents, reversed = self.parents, { id }
-		while parents[id] ~= nil do
-			id = parents[id]
-			reversed[#reversed + 1] = id
+RegionClass = Class.Extend (nil,
+	{
+		__index = function (region, key)
+			if type (key) == "number" then return rawget (region, "reached") [key] == true end
+			return RegionClass [key]
+		end,
+		__len = Size,
+		__tostring = function (region) return "region from " .. region.start .. ": " .. region.size .. " areas" end,
+		Size = Size,
+		RouteTo = function (self, id)
+			local parents, reversed = self.parents, { id }
+			while parents [id] ~= nil do
+				id = parents [id]
+				reversed [#reversed + 1] = id
+			end
+			local route = {}
+			for i = #reversed, 1, -1 do route [#route + 1] = reversed [i] end
+			return route
+		end,
+		Nearest = function (self, goalPos, center)
+			local best, bestDistance
+			for id in pairs (self.reached) do
+				local d = Geometry.Distance (center (id), goalPos)
+				if not bestDistance or d < bestDistance or (d == bestDistance and id < best) then best, bestDistance = id, d end
+			end
+			return best
 		end
-		local route = {}
-		for i = #reversed, 1, -1 do route[#route + 1] = reversed[i] end
-		return route
-	end,
-	Nearest = function(self, goalPos, center)
-		local best, bestDistance
-		for id in pairs(self.reached) do
-			local d = Geometry.Distance(center(id), goalPos)
-			if not bestDistance or d < bestDistance or (d == bestDistance and id < best) then best, bestDistance = id, d end
-		end
-		return best
-	end,
-})
+	}
+)
 
-function Region(start, parents, refused, uncrossable)
+function Region (start, parents, refused, uncrossable)
 	local reached, size = { [start] = true }, 1
-	for id in pairs(parents) do
-		if not reached[id] then
-			reached[id] = true
+	for id in pairs (parents) do
+		if not reached [id] then
+			reached [id] = true
 			size = size + 1
 		end
 	end
-	return Class.New(RegionClass, {
-		start = start,
-		parents = parents,
-		refused = refused,
-		uncrossable = uncrossable,
-		reached = reached,
-		size = size,
-	})
+	return Class.New (RegionClass,
+		{
+			start = start,
+			parents = parents,
+			refused = refused,
+			uncrossable = uncrossable,
+			reached = reached,
+			size = size
+		}
+	)
 end
 
 -- Whether every refusal at the region's edge still holds for the asker.
-local function Holds(region, open, crossable)
-	for id in pairs(region.refused) do
-		if open(id) then return false end
+local function Holds (region, open, crossable)
+	for id in pairs (region.refused) do
+		if open (id) then return false end
 	end
-	for from, tos in pairs(region.uncrossable) do
-		for to in pairs(tos) do
-			if crossable(from, to) then return false end
+	for from, tos in pairs (region.uncrossable) do
+		for to in pairs (tos) do
+			if crossable (from, to) then return false end
 		end
 	end
 	return true
@@ -130,45 +134,48 @@ end
 
 -- The memo ----------------------------------------------------------------------------
 
-local function Now(memo)
-	return Cache.State(memo).clock:Now()
+local function Now (memo)
+	return Cache.State (memo).clock:Now ()
 end
 
-ReachMemo = Class.Extend(Expiring.Expiring, {
-	kind = "reach memo",
-	Key = function(self, request)
-		local bot = request.bot
-		return concat({
-			Number(request.strategy),
-			Number(request.limits),
-			Number(request.crossable),
-			request.ignoreBlockers and YES or NO,
-			bot.team,
-			bot.roundWon and YES or NO,
-			bot.winningTeam,
-		}, ":")
-	end,
-	Learn = function(self, key, region, generation)
-		region.learnedAt, region.generation = Now(self), generation
-		local kept = { region }
-		for _, old in ipairs(self:Peek(key) or {}) do
-			if #kept < REGIONS_PER_KEY and old.start ~= region.start then kept[#kept + 1] = old end
-		end
-		self[key] = kept
-	end,
-	Unreachable = function(self, key, start, goal, open, crossable, generation, known)
-		local term, now = Cache.State(self).term, Now(self)
-		for _, region in ipairs(self[key] or {}) do
-			if now - region.learnedAt <= term and region[start] and not region[goal]
-				and (region.generation == generation or known(region.generation))
-				and Holds(region, open, crossable) then
-				return region
+ReachMemo = Class.Extend (Expiring.Expiring,
+	{
+		kind = "reach memo",
+		Key = function (self, request)
+			local bot = request.bot
+			return concat (
+				{
+					Number (request.strategy),
+					Number (request.limits),
+					Number (request.crossable),
+					request.ignoreBlockers and YES or NO,
+					bot.team,
+					bot.roundWon and YES or NO,
+					bot.winningTeam
+				}, ":")
+		end,
+		Learn = function (self, key, region, generation)
+			region.learnedAt, region.generation = Now (self), generation
+			local kept = { region }
+			for _, old in ipairs (self:Peek (key) or {}) do
+				if #kept < REGIONS_PER_KEY and old.start ~= region.start then kept [#kept + 1] = old end
 			end
+			self [key] = kept
+		end,
+		Unreachable = function (self, key, start, goal, open, crossable, generation, known)
+			local term, now = Cache.State (self).term, Now (self)
+			for _, region in ipairs (self [key] or {}) do
+				if now - region.learnedAt <= term and region [start] and not region [goal]
+					and (region.generation == generation or known (region.generation))
+					and Holds (region, open, crossable) then
+					return region
+				end
+			end
+			return nil
 		end
-		return nil
-	end,
-})
+	}
+)
 
-function New(options)
-	return Class.Construct(ReachMemo, options)
+function New (options)
+	return Class.Construct (ReachMemo, options)
 end

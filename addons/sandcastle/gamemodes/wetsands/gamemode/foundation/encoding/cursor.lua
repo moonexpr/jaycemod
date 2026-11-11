@@ -11,24 +11,25 @@
 -- This is the Lua twin, which clients run; a server with native/foundation
 -- has the native one in its place, which keeps this contract.
 local find, lower, select, setmetatable, sub, unpack = string.find, string.lower, select, setmetatable, string.sub, unpack
-module(...)
+module (...)
 
 local BLANK = "^[ \t\r\n]+"
 
 local Cursor = {}
 Cursor.__index = Cursor
 
-function New(text)
-	return setmetatable({
-		text = text,
-		at = 1,
-		saved = {},
-	}, Cursor)
+function New (text)
+	return setmetatable (
+		{
+			text = text,
+			at = 1,
+			saved = {}
+		}, Cursor)
 end
 
-function Cursor:Literal(s, ignoreCase)
-	local here = sub(self.text, self.at, self.at + #s - 1)
-	if here == s or (ignoreCase and lower(here) == lower(s)) then
+function Cursor:Literal (s, ignoreCase)
+	local here = sub (self.text, self.at, self.at + #s - 1)
+	if here == s or (ignoreCase and lower (here) == lower (s)) then
 		self.at = self.at + #s
 		return here
 	end
@@ -36,47 +37,47 @@ function Cursor:Literal(s, ignoreCase)
 end
 
 -- The match at the cursor: its end, then the captures or the whole match.
-local function Match(self, p)
-	local result = { find(self.text, "^" .. p, self.at) }
-	local first, last = result[1], result[2]
+local function Match (self, p)
+	local result = { find (self.text, "^" .. p, self.at) }
+	local first, last = result [1], result [2]
 	if not first then return nil end
-	if #result == 2 then return last, sub(self.text, first, last) end
-	return last, select(3, unpack(result))
+	if #result == 2 then return last, sub (self.text, first, last) end
+	return last, select (3, unpack (result))
 end
 
-function Cursor:Pattern(p)
-	local captures = { Match(self, p) }
-	if not captures[1] then return nil end
-	self.at = captures[1] + 1
-	return select(2, unpack(captures))
+function Cursor:Pattern (p)
+	local captures = { Match (self, p) }
+	if not captures [1] then return nil end
+	self.at = captures [1] + 1
+	return select (2, unpack (captures))
 end
 
-function Cursor:Peek(p)
-	local captures = { Match(self, p) }
-	if not captures[1] then return nil end
-	return select(2, unpack(captures))
+function Cursor:Peek (p)
+	local captures = { Match (self, p) }
+	if not captures [1] then return nil end
+	return select (2, unpack (captures))
 end
 
-function Cursor:Whitespace()
-	local first, last = find(self.text, BLANK, self.at)
+function Cursor:Whitespace ()
+	local first, last = find (self.text, BLANK, self.at)
 	if not first then return nil end
 	self.at = last + 1
-	return sub(self.text, first, last)
+	return sub (self.text, first, last)
 end
 
-function Cursor:Save()
-	self.saved[#self.saved + 1] = self.at
+function Cursor:Save ()
+	self.saved [#self.saved + 1] = self.at
 end
 
-function Cursor:Restore()
-	self.at = self.saved[#self.saved]
-	self.saved[#self.saved] = nil
+function Cursor:Restore ()
+	self.at = self.saved [#self.saved]
+	self.saved [#self.saved] = nil
 end
 
-function Cursor:Commit()
-	self.saved[#self.saved] = nil
+function Cursor:Commit ()
+	self.saved [#self.saved] = nil
 end
 
-function Cursor:Position() return self.at end
-function Cursor:AtEnd() return self.at > #self.text end
-function Cursor:Rest() return sub(self.text, self.at) end
+function Cursor:Position () return self.at end
+function Cursor:AtEnd () return self.at > #self.text end
+function Cursor:Rest () return sub (self.text, self.at) end

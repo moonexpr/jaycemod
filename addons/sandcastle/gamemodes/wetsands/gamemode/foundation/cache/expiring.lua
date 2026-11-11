@@ -14,61 +14,63 @@ local Cache = cache.base
 local Class = core.class
 local Port = core.port
 local error, rawget, tostring, type = error, rawget, tostring, type
-module(...)
+module (...)
 
-CLOCK = Port.New("clock", { "Now" })
+CLOCK = Port.New ("clock", { "Now" })
 
 -- Init runs under Construct, under New: this blames New's caller.
 local NEW_CALLER = 4
 
-local Entries = rawget(Cache.Cache, "__call")
+local Entries = rawget (Cache.Cache, "__call")
 
-local function Stamp(cache, slot)
-	local own = Cache.State(cache)
-	own.written[slot] = own.clock:Now()
+local function Stamp (cache, slot)
+	local own = Cache.State (cache)
+	own.written [slot] = own.clock:Now ()
 end
 
-local function Stale(cache, slot)
-	local own = Cache.State(cache)
-	return own.clock:Now() - own.written[slot] > own.term
+local function Stale (cache, slot)
+	local own = Cache.State (cache)
+	return own.clock:Now () - own.written [slot] > own.term
 end
 
-local function Prune(cache)
-	local order = Cache.State(cache).order
-	local back = order:Back()
-	while back and Stale(cache, back) do
-		cache:DropSlot(back, Cache.EXPIRED)
-		back = order:Back()
+local function Prune (cache)
+	local order = Cache.State (cache).order
+	local back = order:Back ()
+	while back and Stale (cache, back) do
+		cache:DropSlot (back, Cache.EXPIRED)
+		back = order:Back ()
 	end
 end
 
-Expiring = Class.Extend(Cache.Cache, {
-	kind = "expiring cache",
-	__call = function(cache)
-		Prune(cache)
-		return Entries(cache)
-	end,
-	Init = function(self, options)
-		local term = options.term
-		if type(term) ~= "number" or term <= 0 then
-			error("an expiring cache's term is a number of seconds above 0, not " .. tostring(term), NEW_CALLER)
-		end
-		local own = Cache.State(self)
-		own.clock = CLOCK:Check(options.clock)
-		own.term = term
-		own.written = {} -- slot -> when its value was last put
-	end,
-	Admitting = Prune,
-	Admitted = Stamp,
-	Rewrite = function(self, slot)
-		Stamp(self, slot)
-		Cache.State(self).order:MoveFront(slot)
-	end,
-	Stale = Stale,
-	Dropped = function(self, slot) Cache.State(self).written[slot] = nil end,
-	Prune = Prune,
-})
+Expiring = Class.Extend (Cache.Cache,
+	{
+		kind = "expiring cache",
+		__call = function (cache)
+			Prune (cache)
+			return Entries (cache)
+		end,
+		Init = function (self, options)
+			local term = options.term
+			if type (term) ~= "number" or term <= 0 then
+				error ("an expiring cache's term is a number of seconds above 0, not " .. tostring (term), NEW_CALLER)
+			end
+			local own = Cache.State (self)
+			own.clock = CLOCK:Check (options.clock)
+			own.term = term
+			own.written = {} -- slot -> when its value was last put
+		end,
+		Admitting = Prune,
+		Admitted = Stamp,
+		Rewrite = function (self, slot)
+			Stamp (self, slot)
+			Cache.State (self).order:MoveFront (slot)
+		end,
+		Stale = Stale,
+		Dropped = function (self, slot) Cache.State (self).written [slot] = nil end,
+		Prune = Prune
+	}
+)
 
-function New(options)
-	return Class.Construct(Expiring, options)
+function New (options)
+	return Class.Construct (Expiring, options)
 end

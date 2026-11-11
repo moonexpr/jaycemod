@@ -1,171 +1,171 @@
 -- foundation.core.namespace: the global tables a namespace index fills, one
 -- explicit Export or Replace a key.
-local T = dofile("tests/harness.lua")
+local T = dofile ("tests/harness.lua")
 local Namespace = core.namespace
 
-local function Raises(fn, ...)
-	local ok, err = pcall(fn, ...)
-	T.eq(ok, false, "raises")
-	return tostring(err)
+local function Raises (fn, ...)
+	local ok, err = pcall (fn, ...)
+	T.eq (ok, false, "raises")
+	return tostring (err)
 end
 
-local function Has(text, part, what)
-	T.eq(text:find(part, 1, true) ~= nil, true, what .. ": " .. text)
+local function Has (text, part, what)
+	T.eq (text:find (part, 1, true) ~= nil, true, what .. ": " .. text)
 end
 
-T.test("a namespace is the global table of that name, made when absent", function()
+T.test ("a namespace is the global table of that name, made when absent", function ()
 	local globals = { math = { floor = 1 } }
-	T.eq(Namespace.Namespace(globals, "math"), globals.math, "an existing table is extended")
-	local list = Namespace.Namespace(globals, "list")
-	T.eq(globals.list, list, "an absent one is made")
-	T.eq(Namespace.Namespace(globals, "list"), list, "and found again")
+	T.eq (Namespace.Namespace (globals, "math"), globals.math, "an existing table is extended")
+	local list = Namespace.Namespace (globals, "list")
+	T.eq (globals.list, list, "an absent one is made")
+	T.eq (Namespace.Namespace (globals, "list"), list, "and found again")
 end)
 
-T.test("a global that is not a table cannot be a namespace", function()
-	local err = Raises(Namespace.Namespace, { list = 3 }, "list")
-	Has(err, "list", "names it")
+T.test ("a global that is not a table cannot be a namespace", function ()
+	local err = Raises (Namespace.Namespace, { list = 3 }, "list")
+	Has (err, "list", "names it")
 end)
 
-T.test("export sets a free key", function()
+T.test ("export sets a free key", function ()
 	local globals = {}
-	local list = Namespace.Namespace(globals, "list")
-	local queue = { New = function() end }
-	Namespace.Export(list, "queue", queue)
-	T.eq(list.queue, queue, "exported")
+	local list = Namespace.Namespace (globals, "list")
+	local queue = { New = function () end }
+	Namespace.Export (list, "queue", queue)
+	T.eq (list.queue, queue, "exported")
 end)
 
-T.test("export refuses a key something else holds, naming it", function()
-	local globals = { math = { random = function() end } }
-	local math = Namespace.Namespace(globals, "math")
-	local err = Raises(Namespace.Export, math, "random", {})
-	Has(err, "math.random", "names the key")
-	Has(err, "Replace", "points at the declared way")
+T.test ("export refuses a key something else holds, naming it", function ()
+	local globals = { math = { random = function () end } }
+	local math = Namespace.Namespace (globals, "math")
+	local err = Raises (Namespace.Export, math, "random", {})
+	Has (err, "math.random", "names the key")
+	Has (err, "Replace", "points at the declared way")
 end)
 
-T.test("export refuses nothing and a key that is not a name", function()
-	local list = Namespace.Namespace({}, "list")
-	Has(Raises(Namespace.Export, list, "queue", nil), "list.queue", "a missing value names its key")
-	Raises(Namespace.Export, list, 3, {})
-	Raises(Namespace.Export, list, "", {})
-	Raises(Namespace.Export, "list", "queue", {})
+T.test ("export refuses nothing and a key that is not a name", function ()
+	local list = Namespace.Namespace ({}, "list")
+	Has (Raises (Namespace.Export, list, "queue", nil), "list.queue", "a missing value names its key")
+	Raises (Namespace.Export, list, 3, {})
+	Raises (Namespace.Export, list, "", {})
+	Raises (Namespace.Export, "list", "queue", {})
 end)
 
-T.test("exporting a key again, as a reload does, replaces its own value", function()
-	local list = Namespace.Namespace({}, "list")
-	Namespace.Export(list, "Queue", function() return 1 end)
-	local fresh = function() return 2 end
-	Namespace.Export(list, "Queue", fresh)
-	T.eq(list.Queue, fresh, "the reloaded value")
+T.test ("exporting a key again, as a reload does, replaces its own value", function ()
+	local list = Namespace.Namespace ({}, "list")
+	Namespace.Export (list, "Queue", function () return 1 end)
+	local fresh = function () return 2 end
+	Namespace.Export (list, "Queue", fresh)
+	T.eq (list.Queue, fresh, "the reloaded value")
 end)
 
-T.test("replace takes a key over on purpose, and again on a reload", function()
-	local default = function() return "gmod" end
-	local math = Namespace.Namespace({ math = { Clamp = default } }, "math")
-	local ours = function() return "ours" end
-	Namespace.Replace(math, "Clamp", ours)
-	T.eq(math.Clamp, ours, "replaced")
-	local reloaded = function() return "reloaded" end
-	Namespace.Replace(math, "Clamp", reloaded)
-	T.eq(math.Clamp, reloaded, "replaced again")
+T.test ("replace takes a key over on purpose, and again on a reload", function ()
+	local default = function () return "gmod" end
+	local math = Namespace.Namespace ({ math = { Clamp = default } }, "math")
+	local ours = function () return "ours" end
+	Namespace.Replace (math, "Clamp", ours)
+	T.eq (math.Clamp, ours, "replaced")
+	local reloaded = function () return "reloaded" end
+	Namespace.Replace (math, "Clamp", reloaded)
+	T.eq (math.Clamp, reloaded, "replaced again")
 end)
 
-T.test("replace refuses a key nothing holds: there is no default to replace", function()
-	local math = Namespace.Namespace({ math = {} }, "math")
-	Has(Raises(Namespace.Replace, math, "Clamp", function() end), "math.Clamp", "names the key")
+T.test ("replace refuses a key nothing holds: there is no default to replace", function ()
+	local math = Namespace.Namespace ({ math = {} }, "math")
+	Has (Raises (Namespace.Replace, math, "Clamp", function () end), "math.Clamp", "names the key")
 end)
 
-T.test("a deferred key loads its module the first time it is read, and only then", function()
+T.test ("a deferred key loads its module the first time it is read, and only then", function ()
 	local loads = 0
-	local drawlist = { New = function() end }
-	local function Load()
+	local drawlist = { New = function () end }
+	local function Load ()
 		loads = loads + 1
 		return drawlist
 	end
-	local list = Namespace.Namespace({}, "list")
-	Namespace.Defer(list, "drawlist", Load)
-	T.eq(loads, 0, "nothing loaded yet")
-	T.eq(list.drawlist, drawlist, "loaded on read")
-	T.eq(list.drawlist, drawlist, "and kept")
-	T.eq(loads, 1, "once")
-	T.eq(list.missing, nil, "an undeclared key is still absent")
+	local list = Namespace.Namespace ({}, "list")
+	Namespace.Defer (list, "drawlist", Load)
+	T.eq (loads, 0, "nothing loaded yet")
+	T.eq (list.drawlist, drawlist, "loaded on read")
+	T.eq (list.drawlist, drawlist, "and kept")
+	T.eq (loads, 1, "once")
+	T.eq (list.missing, nil, "an undeclared key is still absent")
 end)
 
-T.test("defer refuses a key something else holds, and a table another metatable rules", function()
-	local list = Namespace.Namespace({ list = { Get = function() end } }, "list")
-	Has(Raises(Namespace.Defer, list, "Get", function() end), "list.Get", "names the key")
-	local ruled = Namespace.Namespace({ timer = setmetatable({}, {}) }, "timer")
-	Has(Raises(Namespace.Defer, ruled, "countdown", function() end), "timer", "names the namespace")
+T.test ("defer refuses a key something else holds, and a table another metatable rules", function ()
+	local list = Namespace.Namespace ({ list = { Get = function () end } }, "list")
+	Has (Raises (Namespace.Defer, list, "Get", function () end), "list.Get", "names the key")
+	local ruled = Namespace.Namespace ({ timer = setmetatable ({}, {}) }, "timer")
+	Has (Raises (Namespace.Defer, ruled, "countdown", function () end), "timer", "names the namespace")
 end)
 
-T.test("deferring a key again, as a reload does, is not refused, and an export may follow a defer", function()
-	local list = Namespace.Namespace({}, "list")
-	Namespace.Defer(list, "drawlist", function() return 1 end)
-	Namespace.Defer(list, "drawlist", function() return 2 end)
-	T.eq(list.drawlist, 2, "the reloaded loader")
-	Namespace.Defer(list, "queue", function() return 3 end)
-	Namespace.Export(list, "queue", 4)
-	T.eq(list.queue, 4, "exported over its own deferral")
+T.test ("deferring a key again, as a reload does, is not refused, and an export may follow a defer", function ()
+	local list = Namespace.Namespace ({}, "list")
+	Namespace.Defer (list, "drawlist", function () return 1 end)
+	Namespace.Defer (list, "drawlist", function () return 2 end)
+	T.eq (list.drawlist, 2, "the reloaded loader")
+	Namespace.Defer (list, "queue", function () return 3 end)
+	Namespace.Export (list, "queue", 4)
+	T.eq (list.queue, 4, "exported over its own deferral")
 end)
 
-T.test("an index runs in an environment of the calls, require and the globals", function()
+T.test ("an index runs in an environment of the calls, require and the globals", function ()
 	local globals = { print = print }
 	globals._G = globals
-	local loaded = { ["sample.list.queue"] = { New = function() end } }
-	local function require(name) return loaded[name] end
-	local env = Namespace.Environment(globals, require)
-	local index = assert(loadstring([[
+	local loaded = { ["sample.list.queue"] = { New = function () end } }
+	local function require (name) return loaded [name] end
+	local env = Namespace.Environment (globals, require)
+	local index = assert (loadstring ( [[
 		local list = Namespace("list")
 		Export(list, "queue", require("sample.list.queue"))
 		Export(list, "Queue", list.queue.New)
 		Export(_G, "Queue", list.queue.New)
 	]]))
-	setfenv(index, env)()
-	T.eq(globals.list.queue, loaded["sample.list.queue"], "the module")
-	T.eq(globals.list.Queue, loaded["sample.list.queue"].New, "a factory in the namespace")
-	T.eq(globals.Queue, loaded["sample.list.queue"].New, "and as a plain global")
-	T.eq(rawget(env, "list"), nil, "an index's locals stay its own")
+	setfenv (index, env) ()
+	T.eq (globals.list.queue, loaded ["sample.list.queue"], "the module")
+	T.eq (globals.list.Queue, loaded ["sample.list.queue"].New, "a factory in the namespace")
+	T.eq (globals.Queue, loaded ["sample.list.queue"].New, "and as a plain global")
+	T.eq (rawget (env, "list"), nil, "an index's locals stay its own")
 end)
 
 -- A native twin as a binary module puts one: a table holding C functions
 -- (os.time, a C function, stands in for one).
 local NATIVE_NEW = os.time
 
-T.test("twin publishes the Lua twin when no binary module put a native one first", function()
+T.test ("twin publishes the Lua twin when no binary module put a native one first", function ()
 	local ns = {}
-	local lua = { New = function() end, LIMIT = 4 }
-	T.eq(Namespace.Twin(ns, "heap", lua), lua, "returns what it published")
-	T.eq(ns.heap, lua, "published")
+	local lua = { New = function () end, LIMIT = 4 }
+	T.eq (Namespace.Twin (ns, "heap", lua), lua, "returns what it published")
+	T.eq (ns.heap, lua, "published")
 end)
 
-T.test("twin keeps a native twin that has the whole of the Lua twin's interface", function()
+T.test ("twin keeps a native twin that has the whole of the Lua twin's interface", function ()
 	local native = { New = NATIVE_NEW, Encode = NATIVE_NEW, LIMIT = 4 }
 	local ns = { heap = native }
-	local lua = { New = function() end, Encode = function() end, LIMIT = 4, _M = {}, _NAME = "foundation.tree.heap", _PACKAGE = "foundation.tree." }
-	T.eq(Namespace.Twin(ns, "heap", lua), native, "the native one stays")
-	T.eq(ns.heap, native, "published")
-	T.eq(native.Encode, NATIVE_NEW, "untouched: nothing of the Lua twin is mixed in")
-	T.eq(rawget(native, "_M"), nil, "module(...)'s own keys are no part of the interface")
-	T.eq(Namespace.Twin(ns, "heap", lua), native, "and again, as a reload twins it")
+	local lua = { New = function () end, Encode = function () end, LIMIT = 4, _M = {}, _NAME = "foundation.tree.heap", _PACKAGE = "foundation.tree." }
+	T.eq (Namespace.Twin (ns, "heap", lua), native, "the native one stays")
+	T.eq (ns.heap, native, "published")
+	T.eq (native.Encode, NATIVE_NEW, "untouched: nothing of the Lua twin is mixed in")
+	T.eq (rawget (native, "_M"), nil, "module(...)'s own keys are no part of the interface")
+	T.eq (Namespace.Twin (ns, "heap", lua), native, "and again, as a reload twins it")
 end)
 
-T.test("twin refuses a native twin that lacks part of the interface, naming each part", function()
+T.test ("twin refuses a native twin that lacks part of the interface, naming each part", function ()
 	local ns = { heap = { New = NATIVE_NEW } }
-	local err = Raises(Namespace.Twin, ns, "heap", { New = function() end, Encode = function() end, LIMIT = 4 })
-	Has(err, "heap", "names the module")
-	Has(err, "Encode", "names a missing function")
-	Has(err, "LIMIT", "names a missing constant")
+	local err = Raises (Namespace.Twin, ns, "heap", { New = function () end, Encode = function () end, LIMIT = 4 })
+	Has (err, "heap", "names the module")
+	Has (err, "Encode", "names a missing function")
+	Has (err, "LIMIT", "names a missing constant")
 end)
 
-T.test("twin refuses a key something other than a native twin holds", function()
-	local err = Raises(Namespace.Twin, { heap = { New = function() end } }, "heap", { New = function() end })
-	Has(err, "heap", "names it")
-	Raises(Namespace.Twin, { heap = 3 }, "heap", {})
+T.test ("twin refuses a key something other than a native twin holds", function ()
+	local err = Raises (Namespace.Twin, { heap = { New = function () end } }, "heap", { New = function () end })
+	Has (err, "heap", "names it")
+	Raises (Namespace.Twin, { heap = 3 }, "heap", {})
 end)
 
-T.test("an index can twin", function()
+T.test ("an index can twin", function ()
 	local globals = {}
-	local env = Namespace.Environment(globals, function() return { New = function() end } end)
-	T.eq(type(env.Twin), "function", "Twin is one of the calls")
+	local env = Namespace.Environment (globals, function () return { New = function () end } end)
+	T.eq (type (env.Twin), "function", "Twin is one of the calls")
 end)
 
-T.finish()
+T.finish ()

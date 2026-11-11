@@ -6,33 +6,39 @@
 local Permissions = system.permissions
 local PlayMode = system.play_mode
 
-local TAMPERING = CreateConVar("mp_tampering_enabled", "1", { FCVAR_REPLICATED, FCVAR_NOTIFY, FCVAR_ARCHIVE },
+local TAMPERING = CreateConVar ("mp_tampering_enabled", "1", { FCVAR_REPLICATED, FCVAR_NOTIFY, FCVAR_ARCHIVE },
 	"0: no player may tamper with live gameplay (move the payload, change the clock, respawns), superadmins included", 0, 1)
 
-for _, p in ipairs(Permissions.PRIVILEGES) do
-	CAMI.RegisterPrivilege({
-		Name = p.name,
-		MinAccess = p.rank,
-		Description = p.description,
-	})
+for _, p in ipairs (Permissions.PRIVILEGES) do
+	CAMI.RegisterPrivilege (
+		{
+			Name = p.name,
+			MinAccess = p.rank,
+			Description = p.description
+		}
+	)
 end
 
-function WS.PlayMode()
-	return PlayMode.Of({
-		roundsActive = WS.Active(),
-		gameplayStopped = WS.GameplayStopped(),
-		aiwar = WS.Match:IsRunning(PlayMode.AIWAR),
-		arena = GetGlobal2Bool("ws_round_arena", false),
-	})
+function WS.PlayMode ()
+	return PlayMode.Of (
+		{
+			roundsActive = WS.Active (),
+			gameplayStopped = WS.GameplayStopped (),
+			aiwar = WS.Match:IsRunning (PlayMode.AIWAR),
+			arena = GetGlobal2Bool ("ws_round_arena", false)
+		}
+	)
 end
 
 -- Whether ply may use the privilege name (a Permissions constant): true, or
 -- false and a Permissions.REASON_. The server console may do anything.
-function WS.Can(ply, name)
-	if not IsValid(ply) then return true end
-	local function Holds(privilege) return (CAMI.PlayerHasAccess(ply, privilege)) end
-	return Permissions.Allows(name, Holds, {
-		mode = WS.PlayMode(),
-		tamperingEnabled = TAMPERING:GetBool(),
-	})
+function WS.Can (ply, name)
+	if not IsValid (ply) then return true end
+	local function Holds (privilege) return (CAMI.PlayerHasAccess (ply, privilege)) end
+	return Permissions.Allows (name, Holds,
+		{
+			mode = WS.PlayMode (),
+			tamperingEnabled = TAMPERING:GetBool ()
+		}
+	)
 end

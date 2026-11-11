@@ -12,24 +12,25 @@
 --     teamtint_paint's override, a debug tool that shows a false team
 --
 -- Design and tuning workflow: docs/team-theming-plan.md.
-AddCSLuaFile()
+AddCSLuaFile ()
 
 local MODULES = { "teamtint_catalog", "teamtint_resolve", "teamtint_tuning" }
 local SHARED = { "teamtint/sh.lua" }
-local CLIENT_FILES = {
+local CLIENT_FILES =
+{
 	"teamtint/cl_convars.lua", "teamtint/cl_materials.lua", "teamtint/cl_apply.lua",
-	"teamtint/cl_debug.lua", "teamtint/cl_panel.lua",
+	"teamtint/cl_debug.lua", "teamtint/cl_panel.lua"
 }
 
 if SERVER then
-	for _, name in ipairs(MODULES) do AddCSLuaFile("includes/modules/" .. name .. ".lua") end
-	for _, path in ipairs(SHARED) do AddCSLuaFile(path) end
-	for _, path in ipairs(CLIENT_FILES) do AddCSLuaFile(path) end
+	for _, name in ipairs (MODULES) do AddCSLuaFile ("includes/modules/" .. name .. ".lua") end
+	for _, path in ipairs (SHARED) do AddCSLuaFile (path) end
+	for _, path in ipairs (CLIENT_FILES) do AddCSLuaFile (path) end
 end
 
-for _, path in ipairs(SHARED) do include(path) end
+for _, path in ipairs (SHARED) do include (path) end
 if SERVER then
-	include("teamtint/sv.lua")
+	include ("teamtint/sv.lua")
 else
-	for _, path in ipairs(CLIENT_FILES) do include(path) end
+	for _, path in ipairs (CLIENT_FILES) do include (path) end
 end

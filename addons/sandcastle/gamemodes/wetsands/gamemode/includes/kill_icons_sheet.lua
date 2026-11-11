@@ -1,7 +1,7 @@
 -- Sandcastle's kill icon sheets' layout, in TF2's scripts/mod_textures.txt
 -- format (foundation.kill_icons parses it; ws/cl_kill_feed.lua draws them).
 -- Written by .devtools/bin/kill_icons_art.py: edit the designs there.
-module(...)
+module (...)
 
 TEXT = [==[
 "sandcastle/kill_icons"

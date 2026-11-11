@@ -5,18 +5,18 @@
 -- it is hidden, by the player or the code.
 local DrawList = list.drawlist
 
-local hidden = CreateClientConVar("cl_hud_hidden", "", true, false,
+local hidden = CreateClientConVar ("cl_hud_hidden", "", true, false,
 	"HUD elements not to draw, by path, each with everything under it (spaces between; cl_hud_print lists them)")
 
-local function Apply()
-	WS.HUD:SetHidden(DrawList.ParseNames(hidden:GetString()))
+local function Apply ()
+	WS.HUD:SetHidden (DrawList.ParseNames (hidden:GetString ()))
 end
 
-Apply()
-cvars.AddChangeCallback("cl_hud_hidden", Apply, "ws_hud")
+Apply ()
+cvars.AddChangeCallback ("cl_hud_hidden", Apply, "ws_hud")
 
-concommand.Add("cl_hud_print", function()
-	for _, entry in ipairs(WS.HUD:Entries()) do
-		print(string.format("%-16s %4d  %s", entry.name, entry.order, entry.hidden and "hidden" or "shown"))
+concommand.Add ("cl_hud_print", function ()
+	for _, entry in ipairs (WS.HUD:Entries ()) do
+		print (string.format ("%-16s %4d  %s", entry.name, entry.order, entry.hidden and "hidden" or "shown"))
 	end
 end, nil, "List the HUD's elements in drawing order, and which cl_hud_hidden hides")

@@ -11,11 +11,11 @@
 -- handle, or nil) }; slots are kept by faction name, as factions trade
 -- sides (features.aiwar.model's SwapFactions) and their slots go with them.
 local format, ipairs, pairs, remove, setmetatable, sort, tonumber, type, upper =
-	string.format, ipairs, pairs, table.remove, setmetatable, table.sort, tonumber, type, string.upper
+string.format, ipairs, pairs, table.remove, setmetatable, table.sort, tonumber, type, string.upper
 local floor = math.floor
 local Teams = gameplay.teams
 local Squad = wartactics.squad
-module(...)
+module (...)
 
 local LEADER, MEMBER = Squad.LEADER, Squad.MEMBER
 
@@ -25,7 +25,7 @@ CUSTOM_SIZE = -1
 -- mp_aiwar_team_size as the war reads it, held between CUSTOM_SIZE and max
 -- (features.aiwar.model's TEAM_SIZE_MAX): the main menu's settings
 -- (sandcastle.txt) create the convar without the limits CreateConVar gives.
-function TeamSize(value, max)
+function TeamSize (value, max)
 	if value < CUSTOM_SIZE then return CUSTOM_SIZE end
 	if value > max then return max end
 	return value
@@ -41,58 +41,61 @@ COUNT_BITS = 6
 
 -- A saved pin's word: an unpinned slot is saved as NONE.
 NONE = "none"
-local PIN_OF_WORD = {
+local PIN_OF_WORD =
+{
 	[LEADER] = LEADER,
 	[MEMBER] = MEMBER,
-	[NONE] = false,
+	[NONE] = false
 }
 
 Plan = {}
 Plan.__index = Plan
 
-function New()
-	return setmetatable({
-		factions = {}, -- faction name -> its slots, in order
-		lastId = 0,
-	}, Plan)
+function New ()
+	return setmetatable (
+		{
+			factions = {}, -- faction name -> its slots, in order
+			lastId = 0
+		}, Plan)
 end
 
-local function List(plan, faction)
-	local list = plan.factions[faction]
+local function List (plan, faction)
+	local list = plan.factions [faction]
 	if list == nil then
 		list = {}
-		plan.factions[faction] = list
+		plan.factions [faction] = list
 	end
 	return list
 end
 
 -- The faction's slots, in order (the plan's own: read them, change them
 -- only through the plan).
-function Plan:Slots(faction)
-	return List(self, faction)
+function Plan:Slots (faction)
+	return List (self, faction)
 end
 
-function Plan:Size(faction)
-	return #List(self, faction)
+function Plan:Size (faction)
+	return #List (self, faction)
 end
 
-function Plan:Add(faction, pin)
+function Plan:Add (faction, pin)
 	self.lastId = self.lastId + 1
-	local slot = {
+	local slot =
+	{
 		id = self.lastId,
 		pin = pin,
-		holder = nil,
+		holder = nil
 	}
-	local list = List(self, faction)
-	list[#list + 1] = slot
+	local list = List (self, faction)
+	list [#list + 1] = slot
 	return slot
 end
 
 -- The list holding the slot with this id, its place in it and its faction;
 -- nil for an unknown id.
-local function Locate(plan, id)
-	for faction, list in pairs(plan.factions) do
-		for i, slot in ipairs(list) do
+local function Locate (plan, id)
+	for faction, list in pairs (plan.factions) do
+		for i, slot in ipairs (list) do
 			if slot.id == id then return list, i, faction end
 		end
 	end
@@ -100,49 +103,49 @@ local function Locate(plan, id)
 end
 
 -- The removed slot (its holder is the controller's to remove), or nil.
-function Plan:Remove(id)
-	local list, i = Locate(self, id)
+function Plan:Remove (id)
+	local list, i = Locate (self, id)
 	if list == nil then return nil end
-	return remove(list, i)
+	return remove (list, i)
 end
 
 -- The slot pinned (pin: LEADER, MEMBER or nil), or nil for an unknown id.
-function Plan:Pin(id, pin)
-	local list, i = Locate(self, id)
+function Plan:Pin (id, pin)
+	local list, i = Locate (self, id)
 	if list == nil then return nil end
-	list[i].pin = pin
-	return list[i]
+	list [i].pin = pin
+	return list [i]
 end
 
-function Plan:FactionOf(id)
-	local _, _, faction = Locate(self, id)
+function Plan:FactionOf (id)
+	local _, _, faction = Locate (self, id)
 	return faction
 end
 
 -- The faction keeps exactly `size` slots: new ones are unpinned; a smaller
 -- size drops empty slots from the end first, then held ones from the end.
 -- Returns the holders of the slots dropped.
-function Plan:Resize(faction, size)
-	local list = List(self, faction)
-	while #list < size do self:Add(faction, nil) end
+function Plan:Resize (faction, size)
+	local list = List (self, faction)
+	while #list < size do self:Add (faction, nil) end
 	local dropped = {}
 	while #list > size do
 		local victim = #list
 		for i = #list, 1, -1 do
-			if list[i].holder == nil then
+			if list [i].holder == nil then
 				victim = i
 				break
 			end
 		end
-		local slot = remove(list, victim)
-		if slot.holder ~= nil then dropped[#dropped + 1] = slot.holder end
+		local slot = remove (list, victim)
+		if slot.holder ~= nil then dropped [#dropped + 1] = slot.holder end
 	end
 	return dropped
 end
 
 -- The first free slot of the faction, now the holder's, or nil when none is free.
-function Plan:Fill(faction, holder)
-	for _, slot in ipairs(List(self, faction)) do
+function Plan:Fill (faction, holder)
+	for _, slot in ipairs (List (self, faction)) do
 		if slot.holder == nil then
 			slot.holder = holder
 			return slot
@@ -151,9 +154,9 @@ function Plan:Fill(faction, holder)
 	return nil
 end
 
-function Plan:SlotOf(holder)
-	for _, list in pairs(self.factions) do
-		for _, slot in ipairs(list) do
+function Plan:SlotOf (holder)
+	for _, list in pairs (self.factions) do
+		for _, slot in ipairs (list) do
 			if slot.holder == holder then return slot end
 		end
 	end
@@ -161,8 +164,8 @@ function Plan:SlotOf(holder)
 end
 
 -- The holder's slot, now free, or nil when it held none.
-function Plan:Vacate(holder)
-	local slot = self:SlotOf(holder)
+function Plan:Vacate (holder)
+	local slot = self:SlotOf (holder)
 	if slot then slot.holder = nil end
 	return slot
 end
@@ -170,28 +173,28 @@ end
 -------------------------------------------------------------------------------
 -- Saving: each faction's pins in order, as words
 
-function Plan:Saved()
+function Plan:Saved ()
 	local saved = {}
-	for faction, list in pairs(self.factions) do
+	for faction, list in pairs (self.factions) do
 		local words = {}
-		for i, slot in ipairs(list) do words[i] = slot.pin or NONE end
-		saved[faction] = words
+		for i, slot in ipairs (list) do words [i] = slot.pin or NONE end
+		saved [faction] = words
 	end
 	return saved
 end
 
 -- A plan from what Saved gave, its slots empty; or nil and why it is no plan.
-function Load(saved)
-	if type(saved) ~= "table" then return nil, "not a table of factions" end
-	local plan = New()
-	for faction, words in pairs(saved) do
-		if type(words) ~= "table" then return nil, format("%s: not a list of pins", faction) end
-		for i, word in ipairs(words) do
-			local pin = PIN_OF_WORD[word]
+function Load (saved)
+	if type (saved) ~= "table" then return nil, "not a table of factions" end
+	local plan = New ()
+	for faction, words in pairs (saved) do
+		if type (words) ~= "table" then return nil, format ("%s: not a list of pins", faction) end
+		for i, word in ipairs (words) do
+			local pin = PIN_OF_WORD [word]
 			if pin == nil then
-				return nil, format("%s's slot %d: '%s' is not %s, %s or %s", faction, i, word, LEADER, MEMBER, NONE)
+				return nil, format ("%s's slot %d: '%s' is not %s, %s or %s", faction, i, word, LEADER, MEMBER, NONE)
 			end
-			plan:Add(faction, pin or nil)
+			plan:Add (faction, pin or nil)
 		end
 	end
 	return plan
@@ -200,7 +203,7 @@ end
 -------------------------------------------------------------------------------
 -- The slot list's tree (ws/cl_aiwar_slots.lua)
 
-local function LeaderFirst(a, b)
+local function LeaderFirst (a, b)
 	if a.leads ~= b.leads then return a.leads end
 	return a.id < b.id
 end
@@ -209,40 +212,42 @@ end
 -- ... }), as its tree shows them: { squads = { name, slots } in the order
 -- first met, each squad's slots leader first then by id, loose = the slots
 -- in no squad (empty, or a soldier in none) }.
-function Tree(rows)
+function Tree (rows)
 	local squads, byName, loose = {}, {}, {}
-	for _, row in ipairs(rows) do
+	for _, row in ipairs (rows) do
 		if row.squad == "" then
-			loose[#loose + 1] = row
+			loose [#loose + 1] = row
 		else
-			local squad = byName[row.squad]
+			local squad = byName [row.squad]
 			if squad == nil then
-				squad = {
+				squad =
+				{
 					name = row.squad,
-					slots = {},
+					slots = {}
 				}
-				byName[row.squad] = squad
-				squads[#squads + 1] = squad
+				byName [row.squad] = squad
+				squads [#squads + 1] = squad
 			end
-			squad.slots[#squad.slots + 1] = row
+			squad.slots [#squad.slots + 1] = row
 		end
 	end
-	for _, squad in ipairs(squads) do sort(squad.slots, LeaderFirst) end
-	return {
+	for _, squad in ipairs (squads) do sort (squad.slots, LeaderFirst) end
+	return
+	{
 		squads = squads,
-		loose = loose,
+		loose = loose
 	}
 end
 
 -- The soldiers' rows of a selection (one list of rows a node picked, in the
 -- order picked): each soldier once, the empty slots left out.
-function Picked(groups)
+function Picked (groups)
 	local picked, seen = {}, {}
-	for _, rows in ipairs(groups) do
-		for _, row in ipairs(rows) do
-			if row.index > 0 and not seen[row.id] then
-				seen[row.id] = true
-				picked[#picked + 1] = row
+	for _, rows in ipairs (groups) do
+		for _, row in ipairs (rows) do
+			if row.index > 0 and not seen [row.id] then
+				seen [row.id] = true
+				picked [#picked + 1] = row
 			end
 		end
 	end
@@ -252,24 +257,25 @@ end
 -------------------------------------------------------------------------------
 -- The commands' words
 
-local TEAM_OF_WORD = {
+local TEAM_OF_WORD =
+{
 	RED = Teams.RED,
-	BLU = Teams.BLUE,
+	BLU = Teams.BLUE
 }
 
 -- RED or BLU, in any case, as a team; nil for anything else.
-function ParseTeam(word)
-	return TEAM_OF_WORD[upper(word)]
+function ParseTeam (word)
+	return TEAM_OF_WORD [upper (word)]
 end
 
 -- Slot ids, one a token; or nil and the first token that is none ("" for no tokens).
-function ParseIds(tokens)
+function ParseIds (tokens)
 	if #tokens == 0 then return nil, "" end
 	local ids = {}
-	for i, token in ipairs(tokens) do
-		local id = tonumber(token)
-		if id == nil or id < 1 or id ~= floor(id) then return nil, token end
-		ids[i] = id
+	for i, token in ipairs (tokens) do
+		local id = tonumber (token)
+		if id == nil or id < 1 or id ~= floor (id) then return nil, token end
+		ids [i] = id
 	end
 	return ids
 end

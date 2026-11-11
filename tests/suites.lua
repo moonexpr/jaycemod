@@ -9,56 +9,63 @@
 local G = "addons/sandcastle/gamemodes/sandcastle/gamemode/"
 local E = "addons/sandcastle/gamemodes/sandcastle/entities/"
 
-return {
+return
+{
 	{
 		name = "foundation",
 		about = "foundation's structures, formalisms and wetsands, Lua and native twins",
-		tests = {
+		tests =
+		{
 			"core_*", "list_*", "tree_*", "world_*", "cache_*", "graph_*", "math_*", "file_*", "encoding_*",
-			"generator_*", "timer_*", "analysis_*", "transaction*", "configstore", "nodegraph", "wetsands_*", "foundation_*",
+			"generator_*", "timer_*", "analysis_*", "transaction*", "configstore", "nodegraph", "wetsands_*", "foundation_*"
 		},
-		sources = { G .. "foundation/", G .. "shared_loader.lua", "native/" },
+		sources = { G .. "foundation/", G .. "shared_loader.lua", "native/" }
 	},
 	{
 		name = "games",
 		about = "includes/: the gamemode core, gameplay models and Lua API extensions",
-		tests = {
+		tests =
+		{
 			"games_*", "bullet_steps", "combat_text", "crit_effects", "fixed_spread", "hit_sound", "jar",
 			"weapon_*", "player_attributes", "players_conditions", "players_pickups", "players_ctf_capture_crits",
-			"targeting",
+			"targeting"
 		},
-		sources = {
+		sources =
+		{
 			G .. "includes/gameplay/", G .. "includes/npc/", G .. "includes/system/",
-			G .. "includes/extensions/", E .. "entities/tf_projectile_", E .. "entities/ent_projectile_",
-		},
+			G .. "includes/extensions/", E .. "entities/tf_projectile_", E .. "entities/ent_projectile_"
+		}
 	},
 	{
 		name = "nextsoldier",
 		about = "NextSoldier, the soldier itself (its addon): movement, senses, body, behaviours, the response rules it speaks by",
 		tests = { "nextsoldier_*", "addons_nextsoldier", "responserules*", "combine_voice_pack" },
-		sources = {
+		sources =
+		{
 			"addons/nextsoldier/", G .. "sh_nextsoldier_host.lua", "tests/fake_soldier.lua", "tests/fake_room.lua", "tests/fake_legs.lua",
 			E .. "entities/base_nextsoldier", E .. "entities/npc_nextsoldier", E .. "entities/npc_path", E .. "entities/npc_ctfbot",
-			E .. "entities/ws_bot_navigator",
-		},
+			E .. "entities/ws_bot_navigator"
+		}
 	},
 	{
 		name = "war",
 		about = "the AI war: the tactics engine (its addon) and features/aiwar",
 		tests = { "wartactics_*", "addons_wartactics", "aiwar_*", "features_aiwar_*" },
-		sources = { "addons/wartactics/", G .. "features/aiwar/", G .. "sh_war_soldier.lua", G .. "sh_aiwar.lua", G .. "cl_aiwar_slots.lua" },
+		sources = { "addons/wartactics/", G .. "features/aiwar/", G .. "sh_war_soldier.lua", G .. "sh_aiwar.lua", G .. "cl_aiwar_slots.lua" }
 	},
 	{
 		name = "rounds",
 		about = "the round and its objectives, and the base gamemode's modules (net2): rounds, capture, koth, flag, payload, arena, mvm, the gamemode feature",
-		tests = {
+		tests =
+		{
 			"rounds_*", "gamemode_ready", "gamemode_round_players_ready", "gamemode_tournament", "gameplay",
 			"games_gameplay_rounds_*", "games_gameplay_capture_*", "capture_*", "objective_snapshots", "koth", "flag", "round_manager", "game_timer", "net2", "game_events",
 			"mvm", "payload_mode", "spawn_*", "teams_controller", "players_teams*",
 			"player_classes", "player_spectator",
-			"features_rounds_*", "features_world_*", "features_capture_*", "features_arena_*", "features_payload_*",
+			"features_rounds_*", "features_world_*", "features_capture_*", "features_arena_*", "features_payload_*"
 		},
-		sources = {
+		sources =
+		{
 			G .. "includes/gameplay/rounds", G .. "includes/gameplay/capture", G .. "includes/gameplay/spawn",
 			G .. "includes/gameplay/teams",
 			G .. "init.lua", G .. "shared.lua", G .. "player_class/",
@@ -70,29 +77,32 @@ return {
 			E .. "entities/func_capturezone", E .. "entities/trigger_capture_area", E .. "entities/item_teamflag",
 			E .. "entities/info_observer_point", G .. "includes/modules/round_manager.lua", G .. "includes/modules/game_timer.lua",
 			G .. "includes/modules/net2.lua", G .. "includes/modules/game_events.lua",
-			E .. "entities/tf_gamerules", E .. "entities/ws_gamerules", E .. "entities/edit_",
-		},
+			E .. "entities/tf_gamerules", E .. "entities/ws_gamerules", E .. "entities/edit_"
+		}
 	},
 	{
 		name = "features",
 		about = "the other features: haunting bosses, holiday, spells, hazards, hostage, defuse, npc, nbdebug, tag, wheel",
-		tests = {
+		tests =
+		{
 			"features_*", "boss_*", "croc", "eyeball_boss", "ghost", "halloween_boss", "headless_hatman", "merasmus",
 			"zombie", "fortune", "holiday_on_holiday", "spells_cast", "tag", "wheel", "trigger_ignite", "npc_*",
-			"ns_debug_panel", "nbdebug_contract", "fgd_sandcastle",
+			"ns_debug_panel", "nbdebug_contract", "fgd_sandcastle"
 		},
-		sources = { G .. "features/", G .. "vendor/", E, "tests/fake_actor.lua", "tests/fake_builder.lua", "tests/fake_combatant.lua", "tests/fake_caster.lua" },
+		sources = { G .. "features/", G .. "vendor/", E, "tests/fake_actor.lua", "tests/fake_builder.lua", "tests/fake_combatant.lua", "tests/fake_caster.lua" }
 	},
 	{
 		name = "ws",
 		about = "the gamemode's root modules: always-loaded glue, the HUD, menus, editors and admin tools",
-		tests = {
+		tests =
+		{
 			"ws_*", "proxy", "proxy_registry", "radio_gesture", "match_control", "match_tab", "players_menu", "ui",
 			"admin_properties", "permissions_adapter", "editor_*", "gameplay_settings", "tf_hud", "tf_materials",
 			"vote_hud", "votes_controller", "sound_paths", "voices_controller", "nav_generate",
-			"nav_progress_replay", "demo_autorecord",
+			"nav_progress_replay", "demo_autorecord"
 		},
-		sources = {
+		sources =
+		{
 			G .. "cl_", G .. "sh_", G .. "sv_", G .. "logging.lua", G .. "gamerules/", G .. "includes/game_manager.lua",
 			G .. "includes/admin_notices.lua", G .. "includes/demo_autorecord.lua", G .. "includes/factions.lua", G .. "includes/friendly_id.lua",
 			G .. "includes/kill_icons_sheet.lua", G .. "includes/localization.lua",
@@ -102,26 +112,28 @@ return {
 			G .. "includes/sound_paths.lua", G .. "includes/soundscapes.lua",
 			G .. "includes/tf_hud.lua", G .. "includes/tf_materials.lua",
 			G .. "includes/voices.lua", G .. "includes/vote_hud.lua",
-			E .. "entities/info_ladder", E .. "entities/ws_editor", E .. "entities/ws_gameplay_settings", E .. "entities/ws_proxy",
-		},
+			E .. "entities/info_ladder", E .. "entities/ws_editor", E .. "entities/ws_gameplay_settings", E .. "entities/ws_proxy"
+		}
 	},
 	{
 		name = "addons",
 		about = "the addons beside the gamemode: Team Tint, the CS:S weapons and the model viewer",
 		tests = { "teamtint_*", "addons_cstrike_weapons*", "model_viewer_*" },
-		sources = { "addons/teamtint/", "addons/cstrike_weapons/", "addons/model_viewer/" },
+		sources = { "addons/teamtint/", "addons/cstrike_weapons/", "addons/model_viewer/" }
 	},
 	{
 		name = "tooling",
 		about = "the test harness, the loaders' rules, the dev workbench and the server tools",
-		tests = {
+		tests =
+		{
 			"dev_*", "server_*", "harness", "suites", "loader_locals", "local_before_use", "hook_names",
 			"client_load_order", "client_shipping", "content_downloads", "cfg_defaults", "feature_parts",
-			"gamemode_manifest", "entity_baseclass",
+			"gamemode_manifest", "entity_baseclass"
 		},
-		sources = {
+		sources =
+		{
 			"tests/harness.lua", "tests/suites.lua", "tests/fixtures/", "addons/sandcastle_dev/", "addons/ulx_luadev/", ".devtools/bin/",
-			"addons/sandcastle/cfg/", G .. "cl_init.lua",
-		},
-	},
+			"addons/sandcastle/cfg/", G .. "cl_init.lua"
+		}
+	}
 }

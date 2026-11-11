@@ -11,8 +11,8 @@
 -- "Float" or "Bool"), title, category, min, max, read(editors) -> value,
 -- write(editors, value), default }. A field without read is an input only
 -- (an amount the actions use) and starts at its default.
-AddCSLuaFile()
-DEFINE_BASECLASS("base_edit")
+AddCSLuaFile ()
+DEFINE_BASECLASS ("base_edit")
 
 ENT.Type = "anim"
 ENT.Base = "base_edit"
@@ -25,76 +25,79 @@ ENT.Fields = {}
 local MIRROR_INTERVAL = 0.5
 local EDIT_TYPE = { Int = "Int", Float = "Float", Bool = "Boolean" }
 
-function ENT:SetupDataTables()
+function ENT:SetupDataTables ()
 	local slots = {}
-	for order, field in ipairs(self.Fields) do
-		local slot = slots[field.type] or 0
-		slots[field.type] = slot + 1
-		self:NetworkVar(field.type, slot, field.name, {
-			KeyName = string.lower(field.name),
-			Edit = {
-				type = EDIT_TYPE[field.type],
-				title = field.title,
-				category = field.category,
-				min = field.min,
-				max = field.max,
-				order = order,
-			},
-		})
-		if SERVER then self:NetworkVarNotify(field.name, self.OnFieldEdited) end
+	for order, field in ipairs (self.Fields) do
+		local slot = slots [field.type] or 0
+		slots [field.type] = slot + 1
+		self:NetworkVar (field.type, slot, field.name,
+			{
+				KeyName = string.lower (field.name),
+				Edit =
+				{
+					type = EDIT_TYPE [field.type],
+					title = field.title,
+					category = field.category,
+					min = field.min,
+					max = field.max,
+					order = order
+				}
+			}
+		)
+		if SERVER then self:NetworkVarNotify (field.name, self.OnFieldEdited) end
 	end
 end
 
-function ENT:CanEditVariables(ply)
-	return WS.Can(ply, system.permissions.TAMPER) == true
+function ENT:CanEditVariables (ply)
+	return WS.Can (ply, system.permissions.TAMPER) == true
 end
 
 if CLIENT then return end
 
 -- One editor of a kind per map.
-function ENT:SpawnFunction(ply, tr, class)
-	if IsValid(ents.FindByClass(class)[1]) then
-		ply:ChatPrint("There is already a " .. self.PrintName .. " on this map")
+function ENT:SpawnFunction (ply, tr, class)
+	if IsValid (ents.FindByClass (class) [1]) then
+		ply:ChatPrint ("There is already a " .. self.PrintName .. " on this map")
 		return
 	end
 	if not tr.Hit then return end
-	local ent = ents.Create(class)
-	ent:SetPos(tr.HitPos + tr.HitNormal * 16)
-	ent:Spawn()
-	ent:Activate()
+	local ent = ents.Create (class)
+	ent:SetPos (tr.HitPos + tr.HitNormal * 16)
+	ent:Spawn ()
+	ent:Activate ()
 	return ent
 end
 
-function ENT:Initialize()
-	BaseClass.Initialize(self)
-	self.editors = WS.Feature("editors")
+function ENT:Initialize ()
+	BaseClass.Initialize (self)
+	self.editors = WS.Feature ("editors")
 	self.fieldByName = {}
 	self.mirroring = true
-	for _, field in ipairs(self.Fields) do
-		self.fieldByName[field.name] = field
-		if not field.read and field.default ~= nil then self["Set" .. field.name](self, field.default) end
+	for _, field in ipairs (self.Fields) do
+		self.fieldByName [field.name] = field
+		if not field.read and field.default ~= nil then self ["Set" .. field.name] (self, field.default) end
 	end
 	self.mirroring = false
-	self:Mirror()
+	self:Mirror ()
 end
 
 -- Show the game's values; setting them here is not an edit.
-function ENT:Mirror()
+function ENT:Mirror ()
 	self.mirroring = true
-	for _, field in ipairs(self.Fields) do
-		if field.read then self["Set" .. field.name](self, field.read(self.editors)) end
+	for _, field in ipairs (self.Fields) do
+		if field.read then self ["Set" .. field.name] (self, field.read (self.editors)) end
 	end
 	self.mirroring = false
 end
 
-function ENT:OnFieldEdited(name, old, new)
+function ENT:OnFieldEdited (name, old, new)
 	if self.mirroring or not self.editors or old == new then return end
-	local field = self.fieldByName[name]
-	if field.write then field.write(self.editors, new) end
+	local field = self.fieldByName [name]
+	if field.write then field.write (self.editors, new) end
 end
 
-function ENT:Think()
-	self:Mirror()
-	self:NextThink(CurTime() + MIRROR_INTERVAL)
+function ENT:Think ()
+	self:Mirror ()
+	self:NextThink (CurTime () + MIRROR_INTERVAL)
 	return true
 end

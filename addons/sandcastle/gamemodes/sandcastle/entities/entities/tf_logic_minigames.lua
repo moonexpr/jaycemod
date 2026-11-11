@@ -7,9 +7,10 @@ ENT.Type = "point"
 ENT.Base = "ws_stub_point"
 
 ENT.StubReason = "minigames are not supported; inputs accepted and ignored"
-ENT.StubInputs = {
+ENT.StubInputs =
+{
 	teleporttominigame = true,
 	setadvantageteam = true,
 	teleporttorandomminigame = true,
-	returnfromminigame = true,
+	returnfromminigame = true
 }

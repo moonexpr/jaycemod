@@ -51,7 +51,7 @@ local Class = core.class
 local Slots = list.slots
 local Chain = list.chain
 local error, floor, getmetatable, rawget, setmetatable, tostring, type = error, math.floor, getmetatable, rawget, setmetatable, tostring, type
-module(...)
+module (...)
 
 EVICTED = "evicted" -- pushed out past the capacity
 EXPIRED = "expired" -- the policy found it stale
@@ -63,196 +63,199 @@ DESTROYED = "destroyed"
 -- Init runs under Construct, under a module's New: this blames New's caller.
 local NEW_CALLER = 4
 
-local state = setmetatable({}, { __mode = "k" })
+local state = setmetatable ({}, { __mode = "k" })
 
-function State(cache)
-	return state[cache]
+function State (cache)
+	return state [cache]
 end
 
-local function Refuse(why, value)
-	error("a cache's " .. why .. ", not " .. tostring(value), NEW_CALLER)
+local function Refuse (why, value)
+	error ("a cache's " .. why .. ", not " .. tostring (value), NEW_CALLER)
 end
 
-local function Owned() end
+local function Owned () end
 
-local function Method(cache, key)
-	local class = getmetatable(cache)
+local function Method (cache, key)
+	local class = getmetatable (cache)
 	while class do
-		local method = rawget(class, key)
+		local method = rawget (class, key)
 		if method ~= nil then return method end
-		class = getmetatable(class)
+		class = getmetatable (class)
 	end
 	return nil
 end
 
 -- The entry out of every structure, its slot freed; then, with a reason,
 -- its value released. Returns the value.
-local function Drop(cache, own, slot, reason)
-	local key, value = own.keys[slot], own.values[slot]
-	own.order:Unlink(slot)
-	own.slotOf[key], own.keys[slot], own.values[slot] = nil, nil, nil
-	cache:Dropped(slot)
-	own.slots:Free(slot)
-	if reason then own.release(key, value, reason) end
+local function Drop (cache, own, slot, reason)
+	local key, value = own.keys [slot], own.values [slot]
+	own.order:Unlink (slot)
+	own.slotOf [key], own.keys [slot], own.values [slot] = nil, nil, nil
+	cache:Dropped (slot)
+	own.slots:Free (slot)
+	if reason then own.release (key, value, reason) end
 	return value
 end
 
 -- The key's live slot, a stale one dropped on the way; or nil.
-local function Live(cache, own, key)
-	local slot = own.slotOf[key]
-	if slot and cache:Stale(slot) then
-		Drop(cache, own, slot, EXPIRED)
+local function Live (cache, own, key)
+	local slot = own.slotOf [key]
+	if slot and cache:Stale (slot) then
+		Drop (cache, own, slot, EXPIRED)
 		return nil
 	end
 	return slot
 end
 
-local function Read(cache, key)
-	local own = state[cache]
-	local slot = Live(cache, own, key)
+local function Read (cache, key)
+	local own = state [cache]
+	local slot = Live (cache, own, key)
 	if not slot then return nil end
-	cache:Touch(slot)
-	return own.values[slot]
+	cache:Touch (slot)
+	return own.values [slot]
 end
 
-local function Write(cache, key, value)
-	if key == nil then error("a cache keeps no nil key", 3) end
-	local own = state[cache]
-	local slot = Live(cache, own, key)
+local function Write (cache, key, value)
+	if key == nil then error ("a cache keeps no nil key", 3) end
+	local own = state [cache]
+	local slot = Live (cache, own, key)
 	if value == nil then
-		if slot then Drop(cache, own, slot, REMOVED) end
+		if slot then Drop (cache, own, slot, REMOVED) end
 		return
 	end
 	if slot then
-		local old = own.values[slot]
-		own.values[slot] = value
-		cache:Rewrite(slot)
-		if old ~= value then own.release(key, old, REPLACED) end
+		local old = own.values [slot]
+		own.values [slot] = value
+		cache:Rewrite (slot)
+		if old ~= value then own.release (key, old, REPLACED) end
 		return
 	end
-	cache:Admitting()
-	slot = own.slots:Alloc()
-	own.slotOf[key], own.keys[slot], own.values[slot] = slot, key, value
-	own.order:PushFront(slot)
-	cache:Admitted(slot)
+	cache:Admitting ()
+	slot = own.slots:Alloc ()
+	own.slotOf [key], own.keys [slot], own.values [slot] = slot, key, value
+	own.order:PushFront (slot)
+	cache:Admitted (slot)
 	local order, capacity = own.order, own.capacity
-	while capacity and order:Size() > capacity do Drop(cache, own, order:Back(), EVICTED) end
+	while capacity and order:Size () > capacity do Drop (cache, own, order:Back (), EVICTED) end
 end
 
-local function Entries(cache)
-	local own = state[cache]
+local function Entries (cache)
+	local own = state [cache]
 	local order, keys, values = own.order, own.keys, own.values
-	local slot = order:Front()
-	return function()
+	local slot = order:Front ()
+	return function ()
 		if not slot then return nil end
-		local key, value = keys[slot], values[slot]
-		slot = order:After(slot)
+		local key, value = keys [slot], values [slot]
+		slot = order:After (slot)
 		return key, value
 	end
 end
 
-local function Length(cache)
-	return state[cache].order:Size()
+local function Length (cache)
+	return state [cache].order:Size ()
 end
 
 -- Every entry dropped first, then each value released, front to back, so
 -- a release that puts finds the cache already empty.
-local function Empty(cache, reason)
-	local own, keys, values, n = state[cache], {}, {}, 0
-	for key, value in Entries(cache) do
+local function Empty (cache, reason)
+	local own, keys, values, n = state [cache], {}, {}, 0
+	for key, value in Entries (cache) do
 		n = n + 1
-		keys[n], values[n] = key, value
+		keys [n], values [n] = key, value
 	end
-	for i = 1, #keys do Drop(cache, own, own.slotOf[keys[i]], nil) end
-	for i = 1, #keys do own.release(keys[i], values[i], reason) end
+	for i = 1, #keys do Drop (cache, own, own.slotOf [keys [i]], nil) end
+	for i = 1, #keys do own.release (keys [i], values [i], reason) end
 end
 
-Cache = Class.Extend(nil, {
-	kind = "cache",
-	__index = function(cache, key)
-		local method = Method(cache, key)
-		if method ~= nil then return method end
-		return Read(cache, key)
-	end,
-	__newindex = Write,
-	__call = Entries,
-	__len = Length,
-	__tostring = function(cache)
-		local own = state[cache]
-		local text = cache.kind .. ": " .. own.order:Size()
-		if own.capacity then text = text .. " of " .. own.capacity end
-		return text
-	end,
-})
+Cache = Class.Extend (nil,
+	{
+		kind = "cache",
+		__index = function (cache, key)
+			local method = Method (cache, key)
+			if method ~= nil then return method end
+			return Read (cache, key)
+		end,
+		__newindex = Write,
+		__call = Entries,
+		__len = Length,
+		__tostring = function (cache)
+			local own = state [cache]
+			local text = cache.kind .. ": " .. own.order:Size ()
+			if own.capacity then text = text .. " of " .. own.capacity end
+			return text
+		end
+	}
+)
 
-function Cache:Init(options)
+function Cache:Init (options)
 	local capacity, release = options.capacity, options.release
-	if capacity ~= nil and (type(capacity) ~= "number" or capacity < 1 or floor(capacity) ~= capacity) then
-		Refuse("capacity is a whole number of at least 1", capacity)
+	if capacity ~= nil and (type (capacity) ~= "number" or capacity < 1 or floor (capacity) ~= capacity) then
+		Refuse ("capacity is a whole number of at least 1", capacity)
 	end
-	if release ~= nil and type(release) ~= "function" then Refuse("release is a function", release) end
-	state[self] = {
+	if release ~= nil and type (release) ~= "function" then Refuse ("release is a function", release) end
+	state [self] =
+	{
 		capacity = capacity,
 		release = release or Owned,
-		slots = Slots.New(),
-		order = Chain.New(),
+		slots = Slots.New (),
+		order = Chain.New (),
 		slotOf = {}, -- key -> slot
 		keys = {}, -- slot -> key
-		values = {}, -- slot -> value
+		values = {} -- slot -> value
 	}
 end
 
-function Cache:Touch(slot) end
-function Cache:Rewrite(slot) end
-function Cache:Admitting() end
-function Cache:Admitted(slot) end
-function Cache:Stale(slot) return false end
-function Cache:Dropped(slot) end
+function Cache:Touch (slot) end
+function Cache:Rewrite (slot) end
+function Cache:Admitting () end
+function Cache:Admitted (slot) end
+function Cache:Stale (slot) return false end
+function Cache:Dropped (slot) end
 
-function Cache:DropSlot(slot, reason)
-	return Drop(self, state[self], slot, reason)
+function Cache:DropSlot (slot, reason)
+	return Drop (self, state [self], slot, reason)
 end
 
 Cache.Get = Read
 
-function Cache:Put(key, value)
-	if value == nil then error("a cache keeps no nil value: Remove removes", 2) end
-	Write(self, key, value)
+function Cache:Put (key, value)
+	if value == nil then error ("a cache keeps no nil value: Remove removes", 2) end
+	Write (self, key, value)
 end
 
-function Cache:Remove(key)
-	Write(self, key, nil)
+function Cache:Remove (key)
+	Write (self, key, nil)
 end
 
-function Cache:Peek(key)
-	local own = state[self]
-	local slot = Live(self, own, key)
-	return slot and own.values[slot]
+function Cache:Peek (key)
+	local own = state [self]
+	local slot = Live (self, own, key)
+	return slot and own.values [slot]
 end
 
-function Cache:Take(key)
-	local own = state[self]
-	local slot = Live(self, own, key)
-	return slot and Drop(self, own, slot, nil)
+function Cache:Take (key)
+	local own = state [self]
+	local slot = Live (self, own, key)
+	return slot and Drop (self, own, slot, nil)
 end
 
-function Cache:Clear()
-	Empty(self, CLEARED)
+function Cache:Clear ()
+	Empty (self, CLEARED)
 end
 
 Cache.Size = Length
 
-function Cache:Keys()
+function Cache:Keys ()
 	local list = {}
-	for key in self() do list[#list + 1] = key end
+	for key in self () do list [#list + 1] = key end
 	return list
 end
 
-function Cache:Destroy()
-	Empty(self, DESTROYED)
-	state[self] = nil
+function Cache:Destroy ()
+	Empty (self, DESTROYED)
+	state [self] = nil
 end
 
-function New(options)
-	return Class.Construct(Cache, options)
+function New (options)
+	return Class.Construct (Cache, options)
 end

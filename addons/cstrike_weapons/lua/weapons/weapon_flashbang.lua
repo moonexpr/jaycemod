@@ -1,4 +1,4 @@
-AddCSLuaFile()
+AddCSLuaFile ()
 
 -- weapon_flashbang: a standard CS:S SWEP; its base owns shared behavior.
 
@@ -9,8 +9,8 @@ SWEP.Category = "Counter-Strike: Source"
 SWEP.Spawnable = true
 SWEP.Slot = 3
 SWEP.SlotPos = 2
-SWEP.ViewModel = Model("models/weapons/cstrike/c_eq_flashbang.mdl")
-SWEP.WorldModel = Model("models/weapons/w_eq_flashbang.mdl")
+SWEP.ViewModel = Model ("models/weapons/cstrike/c_eq_flashbang.mdl")
+SWEP.WorldModel = Model ("models/weapons/w_eq_flashbang.mdl")
 SWEP.ViewModelFOV = 54
 SWEP.ViewModelFlip = false
 SWEP.UseHands = true

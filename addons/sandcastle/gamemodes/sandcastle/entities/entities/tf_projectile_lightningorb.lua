@@ -2,7 +2,7 @@
 -- lightning spell's orb. It collides with the world only (SetSolid(
 -- SOLID_NONE)), bouncing off it, and zaps as it goes
 -- (features.spells.lightning).
-AddCSLuaFile()
+AddCSLuaFile ()
 
 ENT.Type = "anim"
 ENT.Base = "ws_spell_projectile"
@@ -11,7 +11,8 @@ ENT.Variant = "features.spells.orb"
 ENT.Model = "models/weapons/w_models/w_rocket.mdl"
 ENT.ModelScale = 0.01
 ENT.CollisionGroup = COLLISION_GROUP_DEBRIS
-ENT.Trails = {
+ENT.Trails =
+{
 	[TEAM_RED] = "spell_lightningball_parent_red",
-	[TEAM_BLUE] = "spell_lightningball_parent_blue",
+	[TEAM_BLUE] = "spell_lightningball_parent_blue"
 }

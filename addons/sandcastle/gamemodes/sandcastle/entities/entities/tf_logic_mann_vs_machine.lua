@@ -4,10 +4,10 @@
 ENT.Type = "point"
 ENT.Base = "base_point"
 
-function ENT:Initialize()
-	WS.Feature("mvm")
+function ENT:Initialize ()
+	WS.Feature ("mvm")
 end
 
-function ENT:UpdateTransmitState()
+function ENT:UpdateTransmitState ()
 	return TRANSMIT_NEVER
 end

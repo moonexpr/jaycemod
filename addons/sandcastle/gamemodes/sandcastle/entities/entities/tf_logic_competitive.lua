@@ -7,14 +7,14 @@
 ENT.Type = "point"
 ENT.Base = "base_point"
 
-function ENT:KeyValue(key, value)
-	if string.sub(key, 1, 2) == "On" then self:StoreOutput(key, value) end
+function ENT:KeyValue (key, value)
+	if string.sub (key, 1, 2) == "On" then self:StoreOutput (key, value) end
 end
 
-function ENT:Initialize()
-	WS.Feature("rounds")
+function ENT:Initialize ()
+	WS.Feature ("rounds")
 end
 
-function ENT:UpdateTransmitState()
+function ENT:UpdateTransmitState ()
 	return TRANSMIT_NEVER
 end

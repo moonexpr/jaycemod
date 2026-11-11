@@ -3,21 +3,22 @@
 -- flash. TF2's "#Token" strings are worded by ws.localization.
 local math, string, table = math, string, table
 local Rounds = gameplay.rounds
-local State = require("games.gameplay.rounds.state")
+local State = require ("games.gameplay.rounds.state")
 local Teams = gameplay.teams
-module(...)
+module (...)
 
 -- The states whose centre panel shows the teams' scores itself (the win
 -- panel, the match's end), so the top scores and koth's team clocks go.
-local WIN_PANELS = {
+local WIN_PANELS =
+{
 	[State.TEAM_WIN] = true,
-	[State.GAME_OVER] = true,
+	[State.GAME_OVER] = true
 }
 
 -- Whether the bar at the top (the team scores, koth's team clocks) shows in
 -- state.
-function ShowsTeamBar(state)
-	return not WIN_PANELS[state]
+function ShowsTeamBar (state)
+	return not WIN_PANELS [state]
 end
 
 local RED, BLUE = Teams.RED, Teams.BLUE
@@ -25,11 +26,13 @@ local FIRST_GAME_TEAM = Teams.FIRST_GAME_TEAM
 local WINREASON, STALEMATE = Rounds.WINREASON, Rounds.STALEMATE
 local SECONDS_PER_MINUTE = 60
 
-local TEAM_LABEL = {
+local TEAM_LABEL =
+{
 	[RED] = "RED",
-	[BLUE] = "BLU",
+	[BLUE] = "BLU"
 }
-local REASON_TEXT = {
+local REASON_TEXT =
+{
 	[WINREASON.ALL_POINTS_CAPTURED] = "%s captured all control points",
 	[WINREASON.OPPONENTS_DEAD] = "%s killed all opponents during sudden death",
 	[WINREASON.DEFEND_UNTIL_TIME_LIMIT] = "%s successfully defended until time ran out",
@@ -44,29 +47,31 @@ local REASON_TEXT = {
 	[WINREASON.HOSTAGES_NOT_RESCUED] = "%s kept the hostages until time ran out",
 	[WINREASON.TARGET_BOMBED] = "%s bombed the target",
 	[WINREASON.BOMB_DEFUSED] = "%s defused the bomb",
-	[WINREASON.TARGET_SAVED] = "%s saved the targets until time ran out",
+	[WINREASON.TARGET_SAVED] = "%s saved the targets until time ran out"
 }
 -- Winreason_FlagCaptureLimit(_One): a CTF win, at the capture limit or by
 -- the most captures at the time limit, counts them.
 local CAPTURES_TEXT = "%s captured the enemy intelligence %d times"
 local CAPTURE_TEXT = "%s captured the enemy intelligence %d time"
-local BY_CAPTURES = {
+local BY_CAPTURES =
+{
 	[WINREASON.FLAG_CAPTURE_LIMIT] = true,
-	[WINREASON.MOST_CAPTURES] = true,
+	[WINREASON.MOST_CAPTURES] = true
 }
 -- Winreason_Arena: an arena round's elimination is no sudden death.
 local ARENA_ELIMINATION = "%s killed all opponents"
 
 -- info = { winner, reason, fullRound, remaining (areas left for the winner),
 -- arena (the round was arena's), captures (the winner's, for a CTF win) }
-function WinPanel(info)
+function WinPanel (info)
 	if info.winner < FIRST_GAME_TEAM then
-		return {
+		return
+		{
 			title = "STALEMATE",
-			reason = REASON_TEXT[WINREASON.STALEMATE],
+			reason = REASON_TEXT [WINREASON.STALEMATE]
 		}
 	end
-	local team = TEAM_LABEL[info.winner]
+	local team = TEAM_LABEL [info.winner]
 	local areaDefense = info.reason == WINREASON.DEFEND_UNTIL_TIME_LIMIT and not info.fullRound
 	local title
 	if info.fullRound then
@@ -76,15 +81,16 @@ function WinPanel(info)
 	else
 		title = team .. " TEAM SEIZES AREA"
 	end
-	local text = REASON_TEXT[info.reason]
+	local text = REASON_TEXT [info.reason]
 	if info.arena and info.reason == WINREASON.OPPONENTS_DEAD then text = ARENA_ELIMINATION end
-	local reason = text and string.format(text, team) or nil
-	if BY_CAPTURES[info.reason] then
-		reason = string.format(info.captures == 1 and CAPTURE_TEXT or CAPTURES_TEXT, team, info.captures)
+	local reason = text and string.format (text, team) or nil
+	if BY_CAPTURES [info.reason] then
+		reason = string.format (info.captures == 1 and CAPTURE_TEXT or CAPTURES_TEXT, team, info.captures)
 	end
-	local panel = {
+	local panel =
+	{
 		title = title,
-		reason = reason,
+		reason = reason
 	}
 	if not info.fullRound and info.reason ~= WINREASON.STALEMATE then
 		panel.details = info.remaining .. (info.remaining == 1 and " more area to win" or " more areas to win")
@@ -92,7 +98,8 @@ function WinPanel(info)
 	return panel
 end
 
-local STALEMATE_REASON = {
+local STALEMATE_REASON =
+{
 	[STALEMATE.JOIN_MID] = "Sit back and relax while you wait for this petty conflict to end.",
 	[STALEMATE.TIMER] = "You've run out of time. Watch your back and finish 'em off. No more spawning.",
 	[STALEMATE.SERVER_TIMELIMIT] = "Map time limit reached. No more spawning, so make this count.",
@@ -100,33 +107,34 @@ local STALEMATE_REASON = {
 	[STALEMATE.ADMIN] = "The Administrator has called sudden death. No more spawning.",
 	[STALEMATE.BOTH_DEAD] = "Both teams fell at once. Again: no more spawning, the last team standing wins.",
 	[STALEMATE.LIMIT_TIED] = "Both teams reached the limit together. No more spawning, the last team standing wins.",
-	[STALEMATE.ENDED_EARLY] = "The match is ending early. No more spawning, the last team standing wins.",
+	[STALEMATE.ENDED_EARLY] = "The match is ending early. No more spawning, the last team standing wins."
 }
 
-function StalematePanel(reason)
-	return {
+function StalematePanel (reason)
+	return
+	{
 		title = "SUDDEN DEATH!",
-		reason = STALEMATE_REASON[reason],
+		reason = STALEMATE_REASON [reason]
 	}
 end
 
 -- Sudden death's notification card: its panel's title and reason.
-function SuddenDeathNote(reason)
-	local panel = StalematePanel(reason)
-	return string.format("%s %s", panel.title, panel.reason)
+function SuddenDeathNote (reason)
+	local panel = StalematePanel (reason)
+	return string.format ("%s %s", panel.title, panel.reason)
 end
 
 -- Deathmatch's start (games.gameplay.rounds' Deathmatch): the tied match's
 -- bonus round, won at fraglimit frags.
-function DeathmatchNote(fraglimit)
-	return string.format("DEATHMATCH! The match is tied: the first team to %d frags wins it.", fraglimit)
+function DeathmatchNote (fraglimit)
+	return string.format ("DEATHMATCH! The match is tied: the first team to %d frags wins it.", fraglimit)
 end
 
 -- The flash beside the timer when time is added (game_teamplay_timer_time_added).
-function TimeAdded(seconds)
+function TimeAdded (seconds)
 	local sign = seconds < 0 and "-" or "+"
-	local s = math.abs(seconds)
-	return string.format("%s%d:%02d", sign, math.floor(s / SECONDS_PER_MINUTE), s % SECONDS_PER_MINUTE)
+	local s = math.abs (seconds)
+	return string.format ("%s%d:%02d", sign, math.floor (s / SECONDS_PER_MINUTE), s % SECONDS_PER_MINUTE)
 end
 
 -- The timer box ----------------------------------------------------------------------
@@ -137,19 +145,20 @@ SCRAMBLE_NOTE = "Teams will be scrambled next round!"
 -- A restart asked (gameplay.rounds' RestartRequest), as every player's
 -- centre and console print it: tf_english.txt's #round_restart_in_sec(s) and
 -- #game_switch_in_sec(s), by the announcement CheckRestartRound chose.
-local RESTART_NOTES = {
+local RESTART_NOTES =
+{
 	[Rounds.RESTART_ROUND] = { "The round will restart in %d second", "The round will restart in %d seconds" },
-	[Rounds.RESTART_SWITCH] = { "Switching teams!\nThe game will restart in %d second", "Switching teams!\nThe game will restart in %d seconds" },
+	[Rounds.RESTART_SWITCH] = { "Switching teams!\nThe game will restart in %d second", "Switching teams!\nThe game will restart in %d seconds" }
 }
 
-function RestartNote(announce, seconds)
-	local forms = RESTART_NOTES[announce]
-	return string.format(seconds > 1 and forms[2] or forms[1], seconds)
+function RestartNote (announce, seconds)
+	local forms = RESTART_NOTES [announce]
+	return string.format (seconds > 1 and forms [2] or forms [1], seconds)
 end
 
 -- The note everyone gets as mp_chattime begins: the map that comes next.
-function NextMapNote(map)
-	return string.format("Next map: %s", map)
+function NextMapNote (map)
+	return string.format ("Next map: %s", map)
 end
 
 -- Before a game the top timer and scores draw nothing: in the wait for
@@ -162,7 +171,7 @@ PREGAME_WAITING, PREGAME_COUNTDOWN, PREGAME_SANDBOX = "waiting", "countdown", "s
 -- waitingNeed (how many players the gamemode's wait needs; 0 outside it),
 -- halted (the rounds stand still) }: the wait first, then the countdown
 -- (which runs on once its pre-round lets the rounds run), then Sandbox mode.
-function Pregame(q)
+function Pregame (q)
 	if q.waitingNeed > 0 then return PREGAME_WAITING end
 	if q.transitionEnd > q.now then return PREGAME_COUNTDOWN end
 	if q.halted then return PREGAME_SANDBOX end
@@ -185,7 +194,7 @@ LABEL_OVERTIME = "OVERTIME"
 LABEL_GAME_OVER = "GAME OVER"
 LABEL_CAP_UNLOCK = "POINT UNLOCKS" -- CHudArenaCapPointCountdown's, on the timer
 
-local function RoundLabel(q)
+local function RoundLabel (q)
 	if q.preround then return LABEL_PREROUND end
 	if q.setup then return LABEL_SETUP end
 	if q.overtime then return LABEL_OVERTIME end
@@ -208,54 +217,60 @@ end
 -- clocks greyed meanwhile: KothClocksLive), else the round's timer, else (a map
 -- without one, as ctf_2fort) the map's time left. Returns { kind, left,
 -- label }.
-function TimerDisplay(q)
-	if Pregame(q) then return nil end
+function TimerDisplay (q)
+	if Pregame (q) then return nil end
 	if q.gameOverEnd > q.now then
-		return {
+		return
+		{
 			kind = DISPLAY_GAME_OVER,
 			left = q.gameOverEnd - q.now,
-			label = LABEL_GAME_OVER,
+			label = LABEL_GAME_OVER
 		}
 	end
 	if q.setupEnd > q.now then
-		return {
+		return
+		{
 			kind = DISPLAY_SETUP,
 			left = q.setupEnd - q.now,
-			label = LABEL_SETUP,
+			label = LABEL_SETUP
 		}
 	end
 	if q.capUnlockEnd > q.now then
-		return {
+		return
+		{
 			kind = DISPLAY_CAP_UNLOCK,
 			left = q.capUnlockEnd - q.now,
-			label = LABEL_CAP_UNLOCK,
+			label = LABEL_CAP_UNLOCK
 		}
 	end
 	if q.koth then
 		if q.kothUnlockEnd <= q.now then return nil end
-		return {
+		return
+		{
 			kind = DISPLAY_SETUP,
 			left = q.kothUnlockEnd - q.now,
-			label = LABEL_SETUP,
+			label = LABEL_SETUP
 		}
 	end
 	if not q.shown then
 		if q.matchEnd <= q.now then return nil end
-		return {
+		return
+		{
 			kind = DISPLAY_MAP,
-			left = q.matchEnd - q.now,
+			left = q.matchEnd - q.now
 		}
 	end
-	return {
+	return
+	{
 		kind = DISPLAY_ROUND,
 		left = q.left,
-		label = RoundLabel(q),
+		label = RoundLabel (q)
 	}
 end
 
 -- Whether koth's team clocks run yet: greyed, as disabled, while the hill's
 -- lock at the round's start (q = { now, kothUnlockEnd }) counts down as
 -- SETUP on the timer.
-function KothClocksLive(q)
+function KothClocksLive (q)
 	return q.kothUnlockEnd <= q.now
 end

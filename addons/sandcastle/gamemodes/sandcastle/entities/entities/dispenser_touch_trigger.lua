@@ -3,6 +3,6 @@
 ENT.Type = "brush"
 ENT.Base = "base_brush2"
 
-function ENT:IsEnabled()
+function ENT:IsEnabled ()
 	return self.enabled
 end

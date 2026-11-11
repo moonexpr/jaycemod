@@ -9,11 +9,11 @@
 -- casualties), missing (guards lost holding this place, this one counted), contact (an enemy met),
 -- target (where to strike, or nil) }. The answer is the squad's; the mode hosting it gives the
 -- order that comes with DEFEND or ATTACK.
-module(...)
+module (...)
 
 VACATE_FLOOR, ATTACK_AFTER = 3, 2
 
-function Decide(situation)
+function Decide (situation)
 	if situation.contact then return { kind = "DEFEND", plan = "AMBUSH" } end
 	if situation.size - situation.lost < VACATE_FLOOR then return { kind = "STANDBY" } end
 	if situation.missing >= ATTACK_AFTER then

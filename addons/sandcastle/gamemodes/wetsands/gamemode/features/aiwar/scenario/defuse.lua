@@ -14,14 +14,14 @@
 -- (the site RED makes for this round), planted (the planted site, or nil),
 -- carrying (a RED soldier has the bomb).
 local ipairs = ipairs
-local AiWar = require("features.aiwar.model")
-local Orders = require("features.aiwar.ns_behaviors")
+local AiWar = require ("features.aiwar.model")
+local Orders = require ("features.aiwar.ns_behaviors")
 local Teams = gameplay.teams
 local Base = wartactics.scenario
-local Ctf = require("features.aiwar.scenario.ctf")
+local Ctf = require ("features.aiwar.scenario.ctf")
 local Geometry = math.geometry
 local Distance = Geometry.Distance
-module(...)
+module (...)
 
 MODE = "defuse"
 
@@ -37,30 +37,31 @@ COURIER_LEASH, DEFENDER_LEASH = Ctf.COURIER_LEASH, Ctf.DEFENDER_LEASH
 local RED, BLUE = Teams.RED, Teams.BLUE
 local TEAMS = { RED, BLUE }
 
-local function ObjectivesOf(field, member) return field.objectives[member.team] end
-local function Carries(o, member) return o.carrying and o.bomb.carrier == member.handle end
+local function ObjectivesOf (field, member) return field.objectives [member.team] end
+local function Carries (o, member) return o.carrying and o.bomb.carrier == member.handle end
 
 -------------------------------------------------------------------------------
 -- The doctrine (features.aiwar.ns_behaviors' doctrine interface)
 
 -- RED's stages.
-local function BomberStage(field, member)
-	local o = ObjectivesOf(field, member)
+local function BomberStage (field, member)
+	local o = ObjectivesOf (field, member)
 	if o.planted then return "GuardPlantedBomb" end
-	if Carries(o, member) then return "PlantBomb" end
+	if Carries (o, member) then return "PlantBomb" end
 	if o.carrying then return "EscortBomber" end
 	return "FetchBomb"
 end
 
-local function BomberGoal(field, member)
-	local o = ObjectivesOf(field, member)
-	if o.planted then return Orders.Ring(o.planted.pos, member.slot, GUARD_RING) end
-	if Carries(o, member) then return o.target.pos end
-	if o.carrying then return Orders.Ring(o.bomb.pos, member.slot, ESCORT_RING) end
+local function BomberGoal (field, member)
+	local o = ObjectivesOf (field, member)
+	if o.planted then return Orders.Ring (o.planted.pos, member.slot, GUARD_RING) end
+	if Carries (o, member) then return o.target.pos end
+	if o.carrying then return Orders.Ring (o.bomb.pos, member.slot, ESCORT_RING) end
 	return o.bomb.pos
 end
 
-local PLANT = {
+local PLANT =
+{
 	arrive = TOUCH,
 	leash = COURIER_LEASH,
 	tactic = "attack",
@@ -69,74 +70,80 @@ local PLANT = {
 	heals = false,
 	squads = false,
 	Zone = false,
-	Goal = function(field, member) return ObjectivesOf(field, member).target.pos end,
-	Urgent = function() return true end,
+	Goal = function (field, member) return ObjectivesOf (field, member).target.pos end,
+	Urgent = function () return true end
 }
-local ESCORT = {
+local ESCORT =
+{
 	arrive = ESCORT_FOLLOW,
-	Goal = function(field, member) return ObjectivesOf(field, member).bomb.pos end,
+	Goal = function (field, member) return ObjectivesOf (field, member).bomb.pos end
 }
-local GUARD_PLANTED = {
+local GUARD_PLANTED =
+{
 	tactic = "defend",
 	chases = "opportunist",
 	patrols = true,
 	arrive = Orders.DEFEND_ARRIVE,
-	leash = DEFENDER_LEASH,
+	leash = DEFENDER_LEASH
 }
 
 -- BLU's stages.
-local function Alarm(o)
+local function Alarm (o)
 	if not o.carrying then return nil end
-	for _, site in ipairs(o.sites) do
-		if Distance(o.bomb.pos, site.pos) <= ALARM_RANGE then return site end
+	for _, site in ipairs (o.sites) do
+		if Distance (o.bomb.pos, site.pos) <= ALARM_RANGE then return site end
 	end
 	return nil
 end
 
-local function GuardedSite(o, member) return o.sites[member.slot % #o.sites + 1] end
+local function GuardedSite (o, member) return o.sites [member.slot % #o.sites + 1] end
 
-local function DefenderStage(field, member)
-	local o = ObjectivesOf(field, member)
+local function DefenderStage (field, member)
+	local o = ObjectivesOf (field, member)
 	if o.planted then return "DefuseBomb" end
-	if Alarm(o) then return "StopBomber" end
+	if Alarm (o) then return "StopBomber" end
 	if o.bomb and o.bomb.state == DROPPED then return "GuardDroppedBomb" end
 	return "GuardSite"
 end
 
-local function DefenderGoal(field, member)
-	local o = ObjectivesOf(field, member)
+local function DefenderGoal (field, member)
+	local o = ObjectivesOf (field, member)
 	if o.planted then return o.planted.pos end
-	if Alarm(o) then return o.bomb.pos end
-	if o.bomb and o.bomb.state == DROPPED then return Orders.Ring(o.bomb.pos, member.slot, GUARD_RING) end
-	return Orders.Ring(GuardedSite(o, member).pos, member.slot, GUARD_RING)
+	if Alarm (o) then return o.bomb.pos end
+	if o.bomb and o.bomb.state == DROPPED then return Orders.Ring (o.bomb.pos, member.slot, GUARD_RING) end
+	return Orders.Ring (GuardedSite (o, member).pos, member.slot, GUARD_RING)
 end
 
-local DEFUSE = {
+local DEFUSE =
+{
 	arrive = TOUCH,
 	leash = COURIER_LEASH,
 	tactic = "attack",
 	chases = false,
 	patrols = false,
-	Urgent = function() return true end,
-	Goal = function(field, member) return ObjectivesOf(field, member).planted.pos end,
+	Urgent = function () return true end,
+	Goal = function (field, member) return ObjectivesOf (field, member).planted.pos end
 }
 
-local ROLES = {
-	[AiWar.COURIER] = {
+local ROLES =
+{
+	[AiWar.COURIER] =
+	{
 		name = "Bomber",
 		tactic = "attack",
 		arrive = TOUCH,
 		leash = COURIER_LEASH,
 		rushes = false,
-		Urgent = function(field, member)
-			local o = ObjectivesOf(field, member)
+		Urgent = function (field, member)
+			local o = ObjectivesOf (field, member)
 			return not o.planted and not o.carrying
 		end,
 		Goal = BomberGoal,
 		Stage = BomberStage,
-		STAGES = { PlantBomb = PLANT, EscortBomber = ESCORT, GuardPlantedBomb = GUARD_PLANTED },
+		STAGES = { PlantBomb = PLANT, EscortBomber = ESCORT, GuardPlantedBomb = GUARD_PLANTED }
 	},
-	[AiWar.CTF_DEFEND] = {
+	[AiWar.CTF_DEFEND] =
+	{
 		name = "SiteDefender",
 		chases = "opportunist",
 		patrols = true,
@@ -146,113 +153,116 @@ local ROLES = {
 		rushes = false,
 		Goal = DefenderGoal,
 		Stage = DefenderStage,
-		Urgent = function(field, member)
-			local o = ObjectivesOf(field, member)
-			return o.planted ~= nil or Alarm(o) ~= nil
+		Urgent = function (field, member)
+			local o = ObjectivesOf (field, member)
+			return o.planted ~= nil or Alarm (o) ~= nil
 		end,
-		STAGES = { DefuseBomb = DEFUSE },
-	},
+		STAGES = { DefuseBomb = DEFUSE }
+	}
 }
 
-DOCTRINE = {
+DOCTRINE =
+{
 	NAME = "defuse",
 	ROLES = ROLES,
-	WaitsForSetup = function() return false end,
-	ChaseAnchor = function(field, member)
-		local o = ObjectivesOf(field, member)
+	WaitsForSetup = function () return false end,
+	ChaseAnchor = function (field, member)
+		local o = ObjectivesOf (field, member)
 		if o.planted then return o.planted.pos end
 		if member.team == RED then return o.bomb.pos end
-		return GuardedSite(o, member).pos
+		return GuardedSite (o, member).pos
 	end,
 	SIDES = { bomber = "BomberSide", defender = "SiteDefenderSide" },
 	SHORT_SIDES = { bomber = "Bomber", defender = "Defender" },
-	Side = function(field, member) return member.team == RED and "bomber" or "defender" end,
+	Side = function (field, member) return member.team == RED and "bomber" or "defender" end,
 	-- RED meets BLU at the site it makes for; BLU meets RED coming with the bomb
-	Threat = function(field, member)
-		local o = ObjectivesOf(field, member)
+	Threat = function (field, member)
+		local o = ObjectivesOf (field, member)
 		if member.team == RED then return (o.planted or o.target).pos end
 		return o.bomb.pos
 	end,
-	PatrolMark = function(field, member)
-		local o = ObjectivesOf(field, member)
+	PatrolMark = function (field, member)
+		local o = ObjectivesOf (field, member)
 		return { planted = o.planted ~= nil, state = o.bomb.state }
 	end,
-	PatrolHolds = function(mark, field, member)
-		local o = ObjectivesOf(field, member)
+	PatrolHolds = function (mark, field, member)
+		local o = ObjectivesOf (field, member)
 		if (o.planted ~= nil) ~= mark.planted then return false, "the bomb was planted" end
 		if o.bomb.state ~= mark.state then return false, "the bomb moved" end
 		return true
-	end,
+	end
 }
 
 -------------------------------------------------------------------------------
 -- The scenario
 
-Scenario = Base.Scenario:Extend(MODE)
+Scenario = Base.Scenario:Extend (MODE)
 Scenario.NEEDS = { Base.BASES, Base.POINTS }
 
-function Scenario:New()
-	local scenario = Base.Scenario.New(self)
+function Scenario:New ()
+	local scenario = Base.Scenario.New (self)
 	scenario.memory = { rounds = 0 }
 	return scenario
 end
 
 -- A new round: RED makes for the next site in turn.
-function Scenario:Reset()
-	Base.Scenario.Reset(self)
+function Scenario:Reset ()
+	Base.Scenario.Reset (self)
 	self.memory = { rounds = (self.memory and self.memory.rounds or 0) + 1 }
 end
 
 -- The bomb as the field has it; before it is made (or once planted, when it
 -- is gone) it lies at RED's base.
-local function BombOf(field)
-	local bomb = field.flags and field.flags[RED]
+local function BombOf (field)
+	local bomb = field.flags and field.flags [RED]
 	if bomb then return bomb end
-	return { state = HOME, pos = field.bases[RED], home = field.bases[RED] }
+	return { state = HOME, pos = field.bases [RED], home = field.bases [RED] }
 end
 
-function Scenario:Brief(field, now)
-	self:Explore(field)
+function Scenario:Brief (field, now)
+	self:Explore (field)
 	local sites, planted = {}, nil
-	for _, point in ipairs(field.points) do
+	for _, point in ipairs (field.points) do
 		local site = { id = point.id, pos = point.pos }
-		sites[#sites + 1] = site
+		sites [#sites + 1] = site
 		if point.owner == RED then planted = site end
 	end
-	local bomb = BombOf(field)
-	local target = sites[self.memory.rounds % #sites + 1]
+	local bomb = BombOf (field)
+	local target = sites [self.memory.rounds % #sites + 1]
 	local carrying = bomb.state == CARRIED and bomb.carrierTeam == RED
 	local objectives = {}
-	for _, team in ipairs(TEAMS) do
-		objectives[team] = { bomb = bomb, sites = sites, target = target, planted = planted, carrying = carrying }
+	for _, team in ipairs (TEAMS) do
+		objectives [team] = { bomb = bomb, sites = sites, target = target, planted = planted, carrying = carrying }
 	end
 	field.doctrine = DOCTRINE
 	field.objectives = objectives
 end
 
-local function Stance(shares)
+local function Stance (shares)
 	local stance = {}
-	for _, share in ipairs(shares) do stance[#stance + 1] = { role = share[1], weight = share[2] } end
+	for _, share in ipairs (shares) do stance [#stance + 1] = { role = share [1], weight = share [2] } end
 	return stance
 end
 
-local STANCES = {
-	bomb = Stance({ { AiWar.COURIER, 10 } }),
-	sites = Stance({ { AiWar.CTF_DEFEND, 10 } }),
+local STANCES =
+{
+	bomb = Stance ({ { AiWar.COURIER, 10 } }),
+	sites = Stance ({ { AiWar.CTF_DEFEND, 10 } })
 }
 
-function Scenario:Stances(field, now)
-	return {
+function Scenario:Stances (field, now)
+	return
+	{
 		[RED] = { stance = STANCES.bomb, key = "bomb" },
-		[BLUE] = { stance = STANCES.sites, key = "sites", critical = field.objectives[BLUE].planted ~= nil },
+		[BLUE] = { stance = STANCES.sites, key = "sites", critical = field.objectives [BLUE].planted ~= nil }
 	}, {}
 end
 
-function Scenario:Front(field, team)
-	local o = field.objectives[team]
+function Scenario:Front (field, team)
+	local o = field.objectives [team]
 	if o.planted then return o.planted.pos end
 	if team == RED then return o.target.pos end
 	return o.bomb.pos
 end
 
-function Scenario:SetupAttacks(field) return {} end
+function Scenario:SetupAttacks (field) return {} end

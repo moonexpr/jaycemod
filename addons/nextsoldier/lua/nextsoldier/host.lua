@@ -10,20 +10,22 @@
 --   GazeUpdate(ent, facing, fighting, hint, team, urgent): turn a head (client)
 --   SolidMask() -> what a body collides with on this map, player clips or not
 local Port = core.port
-module("nextsoldier.host")
+module ("nextsoldier.host")
 
-PORT = Port.New("NextSoldier host", {
-	"Movement",
-	"PlayerFactions",
-	"FactionEnemy",
-	"PathClearance",
-	"PathDebug",
-	"GazeUpdate",
-	"SolidMask",
-})
+PORT = Port.New ("NextSoldier host",
+	{
+		"Movement",
+		"PlayerFactions",
+		"FactionEnemy",
+		"PathClearance",
+		"PathDebug",
+		"GazeUpdate",
+		"SolidMask"
+	}
+)
 
 -- The installed host, read as nextsoldier.host.current.
-function Install(host)
-	current = PORT:Check(host)
+function Install (host)
+	current = PORT:Check (host)
 	return current
 end

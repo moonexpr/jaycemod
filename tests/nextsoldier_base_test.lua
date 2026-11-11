@@ -1,4 +1,4 @@
-local T = dofile("tests/harness.lua")
+local T = dofile ("tests/harness.lua")
 local Base = nextsoldier.base
 
 local GAMEMODE = T.ROOT
@@ -7,165 +7,166 @@ local NEXTSOLDIER_ENTITIES = T.ADDON_TREES.nextsoldier .. "entities/"
 -- The war's soldier classes, on NextSoldier's base.
 local SOLDIER_CLASSES = { "npc_nextsoldier", "npc_path_probe" }
 
-local function Read(path)
-	local file = assert(io.open(path))
-	local text = file:read("*a")
-	file:close()
-	return (text:gsub("%-%-%[%[.-%]%]", ""):gsub("%-%-[^\n]*", ""))
+local function Read (path)
+	local file = assert (io.open (path))
+	local text = file:read ("*a")
+	file:close ()
+	return (text:gsub ("%-%-%[%[.-%]%]", ""):gsub ("%-%-[^\n]*", ""))
 end
 
-local function Lines(command)
-	local list, lines = assert(io.popen(command)), {}
-	for line in list:lines() do lines[#lines + 1] = line end
-	list:close()
+local function Lines (command)
+	local list, lines = assert (io.popen (command)), {}
+	for line in list:lines () do lines [#lines + 1] = line end
+	list:close ()
 	return lines
 end
 
 -- What GMod gives every scripted entity, which no base declares.
-local GMOD = {
+local GMOD =
+{
 	Base = true, Type = true, PrintName = true, Category = true, Spawnable = true, AdminOnly = true,
 	Author = true, Purpose = true, Instructions = true, RenderGroup = true, AutomaticFrameAdvance = true,
 	Initialize = true, Think = true, Draw = true, OnRemove = true,
-	GetGroundEntity = true,
+	GetGroundEntity = true
 }
 
 -- Ours: the soldier's own methods and settings.
-local function Ours(name) return name:match("^NS") ~= nil or name:match("^WS") ~= nil end
+local function Ours (name) return name:match ("^NS") ~= nil or name:match ("^WS") ~= nil end
 
-T.test("a name is declared by one component only", function()
+T.test ("a name is declared by one component only", function ()
 	local seen = {}
-	for _, component in ipairs(Base.COMPONENTS) do
-		for _, set in ipairs({ component.methods:Methods(), Base.Hooks(component), Base.Fields(component) }) do
-			for _, name in ipairs(set) do
-				T.eq(seen[name], nil, name .. " is " .. component.name .. "'s and " .. tostring(seen[name]) .. "'s")
-				seen[name] = component.name
+	for _, component in ipairs (Base.COMPONENTS) do
+		for _, set in ipairs ({ component.methods:Methods (), Base.Hooks (component), Base.Fields (component) }) do
+			for _, name in ipairs (set) do
+				T.eq (seen [name], nil, name .. " is " .. component.name .. "'s and " .. tostring (seen [name]) .. "'s")
+				seen [name] = component.name
 			end
 		end
 	end
 end)
 
-T.test("the base port is every required component's methods, in order", function()
+T.test ("the base port is every required component's methods, in order", function ()
 	local methods = {}
-	for _, component in ipairs(Base.COMPONENTS) do
+	for _, component in ipairs (Base.COMPONENTS) do
 		if not component.optional then
-			for _, name in ipairs(component.methods:Methods()) do methods[#methods + 1] = name end
+			for _, name in ipairs (component.methods:Methods ()) do methods [#methods + 1] = name end
 		end
 	end
-	T.eq(table.concat(Base.METHODS:Methods(), " "), table.concat(methods, " "))
+	T.eq (table.concat (Base.METHODS:Methods (), " "), table.concat (methods, " "))
 end)
 
-T.test("an optional component's methods are not required, and a body without them is still a base", function()
-	T.eq(Base.POSTURE.optional, true)
-	T.eq(Base.METHODS:Methods()[1] ~= nil, true)
-	for _, name in ipairs(Base.POSTURE.methods:Methods()) do
-		for _, required in ipairs(Base.METHODS:Methods()) do T.eq(required ~= name, true, name .. " is not required") end
+T.test ("an optional component's methods are not required, and a body without them is still a base", function ()
+	T.eq (Base.POSTURE.optional, true)
+	T.eq (Base.METHODS:Methods () [1] ~= nil, true)
+	for _, name in ipairs (Base.POSTURE.methods:Methods ()) do
+		for _, required in ipairs (Base.METHODS:Methods ()) do T.eq (required ~= name, true, name .. " is not required") end
 	end
 end)
 
-T.test("a soldier has an optional component whole or not at all", function()
+T.test ("a soldier has an optional component whole or not at all", function ()
 	local whole, none, half = {}, {}, {}
-	for _, name in ipairs(Base.POSTURE.methods:Methods()) do whole[name] = function() end end
-	half[Base.POSTURE.methods:Methods()[1]] = function() end
-	T.eq(Base.Has(whole, Base.POSTURE), true)
-	T.eq(Base.Has(none, Base.POSTURE), false)
-	local ok = pcall(Base.Has, half, Base.POSTURE)
-	T.eq(ok, false, "half a component is refused")
+	for _, name in ipairs (Base.POSTURE.methods:Methods ()) do whole [name] = function () end end
+	half [Base.POSTURE.methods:Methods () [1]] = function () end
+	T.eq (Base.Has (whole, Base.POSTURE), true)
+	T.eq (Base.Has (none, Base.POSTURE), false)
+	local ok = pcall (Base.Has, half, Base.POSTURE)
+	T.eq (ok, false, "half a component is refused")
 end)
 
-T.test("each name's component is TF2's (INextBot and its ILocomotion, IBody, IVision, IIntention)", function()
-	T.eq(Base.ComponentOf("FollowPath").name, "locomotion")
-	T.eq(Base.ComponentOf("OnSpotted").name, "vision")
-	T.eq(Base.ComponentOf("SpawnHealth").name, "nextbot")
-	T.eq(Base.ComponentOf("Disposition").name, "nextbot")
-	T.eq(Base.ComponentOf("GetEnemy").name, "intention")
-	T.eq(Base.ComponentOf("SelectWeapon").name, "body")
-	T.eq(Base.ComponentOf("SetCrouching").name, "posture")
-	T.eq(Base.ComponentOf("NSKit"), nil)
+T.test ("each name's component is TF2's (INextBot and its ILocomotion, IBody, IVision, IIntention)", function ()
+	T.eq (Base.ComponentOf ("FollowPath").name, "locomotion")
+	T.eq (Base.ComponentOf ("OnSpotted").name, "vision")
+	T.eq (Base.ComponentOf ("SpawnHealth").name, "nextbot")
+	T.eq (Base.ComponentOf ("Disposition").name, "nextbot")
+	T.eq (Base.ComponentOf ("GetEnemy").name, "intention")
+	T.eq (Base.ComponentOf ("SelectWeapon").name, "body")
+	T.eq (Base.ComponentOf ("SetCrouching").name, "posture")
+	T.eq (Base.ComponentOf ("NSKit"), nil)
 end)
 
-T.test("no coroutine: the behaviour coroutine's names are replaced, by Reset and locomotion's ticked processes", function()
-	for _, name in ipairs({ "BehaveStart", "YieldCoroutine", "PauseCoroutine" }) do
-		T.eq(Base.ComponentOf(name), nil, name .. " is no component's")
-		T.eq(type(Base.REPLACED[name]), "string", name .. " is replaced")
+T.test ("no coroutine: the behaviour coroutine's names are replaced, by Reset and locomotion's ticked processes", function ()
+	for _, name in ipairs ({ "BehaveStart", "YieldCoroutine", "PauseCoroutine" }) do
+		T.eq (Base.ComponentOf (name), nil, name .. " is no component's")
+		T.eq (type (Base.REPLACED [name]), "string", name .. " is replaced")
 	end
 end)
 
-T.test("every hook the soldier defines on the base is declared", function()
-	local text = Read(GAMEMODE .. "sh_war_soldier.lua")
-	for _, name in ipairs(SOLDIER_CLASSES) do text = text .. Read(ENTITIES .. name .. ".lua") end
-	for name in text:gmatch("function%s+ENT:([%w_]+)%s*%(") do
-		T.eq(Ours(name) or GMOD[name] == true or Base.HOOKS:Has(name), true, "ENT:" .. name .. " is a declared hook")
+T.test ("every hook the soldier defines on the base is declared", function ()
+	local text = Read (GAMEMODE .. "sh_war_soldier.lua")
+	for _, name in ipairs (SOLDIER_CLASSES) do text = text .. Read (ENTITIES .. name .. ".lua") end
+	for name in text:gmatch ("function%s+ENT:([%w_]+)%s*%(") do
+		T.eq (Ours (name) or GMOD [name] == true or Base.HOOKS:Has (name), true, "ENT:" .. name .. " is a declared hook")
 	end
 end)
 
-T.test("every setting the soldier classes and profiles give the base is declared", function()
-	for _, class in ipairs(SOLDIER_CLASSES) do
+T.test ("every setting the soldier classes and profiles give the base is declared", function ()
+	for _, class in ipairs (SOLDIER_CLASSES) do
 		local path = ENTITIES .. class .. ".lua"
-		for name in Read(path):gmatch("\n%s*ENT%.([%w_]+)%s*=") do
-			T.eq(Ours(name) or GMOD[name] == true or Base.FIELDS:Has(name), true, path .. ": ENT." .. name .. " is a declared field")
+		for name in Read (path):gmatch ("\n%s*ENT%.([%w_]+)%s*=") do
+			T.eq (Ours (name) or GMOD [name] == true or Base.FIELDS:Has (name), true, path .. ": ENT." .. name .. " is a declared field")
 		end
 	end
 	-- a profile's fields are set on the soldier as it spawns (npc_nextsoldier's NSProfile)
-	local profiles = Read(GAMEMODE .. "features/aiwar/profiles.lua"):match("PROFILES = (%b{})")
-	for name in profiles:gmatch("[{,]%s*(%u[%w_]*)%s*=") do
-		T.eq(Ours(name) or GMOD[name] == true or Base.FIELDS:Has(name), true, "profile field " .. name .. " is declared")
+	local profiles = Read (GAMEMODE .. "features/aiwar/profiles.lua"):match ("PROFILES = (%b{})")
+	for name in profiles:gmatch ("[{,]%s*(%u[%w_]*)%s*=") do
+		T.eq (Ours (name) or GMOD [name] == true or Base.FIELDS:Has (name), true, "profile field " .. name .. " is declared")
 	end
 end)
 
-T.test("war soldiers hate the opposing HL2 faction and default to hostility", function()
-	local base = Read(NEXTSOLDIER_ENTITIES .. "base_nextsoldier.lua")
-	local soldier = Read(ENTITIES .. "npc_nextsoldier.lua")
-	T.eq(soldier:find("ENT.DefaultRelationship = D_HT", 1, true) ~= nil, true)
-	T.eq(base:find("local enemy = Host.current:FactionEnemy(faction)", 1, true) ~= nil, true)
-	T.eq(base:find("SetFaction(enemy, D_HT)", 1, true) ~= nil, true)
-	local host = Read(T.ROOT .. "sh_nextsoldier_host.lua")
-	T.eq(host:find("[Factions.HL2_COMBINE] = Factions.HL2_REBELS", 1, true) ~= nil, true)
-	T.eq(host:find("[Factions.HL2_REBELS] = Factions.HL2_COMBINE", 1, true) ~= nil, true)
+T.test ("war soldiers hate the opposing HL2 faction and default to hostility", function ()
+	local base = Read (NEXTSOLDIER_ENTITIES .. "base_nextsoldier.lua")
+	local soldier = Read (ENTITIES .. "npc_nextsoldier.lua")
+	T.eq (soldier:find ("ENT.DefaultRelationship = D_HT", 1, true) ~= nil, true)
+	T.eq (base:find ("local enemy = Host.current:FactionEnemy(faction)", 1, true) ~= nil, true)
+	T.eq (base:find ("SetFaction(enemy, D_HT)", 1, true) ~= nil, true)
+	local host = Read (T.ROOT .. "sh_nextsoldier_host.lua")
+	T.eq (host:find ("[Factions.HL2_COMBINE] = Factions.HL2_REBELS", 1, true) ~= nil, true)
+	T.eq (host:find ("[Factions.HL2_REBELS] = Factions.HL2_COMBINE", 1, true) ~= nil, true)
 end)
 
 -- Its locomotion moves under its solid mask, the engine's NPC mask until told: on
 -- a map built for players a body under that walks a stair's bare treads, not the
 -- clip laid over them, and one wider than it is deep stops at a riser. So it is
 -- the base's, not only for those the war enlists.
-T.test("a body moves under the mask its host names, whoever spawned it", function()
-	local base = Read(NEXTSOLDIER_ENTITIES .. "base_nextsoldier.lua")
-	local initialize = base:match("function ENT:Initialize%(%)(.-)\nend")
-	T.eq(initialize:find("self:SetSolidMask(Host.current:SolidMask())", 1, true) ~= nil, true, "set as it is made")
+T.test ("a body moves under the mask its host names, whoever spawned it", function ()
+	local base = Read (NEXTSOLDIER_ENTITIES .. "base_nextsoldier.lua")
+	local initialize = base:match ("function ENT:Initialize%s*%(%)(.-)\nend")
+	T.eq (initialize:find ("self:SetSolidMask(Host.current:SolidMask())", 1, true) ~= nil, true, "set as it is made")
 end)
 
 -- GMod's CLuaBehaviour sets its child from InitialContainedAction just before it
 -- calls BehaveStart, so that is the first moment a link under it holds.
-T.test("a class's first engine action goes in as the bot starts, after it resets", function()
-	local base = Read(NEXTSOLDIER_ENTITIES .. "base_nextsoldier.lua")
-	local start = base:match("function ENT:BehaveStart%(%)(.-)\nend")
-	local reset = start:find("self:Reset()", 1, true)
-	local asked = start:find("self:NSInitialAction()", 1, true)
-	local inserted = start:find("nextsoldier.engine.Insert(self, action)", 1, true)
-	T.eq(reset ~= nil and asked ~= nil and inserted ~= nil and reset < asked and asked < inserted, true, start)
-	T.eq(base:find("function ENT:NSInitialAction()", 1, true) ~= nil, true, "none by default")
+T.test ("a class's first engine action goes in as the bot starts, after it resets", function ()
+	local base = Read (NEXTSOLDIER_ENTITIES .. "base_nextsoldier.lua")
+	local start = base:match ("function ENT:BehaveStart%s*%(%)(.-)\nend")
+	local reset = start:find ("self:Reset()", 1, true)
+	local asked = start:find ("self:NSInitialAction()", 1, true)
+	local inserted = start:find ("nextsoldier.engine.Insert(self, action)", 1, true)
+	T.eq (reset ~= nil and asked ~= nil and inserted ~= nil and reset < asked and asked < inserted, true, start)
+	T.eq (base:find ("function ENT:NSInitialAction()", 1, true) ~= nil, true, "none by default")
 end)
 
-T.test("a class the engine runs shows the debug layer the engine's stack", function()
-	local base = Read(NEXTSOLDIER_ENTITIES .. "base_nextsoldier.lua")
-	local stack = base:match("function ENT:NSDebugStack%(%)(.-)\nend")
-	T.eq(stack:find("self.nsEngineDebug:Stack()", 1, true) ~= nil, true, "its actions, not its class's name")
-	local start = base:match("function ENT:BehaveStart%(%)(.-)\nend")
-	T.eq(start:find("Action.DebugNpc(self, nextsoldier.engine.Stack, nextsoldier.engine.GroupStack)", 1, true) ~= nil, true,
+T.test ("a class the engine runs shows the debug layer the engine's stack", function ()
+	local base = Read (NEXTSOLDIER_ENTITIES .. "base_nextsoldier.lua")
+	local stack = base:match ("function ENT:NSDebugStack%s*%(%)(.-)\nend")
+	T.eq (stack:find ("self.nsEngineDebug:Stack()", 1, true) ~= nil, true, "its actions, not its class's name")
+	local start = base:match ("function ENT:BehaveStart%s*%(%)(.-)\nend")
+	T.eq (start:find ("Action.DebugNpc(self, nextsoldier.engine.Stack, nextsoldier.engine.GroupStack)", 1, true) ~= nil, true,
 		"made as they go in, its leggings after them")
 end)
 
 -- BehaveUpdate waits while a body scrambles, but an engine action is updated by the
 -- engine whatever it is doing, and each new leap starts over: one asking every update
 -- never lands.
-T.test("following a path leaves a leap under way alone", function()
-	local base = Read(NEXTSOLDIER_ENTITIES .. "base_nextsoldier.lua")
-	local follow = base:match("function ENT:FollowPath%(goal, tolerance%)(.-)\nend")
-	local waits = follow:find("if self:IsScrambling() then return \"moving\" end", 1, true)
-	T.eq(waits ~= nil and waits < follow:find("local path", 1, true), true, "before anything else")
+T.test ("following a path leaves a leap under way alone", function ()
+	local base = Read (NEXTSOLDIER_ENTITIES .. "base_nextsoldier.lua")
+	local follow = base:match ("function ENT:FollowPath%s*%(goal, tolerance%)(.-)\nend")
+	local waits = follow:find ("if self:IsScrambling() then return \"moving\" end", 1, true)
+	T.eq (waits ~= nil and waits < follow:find ("local path", 1, true), true, "before anything else")
 end)
 
-T.test("a name the base replaces is declared by none", function()
-	for name in pairs(Base.REPLACED) do T.eq(Base.ComponentOf(name), nil, name) end
+T.test ("a name the base replaces is declared by none", function ()
+	for name in pairs (Base.REPLACED) do T.eq (Base.ComponentOf (name), nil, name) end
 end)
 
-T.finish()
+T.finish ()

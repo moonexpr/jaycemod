@@ -1,4 +1,4 @@
-AddCSLuaFile()
+AddCSLuaFile ()
 
 -- weapon_hegrenade: a standard CS:S SWEP; its base owns shared behavior.
 
@@ -9,8 +9,8 @@ SWEP.Category = "Counter-Strike: Source"
 SWEP.Spawnable = true
 SWEP.Slot = 3
 SWEP.SlotPos = 1
-SWEP.ViewModel = Model("models/weapons/cstrike/c_eq_fraggrenade.mdl")
-SWEP.WorldModel = Model("models/weapons/w_eq_fraggrenade.mdl")
+SWEP.ViewModel = Model ("models/weapons/cstrike/c_eq_fraggrenade.mdl")
+SWEP.WorldModel = Model ("models/weapons/w_eq_fraggrenade.mdl")
 SWEP.ViewModelFOV = 54
 SWEP.ViewModelFlip = false
 SWEP.UseHands = true

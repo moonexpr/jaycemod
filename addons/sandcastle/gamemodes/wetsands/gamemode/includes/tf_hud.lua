@@ -8,7 +8,7 @@
 -- { x, y, w, h } in pixels; text anchors { x, y } are where a centred line's
 -- middle goes.
 local abs, cos, floor, ipairs, max, min, pi, sin = math.abs, math.cos, math.floor, ipairs, math.max, math.min, math.pi, math.sin
-module(...)
+module (...)
 
 local RED, BLUE = 2, 3
 
@@ -18,9 +18,9 @@ TAN_LIGHT = { r = 235, g = 226, b = 202 }
 -- TF2's fonts by their scheme names: "TF2" is TF2 Build.
 FONT_BUILD, FONT_SECONDARY, FONT_SMALL = "TF2 Build", "TF2 Secondary", "Verdana"
 
-function Unit(screenTall) return screenTall / 480 end
+function Unit (screenTall) return screenTall / 480 end
 
-local function Rect(x, y, w, h)
+local function Rect (x, y, w, h)
 	return { x = x, y = y, w = w, h = h }
 end
 
@@ -31,28 +31,29 @@ end
 -- whole pixels, so neighbours meet without a gap, and each samples half a
 -- texel inside its own part of the image, so filtering never blends in its
 -- neighbour's.
-local function Round(v) return floor(v + 0.5) end
+local function Round (v) return floor (v + 0.5) end
 
-function Slices(x, y, w, h, srcW, srcH, srcCorner, drawCorner)
-	local cx, cy = min(drawCorner, w / 2), min(drawCorner, h / 2)
+function Slices (x, y, w, h, srcW, srcH, srcCorner, drawCorner)
+	local cx, cy = min (drawCorner, w / 2), min (drawCorner, h / 2)
 	local cu, cv = srcCorner / srcW, srcCorner / srcH
 	local hu, hv = 0.5 / srcW, 0.5 / srcH
-	local xs = { Round(x), Round(x + cx), Round(x + w - cx), Round(x + w) }
-	local ys = { Round(y), Round(y + cy), Round(y + h - cy), Round(y + h) }
+	local xs = { Round (x), Round (x + cx), Round (x + w - cx), Round (x + w) }
+	local ys = { Round (y), Round (y + cy), Round (y + h - cy), Round (y + h) }
 	local us = { { hu, cu - hu }, { cu + hu, 1 - cu - hu }, { 1 - cu + hu, 1 - hu } }
 	local vs = { { hv, cv - hv }, { cv + hv, 1 - cv - hv }, { 1 - cv + hv, 1 - hv } }
 	local pieces = {}
 	for row = 1, 3 do
 		for col = 1, 3 do
-			pieces[#pieces + 1] = {
-				x = xs[col],
-				y = ys[row],
-				w = xs[col + 1] - xs[col],
-				h = ys[row + 1] - ys[row],
-				u0 = us[col][1],
-				v0 = vs[row][1],
-				u1 = us[col][2],
-				v1 = vs[row][2],
+			pieces [#pieces + 1] =
+			{
+				x = xs [col],
+				y = ys [row],
+				w = xs [col + 1] - xs [col],
+				h = ys [row + 1] - ys [row],
+				u0 = us [col] [1],
+				v0 = vs [row] [1],
+				u1 = us [col] [2],
+				v1 = vs [row] [2]
 			}
 		end
 	end
@@ -63,14 +64,15 @@ end
 -- and how big they draw.
 PANEL_SRC_CORNER, PANEL_DRAW_CORNER = 23, 5
 
-local PANEL_IMAGES = {
+local PANEL_IMAGES =
+{
 	[RED] = "hud/color_panel_red",
-	[BLUE] = "hud/color_panel_blu",
+	[BLUE] = "hud/color_panel_blu"
 }
 -- TFFatLineBorderRedBG and its kin: a team's panel, brown for no team.
-function PanelImage(team) return PANEL_IMAGES[team] or "hud/color_panel_brown" end
+function PanelImage (team) return PANEL_IMAGES [team] or "hud/color_panel_brown" end
 -- TFFatLineBorder*BGMoreOpaque: a team's score box.
-function ScoreImage(team) return (PANEL_IMAGES[team] or "hud/color_panel_brown") .. "_more_opaque" end
+function ScoreImage (team) return (PANEL_IMAGES [team] or "hud/color_panel_brown") .. "_more_opaque" end
 
 -- The team scores ----------------------------------------------------------------
 
@@ -80,17 +82,18 @@ SCORE_FONT_TALL = 16
 -- Between the scores and the timer.
 SCORE_BELOW = 2
 
-function ScoreBoxes(centre, top, unit)
+function ScoreBoxes (centre, top, unit)
 	local w, h, gap = SCORE_W * unit, SCORE_H * unit, SCORE_GAP * unit
-	return {
-		[BLUE] = Rect(centre - gap / 2 - w, top, w, h),
-		[RED] = Rect(centre + gap / 2, top, w, h),
+	return
+	{
+		[BLUE] = Rect (centre - gap / 2 - w, top, w, h),
+		[RED] = Rect (centre + gap / 2, top, w, h)
 	}
 end
 
 -- The top of the timer row (the round timer, or KOTH's clocks), under the
 -- scores that start at top.
-function TimerTop(top, unit)
+function TimerTop (top, unit)
 	return top + (SCORE_H + SCORE_BELOW) * unit
 end
 
@@ -112,7 +115,8 @@ TIMER_LABEL_BORDER = "hud/color_panel_brown"
 TIMER_PIE = "hud/objectives_timepanel_progressbar"
 -- cooler-hud's objectives_timepanel_bg_outline: TF2's clock_area_mask as a
 -- distance field, outlined light tan with a soft edge (UnlitGeneric's keys).
-TIMER_OUTLINE = {
+TIMER_OUTLINE =
+{
 	["$translucent"] = 1,
 	["$basetexture"] = "hud/null_texture",
 	["$detail"] = "hud/clock_area_mask",
@@ -129,23 +133,26 @@ TIMER_OUTLINE = {
 	["$outlinestart1"] = 1.7,
 	["$outlineend0"] = 0.5,
 	["$outlineend1"] = 0.7,
-	["$scaleoutlinesoftnessbasedonscreenres"] = 1,
+	["$scaleoutlinesoftnessbasedonscreenres"] = 1
 }
 
-function TimerPanel(centre, top, unit)
+function TimerPanel (centre, top, unit)
 	local left = centre - TIMER_PANEL_W / 2 * unit
-	return {
-		bg = Rect(left + TIMER_BG_X * unit, top, TIMER_W * unit, TIMER_H * unit),
-		value = {
+	return
+	{
+		bg = Rect (left + TIMER_BG_X * unit, top, TIMER_W * unit, TIMER_H * unit),
+		value =
+		{
 			x = left + (TIMER_VALUE_X + TIMER_VALUE_W / 2) * unit,
-			y = top + (TIMER_VALUE_Y + TIMER_VALUE_TALL / 2) * unit,
+			y = top + (TIMER_VALUE_Y + TIMER_VALUE_TALL / 2) * unit
 		},
-		pie = Rect(left + TIMER_PIE_X * unit, top + TIMER_PIE_Y * unit, TIMER_PIE_SIZE * unit, TIMER_PIE_SIZE * unit),
-		label = {
-			box = Rect(left + TIMER_LABEL_X * unit, top + TIMER_LABEL_Y * unit, TIMER_LABEL_W * unit, TIMER_LABEL_TALL * unit),
+		pie = Rect (left + TIMER_PIE_X * unit, top + TIMER_PIE_Y * unit, TIMER_PIE_SIZE * unit, TIMER_PIE_SIZE * unit),
+		label =
+		{
+			box = Rect (left + TIMER_LABEL_X * unit, top + TIMER_LABEL_Y * unit, TIMER_LABEL_W * unit, TIMER_LABEL_TALL * unit),
 			x = centre,
-			y = top + (TIMER_LABEL_Y + TIMER_LABEL_TALL / 2) * unit,
-		},
+			y = top + (TIMER_LABEL_Y + TIMER_LABEL_TALL / 2) * unit
+		}
 	}
 end
 
@@ -159,20 +166,20 @@ PIE_PERCENT_WARNING = 0.75
 
 -- CTFHudTimeStatus::OnThink: the share of the timer's full length gone, 0
 -- to 1; none for a timer without one.
-function TimerElapsed(left, fullLength)
+function TimerElapsed (left, fullLength)
 	if fullLength <= 0 then return 0 end
-	return min(1, max(0, (fullLength - left) / fullLength))
+	return min (1, max (0, (fullLength - left) / fullLength))
 end
 
-function PieColor(elapsed)
+function PieColor (elapsed)
 	return elapsed < PIE_PERCENT_WARNING and PIE_ACTIVE or PIE_WARNING
 end
 
 -- Where a ray from the square's middle at angle (clockwise from up) leaves
 -- the unit square.
-local function OnSquare(angle)
-	local dx, dy = sin(angle), -cos(angle)
-	local t = 0.5 / max(abs(dx), abs(dy))
+local function OnSquare (angle)
+	local dx, dy = sin (angle), -cos (angle)
+	local t = 0.5 / max (abs (dx), abs (dy))
 	return { x = 0.5 + dx * t, y = 0.5 + dy * t }
 end
 
@@ -182,16 +189,16 @@ local CORNERS = { { x = 1, y = 0 }, { x = 1, y = 1 }, { x = 0, y = 1 }, { x = 0,
 -- square, from twelve o'clock clockwise, cut to the square; a fan from its
 -- first point (the middle), each point { x, y } its own texture coordinates
 -- too. Empty with nothing left.
-function PieWedge(left)
+function PieWedge (left)
 	if left <= 0 then return {} end
 	local wedge = { { x = 0.5, y = 0.5 }, { x = 0.5, y = 0 } }
-	local stop = 2 * pi * min(left, 1)
-	for i, corner in ipairs(CORNERS) do
+	local stop = 2 * pi * min (left, 1)
+	for i, corner in ipairs (CORNERS) do
 		if (2 * i - 1) * pi / 4 > stop then break end
-		wedge[#wedge + 1] = corner
+		wedge [#wedge + 1] = corner
 	end
-	local last, final = wedge[#wedge], OnSquare(stop)
-	if abs(final.x - last.x) + abs(final.y - last.y) > 1e-9 then wedge[#wedge + 1] = final end
+	local last, final = wedge [#wedge], OnSquare (stop)
+	if abs (final.x - last.x) + abs (final.y - last.y) > 1e-9 then wedge [#wedge + 1] = final end
 	return wedge
 end
 
@@ -205,10 +212,10 @@ end
 KOTH_W, KOTH_BLUE_X, KOTH_RED_X = 200, 0, 90
 KOTH_ACTIVE_FRAME = "hud/objectives_timepanel_active_bg"
 
-function KothPanels(centre, top, unit)
+function KothPanels (centre, top, unit)
 	local left = centre - KOTH_W / 2 * unit
-	local function At(x) return TimerPanel(left + (x + TIMER_PANEL_W / 2) * unit, top, unit) end
-	return { [BLUE] = At(KOTH_BLUE_X), [RED] = At(KOTH_RED_X) }
+	local function At (x) return TimerPanel (left + (x + TIMER_PANEL_W / 2) * unit, top, unit) end
+	return { [BLUE] = At (KOTH_BLUE_X), [RED] = At (KOTH_RED_X) }
 end
 
 -- The top of the timer panel counting down the hill's lock at a koth
@@ -217,7 +224,7 @@ end
 -- overtime box takes (no overtime runs in setup).
 KOTH_SETUP_GAP = 3
 
-function KothSetupTop(top, unit)
+function KothSetupTop (top, unit)
 	return top + (TIMER_H + KOTH_SETUP_GAP) * unit
 end
 
@@ -232,21 +239,21 @@ end
 OBJECTIVE_ORDER = { "frags", "defuse", "payload", "points", "flags" }
 OBJECTIVE_GAP = 2
 
-function ObjectiveLifts(spans)
+function ObjectiveLifts (spans)
 	local lifts, stackTop = {}, nil
-	for _, key in ipairs(OBJECTIVE_ORDER) do
-		local span = spans[key]
+	for _, key in ipairs (OBJECTIVE_ORDER) do
+		local span = spans [key]
 		if span then
-			local lift = stackTop and max(0, stackTop + OBJECTIVE_GAP - span.bottom) or 0
-			lifts[key] = lift
+			local lift = stackTop and max (0, stackTop + OBJECTIVE_GAP - span.bottom) or 0
+			lifts [key] = lift
 			stackTop = span.top + lift
 		end
 	end
 	return lifts
 end
 
-function KothActiveFrame(panels, team)
-	return panels[team].bg
+function KothActiveFrame (panels, team)
+	return panels [team].bg
 end
 
 -- The respawn label ----------------------------------------------------------------
@@ -257,8 +264,8 @@ end
 RESPAWN_X, RESPAWN_BOTTOM, RESPAWN_W, RESPAWN_H, RESPAWN_FONT_TALL = -8, 91, 292, 28, 18
 RESPAWN_BORDER, RESPAWN_SRC_CORNER, RESPAWN_DRAW_CORNER = "hud/tournament_panel_brown", 23, 8
 
-function RespawnLabel(screenTall, unit)
-	return Rect(RESPAWN_X * unit, screenTall - RESPAWN_BOTTOM * unit, RESPAWN_W * unit, RESPAWN_H * unit)
+function RespawnLabel (screenTall, unit)
+	return Rect (RESPAWN_X * unit, screenTall - RESPAWN_BOTTOM * unit, RESPAWN_W * unit, RESPAWN_H * unit)
 end
 
 -- What moved the respawn (games.gameplay.respawn_modifiers), a line a
@@ -275,25 +282,26 @@ REASON_SECONDS_W, REASON_WORDS_GAP = 28, 5
 -- count lines -> { panel, lines }: the panel's rect and each line's
 -- { seconds, words } anchors, the seconds' right edge and the words' left
 -- edge, at the line's middle.
-function RespawnReasons(screenTall, unit, count)
-	local label = RespawnLabel(screenTall, unit)
+function RespawnReasons (screenTall, unit, count)
+	local label = RespawnLabel (screenTall, unit)
 	local top = label.y + label.h + REASONS_GAP * unit
-	local panel = Rect(label.x, top, label.w, (2 * REASONS_PAD + count * REASON_TALL) * unit)
+	local panel = Rect (label.x, top, label.w, (2 * REASONS_PAD + count * REASON_TALL) * unit)
 	local edge = label.x - RESPAWN_X * unit -- the screen's left edge, where the label hangs off it
 	local secondsX = edge + (REASONS_PAD + REASON_SECONDS_W) * unit
 	local lines = {}
 	for i = 1, count do
 		local y = top + (REASONS_PAD + (i - 0.5) * REASON_TALL) * unit
-		lines[i] = {
+		lines [i] =
+		{
 			seconds = { x = secondsX, y = y },
-			words = { x = secondsX + REASON_WORDS_GAP * unit, y = y },
+			words = { x = secondsX + REASON_WORDS_GAP * unit, y = y }
 		}
 	end
 	return { panel = panel, lines = lines }
 end
 
 -- CTFHudTimeStatus::SetTeamBackground: the local team's, BLU's for anyone else.
-function TimerBackground(team)
+function TimerBackground (team)
 	return team == RED and "hud/objectives_timepanel_red_bg" or "hud/objectives_timepanel_blue_bg"
 end
 
@@ -317,19 +325,20 @@ WIN_BORDER_Y, WIN_BORDER_W, WIN_BORDER_H = 69, 282, 55
 WIN_TITLE_Y, WIN_REASON_Y, WIN_DETAILS_Y = 84, 102, 110
 WIN_TEXT_FONT_TALL = 8
 
-function WinPanel(screenW, screenH, unit)
+function WinPanel (screenW, screenH, unit)
 	local left, top = screenW / 2 - WIN_W / 2 * unit, screenH / 2 + WIN_Y_FROM_MIDDLE * unit
 	local centre = screenW / 2
-	local function At(x, y) return { x = left + x * unit, y = top + y * unit } end
-	local function Box(x) return Rect(left + x * unit, top + WIN_BOX_Y * unit, WIN_BOX_W * unit, WIN_BOX_H * unit) end
-	return {
-		boxes = { [BLUE] = Box(WIN_BLUE_BOX_X), [RED] = Box(WIN_RED_BOX_X) },
-		scores = { [BLUE] = At(WIN_SCORE_BLUE_X, WIN_SCORE_Y), [RED] = At(WIN_SCORE_RED_X, WIN_SCORE_Y) },
-		names = { [BLUE] = At(WIN_NAME_BLUE_X, WIN_NAME_Y), [RED] = At(WIN_NAME_RED_X, WIN_NAME_Y) },
-		border = Rect(centre - WIN_BORDER_W / 2 * unit, top + WIN_BORDER_Y * unit, WIN_BORDER_W * unit, WIN_BORDER_H * unit),
+	local function At (x, y) return { x = left + x * unit, y = top + y * unit } end
+	local function Box (x) return Rect (left + x * unit, top + WIN_BOX_Y * unit, WIN_BOX_W * unit, WIN_BOX_H * unit) end
+	return
+	{
+		boxes = { [BLUE] = Box (WIN_BLUE_BOX_X), [RED] = Box (WIN_RED_BOX_X) },
+		scores = { [BLUE] = At (WIN_SCORE_BLUE_X, WIN_SCORE_Y), [RED] = At (WIN_SCORE_RED_X, WIN_SCORE_Y) },
+		names = { [BLUE] = At (WIN_NAME_BLUE_X, WIN_NAME_Y), [RED] = At (WIN_NAME_RED_X, WIN_NAME_Y) },
+		border = Rect (centre - WIN_BORDER_W / 2 * unit, top + WIN_BORDER_Y * unit, WIN_BORDER_W * unit, WIN_BORDER_H * unit),
 		title = { x = centre, y = top + WIN_TITLE_Y * unit },
 		reason = { x = centre, y = top + WIN_REASON_Y * unit },
-		details = { x = centre, y = top + WIN_DETAILS_Y * unit },
+		details = { x = centre, y = top + WIN_DETAILS_Y * unit }
 	}
 end
 
@@ -356,20 +365,21 @@ local KRAMPUS_W, KRAMPUS_H = 512, 128
 local KRAMPUS_BAND = { 31, 40, 476, 88 }
 local KRAMPUS_LINE = { 38, 49, 469, 79 }
 
-local function Within(r, box)
+local function Within (r, box)
 	local sx, sy = r.w / KRAMPUS_W, r.h / KRAMPUS_H
-	return Rect(r.x + box[1] * sx, r.y + box[2] * sy, (box[3] - box[1]) * sx, (box[4] - box[2]) * sy)
+	return Rect (r.x + box [1] * sx, r.y + box [2] * sy, (box [3] - box [1]) * sx, (box [4] - box [2]) * sy)
 end
 
 -- watching: dead or observing; fraction: the boss's health, 0 to 1.
 -- Returns { surround, frame = { band, line }, bar, u }.
-function BossMeter(screenW, unit, watching, fraction)
+function BossMeter (screenW, unit, watching, fraction)
 	local x, y = screenW / 2 - BOSS_W / 2 * unit, (watching and BOSS_DEAD_Y or BOSS_ALIVE_Y) * unit
-	local surround = Rect(x, y + BOSS_BORDER_Y * unit, BOSS_W * unit, BOSS_BORDER_H * unit)
-	return {
+	local surround = Rect (x, y + BOSS_BORDER_Y * unit, BOSS_W * unit, BOSS_BORDER_H * unit)
+	return
+	{
 		surround = surround,
-		frame = { band = Within(surround, KRAMPUS_BAND), line = Within(surround, KRAMPUS_LINE) },
-		bar = Rect(x + BOSS_BAR_X * unit, y + BOSS_BAR_Y * unit, BOSS_BAR_W * unit * fraction, BOSS_BAR_H * unit),
-		u = fraction,
+		frame = { band = Within (surround, KRAMPUS_BAND), line = Within (surround, KRAMPUS_LINE) },
+		bar = Rect (x + BOSS_BAR_X * unit, y + BOSS_BAR_Y * unit, BOSS_BAR_W * unit * fraction, BOSS_BAR_H * unit),
+		u = fraction
 	}
 end

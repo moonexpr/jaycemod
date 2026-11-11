@@ -5,19 +5,19 @@
 ENT.Type = "point"
 ENT.Base = "base_point"
 
-function ENT:KeyValue(key, value)
-	if string.lower(key) == "capenabledelay" then self.capEnableDelay = tonumber(value) end
+function ENT:KeyValue (key, value)
+	if string.lower (key) == "capenabledelay" then self.capEnableDelay = tonumber (value) end
 end
 
-function ENT:Initialize()
-	self.arena = WS.Feature("arena")
-	self.arena:BindLogic(self, { capEnableDelay = self.capEnableDelay })
+function ENT:Initialize ()
+	self.arena = WS.Feature ("arena")
+	self.arena:BindLogic (self, { capEnableDelay = self.capEnableDelay })
 end
 
-function ENT:OnRemove()
-	self.arena:UnbindLogic(self)
+function ENT:OnRemove ()
+	self.arena:UnbindLogic (self)
 end
 
-function ENT:UpdateTransmitState()
+function ENT:UpdateTransmitState ()
 	return TRANSMIT_NEVER
 end

@@ -3,16 +3,17 @@
 -- names its NPCs send (the controller does, per variant, from the variant's
 -- PARTICLES) and clients can draw them. The rockets MONOCULUS fires, the
 -- vortexes it leaves, and Merasmus's bombs and props use these files too.
-local FILES = {
+local FILES =
+{
 	"particles/scary_ghost.pcf", -- halloween_boss_summon, _axe_hit_world, _death, _injured
 	"particles/eyeboss.pcf", -- eyeboss_tp_normal, _tp_escape, _death, _tp_vortex, _aura_angry, _projectile
 	"particles/cinefx.pcf", -- bomibomicon_ring (the skeleton king's stomp), bombinomicon_burningdebris
 	"particles/halloween.pcf", -- spell_skeleton_goop_green, spell_pumpkin_mirv_goop_red and _blue, merasmus_*
 	"particles/rockettrail.pcf", -- rockettrail, critical_rocket_red and _blue
-	"particles/explosion.pcf", -- ExplosionCore_Wall, ExplosionCore_MidAir
+	"particles/explosion.pcf" -- ExplosionCore_Wall, ExplosionCore_MidAir
 }
 
-for _, path in ipairs(FILES) do game.AddParticles(path) end
+for _, path in ipairs (FILES) do game.AddParticles (path) end
 
 -- The Halloween bosses' game events, with TF2's fields (modevents.res:
 -- level a short, time_remaining a byte). Names and cues:
@@ -21,33 +22,41 @@ local E = WS.Events
 local LEVEL_BITS = 16
 local SECONDS_BITS = 8
 
-E.Define("game_pumpkin_lord_summoned", {})
-E.Define("game_pumpkin_lord_killed", {})
-E.Define("game_eyeball_boss_summoned", { level = E.Int(LEVEL_BITS) })
-E.Define("game_eyeball_boss_killed", { level = E.Int(LEVEL_BITS) })
-E.Define("game_eyeball_boss_escape_imminent", {
-	level = E.Int(LEVEL_BITS),
-	time_remaining = E.UInt(SECONDS_BITS),
-})
-E.Define("game_eyeball_boss_escaped", { level = E.Int(LEVEL_BITS) })
-E.Define("game_merasmus_summoned", { level = E.Int(LEVEL_BITS) })
-E.Define("game_merasmus_killed", { level = E.Int(LEVEL_BITS) })
-E.Define("game_merasmus_escape_warning", {
-	level = E.Int(LEVEL_BITS),
-	time_remaining = E.UInt(SECONDS_BITS),
-})
-E.Define("game_merasmus_escaped", { level = E.Int(LEVEL_BITS) })
+E.Define ("game_pumpkin_lord_summoned", {})
+E.Define ("game_pumpkin_lord_killed", {})
+E.Define ("game_eyeball_boss_summoned", { level = E.Int (LEVEL_BITS) })
+E.Define ("game_eyeball_boss_killed", { level = E.Int (LEVEL_BITS) })
+E.Define ("game_eyeball_boss_escape_imminent",
+	{
+		level = E.Int (LEVEL_BITS),
+		time_remaining = E.UInt (SECONDS_BITS)
+	}
+)
+E.Define ("game_eyeball_boss_escaped", { level = E.Int (LEVEL_BITS) })
+E.Define ("game_merasmus_summoned", { level = E.Int (LEVEL_BITS) })
+E.Define ("game_merasmus_killed", { level = E.Int (LEVEL_BITS) })
+E.Define ("game_merasmus_escape_warning",
+	{
+		level = E.Int (LEVEL_BITS),
+		time_remaining = E.UInt (SECONDS_BITS)
+	}
+)
+E.Define ("game_merasmus_escaped", { level = E.Int (LEVEL_BITS) })
 
 -- Sandcastle's own, for the chat line TF2 says for each of Merasmus's
 -- killers (TF_Halloween_Merasmus_Killers).
-E.Define("game_merasmus_killer", {
-	player = E.Entity(),
-	level = E.Int(LEVEL_BITS),
-})
+E.Define ("game_merasmus_killer",
+	{
+		player = E.Entity (),
+		level = E.Int (LEVEL_BITS)
+	}
+)
 
 -- Sandcastle's own, for what TF2 networks as a player condition: a player
 -- became a bomb head for duration seconds (0: no longer one).
-E.Define("game_halloween_bomb_head", {
-	player = E.Entity(),
-	duration = E.Float(),
-})
+E.Define ("game_halloween_bomb_head",
+	{
+		player = E.Entity (),
+		duration = E.Float ()
+	}
+)

@@ -1,44 +1,45 @@
-
-AddCSLuaFile()
-DEFINE_BASECLASS( "base_anim" )
+AddCSLuaFile ()
+DEFINE_BASECLASS ("base_anim")
 
 ENT.Spawnable = false
 
-if ( CLIENT ) then
+if CLIENT then
 
 	ENT.MaxWorldTipDistance = 256
 
 	local lastLookedFrame = nil
 	local lastLooked = nil
-	function ENT:BeingLookedAtByLocalPlayer()
+	function ENT:BeingLookedAtByLocalPlayer ()
 
-		local currentFrame = FrameNumber()
-		if ( currentFrame != lastLookedFrame ) then
+		local currentFrame = FrameNumber ()
+		if currentFrame ~= lastLookedFrame then
 			lastLookedFrame = currentFrame
 
 			local trace = nil
-			local viewer = GetViewEntity()
-			if ( viewer:IsPlayer() ) then
+			local viewer = GetViewEntity ()
+			if viewer:IsPlayer () then
 				-- If we're spectating a player, perform an eye trace
-				trace = viewer:GetEyeTrace()
+				trace = viewer:GetEyeTrace ()
 			else
 				-- If we're not spectating a player, perform a manual trace from the entity's position
-				local startPos = viewer:GetPos()
-				local endPos = viewer:GetForward()
-				endPos:Mul( 32768 )
-				endPos:Add( startPos )
+				local startPos = viewer:GetPos ()
+				local endPos = viewer:GetForward ()
+				endPos:Mul (32768)
+				endPos:Add (startPos)
 
-				trace = util.TraceLine( {
-					start = startPos,
-					endpos = endPos,
-					filter = viewer
-				} )
+				trace = util.TraceLine (
+					{
+						start = startPos,
+						endpos = endPos,
+						filter = viewer
+					}
+				)
 			end
 
 			lastLooked = trace.Entity
 
 			local distance = lastLooked.MaxWorldTipDistance
-			if ( !distance || trace.Fraction * 32768 > distance ) then
+			if not distance or trace.Fraction * 32768 > distance then
 				lastLooked = nil
 			end
 		end
@@ -47,54 +48,54 @@ if ( CLIENT ) then
 
 	end
 
-	function ENT:Think()
+	function ENT:Think ()
 
-		if ( !self:BeingLookedAtByLocalPlayer() ) then return end
+		if not self:BeingLookedAtByLocalPlayer () then return end
 
-		local text = self:GetOverlayText()
-		if ( text != "" && !self:GetNoDraw() ) then
-			AddWorldTip( nil, text, nil, nil, self )
-			halo.Add( { self }, color_white, 1, 1, 1, true, true )
+		local text = self:GetOverlayText ()
+		if text ~= "" and not self:GetNoDraw () then
+			AddWorldTip (nil, text, nil, nil, self)
+			halo.Add ({ self }, color_white, 1, 1, 1, true, true)
 		end
 
 	end
 
 end
 
-function ENT:SetOverlayText( text )
+function ENT:SetOverlayText (text)
 
-	self:SetNWString( "GModOverlayText", text )
+	self:SetNWString ("GModOverlayText", text)
 
 end
 
-function ENT:GetOverlayText()
+function ENT:GetOverlayText ()
 
-	local txt = self:GetNWString( "GModOverlayText" )
-	if ( txt == "" ) then return "" end
+	local txt = self:GetNWString ("GModOverlayText")
+	if txt == "" then return "" end
 
-	if ( game.SinglePlayer() ) then return txt end
+	if game.SinglePlayer () then return txt end
 
-	local PlayerName = self:GetPlayerName()
-	if ( !PlayerName or PlayerName == "" ) then return txt end
+	local PlayerName = self:GetPlayerName ()
+	if not PlayerName or PlayerName == "" then return txt end
 
 	return txt .. "\n(" .. PlayerName .. ")"
 
 end
 
-function ENT:SetPlayer( ply )
+function ENT:SetPlayer (ply)
 
 	self.Founder = ply
-	self:SetCreator( ply )
+	self:SetCreator (ply)
 
-	if ( IsValid( ply ) ) then
+	if IsValid (ply) then
 
-		self:SetNWString( "FounderName", ply:Nick() )
-		self.FounderSID = ply:SteamID64()
-		self.FounderIndex = ply:UniqueID()
+		self:SetNWString ("FounderName", ply:Nick ())
+		self.FounderSID = ply:SteamID64 ()
+		self.FounderIndex = ply:UniqueID ()
 
 	else
 
-		self:SetNWString( "FounderName", "" )
+		self:SetNWString ("FounderName", "")
 		self.FounderSID = nil
 		self.FounderIndex = nil
 
@@ -102,14 +103,14 @@ function ENT:SetPlayer( ply )
 
 end
 
-function ENT:GetPlayer()
+function ENT:GetPlayer ()
 
-	if ( self.Founder == nil ) then
+	if self.Founder == nil then
 
 		-- SetPlayer has not been called
 		return NULL
 
-	elseif ( IsValid( self.Founder ) ) then
+	elseif IsValid (self.Founder) then
 
 		-- Normal operations
 		return self.Founder
@@ -117,8 +118,8 @@ function ENT:GetPlayer()
 	end
 
 	-- See if the player has left the server then rejoined
-	local ply = player.GetBySteamID64( self.FounderSID )
-	if ( !IsValid( ply ) ) then
+	local ply = player.GetBySteamID64 (self.FounderSID)
+	if not IsValid (ply) then
 
 		-- Oh well
 		return NULL
@@ -126,30 +127,30 @@ function ENT:GetPlayer()
 	end
 
 	-- Save us the check next time
-	self:SetPlayer( ply )
+	self:SetPlayer (ply)
 	return ply
 
 end
 
-function ENT:GetPlayerIndex()
+function ENT:GetPlayerIndex ()
 
 	return self.FounderIndex or 0
 
 end
 
-function ENT:GetPlayerSteamID()
+function ENT:GetPlayerSteamID ()
 
 	return self.FounderSID or ""
 
 end
 
-function ENT:GetPlayerName()
+function ENT:GetPlayerName ()
 
-	local ply = self:GetPlayer()
-	if ( IsValid( ply ) ) then
-		return ply:Nick()
+	local ply = self:GetPlayer ()
+	if IsValid (ply) then
+		return ply:Nick ()
 	end
 
-	return self:GetNWString( "FounderName", "" )
+	return self:GetNWString ("FounderName", "")
 
 end

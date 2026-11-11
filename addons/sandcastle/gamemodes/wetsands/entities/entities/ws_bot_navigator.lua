@@ -21,37 +21,37 @@ ENT.SETTLE_PATIENCE = 1
 -- How much farther than the nearest (squared) an area still counts as under its owner.
 local SEAM_SQR = 1
 
-if SERVER then AddCSLuaFile() end
+if SERVER then AddCSLuaFile () end
 
-function ENT:Initialize()
+function ENT:Initialize ()
 	if CLIENT then return end
-	self:SetModel(MODEL)
-	self:SetSolid(SOLID_NONE)
-	self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
-	self:SetNoDraw(true)
-	self:DrawShadow(false)
-	self:AddFlags(FL_NOTARGET)
+	self:SetModel (MODEL)
+	self:SetSolid (SOLID_NONE)
+	self:SetCollisionGroup (COLLISION_GROUP_IN_VEHICLE)
+	self:SetNoDraw (true)
+	self:DrawShadow (false)
+	self:AddFlags (FL_NOTARGET)
 end
 
 if SERVER then
-	hook.Add("EntityTakeDamage", "ws_bot_navigator", function(ent)
-		if ent:GetClass() == "ws_bot_navigator" then return true end
+	hook.Add ("EntityTakeDamage", "ws_bot_navigator", function (ent)
+		if ent:GetClass () == "ws_bot_navigator" then return true end
 	end)
 end
 
-function ENT:RunBehaviour()
-	while true do coroutine.yield() end
+function ENT:RunBehaviour ()
+	while true do coroutine.yield () end
 end
 
-function ENT:Think()
+function ENT:Think ()
 	if CLIENT then return end
-	local owner = self:GetOwner()
-	if not IsValid(owner) then
-		self:Remove()
+	local owner = self:GetOwner ()
+	if not IsValid (owner) then
+		self:Remove ()
 		return
 	end
-	self:SetPos(owner:GetPos())
-	self:NextThink(CurTime())
+	self:SetPos (owner:GetPos ())
+	self:NextThink (CurTime ())
 	return true
 end
 
@@ -61,75 +61,78 @@ end
 -- up after that, so a tick or two after the owner is set down elsewhere. As near, not
 -- the same: on the seam between two areas the engine keeps the one it was on and the
 -- search may name the other, for as long as the owner stands there.
-function ENT:Settled()
-	if self:CaughtUp() then
+function ENT:Settled ()
+	if self:CaughtUp () then
 		self.catchingUpSince = nil
 		return true
 	end
-	local now = CurTime()
+	local now = CurTime ()
 	self.catchingUpSince = self.catchingUpSince or now
 	return now - self.catchingUpSince >= self.SETTLE_PATIENCE
 end
 
-function ENT:CaughtUp()
-	local pos = self:GetOwner():GetPos()
-	local here = navmesh.GetNearestNavArea(pos, false, SETTLE_REACH)
-	if not IsValid(here) then return true end
-	local last = self:GetLastKnownArea()
+function ENT:CaughtUp ()
+	local pos = self:GetOwner ():GetPos ()
+	local here = navmesh.GetNearestNavArea (pos, false, SETTLE_REACH)
+	if not IsValid (here) then return true end
+	local last = self:GetLastKnownArea ()
 	if last == here then return true end
-	if not IsValid(last) then return false end
-	return last:GetClosestPointOnArea(pos):DistToSqr(pos) <= here:GetClosestPointOnArea(pos):DistToSqr(pos) + SEAM_SQR
+	if not IsValid (last) then return false end
+	return last:GetClosestPointOnArea (pos):DistToSqr (pos) <= here:GetClosestPointOnArea (pos):DistToSqr (pos) + SEAM_SQR
 end
 
 -- The waypoints (Vectors) of a route from where it stands to goal, priced
 -- by cost (Path:Compute's generator: area, fromArea, ladder, elevator,
 -- length -> cost, or -1 where it may not go), or nil when there is none.
-function ENT:PlanRoute(goal, cost)
-	local owner = self:GetOwner()
-	local watch = IsValid(owner) and owner.NSDebugPathWatch
-	local Debug = watch and WS.require("features.nbdebug.model") or nil
-	local recorder = Debug and watch.costs and cost and Debug.NewCostRecorder() or nil
+function ENT:PlanRoute (goal, cost)
+	local owner = self:GetOwner ()
+	local watch = IsValid (owner) and owner.NSDebugPathWatch
+	local Debug = watch and WS.require ("features.nbdebug.model") or nil
+	local recorder = Debug and watch.costs and cost and Debug.NewCostRecorder () or nil
 	if recorder then
 		local routeCost = cost
-		cost = function(area, fromArea, ladder, elevator, length)
-			local price = routeCost(area, fromArea, ladder, elevator, length)
-			recorder:Record(area:GetID(), IsValid(fromArea) and fromArea:GetID() or nil, price)
+		cost = function (area, fromArea, ladder, elevator, length)
+			local price = routeCost (area, fromArea, ladder, elevator, length)
+			recorder:Record (area:GetID (), IsValid (fromArea) and fromArea:GetID () or nil, price)
 			return price
 		end
 	end
 
-	local path = Path("Follow")
-	local began = Debug and SysTime()
-	local found = path:Compute(self, goal, cost)
+	local path = Path ("Follow")
+	local began = Debug and SysTime ()
+	local found = path:Compute (self, goal, cost)
 	local points, reportPoints, areaIds, lastArea = {}, {}, {}, nil
-	for i, segment in ipairs(path:GetAllSegments() or {}) do
-		points[i] = segment.pos
+	for i, segment in ipairs (path:GetAllSegments () or {}) do
+		points [i] = segment.pos
 		if Debug then
-			reportPoints[i] = {
+			reportPoints [i] =
+			{
 				pos = segment.pos,
-				move = Debug.MoveOfSegment(segment.type),
+				move = Debug.MoveOfSegment (segment.type)
 			}
-			if IsValid(segment.area) then
+			if IsValid (segment.area) then
 				lastArea = segment.area
-				areaIds[#areaIds + 1] = lastArea:GetID()
+				areaIds [#areaIds + 1] = lastArea:GetID ()
 			end
 		end
 	end
 	if Debug then
-		hook.Run("WSNpcPathComputed", owner, Debug.NewPathReport({
-			source = Debug.SOURCE_ENGINE,
-			strategy = "AI War player:RouteCost",
-			start = owner:GetPos(),
-			goal = goal,
-			found = found,
-			points = reportPoints,
-			areaIds = areaIds,
-			totalCost = lastArea and lastArea:GetCostSoFar() or nil,
-			microseconds = (SysTime() - began) * 1e6,
-			nodesExpanded = recorder and recorder:Expanded() or nil,
-			explored = recorder and recorder:Explored() or nil,
-			computedAt = CurTime(),
-		}))
+		hook.Run ("WSNpcPathComputed", owner, Debug.NewPathReport (
+			{
+				source = Debug.SOURCE_ENGINE,
+				strategy = "AI War player:RouteCost",
+				start = owner:GetPos (),
+				goal = goal,
+				found = found,
+				points = reportPoints,
+				areaIds = areaIds,
+				totalCost = lastArea and lastArea:GetCostSoFar () or nil,
+				microseconds = (SysTime () - began) * 1e6,
+				nodesExpanded = recorder and recorder:Expanded () or nil,
+				explored = recorder and recorder:Explored () or nil,
+				computedAt = CurTime ()
+			}
+		))
 	end
-	return path:IsValid() and points or nil, found
+	return path:IsValid () and points or nil, found
 end

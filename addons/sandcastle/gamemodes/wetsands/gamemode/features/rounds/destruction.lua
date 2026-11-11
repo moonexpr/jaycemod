@@ -6,9 +6,9 @@
 -- Sandcastle plays no destruction scoring yet: a stand-in mode without an
 -- objective, whose rounds the round limits decide (games.gameplay.rounds.limits).
 local Rounds = gameplay.rounds
-module(...)
+module (...)
 
-Mode = Rounds.Mode:Extend("destruction")
+Mode = Rounds.Mode:Extend ("destruction")
 -- Above payload (2) and KOTH (3), under arena (4).
 Mode.PRIORITY = 3.5
 Mode.HUD = Rounds.HUD_NONE

@@ -7,7 +7,7 @@
 -- hits and rewrites the lethal one's attacker.
 local floor, setmetatable = math.floor, setmetatable
 local Lru = cache.lru
-module(...)
+module (...)
 
 HISTORY = 4 -- MAX_ACHIEVEMENT_HISTORY_SLOTS
 ENVIRONMENT_WINDOW = 5 -- Event_Killed's window for a world death
@@ -22,14 +22,14 @@ ASSISTS_PER_POINT = 2
 
 -- A player's (or soldier's) points, as CTFGameRules::CalcPlayerScore counts
 -- them: a point a kill, and one for every ASSISTS_PER_POINT assists.
-function Points(kills, assists)
-	return kills + floor(assists / ASSISTS_PER_POINT)
+function Points (kills, assists)
+	return kills + floor (assists / ASSISTS_PER_POINT)
 end
 
 -- Whether a hit is remembered: only an enemy's (CTFPlayer::OnTakeDamage
 -- ignores its own team's, so a rocket jump or a teammate's splash never
 -- takes the kill).
-function Remembered(attackerTeam, victimTeam, selfHarm)
+function Remembered (attackerTeam, victimTeam, selfHarm)
 	return not selfHarm and attackerTeam ~= victimTeam
 end
 
@@ -38,18 +38,18 @@ History.__index = History
 
 -- The damagers a victim remembers, the latest first, each once: a cache of
 -- the time of each one's latest hit, HISTORY of them.
-function Damagers()
-	return setmetatable({ hits = Lru.New({ capacity = HISTORY }) }, History)
+function Damagers ()
+	return setmetatable ({ hits = Lru.New ({ capacity = HISTORY }) }, History)
 end
 
-function History:Record(damager, now)
-	self.hits[damager] = now
+function History:Record (damager, now)
+	self.hits [damager] = now
 end
 
 -- The latest damager who hit within the last within seconds, other than
 -- skip (the one credited, asking for an assister), or nil.
-function History:Recent(now, within, skip)
-	for damager, at in self.hits() do
+function History:Recent (now, within, skip)
+	for damager, at in self.hits () do
 		if now - at > within then return nil end
 		if damager ~= skip then return damager end
 	end
@@ -57,6 +57,6 @@ function History:Recent(now, within, skip)
 end
 
 -- The damagers held, the latest first.
-function History:Held()
-	return self.hits:Keys()
+function History:Held ()
+	return self.hits:Keys ()
 end

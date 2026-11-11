@@ -1,4 +1,3 @@
-
 TOOL.AddToMenu = false
 
 --
@@ -9,34 +8,34 @@ TOOL.Name = "#tool.leafblower.name"
 TOOL.Information = { { name = "left" } }
 TOOL.LeftClickAutomatic = true
 
-function TOOL:LeftClick( trace )
+function TOOL:LeftClick (trace)
 
-	if ( CLIENT ) then return end
+	if CLIENT then return end
 
-	if ( ( self.NextWindSound or 0 ) <= CurTime() ) then
+	if (self.NextWindSound or 0) <= CurTime () then
 
-		self:GetOwner():EmitSound( "ambient/wind/wind_hit2.wav", 75, math.random( 75, 125 ) )
-		self.NextWindSound = CurTime() + 0.5
+		self:GetOwner ():EmitSound ("ambient/wind/wind_hit2.wav", 75, math.random (75, 125))
+		self.NextWindSound = CurTime () + 0.5
 
 	end
 
-	if ( IsValid( trace.Entity ) and IsValid( trace.Entity:GetPhysicsObject() ) ) then
+	if IsValid (trace.Entity) and IsValid (trace.Entity:GetPhysicsObject ()) then
 
-		local phys = trace.Entity:GetPhysicsObject()	-- The physics object
-		local direction = trace.StartPos - trace.HitPos	-- The direction of the force
-		local force = 32								-- The ideal amount of force
-		local distance = direction:Length()				-- The distance the phys object is from the gun
-		local maxdistance = 512							-- The max distance the gun should reach
+		local phys = trace.Entity:GetPhysicsObject ()   -- The physics object
+		local direction = trace.StartPos - trace.HitPos -- The direction of the force
+		local force = 32                                -- The ideal amount of force
+		local distance = direction:Length ()            -- The distance the phys object is from the gun
+		local maxdistance = 512                         -- The max distance the gun should reach
 
 		-- Lessen the force from a distance
-		local ratio = math.Clamp( 1 - ( distance / maxdistance ), 0, 1 )
+		local ratio = math.Clamp (1 - (distance / maxdistance), 0, 1)
 
 		-- Set up the 'real' force and the offset of the force
-		local vForce = -direction * ( force * ratio )
+		local vForce = -direction * (force * ratio)
 		local vOffset = trace.HitPos
 
 		-- Apply it!
-		phys:ApplyForceOffset( vForce, vOffset )
+		phys:ApplyForceOffset (vForce, vOffset)
 
 	end
 

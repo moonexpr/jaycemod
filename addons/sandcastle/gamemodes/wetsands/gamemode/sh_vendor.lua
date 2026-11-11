@@ -16,45 +16,46 @@ local ROOT = GM.FolderName .. "/gamemode/vendor/"
 -- In Jazztronauts' own order (its lib/shared.lua); sh_irt includes sh_rect
 -- and sh_scene, which includes sh_camera.
 local LOADERS = { "loaders/bsp3.lua", "loaders/phy3.lua" }
-local JAZZTRONAUTS = {
+local JAZZTRONAUTS =
+{
 	"sh_gc.lua", "sh_task.lua", "sh_mesh.lua", "sh_mathutils.lua", "sh_geomutils.lua",
 	"sh_irt.lua", "sh_gfx.lua", "sh_poly.lua", "sh_brush.lua", "sh_bsp2.lua",
-	"sh_bmodelmap.lua", "sh_bspquery.lua", "sh_mdl.lua",
+	"sh_bmodelmap.lua", "sh_bspquery.lua", "sh_mdl.lua"
 }
 
 local loadersIn, jazztronautsIn = false, false
 
-local function Loaders()
+local function Loaders ()
 	if loadersIn then return end
 	loadersIn = true
-	for _, path in ipairs(LOADERS) do include(ROOT .. path) end
+	for _, path in ipairs (LOADERS) do include (ROOT .. path) end
 end
 
-function WS.UseVendored()
-	Loaders()
+function WS.UseVendored ()
+	Loaders ()
 	if jazztronautsIn then return end
 	jazztronautsIn = true
-	for _, name in ipairs(JAZZTRONAUTS) do include(ROOT .. "jazztronauts/" .. name) end
+	for _, name in ipairs (JAZZTRONAUTS) do include (ROOT .. "jazztronauts/" .. name) end
 	-- bmodelmap maps the map's brush entities at InitPostEntity, long past
 	-- by now: map those standing
-	hook.GetTable().OnReloaded.JazzBModelMapInit()
+	hook.GetTable ().OnReloaded.JazzBModelMapInit ()
 end
 
-function WS.MapFile(names)
-	Loaders()
+function WS.MapFile (names)
+	Loaders ()
 	local ids = {}
-	for i, name in ipairs(names) do
-		ids[i] = bsp3["LUMP_" .. name]
-		if not ids[i] then error("bsp3 has no lump " .. name, 2) end
+	for i, name in ipairs (names) do
+		ids [i] = bsp3 ["LUMP_" .. name]
+		if not ids [i] then error ("bsp3 has no lump " .. name, 2) end
 	end
-	local data = bsp3.LoadBSP("maps/" .. game.GetMap() .. ".bsp", ids, "GAME")
-	if not data then error("could not read maps/" .. game.GetMap() .. ".bsp") end
+	local data = bsp3.LoadBSP ("maps/" .. game.GetMap () .. ".bsp", ids, "GAME")
+	if not data then error ("could not read maps/" .. game.GetMap () .. ".bsp") end
 	local lumps = {}
-	for i, name in ipairs(names) do lumps[name] = data[ids[i]] end
+	for i, name in ipairs (names) do lumps [name] = data [ids [i]] end
 	return lumps
 end
 
-function WS.MapQuery()
-	WS.UseVendored()
-	return bsp2.GetCurrent()
+function WS.MapQuery ()
+	WS.UseVendored ()
+	return bsp2.GetCurrent ()
 end

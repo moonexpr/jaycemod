@@ -23,7 +23,7 @@ local require = require
 local Teams = gameplay.teams
 local ipairs, setmetatable = ipairs, setmetatable
 local max = math.max
-module(...)
+module (...)
 
 MODEL = "models/bots/merasmus/merasmas_misfortune_teller.mdl"
 IDLE_SEQUENCE = "ref"
@@ -49,173 +49,181 @@ INPUT_END = "endfortunetelling"
 
 -- The context thinks, in the order they run when due together.
 local WARN, TELL, FORTUNE, CURSE, FINISH = "StartFortuneWarning", "StartFortuneTell", "TellFortune",
-	"FortuneActivate", "EndFortuneTell"
+"FortuneActivate", "EndFortuneTell"
 local THINK_ORDER = { WARN, TELL, FORTUNE, CURSE, FINISH }
 
 local Teller = {}
 Teller.__index = Teller
 
 -- Spawn's ResetTimer; the timer itself is off.
-function New(config, now)
-	return setmetatable({
-		redTeleport = config.redTeleport,
-		blueTeleport = config.blueTeleport,
-		useTimer = false,
-		startTime = now,
-		pauseTime = now,
-		thinks = {},
-	}, Teller)
+function New (config, now)
+	return setmetatable (
+		{
+			redTeleport = config.redTeleport,
+			blueTeleport = config.blueTeleport,
+			useTimer = false,
+			startTime = now,
+			pauseTime = now,
+			thinks = {}
+		}, Teller)
 end
 
 -- A think set in the past runs at the next tick, as of then.
-local function Schedule(self, name, at, now)
-	self.thinks[name] = max(at, now)
+local function Schedule (self, name, at, now)
+	self.thinks [name] = max (at, now)
 end
 
-local function Output(effects, name)
-	effects[#effects + 1] = {
+local function Output (effects, name)
+	effects [#effects + 1] =
+	{
 		kind = OUTPUT,
-		name = name,
+		name = name
 	}
 end
 
 -- UpdateFortuneTellerTime: unpause, then wait for what is left of the
 -- interval.
-local function Resume(self, now)
+local function Resume (self, now)
 	self.startTime = now - (self.pauseTime - self.startTime)
 	local past = now - self.startTime
 	local warnAt = INTERVAL - WARNING_TIME
 	if past < warnAt then
-		Schedule(self, WARN, now + warnAt - past, now)
+		Schedule (self, WARN, now + warnAt - past, now)
 	else
-		Schedule(self, TELL, now + INTERVAL - past, now)
+		Schedule (self, TELL, now + INTERVAL - past, now)
 	end
 end
 
 -- PauseTimer: the queued curse is not among what it cancels.
-local function Pause(self, now)
+local function Pause (self, now)
 	self.pauseTime = now
-	for _, name in ipairs({ WARN, TELL, FORTUNE, FINISH }) do self.thinks[name] = nil end
+	for _, name in ipairs ({ WARN, TELL, FORTUNE, FINISH }) do self.thinks [name] = nil end
 end
 
-local function ResetTimer(self, now)
+local function ResetTimer (self, now)
 	self.startTime = now
 	self.pauseTime = now
 end
 
 -- StartFortuneTell
-local function Tell(self, now, effects)
-	Output(effects, OUTPUT_TOLD)
-	effects[#effects + 1] = {
+local function Tell (self, now, effects)
+	Output (effects, OUTPUT_TOLD)
+	effects [#effects + 1] =
+	{
 		kind = BROADCAST,
-		sound = SPIN_SOUND,
+		sound = SPIN_SOUND
 	}
-	Schedule(self, FORTUNE, now + TELL_DELAY, now)
+	Schedule (self, FORTUNE, now + TELL_DELAY, now)
 end
 
 -- EndFortuneTell
-local function Finish(self, now, effects)
-	self.thinks[FORTUNE] = nil
-	Output(effects, OUTPUT_END)
+local function Finish (self, now, effects)
+	self.thinks [FORTUNE] = nil
+	Output (effects, OUTPUT_END)
 	if self.useTimer then
-		ResetTimer(self, now)
-		Resume(self, now)
+		ResetTimer (self, now)
+		Resume (self, now)
 	end
 end
 
-local THINKS = {
-	[WARN] = function(self, now, effects)
-		Output(effects, OUTPUT_WARNING)
-		Schedule(self, TELL, now + WARNING_TIME, now)
+local THINKS =
+{
+	[WARN] = function (self, now, effects)
+		Output (effects, OUTPUT_WARNING)
+		Schedule (self, TELL, now + WARNING_TIME, now)
 	end,
 	[TELL] = Tell,
 	-- TellFortune: RED first, then BLU.
-	[FORTUNE] = function(self, now, effects)
-		effects[#effects + 1] = {
+	[FORTUNE] = function (self, now, effects)
+		effects [#effects + 1] =
+		{
 			kind = TELEPORT,
 			team = Teams.RED,
-			target = self.redTeleport,
+			target = self.redTeleport
 		}
-		effects[#effects + 1] = {
+		effects [#effects + 1] =
+		{
 			kind = TELEPORT,
 			team = Teams.BLUE,
-			target = self.blueTeleport,
+			target = self.blueTeleport
 		}
-		Schedule(self, CURSE, now + CURSE_DELAY, now)
+		Schedule (self, CURSE, now + CURSE_DELAY, now)
 	end,
 	-- ApplyFortuneEffect
-	[CURSE] = function(self, now, effects)
-		Output(effects, OUTPUT_CURSE)
-		if self.useTimer then Schedule(self, FINISH, now + DURATION, now) end
+	[CURSE] = function (self, now, effects)
+		Output (effects, OUTPUT_CURSE)
+		if self.useTimer then Schedule (self, FINISH, now + DURATION, now) end
 	end,
-	[FINISH] = Finish,
+	[FINISH] = Finish
 }
 
 -- The earliest think due by now, if any.
-local function Due(self, now)
+local function Due (self, now)
 	local due, dueAt = nil, nil
-	for _, name in ipairs(THINK_ORDER) do
-		local at = self.thinks[name]
+	for _, name in ipairs (THINK_ORDER) do
+		local at = self.thinks [name]
 		if at and at <= now and (dueAt == nil or at < dueAt) then due, dueAt = name, at end
 	end
 	return due, dueAt
 end
 
-function Teller:Tick(now)
+function Teller:Tick (now)
 	local effects = {}
-	local name, at = Due(self, now)
+	local name, at = Due (self, now)
 	while name do
-		self.thinks[name] = nil
-		THINKS[name](self, at, effects)
-		name, at = Due(self, now)
+		self.thinks [name] = nil
+		THINKS [name] (self, at, effects)
+		name, at = Due (self, now)
 	end
 	return effects
 end
 
-local INPUTS = {
-	[INPUT_ENABLE] = function(self, now, effects)
+local INPUTS =
+{
+	[INPUT_ENABLE] = function (self, now, effects)
 		local was = self.useTimer
 		self.useTimer = true
-		if not was then Resume(self, now) end
+		if not was then Resume (self, now) end
 	end,
-	[INPUT_DISABLE] = function(self, now, effects)
+	[INPUT_DISABLE] = function (self, now, effects)
 		local was = self.useTimer
 		self.useTimer = false
-		if was then Pause(self, now) end
+		if was then Pause (self, now) end
 	end,
 	[INPUT_START] = Tell,
-	[INPUT_END] = Finish,
+	[INPUT_END] = Finish
 }
 
 -- Kill and AddOutput are the engine's.
-function Teller:Accepts(name)
-	return INPUTS[name] ~= nil
+function Teller:Accepts (name)
+	return INPUTS [name] ~= nil
 end
 
 -- name lower-cased.
-function Teller:Input(name, now)
+function Teller:Input (name, now)
 	local effects = {}
-	INPUTS[name](self, now, effects)
+	INPUTS [name] (self, now, effects)
 	return effects
 end
 
 -- TeleportPlayersToTargetEntities: the team in a random order (randomInt(lo,
 -- hi) as RandomInt), taken from the back, each to the next spot; once the
 -- spots run out the rest stay. Returns { player, spot } pairs.
-function Teleports(players, spots, randomInt)
+function Teleports (players, spots, randomInt)
 	local order = {}
-	for i, p in ipairs(players) do order[i] = p end
+	for i, p in ipairs (players) do order [i] = p end
 	for i = #order, 2, -1 do
-		local j = randomInt(1, i)
-		order[i], order[j] = order[j], order[i]
+		local j = randomInt (1, i)
+		order [i], order [j] = order [j], order [i]
 	end
 	local moves = {}
 	for i = #order, 1, -1 do
-		local spot = spots[#moves + 1]
+		local spot = spots [#moves + 1]
 		if spot == nil then break end
-		moves[#moves + 1] = {
-			player = order[i],
-			spot = spot,
+		moves [#moves + 1] =
+		{
+			player = order [i],
+			spot = spot
 		}
 	end
 	return moves

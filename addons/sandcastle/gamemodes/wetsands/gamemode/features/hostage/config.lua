@@ -7,27 +7,27 @@
 -- without cs_logic_hostage takes the defaults. A value that is not one is
 -- refused, naming its key.
 local error, tostring = error, tostring
-module(...)
+module (...)
 
 BODY_CLASS = "npc_civilian"
 
-local function Refuse(key, value, wanted)
-	error("cs_logic_hostage: " .. key .. " " .. tostring(value) .. " is not " .. wanted, 3)
+local function Refuse (key, value, wanted)
+	error ("cs_logic_hostage: " .. key .. " " .. tostring (value) .. " is not " .. wanted, 3)
 end
 
 -- keyvalues: key -> text. Returns { bodyClass, bodyModel (or nil), pistol }.
-function Parse(keyvalues)
+function Parse (keyvalues)
 	local bodyClass = keyvalues.bodyclass
 	if bodyClass == nil or bodyClass == "" then
 		bodyClass = BODY_CLASS
-	elseif not bodyClass:match("^[%w_]+$") then
-		Refuse("bodyclass", bodyClass, "an entity class")
+	elseif not bodyClass:match ("^[%w_]+$") then
+		Refuse ("bodyclass", bodyClass, "an entity class")
 	end
 	local bodyModel = keyvalues.bodymodel
 	if bodyModel == "" then
 		bodyModel = nil
-	elseif bodyModel ~= nil and not bodyModel:match("^[%w_/%.%-]+%.mdl$") then
-		Refuse("bodymodel", bodyModel, "a model (.mdl)")
+	elseif bodyModel ~= nil and not bodyModel:match ("^[%w_/%.%-]+%.mdl$") then
+		Refuse ("bodymodel", bodyModel, "a model (.mdl)")
 	end
 	local pistol = keyvalues.pistol
 	if pistol == nil or pistol == "" then
@@ -35,7 +35,7 @@ function Parse(keyvalues)
 	elseif pistol == "0" or pistol == "1" then
 		pistol = pistol == "1"
 	else
-		Refuse("pistol", pistol, "0 or 1")
+		Refuse ("pistol", pistol, "0 or 1")
 	end
 	return { bodyClass = bodyClass, bodyModel = bodyModel, pistol = pistol }
 end

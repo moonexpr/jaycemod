@@ -1,4 +1,4 @@
 -- A part of the fixtures.greeting system, for harness_test.lua.
-module(...)
+module (...)
 
 GREETING = "good day"

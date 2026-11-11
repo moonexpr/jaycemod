@@ -25,27 +25,29 @@
 -- leveled boss fizzling grenades at its portal.
 local require = require
 local NpcSystem = npc.nextbot
-local HalloweenBoss = require("features.haunting.halloween_boss")
-local BossEvents = require("features.npc.boss_events")
+local HalloweenBoss = require ("features.haunting.halloween_boss")
+local BossEvents = require ("features.npc.boss_events")
 local Targeting = npc.targeting
 local Actor = npc.actor
 local Players = gameplay.players
 local Teams = gameplay.teams
 local cos, floor, huge, max, pi, rad, sin = math.cos, math.floor, math.huge, math.max, math.pi, math.rad, math.sin
 local ipairs, setmetatable = ipairs, setmetatable
-module(...)
+module (...)
 
 BOSS_TYPE = HalloweenBoss.BOSS_MONOCULUS
-HOVER = {
+HOVER =
+{
 	hoverHeight = 200, -- tf_eyeball_boss_hover_height
 	acceleration = 500, -- tf_eyeball_boss_acceleration
 	horizontalDamping = 2, -- tf_eyeball_boss_horiz_damping
-	verticalDamping = 1, -- tf_eyeball_boss_vert_damping
+	verticalDamping = 1 -- tf_eyeball_boss_vert_damping
 }
 
 -- TF2's convars (eyeball_boss.cpp), with their defaults. The hover ones
 -- live in HOVER, which the binding reads once.
-CONVARS = {
+CONVARS =
+{
 	tf_eyeball_boss_lifetime = 120,
 	tf_eyeball_boss_lifetime_spell = 8,
 	tf_eyeball_boss_speed = 250,
@@ -54,16 +56,17 @@ CONVARS = {
 	tf_eyeball_boss_health_per_player = 400,
 	tf_eyeball_boss_health_at_level_2 = 17000,
 	tf_eyeball_boss_health_per_level = 3000,
-	tf_halloween_bot_min_player_count = 10,
+	tf_halloween_bot_min_player_count = 10
 }
 
-METHODS = {
+METHODS =
+{
 	"SetDesiredAltitude",
 	"AimHeadTowards",
 	"GroundHeight",
 	"IsNearNavMesh",
 	"SetHidden",
-	"TraceWorld",
+	"TraceWorld"
 }
 
 MODEL = "models/props_halloween/halloween_demoeye.mdl"
@@ -79,11 +82,12 @@ SUMMON_PARTICLE = "halloween_boss_summon" -- scary_ghost.pcf
 TELEPORT_PARTICLE = "eyeboss_tp_normal" -- eyeboss.pcf, as are the rest
 ESCAPE_PARTICLE = "eyeboss_tp_escape"
 DEATH_PARTICLE = "eyeboss_death"
-PARTICLES = {
+PARTICLES =
+{
 	SUMMON_PARTICLE,
 	TELEPORT_PARTICLE,
 	ESCAPE_PARTICLE,
-	DEATH_PARTICLE,
+	DEATH_PARTICLE
 }
 
 SKIN_NORMAL, SKIN_RED, SKIN_TEAM_RED, SKIN_TEAM_BLUE = 0, 1, 2, 3
@@ -155,426 +159,429 @@ POP_SHAKE_AMPLITUDE, POP_SHAKE_FREQUENCY, POP_SHAKE_DURATION = 25, 5, 5
 -------------------------------------------------------------------------------
 -- The eyeball's own rules
 
-function IsEnraged(state, me)
+function IsEnraged (state, me)
 	if state.spell then return true end
-	local maxHealth = me:GetMaxHealth()
-	if me:GetHealth() < floor(ENRAGED_BELOW * maxHealth / THIRDS) then return true end
-	return state.rageTimer:HasStarted() and not state.rageTimer:IsElapsed()
+	local maxHealth = me:GetMaxHealth ()
+	if me:GetHealth () < floor (ENRAGED_BELOW * maxHealth / THIRDS) then return true end
+	return state.rageTimer:HasStarted () and not state.rageTimer:IsElapsed ()
 end
 
-function IsGrumpy(state, me)
-	if IsEnraged(state, me) then return false end
-	return me:GetHealth() < floor(GRUMPY_BELOW * me:GetMaxHealth() / THIRDS)
+function IsGrumpy (state, me)
+	if IsEnraged (state, me) then return false end
+	return me:GetHealth () < floor (GRUMPY_BELOW * me:GetMaxHealth () / THIRDS)
 end
 
-function BecomeEnraged(state, me, duration)
-	if not IsEnraged(state, me) then me:EmitSound("Halloween.EyeballBossBecomeEnraged") end
-	state.rageTimer:Start(duration)
+function BecomeEnraged (state, me, duration)
+	if not IsEnraged (state, me) then me:EmitSound ("Halloween.EyeballBossBecomeEnraged") end
+	state.rageTimer:Start (duration)
 end
 
-local function Play(state, me, sequence)
-	me:PlaySequence(sequence)
+local function Play (state, me, sequence)
+	me:PlaySequence (sequence)
 	state.sequence = sequence
 end
 
 -- GetVictim: the victim, while it lives.
-local function GetVictim(state, me)
+local function GetVictim (state, me)
 	local victim = state.victim
-	if victim == nil or not me:IsTargetValid(victim) or not me:IsTargetAlive(victim) then return nil end
+	if victim == nil or not me:IsTargetValid (victim) or not me:IsTargetAlive (victim) then return nil end
 	return victim
 end
 
 -- FindClosestVisibleVictim: the nearest visible living player who is not
 -- hidden (a spell's: of the enemy team), other teams' skeletons, and for a
 -- spell other teams' bosses.
-function FindClosestVisibleVictim(state, me)
+function FindClosestVisibleVictim (state, me)
 	local victim, victimRange = nil, huge
-	local function Consider(t)
-		local range = me:RangeTo(t)
-		if range < victimRange and me:IsLineOfSightClear(t) then
+	local function Consider (t)
+		local range = me:RangeTo (t)
+		if range < victimRange and me:IsLineOfSightClear (t) then
 			victim, victimRange = t, range
 		end
 	end
-	local function OtherTeamsOf(kind)
-		for _, npc in ipairs(me:CollectNPCs(kind)) do
-			if npc ~= me and me:TeamOf(npc) ~= state.team and me:IsTargetAlive(npc) then Consider(npc) end
+	local function OtherTeamsOf (kind)
+		for _, npc in ipairs (me:CollectNPCs (kind)) do
+			if npc ~= me and me:TeamOf (npc) ~= state.team and me:IsTargetAlive (npc) then Consider (npc) end
 		end
 	end
 	local teams = { false }
 	if state.spell then
-		OtherTeamsOf(HalloweenBoss.KIND)
-		teams = Targeting.EnemyTeamsOf(state.team)
+		OtherTeamsOf (HalloweenBoss.KIND)
+		teams = Targeting.EnemyTeamsOf (state.team)
 	end
-	for _, team in ipairs(teams) do
-		for _, ply in ipairs(me:CollectPlayers(team or nil)) do
-			if not Targeting.IsHiddenFromNPC(function(cond) return me:InCond(ply, cond) end) then Consider(ply) end
+	for _, team in ipairs (teams) do
+		for _, ply in ipairs (me:CollectPlayers (team or nil)) do
+			if not Targeting.IsHiddenFromNPC (function (cond) return me:InCond (ply, cond) end) then Consider (ply) end
 		end
 		-- Sandcastle's own: the AI war's soldiers, as their team's players
-		for _, memberTeam in ipairs(team and { team } or { Teams.RED, Teams.BLUE }) do
-			for _, soldier in ipairs(me:CollectMembers(memberTeam)) do
-				if me:IsTargetAlive(soldier) then Consider(soldier) end
+		for _, memberTeam in ipairs (team and { team } or { Teams.RED, Teams.BLUE }) do
+			for _, soldier in ipairs (me:CollectMembers (memberTeam)) do
+				if me:IsTargetAlive (soldier) then Consider (soldier) end
 			end
 		end
 	end
-	OtherTeamsOf(ZOMBIE_KIND)
+	OtherTeamsOf (ZOMBIE_KIND)
 	return victim
 end
 
-local function Shake(me)
-	me:ScreenShake(me:GetAbsOrigin(), SHAKE_AMPLITUDE, SHAKE_FREQUENCY, SHAKE_DURATION, SHAKE_RADIUS)
+local function Shake (me)
+	me:ScreenShake (me:GetAbsOrigin (), SHAKE_AMPLITUDE, SHAKE_FREQUENCY, SHAKE_DURATION, SHAKE_RADIUS)
 end
 
 -- Low enough over reachable ground for players to reach the vortex it
 -- leaves.
-local function IsLowOverNavMesh(me)
-	local center = me:WorldSpaceCenter()
-	local groundZ = me:GroundHeight(center)
+local function IsLowOverNavMesh (me)
+	local center = me:WorldSpaceCenter ()
+	local groundZ = me:GroundHeight (center)
 	if groundZ == nil then return false end
-	if not me:IsNearNavMesh(me:Vector(center.x, center.y, groundZ), TELEPORT_NAV_RANGE) then return false end
+	if not me:IsNearNavMesh (me:Vector (center.x, center.y, groundZ), TELEPORT_NAV_RANGE) then return false end
 	return center.z - groundZ < MAX_TELEPORT_HEIGHT
 end
 
-local Emerge = NpcSystem.Action:Extend("Emerge")
-local Idle = NpcSystem.Action:Extend("Idle")
-local Notice = NpcSystem.Action:Extend("Notice")
-local ApproachTarget = NpcSystem.Action:Extend("ApproachTarget")
-local LaunchRockets = NpcSystem.Action:Extend("LaunchRockets")
-local Emote = NpcSystem.Action:Extend("Emote")
-local Teleport = NpcSystem.Action:Extend("Teleport")
-local Escape = NpcSystem.Action:Extend("Escape")
-local Dead = NpcSystem.Action:Extend("Dead")
+local Emerge = NpcSystem.Action:Extend ("Emerge")
+local Idle = NpcSystem.Action:Extend ("Idle")
+local Notice = NpcSystem.Action:Extend ("Notice")
+local ApproachTarget = NpcSystem.Action:Extend ("ApproachTarget")
+local LaunchRockets = NpcSystem.Action:Extend ("LaunchRockets")
+local Emote = NpcSystem.Action:Extend ("Emote")
+local Teleport = NpcSystem.Action:Extend ("Teleport")
+local Escape = NpcSystem.Action:Extend ("Escape")
+local Dead = NpcSystem.Action:Extend ("Dead")
 
-local function StateAction(class)
-	function class:Init(state) self.state = state end
+local function StateAction (class)
+	function class:Init (state) self.state = state end
 end
 
-for _, class in ipairs({ Emerge, Idle, Notice, ApproachTarget, LaunchRockets, Teleport, Escape, Dead }) do
-	StateAction(class)
+for _, class in ipairs ({ Emerge, Idle, Notice, ApproachTarget, LaunchRockets, Teleport, Escape, Dead }) do
+	StateAction (class)
 end
 
 -------------------------------------------------------------------------------
 -- Emerge (CEyeballBossEmerge): a spell's teleports in; a map's rises from
 -- its portal, pushing players away and killing those on it for 2 s.
 
-function Emerge:OnStart(me, priorAction)
+function Emerge:OnStart (me, priorAction)
 	local state = self.state
-	self.riseTimer = NpcSystem.CountdownTimer(me)
-	self.rumbleTimer = NpcSystem.CountdownTimer(me)
-	self.killTimer = NpcSystem.CountdownTimer(me)
+	self.riseTimer = NpcSystem.CountdownTimer (me)
+	self.rumbleTimer = NpcSystem.CountdownTimer (me)
+	self.killTimer = NpcSystem.CountdownTimer (me)
 	if state.spell then
-		me:DispatchParticleEffect(TELEPORT_PARTICLE, me:GetAbsOrigin())
-		Play(state, me, "teleport_in")
-		return self:Continue()
+		me:DispatchParticleEffect (TELEPORT_PARTICLE, me:GetAbsOrigin ())
+		Play (state, me, "teleport_in")
+		return self:Continue ()
 	end
-	Play(state, me, "arrives")
-	me:DispatchParticleEffect(SUMMON_PARTICLE, me:GetAbsOrigin())
-	self.groundPos = me:GetAbsOrigin()
-	self.riseTimer:Start(RISE_TIME)
-	self.emergePos = me:GetAbsOrigin() + me:Vector(0, 0, EMERGE_OFFSET)
-	me:SetAbsOrigin(self.emergePos - me:Vector(0, 0, EMERGE_DEPTH))
-	me:EmitSound("Halloween.HeadlessBossSpawnRumble")
-	me:FireGameEvent(BossEvents.EYEBALL_BOSS_SUMMONED, { level = Level(me) })
-	self.killTimer:Start(KILL_TIME)
-	return self:Continue()
+	Play (state, me, "arrives")
+	me:DispatchParticleEffect (SUMMON_PARTICLE, me:GetAbsOrigin ())
+	self.groundPos = me:GetAbsOrigin ()
+	self.riseTimer:Start (RISE_TIME)
+	self.emergePos = me:GetAbsOrigin () + me:Vector (0, 0, EMERGE_OFFSET)
+	me:SetAbsOrigin (self.emergePos - me:Vector (0, 0, EMERGE_DEPTH))
+	me:EmitSound ("Halloween.HeadlessBossSpawnRumble")
+	me:FireGameEvent (BossEvents.EYEBALL_BOSS_SUMMONED, { level = Level (me) })
+	self.killTimer:Start (KILL_TIME)
+	return self:Continue ()
 end
 
-function Emerge:Update(me, interval)
+function Emerge:Update (me, interval)
 	local state = self.state
 	local rise = self.riseTimer
-	if not rise:IsElapsed() then
-		local depth = EMERGE_DEPTH * rise:GetRemainingTime() / rise:GetCountdownDuration()
-		me:SetAbsOrigin(self.emergePos - me:Vector(0, 0, depth))
-		if self.rumbleTimer:IsElapsed() then
-			self.rumbleTimer:Start(RUMBLE_INTERVAL)
-			Shake(me)
+	if not rise:IsElapsed () then
+		local depth = EMERGE_DEPTH * rise:GetRemainingTime () / rise:GetCountdownDuration ()
+		me:SetAbsOrigin (self.emergePos - me:Vector (0, 0, depth))
+		if self.rumbleTimer:IsElapsed () then
+			self.rumbleTimer:Start (RUMBLE_INTERVAL)
+			Shake (me)
 		end
 	end
-	if me:IsSequenceFinished() then return self:ChangeTo(Idle:New(state), "Here I am!") end
-	if state.spell then return self:Continue() end
+	if me:IsSequenceFinished () then return self:ChangeTo (Idle:New (state), "Here I am!") end
+	if state.spell then return self:Continue () end
 
 	local deathRange = state.level > FIRST_LEVEL and DEATH_RANGE_LEVELLED or DEATH_RANGE
-	for _, ply in ipairs(me:CollectPlayers(nil)) do
-		local to = me:TargetEyes(ply) - self.groundPos
-		local range = to:Length()
+	for _, ply in ipairs (me:CollectPlayers (nil)) do
+		local to = me:TargetEyes (ply) - self.groundPos
+		local range = to:Length ()
 		if range < PUSH_RANGE then
-			local flat = me:Vector(to.x, to.y, 0):GetNormalized()
-			me:ApplyImpulse(ply, me:Vector(flat.x, flat.y, 1) * PUSH_FORCE)
+			local flat = me:Vector (to.x, to.y, 0):GetNormalized ()
+			me:ApplyImpulse (ply, me:Vector (flat.x, flat.y, 1) * PUSH_FORCE)
 		end
-		if not self.killTimer:IsElapsed() and range < deathRange then
-			me:DealDamage(ply, KILL_MAX_HEALTH_MULTIPLE * me:TargetMaxHealth(ply), Actor.DMG_BLAST)
+		if not self.killTimer:IsElapsed () and range < deathRange then
+			me:DealDamage (ply, KILL_MAX_HEALTH_MULTIPLE * me:TargetMaxHealth (ply), Actor.DMG_BLAST)
 		end
 	end
-	return self:Continue()
+	return self:Continue ()
 end
 
 -------------------------------------------------------------------------------
 -- Idle (CEyeballBossIdle)
 
-function Idle:OnStart(me, priorAction)
+function Idle:OnStart (me, priorAction)
 	local state = self.state
 	local cv = state.convars
 	self.attacker = nil
-	self.talkTimer = NpcSystem.CountdownTimer(me)
-	self.talkTimer:Start(me:RandomFloat(TALK_MIN, TALK_MAX))
-	self.lifeTimer = NpcSystem.CountdownTimer(me)
-	self.lifeTimer:Start(state.spell and cv.tf_eyeball_boss_lifetime_spell or cv.tf_eyeball_boss_lifetime)
-	self.moveTimer = NpcSystem.CountdownTimer(me)
-	self.moveTimer:Start(me:RandomFloat(MOVE_MIN, MOVE_MAX))
-	self.lookAroundTimer = NpcSystem.CountdownTimer(me)
+	self.talkTimer = NpcSystem.CountdownTimer (me)
+	self.talkTimer:Start (me:RandomFloat (TALK_MIN, TALK_MAX))
+	self.lifeTimer = NpcSystem.CountdownTimer (me)
+	self.lifeTimer:Start (state.spell and cv.tf_eyeball_boss_lifetime_spell or cv.tf_eyeball_boss_lifetime)
+	self.moveTimer = NpcSystem.CountdownTimer (me)
+	self.moveTimer:Start (me:RandomFloat (MOVE_MIN, MOVE_MAX))
+	self.lookAroundTimer = NpcSystem.CountdownTimer (me)
 	self.lastWarnTime = 0
 	self.isLaughReady = false
-	return self:Continue()
+	return self:Continue ()
 end
 
 -- The escape warnings, each once as the time left falls past it.
-function Idle:WarnOfEscape(me)
-	local remaining = self.lifeTimer:GetRemainingTime()
-	for _, seconds in ipairs(ESCAPE_WARNINGS) do
+function Idle:WarnOfEscape (me)
+	local remaining = self.lifeTimer:GetRemainingTime ()
+	for _, seconds in ipairs (ESCAPE_WARNINGS) do
 		if remaining < seconds and self.lastWarnTime > seconds then
-			me:FireGameEvent(BossEvents.EYEBALL_BOSS_ESCAPE_IMMINENT, {
-				level = Level(me),
-				time_remaining = seconds,
-			})
+			me:FireGameEvent (BossEvents.EYEBALL_BOSS_ESCAPE_IMMINENT,
+				{
+					level = Level (me),
+					time_remaining = seconds
+				}
+			)
 			break
 		end
 	end
 	self.lastWarnTime = remaining
 end
 
-function Idle:LookAround(me)
+function Idle:LookAround (me)
 	if self.attacker ~= nil then
-		if me:IsTargetValid(self.attacker) then me:AimHeadTowards(me:TargetEyes(self.attacker)) end
+		if me:IsTargetValid (self.attacker) then me:AimHeadTowards (me:TargetEyes (self.attacker)) end
 		self.attacker = nil
-		self.lookAroundTimer:Start(me:RandomFloat(LOOK_AT_ATTACKER_MIN, LOOK_AT_ATTACKER_MAX))
+		self.lookAroundTimer:Start (me:RandomFloat (LOOK_AT_ATTACKER_MIN, LOOK_AT_ATTACKER_MAX))
 		return nil
 	end
-	if self.lookAroundTimer:IsElapsed() then
-		self.lookAroundTimer:Start(me:RandomFloat(LOOK_AROUND_MIN, LOOK_AROUND_MAX))
-		local angle = me:RandomFloat(-pi, pi)
-		me:AimHeadTowards(me:GetAbsOrigin() + me:Vector(cos(angle), sin(angle), 0) * LOOK_AROUND_DISTANCE)
+	if self.lookAroundTimer:IsElapsed () then
+		self.lookAroundTimer:Start (me:RandomFloat (LOOK_AROUND_MIN, LOOK_AROUND_MAX))
+		local angle = me:RandomFloat (-pi, pi)
+		me:AimHeadTowards (me:GetAbsOrigin () + me:Vector (cos (angle), sin (angle), 0) * LOOK_AROUND_DISTANCE)
 	end
 	if self.isLaughReady then
 		self.isLaughReady = false
-		return self:SuspendFor(Emote:New(self.state, "laugh", "Halloween.EyeballBossLaugh"), "Taunt our victim")
+		return self:SuspendFor (Emote:New (self.state, "laugh", "Halloween.EyeballBossLaugh"), "Taunt our victim")
 	end
 	return nil
 end
 
-function Idle:Update(me, interval)
+function Idle:Update (me, interval)
 	local state = self.state
-	if not state.spell then self:WarnOfEscape(me) end
-	if state.spell and self.lifeTimer:IsElapsed() then return self:ChangeTo(Escape:New(state), "Escaping...") end
+	if not state.spell then self:WarnOfEscape (me) end
+	if state.spell and self.lifeTimer:IsElapsed () then return self:ChangeTo (Escape:New (state), "Escaping...") end
 
-	if self.moveTimer:IsElapsed() and not state.spell then
-		me:SetDesiredAltitude(0)
-		if IsLowOverNavMesh(me) then
-			if self.lifeTimer:IsElapsed() then return self:ChangeTo(Escape:New(state), "Escaping...") end
-			self.moveTimer:Start(me:RandomFloat(MOVE_MIN, MOVE_MAX))
-			return self:SuspendFor(Teleport:New(state), "Moving...")
+	if self.moveTimer:IsElapsed () and not state.spell then
+		me:SetDesiredAltitude (0)
+		if IsLowOverNavMesh (me) then
+			if self.lifeTimer:IsElapsed () then return self:ChangeTo (Escape:New (state), "Escaping...") end
+			self.moveTimer:Start (me:RandomFloat (MOVE_MIN, MOVE_MAX))
+			return self:SuspendFor (Teleport:New (state), "Moving...")
 		end
 	else
-		me:SetDesiredAltitude(HOVER.hoverHeight)
+		me:SetDesiredAltitude (HOVER.hoverHeight)
 	end
 
-	local victim = FindClosestVisibleVictim(state, me)
+	local victim = FindClosestVisibleVictim (state, me)
 	if victim then
 		state.victim = victim
-		return self:SuspendFor(Notice:New(state), "Target found...")
+		return self:SuspendFor (Notice:New (state), "Target found...")
 	end
 
-	local laugh = self:LookAround(me)
+	local laugh = self:LookAround (me)
 	if laugh then return laugh end
 
 	local sequence = "lookaround1"
-	if IsEnraged(state, me) then
+	if IsEnraged (state, me) then
 		sequence = "lookaround3"
-	elseif IsGrumpy(state, me) then
+	elseif IsGrumpy (state, me) then
 		sequence = "lookaround2"
 	end
-	if state.sequence ~= sequence or me:IsSequenceFinished() then Play(state, me, sequence) end
+	if state.sequence ~= sequence or me:IsSequenceFinished () then Play (state, me, sequence) end
 
-	if self.talkTimer:IsElapsed() then
-		if IsEnraged(state, me) then
-			me:EmitSound("Halloween.EyeballBossRage")
-			self.talkTimer:Start(me:RandomFloat(RAGE_TALK_MIN, RAGE_TALK_MAX))
+	if self.talkTimer:IsElapsed () then
+		if IsEnraged (state, me) then
+			me:EmitSound ("Halloween.EyeballBossRage")
+			self.talkTimer:Start (me:RandomFloat (RAGE_TALK_MIN, RAGE_TALK_MAX))
 		else
-			me:EmitSound("Halloween.EyeballBossIdle")
-			self.talkTimer:Start(me:RandomFloat(TALK_MIN, TALK_MAX))
+			me:EmitSound ("Halloween.EyeballBossIdle")
+			self.talkTimer:Start (me:RandomFloat (TALK_MIN, TALK_MAX))
 		end
 	end
-	return self:Continue()
+	return self:Continue ()
 end
 
-function Idle:OnResume(me, interruptingAction)
-	self.talkTimer:Start(me:RandomFloat(TALK_MIN, TALK_MAX))
-	return self:Continue()
+function Idle:OnResume (me, interruptingAction)
+	self.talkTimer:Start (me:RandomFloat (TALK_MIN, TALK_MAX))
+	return self:Continue ()
 end
 
-function Idle:OnInjured(me, damageEvent)
+function Idle:OnInjured (me, damageEvent)
 	self.attacker = damageEvent.attacker
-	return self:TryContinue()
+	return self:TryContinue ()
 end
 
-function Idle:OnOtherKilled(me, victim, damageEvent)
+function Idle:OnOtherKilled (me, victim, damageEvent)
 	self.isLaughReady = true
-	return self:TryContinue()
+	return self:TryContinue ()
 end
 
 -------------------------------------------------------------------------------
 -- Emote (CEyeballBossEmote): a sequence and a sound
 
-function Emote:Init(state, sequence, sound)
+function Emote:Init (state, sequence, sound)
 	self.state = state
 	self.sequence = sequence
 	self.sound = sound
 end
 
-function Emote:OnStart(me, priorAction)
-	Play(self.state, me, self.sequence)
-	me:EmitSound(self.sound)
-	return self:Continue()
+function Emote:OnStart (me, priorAction)
+	Play (self.state, me, self.sequence)
+	me:EmitSound (self.sound)
+	return self:Continue ()
 end
 
-function Emote:Update(me, interval)
-	if me:IsSequenceFinished() then return self:Done() end
-	return self:Continue()
+function Emote:Update (me, interval)
+	if me:IsSequenceFinished () then return self:Done () end
+	return self:Continue ()
 end
 
 -------------------------------------------------------------------------------
 -- Notice (CEyeballBossNotice) and ApproachTarget (CEyeballBossApproachTarget)
 
-function Notice:OnStart(me, priorAction)
-	self.timer = NpcSystem.CountdownTimer(me)
-	self.timer:Start(NOTICE_TIME)
-	me:EmitSound("Halloween.EyeballBossBecomeAlert")
-	return self:Continue()
+function Notice:OnStart (me, priorAction)
+	self.timer = NpcSystem.CountdownTimer (me)
+	self.timer:Start (NOTICE_TIME)
+	me:EmitSound ("Halloween.EyeballBossBecomeAlert")
+	return self:Continue ()
 end
 
-function Notice:Update(me, interval)
-	local victim = GetVictim(self.state, me)
-	if victim == nil then return self:Done("Victim gone") end
-	me:AimHeadTowards(me:TargetEyes(victim))
-	if self.timer:IsElapsed() then return self:ChangeTo(ApproachTarget:New(self.state), "Chasing victim") end
-	return self:Continue()
+function Notice:Update (me, interval)
+	local victim = GetVictim (self.state, me)
+	if victim == nil then return self:Done ("Victim gone") end
+	me:AimHeadTowards (me:TargetEyes (victim))
+	if self.timer:IsElapsed () then return self:ChangeTo (ApproachTarget:New (self.state), "Chasing victim") end
+	return self:Continue ()
 end
 
-function ApproachTarget:OnStart(me, priorAction)
-	self.giveUpTimer = NpcSystem.CountdownTimer(me)
-	self.giveUpTimer:Start(GIVE_UP_TIME)
-	self.minChaseTimer = NpcSystem.CountdownTimer(me)
-	self.minChaseTimer:Start(MIN_CHASE_TIME)
-	self.lingerTimer = NpcSystem.CountdownTimer(me)
-	return self:Continue()
+function ApproachTarget:OnStart (me, priorAction)
+	self.giveUpTimer = NpcSystem.CountdownTimer (me)
+	self.giveUpTimer:Start (GIVE_UP_TIME)
+	self.minChaseTimer = NpcSystem.CountdownTimer (me)
+	self.minChaseTimer:Start (MIN_CHASE_TIME)
+	self.lingerTimer = NpcSystem.CountdownTimer (me)
+	return self:Continue ()
 end
 
-function ApproachTarget:Update(me, interval)
+function ApproachTarget:Update (me, interval)
 	local state = self.state
-	local victim = GetVictim(state, me)
-	if victim ~= FindClosestVisibleVictim(state, me) and self.minChaseTimer:IsElapsed() then
-		return self:Done("Noticed better victim")
+	local victim = GetVictim (state, me)
+	if victim ~= FindClosestVisibleVictim (state, me) and self.minChaseTimer:IsElapsed () then
+		return self:Done ("Noticed better victim")
 	end
-	if victim == nil then return self:Done("Victim gone") end
-	if self.giveUpTimer:IsElapsed() then return self:Done("Giving up") end
-	if not me:IsLineOfSightClear(victim, true) then
-		if self.lingerTimer:IsElapsed() then return self:Done("Lost victim") end
-		return self:Continue()
+	if victim == nil then return self:Done ("Victim gone") end
+	if self.giveUpTimer:IsElapsed () then return self:Done ("Giving up") end
+	if not me:IsLineOfSightClear (victim, true) then
+		if self.lingerTimer:IsElapsed () then return self:Done ("Lost victim") end
+		return self:Continue ()
 	end
-	self.lingerTimer:Start(LINGER_TIME)
+	self.lingerTimer:Start (LINGER_TIME)
 	local attackRange = state.convars.tf_eyeball_boss_attack_range
-	if IsEnraged(state, me) then attackRange = attackRange * ENRAGED_RANGE_MULTIPLIER end
-	if me:IsRangeLessThan(victim, attackRange) then return self:ChangeTo(LaunchRockets:New(state), "Rocket attack!") end
-	me:SetDesiredSpeed(state.convars.tf_eyeball_boss_speed)
-	me:Approach(me:TargetCenter(victim))
-	return self:Continue()
+	if IsEnraged (state, me) then attackRange = attackRange * ENRAGED_RANGE_MULTIPLIER end
+	if me:IsRangeLessThan (victim, attackRange) then return self:ChangeTo (LaunchRockets:New (state), "Rocket attack!") end
+	me:SetDesiredSpeed (state.convars.tf_eyeball_boss_speed)
+	me:Approach (me:TargetCenter (victim))
+	return self:Continue ()
 end
 
 -------------------------------------------------------------------------------
 -- LaunchRockets (CEyeballBossLaunchRockets)
 
-function LaunchRockets:OnStart(me, priorAction)
+function LaunchRockets:OnStart (me, priorAction)
 	local state = self.state
-	local victim = GetVictim(state, me)
-	if victim == nil then return self:Done("No target") end
-	self.lastTargetPosition = me:TargetOrigin(victim)
-	self.initialDelayTimer = NpcSystem.CountdownTimer(me)
-	self.launchTimer = NpcSystem.CountdownTimer(me)
-	if IsEnraged(state, me) then
+	local victim = GetVictim (state, me)
+	if victim == nil then return self:Done ("No target") end
+	self.lastTargetPosition = me:TargetOrigin (victim)
+	self.initialDelayTimer = NpcSystem.CountdownTimer (me)
+	self.launchTimer = NpcSystem.CountdownTimer (me)
+	if IsEnraged (state, me) then
 		self.rocketsLeft = ANGRY_ROCKETS
-		self.initialDelayTimer:Start(ANGRY_DELAY)
-		Play(state, me, "firing3")
-		me:EmitSound("Halloween.EyeballBossRage")
-	elseif IsGrumpy(state, me) then
+		self.initialDelayTimer:Start (ANGRY_DELAY)
+		Play (state, me, "firing3")
+		me:EmitSound ("Halloween.EyeballBossRage")
+	elseif IsGrumpy (state, me) then
 		self.rocketsLeft = ANGRY_ROCKETS
-		self.initialDelayTimer:Start(ANGRY_DELAY)
-		Play(state, me, "firing2")
+		self.initialDelayTimer:Start (ANGRY_DELAY)
+		Play (state, me, "firing2")
 	else
 		self.rocketsLeft = CALM_ROCKETS
-		self.initialDelayTimer:Start(CALM_DELAY)
-		Play(state, me, "firing1")
+		self.initialDelayTimer:Start (CALM_DELAY)
+		Play (state, me, "firing1")
 	end
-	return self:Continue()
+	return self:Continue ()
 end
 
 -- Circle the victim: to my right for an odd entity index, else my left.
-local function Circle(me, victim)
-	local yaw = rad(me:GetYaw())
-	local right = me:Vector(sin(yaw), -cos(yaw), 0)
-	local side = me:TargetIndex(victim) % 2 == 1 and CIRCLE_DISTANCE or -CIRCLE_DISTANCE
-	me:Approach(me:WorldSpaceCenter() + right * side)
+local function Circle (me, victim)
+	local yaw = rad (me:GetYaw ())
+	local right = me:Vector (sin (yaw), -cos (yaw), 0)
+	local side = me:TargetIndex (victim) % 2 == 1 and CIRCLE_DISTANCE or -CIRCLE_DISTANCE
+	me:Approach (me:WorldSpaceCenter () + right * side)
 end
 
 -- Where to aim: at the victim, or, enraged and not too close, where it will
 -- be when a full-speed rocket arrives, unless that line hits a wall far
 -- from the victim.
-function LaunchRockets:TargetSpot(me, speed)
+function LaunchRockets:TargetSpot (me, speed)
 	local state = self.state
 	local spot = self.lastTargetPosition
-	local victim = GetVictim(state, me)
-	if not IsEnraged(state, me) or victim == nil then return spot end
-	local range = me:RangeTo(spot)
+	local victim = GetVictim (state, me)
+	if not IsEnraged (state, me) or victim == nil then return spot end
+	local range = me:RangeTo (spot)
 	if range <= LEAD_MIN_RANGE then return spot end
-	local lead = me:TargetVelocity(victim) * (range / speed)
-	local hit = me:TraceWorld(me:WorldSpaceCenter(), me:TargetOrigin(victim) + lead)
-	if hit ~= nil and (hit - spot):Length() > LEAD_ERROR_TOLERANCE then lead = me:Vector(0, 0, 0) end
-	return me:TargetOrigin(victim) + lead
+	local lead = me:TargetVelocity (victim) * (range / speed)
+	local hit = me:TraceWorld (me:WorldSpaceCenter (), me:TargetOrigin (victim) + lead)
+	if hit ~= nil and (hit - spot):Length () > LEAD_ERROR_TOLERANCE then lead = me:Vector (0, 0, 0) end
+	return me:TargetOrigin (victim) + lead
 end
 
-function LaunchRockets:Launch(me)
+function LaunchRockets:Launch (me)
 	local state = self.state
 	local speed = ROCKET_SPEED
-	if not IsEnraged(state, me) then speed = ROCKET_SPEED * CALM_SPEED_FACTOR end
-	local center = me:WorldSpaceCenter()
-	local direction = (self:TargetSpot(me, speed) - center):GetNormalized()
-	me:SpawnEntity(ROCKET_CLASS, {
-		damage = ROCKET_DAMAGE,
-		crit = not state.spell,
-		team = state.team,
-		attacker = me:GetOwnerEntity() or me,
-		launcher = me,
-		model = ROCKET_MODEL,
-		velocity = direction * speed,
-		sound = "Weapon_RPG.SingleCrit",
-	}, center)
+	if not IsEnraged (state, me) then speed = ROCKET_SPEED * CALM_SPEED_FACTOR end
+	local center = me:WorldSpaceCenter ()
+	local direction = (self:TargetSpot (me, speed) - center):GetNormalized ()
+	me:SpawnEntity (ROCKET_CLASS,
+		{
+			damage = ROCKET_DAMAGE,
+			crit = not state.spell,
+			team = state.team,
+			attacker = me:GetOwnerEntity () or me,
+			launcher = me,
+			model = ROCKET_MODEL,
+			velocity = direction * speed,
+			sound = "Weapon_RPG.SingleCrit"
+		}, center)
 end
 
-function LaunchRockets:Update(me, interval)
+function LaunchRockets:Update (me, interval)
 	local state = self.state
-	local victim = GetVictim(state, me)
+	local victim = GetVictim (state, me)
 	if victim ~= nil then
-		self.lastTargetPosition = me:TargetOrigin(victim)
-		me:SetDesiredSpeed(state.convars.tf_eyeball_boss_speed)
-		if not state.spell then Circle(me, victim) end
-		me:AimHeadTowards(me:TargetEyes(victim))
+		self.lastTargetPosition = me:TargetOrigin (victim)
+		me:SetDesiredSpeed (state.convars.tf_eyeball_boss_speed)
+		if not state.spell then Circle (me, victim) end
+		me:AimHeadTowards (me:TargetEyes (victim))
 	else
-		me:AimHeadTowards(self.lastTargetPosition)
+		me:AimHeadTowards (self.lastTargetPosition)
 	end
-	if self.initialDelayTimer:IsElapsed() and self.launchTimer:IsElapsed() then
+	if self.initialDelayTimer:IsElapsed () and self.launchTimer:IsElapsed () then
 		self.rocketsLeft = self.rocketsLeft - 1
-		self.launchTimer:Start(ROCKET_INTERVAL)
-		self:Launch(me)
-		if self.rocketsLeft == 0 then return self:Done() end
+		self.launchTimer:Start (ROCKET_INTERVAL)
+		self:Launch (me)
+		if self.rocketsLeft == 0 then return self:Done () end
 	end
-	return self:Continue()
+	return self:Continue ()
 end
 
 -------------------------------------------------------------------------------
@@ -583,114 +590,114 @@ end
 local TELEPORTING_OUT, TELEPORTING_IN, TELEPORT_DONE = 0, 1, 2
 
 -- PickNewSpawnSpot
-local function PickNewSpawnSpot(me)
-	local spots = me:SpawnPoints(SPAWN_SPOTS)
-	if #spots == 0 then return me:GetAbsOrigin() end
-	return spots[me:RandomInt(1, #spots)]
+local function PickNewSpawnSpot (me)
+	local spots = me:SpawnPoints (SPAWN_SPOTS)
+	if #spots == 0 then return me:GetAbsOrigin () end
+	return spots [me:RandomInt (1, #spots)]
 end
 
-function Teleport:OnStart(me, priorAction)
+function Teleport:OnStart (me, priorAction)
 	self.phase = TELEPORTING_OUT
-	Play(self.state, me, "teleport_out")
-	return self:Continue()
+	Play (self.state, me, "teleport_out")
+	return self:Continue ()
 end
 
-function Teleport:Update(me, interval)
-	if not me:IsSequenceFinished() then return self:Continue() end
+function Teleport:Update (me, interval)
+	if not me:IsSequenceFinished () then return self:Continue () end
 	if self.phase == TELEPORTING_OUT then
-		me:SpawnEntity(VORTEX_CLASS, { death = false }, me:GetAbsOrigin())
-		me:DispatchParticleEffect(TELEPORT_PARTICLE, me:GetAbsOrigin())
-		me:EmitSound("Halloween.EyeballBossTeleport")
-		me:SetHidden(true)
-		me:SetAbsOrigin(PickNewSpawnSpot(me) + me:Vector(0, 0, TELEPORT_HEIGHT))
+		me:SpawnEntity (VORTEX_CLASS, { death = false }, me:GetAbsOrigin ())
+		me:DispatchParticleEffect (TELEPORT_PARTICLE, me:GetAbsOrigin ())
+		me:EmitSound ("Halloween.EyeballBossTeleport")
+		me:SetHidden (true)
+		me:SetAbsOrigin (PickNewSpawnSpot (me) + me:Vector (0, 0, TELEPORT_HEIGHT))
 		self.phase = TELEPORTING_IN
 	elseif self.phase == TELEPORTING_IN then
-		me:SetHidden(false)
-		me:DispatchParticleEffect(TELEPORT_PARTICLE, me:GetAbsOrigin())
-		Play(self.state, me, "teleport_in")
+		me:SetHidden (false)
+		me:DispatchParticleEffect (TELEPORT_PARTICLE, me:GetAbsOrigin ())
+		Play (self.state, me, "teleport_in")
 		self.phase = TELEPORT_DONE
 	else
-		return self:Done()
+		return self:Done ()
 	end
-	return self:Continue()
+	return self:Continue ()
 end
 
-function Escape:OnStart(me, priorAction)
-	Play(self.state, me, "escape")
-	me:EmitSound("Halloween.EyeballBossLaugh")
-	return self:Continue()
+function Escape:OnStart (me, priorAction)
+	Play (self.state, me, "escape")
+	me:EmitSound ("Halloween.EyeballBossLaugh")
+	return self:Continue ()
 end
 
 -- Gone; the next eyeball starts over at the first level.
-function Escape:Update(me, interval)
-	if not me:IsSequenceFinished() then return self:Continue() end
-	if self.state.spell then me:EmitSound("Halloween.spell_spawn_boss_disappear") end
-	me:DispatchParticleEffect(ESCAPE_PARTICLE, me:GetAbsOrigin())
-	me:SetBossHealth(0)
-	me:Remove()
-	if not self.state.spell then me:FireGameEvent(BossEvents.EYEBALL_BOSS_ESCAPED, { level = Level(me) }) end
-	me:Shared().level = FIRST_LEVEL
-	return self:Done()
+function Escape:Update (me, interval)
+	if not me:IsSequenceFinished () then return self:Continue () end
+	if self.state.spell then me:EmitSound ("Halloween.spell_spawn_boss_disappear") end
+	me:DispatchParticleEffect (ESCAPE_PARTICLE, me:GetAbsOrigin ())
+	me:SetBossHealth (0)
+	me:Remove ()
+	if not self.state.spell then me:FireGameEvent (BossEvents.EYEBALL_BOSS_ESCAPED, { level = Level (me) }) end
+	me:Shared ().level = FIRST_LEVEL
+	return self:Done ()
 end
 
 -------------------------------------------------------------------------------
 -- Dead (CEyeballBossDead): it falls (the hover locomotion drops a dead
 -- eyeball), then pops near the ground or after 10 s.
 
-function Dead:OnStart(me, priorAction)
-	Play(self.state, me, "death")
-	me:EmitSound("Halloween.EyeballBossStunned")
-	self.giveUpTimer = NpcSystem.CountdownTimer(me)
-	self.giveUpTimer:Start(FALL_GIVE_UP)
-	return self:Continue()
+function Dead:OnStart (me, priorAction)
+	Play (self.state, me, "death")
+	me:EmitSound ("Halloween.EyeballBossStunned")
+	self.giveUpTimer = NpcSystem.CountdownTimer (me)
+	self.giveUpTimer:Start (FALL_GIVE_UP)
+	return self:Continue ()
 end
 
-local function IsNearGround(me)
-	local center = me:WorldSpaceCenter()
-	local groundZ = me:GroundHeight(center)
+local function IsNearGround (me)
+	local center = me:WorldSpaceCenter ()
+	local groundZ = me:GroundHeight (center)
 	return groundZ ~= nil and center.z - groundZ < POP_HEIGHT
 end
 
 -- JarateNearbyPlayers
-local function JarateNearbyPlayers(me, range)
-	for _, ply in ipairs(me:CollectPlayers(nil)) do
-		if me:IsRangeLessThan(ply, range) and me:IsLineOfSightClear(ply, true) then
-			me:AddCond(ply, Players.COND.URINE, GOO_DURATION)
+local function JarateNearbyPlayers (me, range)
+	for _, ply in ipairs (me:CollectPlayers (nil)) do
+		if me:IsRangeLessThan (ply, range) and me:IsLineOfSightClear (ply, true) then
+			me:AddCond (ply, Players.COND.URINE, GOO_DURATION)
 		end
 	end
 end
 
-function Dead:Update(me, interval)
-	if not (self.giveUpTimer:IsElapsed() or IsNearGround(me)) then return self:Continue() end
-	local origin = me:GetAbsOrigin()
-	me:DispatchParticleEffect(DEATH_PARTICLE, origin)
-	me:EmitSound("Cart.Explode")
-	me:EmitSound("Halloween.EyeballBossDie")
-	me:ScreenShake(origin, POP_SHAKE_AMPLITUDE, POP_SHAKE_FREQUENCY, POP_SHAKE_DURATION, SHAKE_RADIUS)
-	me:Remove()
+function Dead:Update (me, interval)
+	if not (self.giveUpTimer:IsElapsed () or IsNearGround (me)) then return self:Continue () end
+	local origin = me:GetAbsOrigin ()
+	me:DispatchParticleEffect (DEATH_PARTICLE, origin)
+	me:EmitSound ("Cart.Explode")
+	me:EmitSound ("Halloween.EyeballBossDie")
+	me:ScreenShake (origin, POP_SHAKE_AMPLITUDE, POP_SHAKE_FREQUENCY, POP_SHAKE_DURATION, SHAKE_RADIUS)
+	me:Remove ()
 	if not self.state.spell then
-		me:FireGameEvent(BossEvents.EYEBALL_BOSS_KILLED, { level = Level(me) })
-		local shared = me:Shared()
+		me:FireGameEvent (BossEvents.EYEBALL_BOSS_KILLED, { level = Level (me) })
+		local shared = me:Shared ()
 		shared.level = shared.level + 1
 	end
-	JarateNearbyPlayers(me, GOO_RANGE)
-	me:SpawnEntity(VORTEX_CLASS, { death = true }, origin)
-	return self:Done()
+	JarateNearbyPlayers (me, GOO_RANGE)
+	me:SpawnEntity (VORTEX_CLASS, { death = true }, origin)
+	return self:Done ()
 end
 
 -------------------------------------------------------------------------------
 -- The boss hooks
 
 -- The level every eyeball shares (CEyeballBoss::m_level).
-function Level(me)
-	local shared = me:Shared()
+function Level (me)
+	local shared = me:Shared ()
 	if shared.level == nil then shared.level = FIRST_LEVEL end
 	return shared.level
 end
 
 -- CEyeballBoss::Spawn: a beaten eyeball comes back tougher; otherwise
 -- scaled by the players beyond the minimum.
-function Health(players, level, convars)
+function Health (players, level, convars)
 	if level > FIRST_LEVEL then
 		return convars.tf_eyeball_boss_health_at_level_2 + convars.tf_eyeball_boss_health_per_level * (level - 2)
 	end
@@ -702,52 +709,52 @@ function Health(players, level, convars)
 	return health
 end
 
-function Setup(state, config, me)
-	state.rageTimer = NpcSystem.CountdownTimer(me)
+function Setup (state, config, me)
+	state.rageTimer = NpcSystem.CountdownTimer (me)
 	state.victim = nil
 	state.sequence = nil
-	if not state.spell then me:SetBossHealth(1) end
+	if not state.spell then me:SetBossHealth (1) end
 end
 
 -- CEyeballBoss::OnTakeDamage_Alive: a spell is immune; otherwise the bar
 -- shows what the hit leaves.
-function ModifyDamage(state, damageEvent, me)
+function ModifyDamage (state, damageEvent, me)
 	if state.spell then return 0 end
-	local left = max(0, me:GetHealth() - damageEvent.amount)
-	me:SetBossHealth(left / me:GetMaxHealth())
+	local left = max (0, me:GetHealth () - damageEvent.amount)
+	me:SetBossHealth (left / me:GetMaxHealth ())
 	return damageEvent.amount
 end
 
 -- CEyeballBossBehavior::OnInjured: crits and heavy damage from players
 -- anger it.
-function OnInjured(state, damageEvent, me)
-	if not HalloweenBoss.IsPlayer(me, damageEvent.attacker) then return end
-	if damageEvent.crit then BecomeEnraged(state, me, ENRAGE_DURATION) end
-	if state.dps > ENRAGE_DPS then BecomeEnraged(state, me, ENRAGE_DURATION) end
+function OnInjured (state, damageEvent, me)
+	if not HalloweenBoss.IsPlayer (me, damageEvent.attacker) then return end
+	if damageEvent.crit then BecomeEnraged (state, me, ENRAGE_DURATION) end
+	if state.dps > ENRAGE_DPS then BecomeEnraged (state, me, ENRAGE_DURATION) end
 end
 
 -- CEyeballBoss::Update: the skin and the anger pose follow the mood.
-function OnUpdate(state, me)
-	if IsEnraged(state, me) then
+function OnUpdate (state, me)
+	if IsEnraged (state, me) then
 		if state.spell then
-			me:SetSkin(state.team == Teams.RED and SKIN_TEAM_RED or SKIN_TEAM_BLUE)
+			me:SetSkin (state.team == Teams.RED and SKIN_TEAM_RED or SKIN_TEAM_BLUE)
 		else
-			me:SetSkin(SKIN_RED)
+			me:SetSkin (SKIN_RED)
 		end
-		me:SetPoseParameter("anger", ANGER_ENRAGED)
-	elseif IsGrumpy(state, me) then
-		me:SetSkin(SKIN_NORMAL)
-		me:SetPoseParameter("anger", ANGER_GRUMPY)
+		me:SetPoseParameter ("anger", ANGER_ENRAGED)
+	elseif IsGrumpy (state, me) then
+		me:SetSkin (SKIN_NORMAL)
+		me:SetPoseParameter ("anger", ANGER_GRUMPY)
 	else
-		me:SetSkin(SKIN_NORMAL)
-		me:SetPoseParameter("anger", ANGER_CALM)
+		me:SetSkin (SKIN_NORMAL)
+		me:SetPoseParameter ("anger", ANGER_CALM)
 	end
 end
 
-function EmergeAction(state) return Emerge:New(state) end
-function DyingAction(state) return Dead:New(state) end
+function EmergeAction (state) return Emerge:New (state) end
+function DyingAction (state) return Dead:New (state) end
 
-HalloweenBoss.Variant(_M)
+HalloweenBoss.Variant (_M)
 
 -------------------------------------------------------------------------------
 -- The teleport vortex (CTeleportVortex): a ±50 trigger living 5 s. It pulls
@@ -767,7 +774,8 @@ HalloweenBoss.Variant(_M)
 --   p's eyes, ignoring actors), SpawnPoints(name), ApplyImpulse(p, v),
 --   Teleport(p, v), DealDamage(t, amount, dmgType, attacker).
 
-VORTEX_METHODS = {
+VORTEX_METHODS =
+{
 	"Now",
 	"RandomInt",
 	"Vector",
@@ -784,7 +792,7 @@ VORTEX_METHODS = {
 	"SpawnPoints",
 	"ApplyImpulse",
 	"Teleport",
-	"DealDamage",
+	"DealDamage"
 }
 
 VORTEX_LIFETIME = 5
@@ -806,48 +814,49 @@ local VortexModel = {}
 VortexModel.__index = VortexModel
 Vortex = {}
 
-function Vortex.New(death, port, splitTeam)
-	local lifeTimer = NpcSystem.CountdownTimer(port)
-	lifeTimer:Start(VORTEX_LIFETIME)
-	return setmetatable({
-		port = port,
-		death = death,
-		splitTeam = splitTeam == true,
-		where = death and VORTEX_LOOT or VORTEX_PURGATORY,
-		lifeTimer = lifeTimer,
-		book = BOOK_SILENT,
-	}, VortexModel)
+function Vortex.New (death, port, splitTeam)
+	local lifeTimer = NpcSystem.CountdownTimer (port)
+	lifeTimer:Start (VORTEX_LIFETIME)
+	return setmetatable (
+		{
+			port = port,
+			death = death,
+			splitTeam = splitTeam == true,
+			where = death and VORTEX_LOOT or VORTEX_PURGATORY,
+			lifeTimer = lifeTimer,
+			book = BOOK_SILENT
+		}, VortexModel)
 end
 
 -- The book's sounds as it rises in and sinks out.
-function VortexModel:RingBook()
+function VortexModel:RingBook ()
 	local port, life = self.port, self.lifeTimer
 	local ramp = VORTEX_LIFETIME / VORTEX_RAMP_FRACTION
-	local elapsed = life:GetElapsedTime()
+	local elapsed = life:GetElapsedTime ()
 	if self.book == BOOK_SILENT and elapsed <= ramp then
-		port:EmitSound("Halloween.TeleportVortex.BookSpawn")
+		port:EmitSound ("Halloween.TeleportVortex.BookSpawn")
 		self.book = BOOK_IN
 	elseif self.book == BOOK_IN and elapsed >= VORTEX_LIFETIME - ramp then
-		port:EmitSound("Halloween.TeleportVortex.BookExit")
+		port:EmitSound ("Halloween.TeleportVortex.BookExit")
 		self.book = BOOK_OUT
 	end
 end
 
 -- VortexThink
-function VortexModel:Think()
+function VortexModel:Think ()
 	local port = self.port
-	if self.lifeTimer:IsElapsed() then
-		port:Remove()
+	if self.lifeTimer:IsElapsed () then
+		port:Remove ()
 		return
 	end
-	if self.death then self:RingBook() end
-	local center = port:WorldSpaceCenter()
-	for _, ply in ipairs(port:CollectPlayers(nil)) do
-		if not port:IsTargetOnGround(ply) then
-			local to = center - port:TargetCenter(ply)
-			local lookingIn = port:IsLookingTowards(ply, center, VORTEX_LOOK_TOLERANCE)
-			if to:Length() <= VORTEX_SUCTION_RANGE and lookingIn and port:IsLineOfSightClear(ply, center) then
-				port:ApplyImpulse(ply, to:GetNormalized() * VORTEX_SUCTION_FORCE)
+	if self.death then self:RingBook () end
+	local center = port:WorldSpaceCenter ()
+	for _, ply in ipairs (port:CollectPlayers (nil)) do
+		if not port:IsTargetOnGround (ply) then
+			local to = center - port:TargetCenter (ply)
+			local lookingIn = port:IsLookingTowards (ply, center, VORTEX_LOOK_TOLERANCE)
+			if to:Length () <= VORTEX_SUCTION_RANGE and lookingIn and port:IsLineOfSightClear (ply, center) then
+				port:ApplyImpulse (ply, to:GetNormalized () * VORTEX_SUCTION_FORCE)
 			end
 		end
 	end
@@ -855,37 +864,37 @@ end
 
 -- SendPlayerToTheUnderworld: a random spot no enemy stands on; with none
 -- free, a random spot, and the enemies on it are telefragged.
-function VortexModel:Touch(ply)
+function VortexModel:Touch (ply)
 	local port = self.port
 	local where = self.where
 	if self.splitTeam then
-		where = where .. (port:TeamOf(ply) == Teams.RED and VORTEX_RED_SUFFIX or VORTEX_BLUE_SUFFIX)
+		where = where .. (port:TeamOf (ply) == Teams.RED and VORTEX_RED_SUFFIX or VORTEX_BLUE_SUFFIX)
 	end
-	local spots = port:SpawnPoints(where)
+	local spots = port:SpawnPoints (where)
 	if #spots == 0 then return end
 	local enemies = {}
-	for _, team in ipairs(Targeting.EnemyTeamsOf(port:TeamOf(ply))) do
-		for _, enemy in ipairs(port:CollectPlayers(team)) do enemies[#enemies + 1] = enemy end
+	for _, team in ipairs (Targeting.EnemyTeamsOf (port:TeamOf (ply))) do
+		for _, enemy in ipairs (port:CollectPlayers (team)) do enemies [#enemies + 1] = enemy end
 	end
-	local function Occupants(spot)
+	local function Occupants (spot)
 		local found = {}
-		for _, enemy in ipairs(enemies) do
-			if (spot - port:TargetOrigin(enemy)):Length() < SPAWN_OCCUPIED_RANGE then found[#found + 1] = enemy end
+		for _, enemy in ipairs (enemies) do
+			if (spot - port:TargetOrigin (enemy)):Length () < SPAWN_OCCUPIED_RANGE then found [#found + 1] = enemy end
 		end
 		return found
 	end
 	local open = {}
-	for _, spot in ipairs(spots) do
-		if #Occupants(spot) == 0 then open[#open + 1] = spot end
+	for _, spot in ipairs (spots) do
+		if #Occupants (spot) == 0 then open [#open + 1] = spot end
 	end
 	local destination
 	if #open == 0 then
-		destination = spots[port:RandomInt(1, #spots)]
-		for _, enemy in ipairs(Occupants(destination)) do
-			port:DealDamage(enemy, TELEFRAG_DAMAGE, Actor.DMG_CRUSH, ply)
+		destination = spots [port:RandomInt (1, #spots)]
+		for _, enemy in ipairs (Occupants (destination)) do
+			port:DealDamage (enemy, TELEFRAG_DAMAGE, Actor.DMG_CRUSH, ply)
 		end
 	else
-		destination = open[port:RandomInt(1, #open)]
+		destination = open [port:RandomInt (1, #open)]
 	end
-	port:Teleport(ply, destination)
+	port:Teleport (ply, destination)
 end

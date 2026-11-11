@@ -6,16 +6,16 @@
 ENT.Type = "brush"
 ENT.Base = "base_brush2"
 
-function ENT:VolumeInit()
-	self.defuse = WS.Feature("defuse")
-	self.defuse:BindSite(self)
+function ENT:VolumeInit ()
+	self.defuse = WS.Feature ("defuse")
+	self.defuse:BindSite (self)
 end
 
-function ENT:OnRemove()
-	if self.defuse then self.defuse:UnbindSite(self) end
+function ENT:OnRemove ()
+	if self.defuse then self.defuse:UnbindSite (self) end
 end
 
 -- Whether ent's centre is inside it.
-function ENT:Holds(ent)
-	return self:WorldToLocal(ent:WorldSpaceCenter()):WithinAABox(self:OBBMins(), self:OBBMaxs())
+function ENT:Holds (ent)
+	return self:WorldToLocal (ent:WorldSpaceCenter ()):WithinAABox (self:OBBMins (), self:OBBMaxs ())
 end

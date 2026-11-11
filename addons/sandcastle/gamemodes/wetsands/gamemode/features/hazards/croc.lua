@@ -10,11 +10,11 @@
 -- filters (living players, filtername) while it is enabled; Enable, Disable
 -- and Toggle are the trigger's.
 local require = require
-local Hazards = require("features.hazards.model")
+local Hazards = require ("features.hazards.model")
 local Teams = gameplay.teams
 local Actor = npc.actor
 local ipairs = ipairs
-module(...)
+module (...)
 
 MODEL = "models/props_island/crocodile/crocodile.mdl" -- CROC_MODEL
 ATTACK_SEQUENCE = "attack"
@@ -23,59 +23,63 @@ DAMAGE = 1000
 DAMAGE_TYPE = Actor.DMG_CRUSH
 
 OUTPUT_EAT = "OnEat"
-local TEAM_OUTPUTS = {
+local TEAM_OUTPUTS =
+{
 	[Teams.RED] = "OnEatRed",
-	[Teams.BLUE] = "OnEatBlue",
+	[Teams.BLUE] = "OnEatBlue"
 }
 
-function NewState(config, now)
-	return {
+function NewState (config, now)
+	return
+	{
 		team = config.team,
 		model = config.model or MODEL,
 		touching = {},
-		attacks = {},
+		attacks = {}
 	}
 end
 
-function Team(state) return state.team end
+function Team (state) return state.team end
 
 -- StartTouch raises a croc aimed at the toucher; EndTouch only ends the
 -- touch, so a croc already up may still find them back inside.
-function OnTouch(state, toucher)
+function OnTouch (state, toucher)
 	if toucher.leaving then
-		state.touching[toucher.target] = nil
+		state.touching [toucher.target] = nil
 		return Hazards.Nothing
 	end
-	state.touching[toucher.target] = true
-	state.attacks[#state.attacks + 1] = {
+	state.touching [toucher.target] = true
+	state.attacks [#state.attacks + 1] =
+	{
 		target = toucher.target,
 		team = toucher.team,
-		at = toucher.now + ATTACK_DELAY,
+		at = toucher.now + ATTACK_DELAY
 	}
-	return Hazards.Animate(state.model, ATTACK_SEQUENCE, toucher.target)
+	return Hazards.Animate (state.model, ATTACK_SEQUENCE, toucher.target)
 end
 
 -- CFuncCroc::FireOutputs
-local function Outputs(team)
+local function Outputs (team)
 	local outputs = { OUTPUT_EAT }
-	if TEAM_OUTPUTS[team] then outputs[#outputs + 1] = TEAM_OUTPUTS[team] end
+	if TEAM_OUTPUTS [team] then outputs [#outputs + 1] = TEAM_OUTPUTS [team] end
 	return outputs
 end
 
 -- CrocAttack, for every croc whose bite is due.
-function Tick(state, now)
+function Tick (state, now)
 	local hits, waiting = {}, {}
-	for _, attack in ipairs(state.attacks) do
+	for _, attack in ipairs (state.attacks) do
 		if now < attack.at then
-			waiting[#waiting + 1] = attack
-		elseif state.touching[attack.target] then
-			hits[#hits + 1] = {
+			waiting [#waiting + 1] = attack
+		elseif state.touching [attack.target] then
+			hits [#hits + 1] =
+			{
 				target = attack.target,
-				outputs = Outputs(attack.team),
+				outputs = Outputs (attack.team)
 			}
 		end
 	end
 	state.attacks = waiting
 	if #hits == 0 then return Hazards.Nothing end
-	return Hazards.Hurt(hits, DAMAGE, DAMAGE_TYPE)
+	return Hazards.Hurt (hits, DAMAGE, DAMAGE_TYPE)
 end

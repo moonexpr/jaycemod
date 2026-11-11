@@ -6,20 +6,20 @@ ENT.Base = "ws_trigger_volume"
 
 local INVALID = WS.PlayerRules.COND.INVALID
 
-function ENT:TriggerInit()
-	self.condition = tonumber(self:Key("condition", INVALID)) or INVALID
+function ENT:TriggerInit ()
+	self.condition = tonumber (self:Key ("condition", INVALID)) or INVALID
 end
 
-function ENT:PlayerStartTouch(ply)
-	if not self:PassesTriggerFilters(ply) then return end
+function ENT:PlayerStartTouch (ply)
+	if not self:PassesTriggerFilters (ply) then return end
 	if self.condition == INVALID then
-		WS.RemoveAllConditions(ply)
+		WS.RemoveAllConditions (ply)
 	else
-		WS.RemoveCondition(ply, self.condition)
+		WS.RemoveCondition (ply, self.condition)
 	end
-	self:TriggerOutput("OnStartTouch", ply)
+	self:TriggerOutput ("OnStartTouch", ply)
 end
 
-function ENT:PlayerEndTouch(ply)
-	self:TriggerOutput("OnEndTouch", ply)
+function ENT:PlayerEndTouch (ply)
+	self:TriggerOutput ("OnEndTouch", ply)
 end

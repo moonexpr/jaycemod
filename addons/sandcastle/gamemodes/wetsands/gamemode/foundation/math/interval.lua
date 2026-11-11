@@ -6,12 +6,12 @@
 --     apart
 -- This is the Lua twin, which clients run; a server with native/foundation
 -- has the native one in its place, which keeps this contract.
-module(...)
+module (...)
 
-function Overlaps(alo, ahi, blo, bhi)
+function Overlaps (alo, ahi, blo, bhi)
 	return alo <= bhi and blo <= ahi
 end
 
-function Intersect(alo, ahi, blo, bhi)
+function Intersect (alo, ahi, blo, bhi)
 	return alo > blo and alo or blo, ahi < bhi and ahi or bhi
 end

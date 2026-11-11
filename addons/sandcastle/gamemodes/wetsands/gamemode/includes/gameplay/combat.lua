@@ -13,7 +13,7 @@
 local require = require
 local Teams = gameplay.teams
 local math, setmetatable = math, setmetatable
-module(...)
+module (...)
 
 CRIT_MULTIPLIER = 3 -- TF_DAMAGE_CRIT_MULTIPLIER
 
@@ -22,28 +22,28 @@ HALF_FALLOFF = 0.5 -- DMG_HALF_FALLOFF's
 Explosion = {}
 Explosion.__index = Explosion
 
-function Explosion.New(config)
-	return setmetatable({ config = config }, Explosion)
+function Explosion.New (config)
+	return setmetatable ({ config = config }, Explosion)
 end
 
 -- CTFRadiusDamageInfo::CalculateFalloff: the fraction of the damage left at
 -- the edge.
-local function Falloff(config)
+local function Falloff (config)
 	if config.halfFalloff then return HALF_FALLOFF end
 	return config.damage / config.radius
 end
 
 -- CTFRadiusDamageInfo::ApplyToEntity: the nearer of the victim's centre and
 -- origin; 0 for the entity a projectile hit directly (its GetEnemy()).
-function Explosion:DistanceTo(center, origin, direct)
+function Explosion:DistanceTo (center, origin, direct)
 	if direct then return 0 end
 	local from = self.config.origin
-	return math.min((from - center):Length(), (from - origin):Length())
+	return math.min ((from - center):Length (), (from - origin):Length ())
 end
 
 -- Teammates are spared, except the attacker itself, unless friendly fire is
 -- forced; a blast with no team has no teammates.
-local function Spared(config, victim)
+local function Spared (config, victim)
 	if victim.isAttacker or config.forceFriendlyFire then return false end
 	return config.attackerTeam ~= Teams.UNASSIGNED and victim.team == config.attackerTeam
 end
@@ -53,11 +53,11 @@ end
 -- (CTFGameRules::RadiusDamage) hurts nobody, and neither does one that
 -- comes to no damage (CTFRadiusDamageInfo::ApplyToEntity), so a harmless
 -- blast sets off no pumpkin.
-function Explosion:DamageTo(victim)
+function Explosion:DamageTo (victim)
 	local config = self.config
-	if config.radius <= 0 or not victim.visible or Spared(config, victim) then return nil end
-	local t = math.min(victim.distance, config.radius) / config.radius
-	local amount = config.damage + (config.damage * Falloff(config) - config.damage) * t
+	if config.radius <= 0 or not victim.visible or Spared (config, victim) then return nil end
+	local t = math.min (victim.distance, config.radius) / config.radius
+	local amount = config.damage + (config.damage * Falloff (config) - config.damage) * t
 	if amount <= 0 then return nil end
 	if config.crit then amount = amount * CRIT_MULTIPLIER end
 	return amount

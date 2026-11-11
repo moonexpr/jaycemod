@@ -4,10 +4,10 @@
 -- zaps 2 of them for 20 burn damage; at the end it zaps up to 16.
 local require = require
 local Teams = gameplay.teams
-local Spells = require("features.spells.model")
-local SpellSet = require("features.spells.halloween")
+local Spells = require ("features.spells.model")
+local SpellSet = require ("features.spells.halloween")
 local ipairs, min = ipairs, math.min
-module(...)
+module (...)
 
 INDEX = SpellSet.SPELL_LIGHTNING
 PROJECTILE = "tf_projectile_lightningorb"
@@ -27,85 +27,89 @@ PULL_LIFT = 50
 GROUND_LIFT = 150
 ZAP_SOUND = "TFPlayer.MedicChargedDeath"
 SOUND = "Halloween.spell_lightning_impact"
-HIT = {
+HIT =
+{
 	[Teams.RED] = "spell_lightningball_hit_red",
-	[Teams.BLUE] = "spell_lightningball_hit_blue",
+	[Teams.BLUE] = "spell_lightningball_hit_blue"
 }
-BURST = {
+BURST =
+{
 	[Teams.RED] = "drg_cow_explosioncore_charged",
-	[Teams.BLUE] = "drg_cow_explosioncore_charged_blue",
+	[Teams.BLUE] = "drg_cow_explosioncore_charged_blue"
 }
 
-USE = {
+USE =
+{
 	kind = Spells.USE_ATTACK,
-	range = SpellSet.PROJECTILE_SPEED * SpellSet.Definition(INDEX).speedScale * LIFETIME,
+	range = SpellSet.PROJECTILE_SPEED * SpellSet.Definition (INDEX).speedScale * LIFETIME,
 	radius = RADIUS,
 	needsLineOfSight = true,
-	selfOnly = false,
+	selfOnly = false
 }
 
-function Cast(caster)
-	SpellSet.CastWheel(caster)
-	return SpellSet.Toss(caster, _M)
+function Cast (caster)
+	SpellSet.CastWheel (caster)
+	return SpellSet.Toss (caster, _M)
 end
 
-function NewShot(class, config, now)
-	return {
+function NewShot (class, config, now)
+	return
+	{
 		nextZap = now + FIRST_ZAP,
-		nextVortex = now + VORTEX_INTERVAL,
+		nextVortex = now + VORTEX_INTERVAL
 	}
 end
 
 -- Zap: of the first ZAP_CANDIDATES found, shuffled, up to `count` living
 -- enemies of the caster in sight (not phased or invulnerable) take a beam.
-local function Zap(caster, where, count)
-	local owner = caster:Owner()
-	local found = caster:EntitiesInSphere(where.position, RADIUS)
+local function Zap (caster, where, count)
+	local owner = caster:Owner ()
+	local found = caster:EntitiesInSphere (where.position, RADIUS)
 	local list = {}
-	for i = 1, min(#found, ZAP_CANDIDATES) do list[i] = found[i] end
+	for i = 1, min (#found, ZAP_CANDIDATES) do list [i] = found [i] end
 	for i = #list, 2, -1 do
-		local j = caster:RandomInt(1, i)
-		list[i], list[j] = list[j], list[i]
+		local j = caster:RandomInt (1, i)
+		list [i], list [j] = list [j], list [i]
 	end
 	local hits = 0
-	for _, target in ipairs(list) do
+	for _, target in ipairs (list) do
 		if hits >= count then break end
-		if caster:IsAlive(target) and caster:TeamOf(target) ~= caster:TeamOf(owner)
-			and caster:IsVisible(where.position, caster:Origin(target)) and not SpellSet.Spared(caster, target) then
-			caster:Tracer(HIT[where.team], where.position, caster:EyePosition(target))
-			caster:Damage(target, DAMAGE, SpellSet.DMG_BURN, where.projectile)
+		if caster:IsAlive (target) and caster:TeamOf (target) ~= caster:TeamOf (owner)
+			and caster:IsVisible (where.position, caster:Origin (target)) and not SpellSet.Spared (caster, target) then
+			caster:Tracer (HIT [where.team], where.position, caster:EyePosition (target))
+			caster:Damage (target, DAMAGE, SpellSet.DMG_BURN, where.projectile)
 			hits = hits + 1
 		end
 	end
-	if hits > 0 then caster:EmitSound(ZAP_SOUND) end
+	if hits > 0 then caster:EmitSound (ZAP_SOUND) end
 end
 
 -- VortexThink: enemies in sight are drawn in, lifted off the ground.
-local function Vortex(caster, where)
-	for _, target in ipairs(caster:EntitiesInSphere(where.position, RADIUS)) do
-		if caster:TeamOf(target) ~= where.team and caster:IsVisible(where.position, caster:Origin(target)) then
-			local velocity = (where.position - caster:Origin(target)) * PULL + caster:Vector(0, 0, PULL_LIFT)
-			if caster:IsOnGround(target) then velocity = velocity + caster:Vector(0, 0, GROUND_LIFT) end
-			caster:SetVelocity(target, velocity)
+local function Vortex (caster, where)
+	for _, target in ipairs (caster:EntitiesInSphere (where.position, RADIUS)) do
+		if caster:TeamOf (target) ~= where.team and caster:IsVisible (where.position, caster:Origin (target)) then
+			local velocity = (where.position - caster:Origin (target)) * PULL + caster:Vector (0, 0, PULL_LIFT)
+			if caster:IsOnGround (target) then velocity = velocity + caster:Vector (0, 0, GROUND_LIFT) end
+			caster:SetVelocity (target, velocity)
 		end
 	end
 end
 
-function Tick(caster, state, where, now)
+function Tick (caster, state, where, now)
 	if now >= state.nextVortex then
-		Vortex(caster, where)
+		Vortex (caster, where)
 		state.nextVortex = now + VORTEX_INTERVAL
 	end
 	if now >= state.nextZap then
-		Zap(caster, where, ZAPS)
-		state.nextZap = now + caster:RandomFloat(ZAP_INTERVAL_MIN, ZAP_INTERVAL_MAX)
+		Zap (caster, where, ZAPS)
+		state.nextZap = now + caster:RandomFloat (ZAP_INTERVAL_MIN, ZAP_INTERVAL_MAX)
 	end
 	return nil
 end
 
 -- ExplodeAndRemove, at the end of its life.
-function Impact(caster, impact)
-	caster:Particle(BURST[impact.team], impact.position)
-	caster:EmitSound(SOUND, impact.projectile)
-	Zap(caster, impact, FINAL_ZAPS)
+function Impact (caster, impact)
+	caster:Particle (BURST [impact.team], impact.position)
+	caster:EmitSound (SOUND, impact.projectile)
+	Zap (caster, impact, FINAL_ZAPS)
 end

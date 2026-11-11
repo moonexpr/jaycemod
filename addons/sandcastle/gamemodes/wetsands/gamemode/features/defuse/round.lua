@@ -9,10 +9,10 @@
 -- decides, and only RED wins by killing the other side.
 local Rounds = gameplay.rounds
 local Teams = gameplay.teams
-local State = require("games.gameplay.rounds.state")
-module(...)
+local State = require ("games.gameplay.rounds.state")
+module (...)
 
-Mode = Rounds.Mode:Extend("defuse")
+Mode = Rounds.Mode:Extend ("defuse")
 -- Over every other mode a map can carry.
 Mode.PRIORITY = 4
 Mode.OBJECTIVE = true
@@ -31,23 +31,23 @@ Mode.PLAYERS_NEEDED = { count = MIN_PLAYERS }
 -- The freeze before the round, in seconds (CS:S's mp_freezetime).
 FREEZE_SECONDS = 5
 
-function Mode:MayWinByPoints(team, q) return false end
+function Mode:MayWinByPoints (team, q) return false end
 
-function Mode:SetupSeconds(settings) return FREEZE_SECONDS end
+function Mode:SetupSeconds (settings) return FREEZE_SECONDS end
 
 -- settings.defuseRoundTime: the round's length in seconds (cs_defuse_logic's).
-function Mode:StalemateSeconds(settings) return settings.defuseRoundTime or 0 end
+function Mode:StalemateSeconds (settings) return settings.defuseRoundTime or 0 end
 
-local function Bomb(world) return world.objectiveState and world.objectiveState.bomb end
+local function Bomb (world) return world.objectiveState and world.objectiveState.bomb end
 
-function Mode:StalemateTimerWin(world) return Teams.BLUE, Rounds.WINREASON.TARGET_SAVED end
+function Mode:StalemateTimerWin (world) return Teams.BLUE, Rounds.WINREASON.TARGET_SAVED end
 
-function Mode:HoldsStalemateTimer(world)
-	local bomb = Bomb(world)
-	return bomb ~= nil and not bomb:EliminationWins(nil)
+function Mode:HoldsStalemateTimer (world)
+	local bomb = Bomb (world)
+	return bomb ~= nil and not bomb:EliminationWins (nil)
 end
 
-function Mode:EliminationWins(team, world)
-	local bomb = Bomb(world)
-	return bomb == nil or bomb:EliminationWins(team)
+function Mode:EliminationWins (team, world)
+	local bomb = Bomb (world)
+	return bomb == nil or bomb:EliminationWins (team)
 end

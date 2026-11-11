@@ -31,88 +31,88 @@
 -- has the native one in its place, which keeps this contract.
 local debug, error, getmetatable, pairs, rawget, rawset, setmetatable, tostring, type = debug, error, getmetatable, pairs, rawget, rawset, setmetatable, tostring, type
 local concat, match, sort = table.concat, string.match, table.sort
-module(...)
+module (...)
 
 -- An error is the index line's: the caller of Export or Replace.
 local CALLER = 3
 
 -- namespace table -> its name, for errors
-Names = Names or setmetatable({}, { __mode = "k" })
+Names = Names or setmetatable ({}, { __mode = "k" })
 -- namespace table -> { key = true } for each key set by Export or Replace
-Owned = Owned or setmetatable({}, { __mode = "k" })
+Owned = Owned or setmetatable ({}, { __mode = "k" })
 -- namespace table -> { key = load } for each deferred key not yet read
-Deferred = Deferred or setmetatable({}, { __mode = "k" })
+Deferred = Deferred or setmetatable ({}, { __mode = "k" })
 
 -- The metatable of a namespace with deferred keys: a read of one loads it.
 Lazy = Lazy or {}
-function Lazy.__index(ns, key)
-	local loads = Deferred[ns]
-	local load = loads and loads[key]
+function Lazy.__index (ns, key)
+	local loads = Deferred [ns]
+	local load = loads and loads [key]
 	if load == nil then return nil end
-	local value = load()
-	loads[key] = nil
-	rawset(ns, key, value)
+	local value = load ()
+	loads [key] = nil
+	rawset (ns, key, value)
 	return value
 end
 
-local function NameOf(ns, key)
-	return (Names[ns] or tostring(ns)) .. "." .. tostring(key)
+local function NameOf (ns, key)
+	return (Names [ns] or tostring (ns)) .. "." .. tostring (key)
 end
 
-local function Owns(ns, key)
-	local keys = Owned[ns]
-	return keys ~= nil and keys[key] == true
+local function Owns (ns, key)
+	local keys = Owned [ns]
+	return keys ~= nil and keys [key] == true
 end
 
-local function Set(ns, key, value)
-	local keys = Owned[ns]
+local function Set (ns, key, value)
+	local keys = Owned [ns]
 	if keys == nil then
 		keys = {}
-		Owned[ns] = keys
+		Owned [ns] = keys
 	end
-	keys[key] = true
-	ns[key] = value
+	keys [key] = true
+	ns [key] = value
 end
 
-local function CheckSet(ns, key, value)
-	if type(ns) ~= "table" then error("a namespace is a table, not " .. tostring(ns), CALLER) end
-	if type(key) ~= "string" or not match(key, "^[%a_][%w_]*$") then
-		error(NameOf(ns, key) .. ": a key is a name", CALLER)
+local function CheckSet (ns, key, value)
+	if type (ns) ~= "table" then error ("a namespace is a table, not " .. tostring (ns), CALLER) end
+	if type (key) ~= "string" or not match (key, "^[%a_][%w_]*$") then
+		error (NameOf (ns, key) .. ": a key is a name", CALLER)
 	end
-	if value == nil then error(NameOf(ns, key) .. " is set to nothing", CALLER) end
+	if value == nil then error (NameOf (ns, key) .. " is set to nothing", CALLER) end
 end
 
-function Namespace(globals, name)
-	local ns = rawget(globals, name)
+function Namespace (globals, name)
+	local ns = rawget (globals, name)
 	if ns == nil then
 		ns = {}
-		globals[name] = ns
-	elseif type(ns) ~= "table" then
-		error("global " .. name .. " is a " .. type(ns) .. ", not a namespace", 2)
+		globals [name] = ns
+	elseif type (ns) ~= "table" then
+		error ("global " .. name .. " is a " .. type (ns) .. ", not a namespace", 2)
 	end
-	Names[ns] = Names[ns] or name
+	Names [ns] = Names [ns] or name
 	return ns
 end
 
-function Export(ns, key, value)
-	CheckSet(ns, key, value)
-	if rawget(ns, key) ~= nil and not Owns(ns, key) then
-		error(NameOf(ns, key) .. " is taken; Replace it to take it over on purpose", 2)
+function Export (ns, key, value)
+	CheckSet (ns, key, value)
+	if rawget (ns, key) ~= nil and not Owns (ns, key) then
+		error (NameOf (ns, key) .. " is taken; Replace it to take it over on purpose", 2)
 	end
-	Set(ns, key, value)
+	Set (ns, key, value)
 end
 
-function Replace(ns, key, value)
-	CheckSet(ns, key, value)
-	if rawget(ns, key) == nil then error(NameOf(ns, key) .. " holds nothing to replace; Export it", 2) end
-	Set(ns, key, value)
+function Replace (ns, key, value)
+	CheckSet (ns, key, value)
+	if rawget (ns, key) == nil then error (NameOf (ns, key) .. " holds nothing to replace; Export it", 2) end
+	Set (ns, key, value)
 end
 
 -- Whether a binary module made value: a table holding a C function.
-local function IsNative(value)
-	if type(value) ~= "table" then return false end
-	for _, field in pairs(value) do
-		if type(field) == "function" and debug.getinfo(field, "S").what == "C" then return true end
+local function IsNative (value)
+	if type (value) ~= "table" then return false end
+	for _, field in pairs (value) do
+		if type (field) == "function" and debug.getinfo (field, "S").what == "C" then return true end
 	end
 	return false
 end
@@ -121,57 +121,58 @@ end
 -- twin does not take.
 local MODULE_KEYS = { _M = true, _NAME = true, _PACKAGE = true }
 
-function Twin(ns, key, lua)
-	CheckSet(ns, key, lua)
-	local native = rawget(ns, key)
-	if not IsNative(native) then
-		if native ~= nil and not Owns(ns, key) then
-			error(NameOf(ns, key) .. " is taken by something other than a native twin", 2)
+function Twin (ns, key, lua)
+	CheckSet (ns, key, lua)
+	local native = rawget (ns, key)
+	if not IsNative (native) then
+		if native ~= nil and not Owns (ns, key) then
+			error (NameOf (ns, key) .. " is taken by something other than a native twin", 2)
 		end
-		Set(ns, key, lua)
+		Set (ns, key, lua)
 		return lua
 	end
 	local missing = {}
-	for field in pairs(lua) do
-		if not MODULE_KEYS[field] and rawget(native, field) == nil then missing[#missing + 1] = tostring(field) end
+	for field in pairs (lua) do
+		if not MODULE_KEYS [field] and rawget (native, field) == nil then missing [#missing + 1] = tostring (field) end
 	end
 	if #missing > 0 then
-		sort(missing)
-		error(NameOf(ns, key) .. ": the native twin lacks " .. concat(missing, ", "), 2)
+		sort (missing)
+		error (NameOf (ns, key) .. ": the native twin lacks " .. concat (missing, ", "), 2)
 	end
-	Set(ns, key, native)
+	Set (ns, key, native)
 	return native
 end
 
-function Defer(ns, key, load)
-	CheckSet(ns, key, load)
-	if type(load) ~= "function" then error(NameOf(ns, key) .. " is deferred to a " .. type(load) .. ", not a loader", 2) end
-	if rawget(ns, key) ~= nil and not Owns(ns, key) then
-		error(NameOf(ns, key) .. " is taken; a deferred key needs a free one", 2)
+function Defer (ns, key, load)
+	CheckSet (ns, key, load)
+	if type (load) ~= "function" then error (NameOf (ns, key) .. " is deferred to a " .. type (load) .. ", not a loader", 2) end
+	if rawget (ns, key) ~= nil and not Owns (ns, key) then
+		error (NameOf (ns, key) .. " is taken; a deferred key needs a free one", 2)
 	end
-	local meta = getmetatable(ns)
+	local meta = getmetatable (ns)
 	if meta == nil then
-		setmetatable(ns, Lazy)
+		setmetatable (ns, Lazy)
 	elseif meta ~= Lazy then
-		error(NameOf(ns, key) .. ": " .. (Names[ns] or tostring(ns)) .. " has a metatable of its own", 2)
+		error (NameOf (ns, key) .. ": " .. (Names [ns] or tostring (ns)) .. " has a metatable of its own", 2)
 	end
-	local loads = Deferred[ns]
+	local loads = Deferred [ns]
 	if loads == nil then
 		loads = {}
-		Deferred[ns] = loads
+		Deferred [ns] = loads
 	end
-	loads[key] = load
-	Set(ns, key, nil)
+	loads [key] = load
+	Set (ns, key, nil)
 end
 
-function Environment(globals, require)
-	Names[globals] = "_G"
-	return setmetatable({
-		Namespace = function(name) return Namespace(globals, name) end,
-		Export = Export,
-		Replace = Replace,
-		Twin = Twin,
-		Defer = function(ns, key, name) return Defer(ns, key, function() return require(name) end) end,
-		require = require,
-	}, { __index = globals })
+function Environment (globals, require)
+	Names [globals] = "_G"
+	return setmetatable (
+		{
+			Namespace = function (name) return Namespace (globals, name) end,
+			Export = Export,
+			Replace = Replace,
+			Twin = Twin,
+			Defer = function (ns, key, name) return Defer (ns, key, function () return require (name) end) end,
+			require = require
+		}, { __index = globals })
 end

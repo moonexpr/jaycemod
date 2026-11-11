@@ -6,31 +6,32 @@ ENT.Type = "point"
 ENT.Base = "base_point"
 
 -- Keyvalue -> the model's field, as a number.
-local NUMBER_KEYS = {
+local NUMBER_KEYS =
+{
 	timer_length = "timerLength",
-	unlock_point = "unlockPoint",
+	unlock_point = "unlockPoint"
 }
 
-function ENT:KeyValue(key, value)
+function ENT:KeyValue (key, value)
 	self.wsKv = self.wsKv or {}
-	local field = NUMBER_KEYS[string.lower(key)]
-	if field then self.wsKv[field] = tonumber(value) end
+	local field = NUMBER_KEYS [string.lower (key)]
+	if field then self.wsKv [field] = tonumber (value) end
 end
 
-function ENT:Initialize()
-	self.koth = WS.Feature("koth")
-	self.koth:BindLogic(self, self.wsKv or {})
+function ENT:Initialize ()
+	self.koth = WS.Feature ("koth")
+	self.koth:BindLogic (self, self.wsKv or {})
 end
 
-function ENT:OnRemove()
-	self.koth:UnbindLogic(self)
+function ENT:OnRemove ()
+	self.koth:UnbindLogic (self)
 end
 
-function ENT:UpdateTransmitState()
+function ENT:UpdateTransmitState ()
 	return TRANSMIT_NEVER
 end
 
 -- RoundSpawn, RoundActivate, SetRedTimer, SetBlueTimer, AddRedTimer, AddBlueTimer.
-function ENT:AcceptInput(name, activator, caller, value)
-	return self.koth:LogicInput(self, string.lower(name), value)
+function ENT:AcceptInput (name, activator, caller, value)
+	return self.koth:LogicInput (self, string.lower (name), value)
 end

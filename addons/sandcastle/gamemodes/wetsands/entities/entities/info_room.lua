@@ -9,15 +9,15 @@ ENT.Base = "base_point"
 
 local KEYS = { ["label"] = "label", ["class"] = "class", ["controlpoint"] = "point" }
 
-function ENT:KeyValue(key, value)
-	key = string.lower(key)
-	if KEYS[key] then
-		self[KEYS[key]] = value
+function ENT:KeyValue (key, value)
+	key = string.lower (key)
+	if KEYS [key] then
+		self [KEYS [key]] = value
 	elseif key == "teamnum" then
-		self.team = tonumber(value)
+		self.team = tonumber (value)
 	end
 end
 
-function ENT:UpdateTransmitState()
+function ENT:UpdateTransmitState ()
 	return TRANSMIT_NEVER
 end

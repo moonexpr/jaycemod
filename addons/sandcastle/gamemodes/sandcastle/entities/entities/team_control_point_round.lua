@@ -7,29 +7,29 @@
 ENT.Type = "point"
 ENT.Base = "base_point"
 
-function ENT:KeyValue(key, value)
+function ENT:KeyValue (key, value)
 	self.wsKv = self.wsKv or {}
-	self.wsKv[string.lower(key)] = value
-	if string.sub(key, 1, 2) == "On" then self:StoreOutput(key, value) end
+	self.wsKv [string.lower (key)] = value
+	if string.sub (key, 1, 2) == "On" then self:StoreOutput (key, value) end
 end
 
-function ENT:Initialize()
-	self.capture = WS.Feature("capture")
-	self.capture:BindRound(self, self.wsKv or {})
+function ENT:Initialize ()
+	self.capture = WS.Feature ("capture")
+	self.capture:BindRound (self, self.wsKv or {})
 end
 
-function ENT:OnRemove()
-	self.capture:UnbindRound(self)
+function ENT:OnRemove ()
+	self.capture:UnbindRound (self)
 end
 
-function ENT:UpdateTransmitState()
+function ENT:UpdateTransmitState ()
 	return TRANSMIT_NEVER
 end
 
-function ENT:Points()
-	return self.capture:RoundPoints(self)
+function ENT:Points ()
+	return self.capture:RoundPoints (self)
 end
 
-function ENT:AcceptInput(name, activator, caller, value)
-	return self.capture:RoundInput(self, string.lower(name), value)
+function ENT:AcceptInput (name, activator, caller, value)
+	return self.capture:RoundInput (self, string.lower (name), value)
 end

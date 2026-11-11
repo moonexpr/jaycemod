@@ -14,23 +14,23 @@
 -- This is the Lua twin, which clients run; a server with native/foundation
 -- has the native one in its place, which keeps this contract.
 local ipairs = ipairs
-module(...)
+module (...)
 
-function Overlaps(aMins, aMaxs, bMins, bMaxs)
+function Overlaps (aMins, aMaxs, bMins, bMaxs)
 	return aMins.x <= bMaxs.x and bMins.x <= aMaxs.x and aMins.y <= bMaxs.y and bMins.y <= aMaxs.y
 		and (aMins.z or 0) <= (bMaxs.z or 0) and (bMins.z or 0) <= (aMaxs.z or 0)
 end
 
-function Contains(mins, maxs, p)
+function Contains (mins, maxs, p)
 	local z = p.z or 0
 	return p.x >= mins.x and p.x <= maxs.x and p.y >= mins.y and p.y <= maxs.y and z >= (mins.z or 0) and z <= (maxs.z or 0)
 end
 
-function Extent(points)
-	local first = points[1]
+function Extent (points)
+	local first = points [1]
 	if not first then return nil end
 	local loX, hiX, loY, hiY, loZ, hiZ = first.x, first.x, first.y, first.y, first.z or 0, first.z or 0
-	for _, p in ipairs(points) do
+	for _, p in ipairs (points) do
 		local z = p.z or 0
 		if p.x < loX then loX = p.x end
 		if p.x > hiX then hiX = p.x end
@@ -42,16 +42,16 @@ function Extent(points)
 	return { x = loX, y = loY, z = loZ }, { x = hiX, y = hiY, z = hiZ }
 end
 
-function LongestAxis2D(mins, maxs)
+function LongestAxis2D (mins, maxs)
 	return (maxs.x - mins.x >= maxs.y - mins.y) and "x" or "y"
 end
 
-function Centered(size)
+function Centered (size)
 	local half = size / 2
 	return { x = -half, y = -half, z = -half }, { x = half, y = half, z = half }
 end
 
-function Standing(width, height)
+function Standing (width, height)
 	local half = width / 2
 	return { x = -half, y = -half, z = 0 }, { x = half, y = half, z = height }
 end

@@ -21,59 +21,61 @@
 local error, ipairs, pairs, setmetatable, sort, tostring, type = error, ipairs, pairs, setmetatable, table.sort, tostring, type
 local Class = core.class
 local Behavior = nextsoldier.behavior
-module("nextsoldier.behavior.registry")
+module ("nextsoldier.behavior.registry")
 
 local Registry = {}
 Registry.__index = Registry
 
-function New()
-	return setmetatable({ behaviors = {} }, Registry)
+function New ()
+	return setmetatable ({ behaviors = {} }, Registry)
 end
 
-local function Check(ok, why)
-	if not ok then error("a behaviour spec " .. why, 3) end
+local function Check (ok, why)
+	if not ok then error ("a behaviour spec " .. why, 3) end
 end
 
-function Registry:Register(spec)
-	Check(type(spec) == "table", "is a table")
-	Check(type(spec.name) == "string" and spec.name ~= "", "needs a name")
-	Check(type(spec.behavior) == "table" and Class.IsA(spec.behavior, Behavior.CHART.base),
+function Registry:Register (spec)
+	Check (type (spec) == "table", "is a table")
+	Check (type (spec.name) == "string" and spec.name ~= "", "needs a name")
+	Check (type (spec.behavior) == "table" and Class.IsA (spec.behavior, Behavior.CHART.base),
 		"gives a behaviour that is a state of NextSoldier's chart")
-	self.behaviors[spec.name] = spec.behavior
+	self.behaviors [spec.name] = spec.behavior
 end
 
 local Compiled = {}
 Compiled.__index = Compiled
 
-function Registry:Compile()
+function Registry:Compile ()
 	local behaviors, names = {}, {}
-	for name, behavior in pairs(self.behaviors) do
-		behaviors[name] = behavior
-		names[#names + 1] = name
+	for name, behavior in pairs (self.behaviors) do
+		behaviors [name] = behavior
+		names [#names + 1] = name
 	end
-	sort(names)
-	local compiled = setmetatable({ behaviors = behaviors, names = names }, Compiled)
-	return setmetatable({}, {
-		__index = compiled,
-		__newindex = function(_, key) error("the compiled behaviours are fixed: " .. tostring(key) .. " cannot be set", 2) end,
-		__metatable = "the compiled behaviours",
-	})
+	sort (names)
+	local compiled = setmetatable ({ behaviors = behaviors, names = names }, Compiled)
+	return setmetatable ({},
+		{
+			__index = compiled,
+			__newindex = function (_, key) error ("the compiled behaviours are fixed: " .. tostring (key) .. " cannot be set", 2) end,
+			__metatable = "the compiled behaviours"
+		}
+	)
 end
 
-function Compiled:Get(name)
-	local behavior = self.behaviors[name]
-	if behavior == nil then error("no behaviour " .. tostring(name) .. " is registered", 2) end
+function Compiled:Get (name)
+	local behavior = self.behaviors [name]
+	if behavior == nil then error ("no behaviour " .. tostring (name) .. " is registered", 2) end
 	return behavior
 end
 
-function Compiled:Has(name)
-	return self.behaviors[name] ~= nil
+function Compiled:Has (name)
+	return self.behaviors [name] ~= nil
 end
 
-function Compiled:Names()
+function Compiled:Names ()
 	local copy = {}
-	for i, name in ipairs(self.names) do copy[i] = name end
+	for i, name in ipairs (self.names) do copy [i] = name end
 	return copy
 end
 
-Shared = Shared or New()
+Shared = Shared or New ()

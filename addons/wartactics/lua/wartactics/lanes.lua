@@ -19,12 +19,12 @@
 local ipairs, pairs = ipairs, pairs
 local floor, huge, min = math.floor, math.huge, math.min
 local sort = table.sort
-local HL2Path = require("foundation.wetsands.path.hl2")
+local HL2Path = require ("foundation.wetsands.path.hl2")
 local Path = wetsands.path
 local Select = list.select
 local Distance, Distance2D, Offset2D = math.geometry.Distance, math.geometry.Distance2D, math.geometry.Offset2D
 local Graph = graph.search
-module(...)
+module (...)
 
 LANE_PENALTY = 8
 FLANK_RADIUS = 600 -- how far beside the objective a flank lane ends
@@ -34,54 +34,57 @@ POCKET_LIMIT = 128 -- fewer areas outside a spawn room leading into an area: a p
 
 -- The jobs whose squads take lanes (features.aiwar.model's ESCORT, RAID,
 -- ASSAULT: the point scenarios' escort, and EXPLORE: arena's explorers).
-JOBS = {
+JOBS =
+{
 	escort = true,
 	raid = true,
 	assault = true,
-	explore = true,
+	explore = true
 }
 
 DIRECT, FLANK, TOUR = "direct", "flank", "tour"
 -- The kinds of lane each job takes: escorts and assault squads come at the
 -- objective, raiders go round through the enemy, explorers search the
 -- ways to the objective.
-JOB_KINDS = {
+JOB_KINDS =
+{
 	escort = { [DIRECT] = true, [FLANK] = true },
 	assault = { [DIRECT] = true, [FLANK] = true },
 	explore = { [DIRECT] = true, [FLANK] = true },
-	raid = { [TOUR] = true },
+	raid = { [TOUR] = true }
 }
 
 -- The route cost for planning a lane: HL2's, but each step into an area an
 -- earlier lane took (bot.penalized: area id -> true) costs LANE_PENALTY
 -- times as much.
-Strategy = {
-	Cost = function(step, limits, bot)
-		local cost = HL2Path.Cost(step, limits, bot)
-		if cost == Path.IMPASSABLE or not (bot.penalized and bot.penalized[step.areaId]) then return cost end
+Strategy =
+{
+	Cost = function (step, limits, bot)
+		local cost = HL2Path.Cost (step, limits, bot)
+		if cost == Path.IMPASSABLE or not (bot.penalized and bot.penalized [step.areaId]) then return cost end
 		local from = step.fromCostSoFar or 0
 		return from + (cost - from) * LANE_PENALTY
 	end,
 	-- HL2's walker with the penalty, and the areas it falls on.
-	Model = function(limits, bot)
-		local model = HL2Path.Model(limits, bot)
+	Model = function (limits, bot)
+		local model = HL2Path.Model (limits, bot)
 		model.lanePenalty, model.penalized = LANE_PENALTY, bot.penalized
 		return model
-	end,
+	end
 }
 
 -- A route's band: the ids of its areas and of every area within
 -- LANE_SPREAD of one, an id -> true set. route: nav areas ({ id }, or the
 -- controller's with GetID); near(area, radius): the areas within radius.
-function Band(route, near)
+function Band (route, near)
 	local band = {}
-	for _, area in ipairs(route) do
-		for _, other in ipairs(near(area, LANE_SPREAD)) do band[other.id] = true end
+	for _, area in ipairs (route) do
+		for _, other in ipairs (near (area, LANE_SPREAD)) do band [other.id] = true end
 	end
 	return band
 end
 
-local function Point(x, y, z) return { x = x, y = y, z = z } end
+local function Point (x, y, z) return { x = x, y = y, z = z } end
 
 -- How long an area a team's lanes watch (their band, and the door walls they
 -- went round) must stay blocked otherwise than when they were planned before
@@ -96,15 +99,15 @@ CHANGE_SETTLE = 5
 -- from when the lanes were planned, pending (id -> since when it has
 -- differed), now. Only candidates and pending areas are looked at. Returns
 -- that and the new pending.
-function Settled(candidates, differs, pending, now)
+function Settled (candidates, differs, pending, now)
 	local after, stale = {}, false
-	local function Look(id)
-		if after[id] ~= nil or not differs(id) then return end
-		after[id] = pending[id] or now
-		if now - after[id] >= CHANGE_SETTLE then stale = true end
+	local function Look (id)
+		if after [id] ~= nil or not differs (id) then return end
+		after [id] = pending [id] or now
+		if now - after [id] >= CHANGE_SETTLE then stale = true end
 	end
-	for id in pairs(candidates) do Look(id) end
-	for id in pairs(pending) do Look(id) end
+	for id in pairs (candidates) do Look (id) end
+	for id in pairs (pending) do Look (id) end
 	return stale, after
 end
 
@@ -112,8 +115,8 @@ end
 -- room encloses: fewer than POCKET_LIMIT areas outside the room lead into
 -- it, so a route that may not enter the room cannot reach it. into(id): the
 -- areas with a way into id; open(id): id is outside the room.
-function Enclosed(start, into, open)
-	local _, cut = Graph.Flood({ start }, into, open, POCKET_LIMIT - 1)
+function Enclosed (start, into, open)
+	local _, cut = Graph.Flood ({ start }, into, open, POCKET_LIMIT - 1)
 	return not cut
 end
 
@@ -122,15 +125,15 @@ end
 -- route cannot enter, nor enclosed by it (areas: { id, center, room }, room
 -- the spawn room's team; enclosed(id), asked nearest first, as Enclosed
 -- finds); the spawn itself when none is near.
-function Threshold(spawn, areas, enemy, enclosed)
+function Threshold (spawn, areas, enemy, enclosed)
 	local outside = {}
-	for _, area in ipairs(areas) do
-		if area.room ~= enemy then outside[#outside + 1] = { area = area, distance = Distance(area.center, spawn) } end
+	for _, area in ipairs (areas) do
+		if area.room ~= enemy then outside [#outside + 1] = { area = area, distance = Distance (area.center, spawn) } end
 	end
-	sort(outside, function(a, b) return a.distance < b.distance end)
-	for _, candidate in ipairs(outside) do
+	sort (outside, function (a, b) return a.distance < b.distance end)
+	for _, candidate in ipairs (outside) do
 		local area = candidate.area
-		if not enclosed(area.id) then return Point(area.center.x, area.center.y, area.center.z) end
+		if not enclosed (area.id) then return Point (area.center.x, area.center.y, area.center.z) end
 	end
 	return spawn
 end
@@ -149,8 +152,8 @@ end
 -- objective (FixedFlanks).
 FLANK_MIN, FLANK_MAX = 400, 1200
 
-function InFlankRange(objective, p)
-	local flat = Distance2D(p, objective)
+function InFlankRange (objective, p)
+	local flat = Distance2D (p, objective)
 	return flat >= FLANK_MIN and flat <= FLANK_MAX
 end
 
@@ -159,23 +162,23 @@ end
 -- separation and its walk from A (walkFrom(A)(key)) is greatest. Two walks
 -- searched, whatever the candidates. Nil when no two are off the band and
 -- apart.
-function Siblings(candidates, separation, walkFrom)
-	local a, farthest = Select.Highest(candidates, separation)
+function Siblings (candidates, separation, walkFrom)
+	local a, farthest = Select.Highest (candidates, separation)
 	if not a or farthest <= 0 then return nil end
-	local fromA = walkFrom(a)
-	local b, best = Select.Highest(candidates, function(key) return min(separation(key), fromA(key)) end, function(key) return key ~= a end)
+	local fromA = walkFrom (a)
+	local b, best = Select.Highest (candidates, function (key) return min (separation (key), fromA (key)) end, function (key) return key ~= a end)
 	if not b or best <= 0 then return nil end
 	return a, b
 end
 
 -- Of places (two or more), the two farthest apart by walk (between), in
 -- the places' order; nil for fewer than two, or none apart.
-function Farthest(places, between)
+function Farthest (places, between)
 	local bestA, bestB, bestWalk = nil, nil, 0
 	for i = 1, #places do
 		for j = i + 1, #places do
-			local walk = between(places[i], places[j])
-			if walk > bestWalk then bestA, bestB, bestWalk = places[i], places[j], walk end
+			local walk = between (places [i], places [j])
+			if walk > bestWalk then bestA, bestB, bestWalk = places [i], places [j], walk end
 		end
 	end
 	return bestA, bestB
@@ -183,8 +186,8 @@ end
 
 -- The flanks with no ground to choose from: FLANK_RADIUS left and right of
 -- the objective, across the way in from spawn.
-function FixedFlanks(spawn, objective)
-	return Offset2D(objective, spawn, 0, FLANK_RADIUS), Offset2D(objective, spawn, 0, -FLANK_RADIUS)
+function FixedFlanks (spawn, objective)
+	return Offset2D (objective, spawn, 0, FLANK_RADIUS), Offset2D (objective, spawn, 0, -FLANK_RADIUS)
 end
 
 -- The lanes after the direct one, in order: { kind, stops }, routed from
@@ -192,14 +195,15 @@ end
 -- places the tours go through (the defenses farthest apart, else the
 -- flanks), or nil for no tours (no enemy defenses known); each tour goes on
 -- to the enemy spawn nearest it (enemySpawnNear).
-function Plans(flanks, tours, enemySpawnNear)
-	local plans = {
-		{ kind = FLANK, stops = { flanks[1] } },
-		{ kind = FLANK, stops = { flanks[2] } },
+function Plans (flanks, tours, enemySpawnNear)
+	local plans =
+	{
+		{ kind = FLANK, stops = { flanks [1] } },
+		{ kind = FLANK, stops = { flanks [2] } }
 	}
 	if not tours then return plans end
-	plans[3] = { kind = TOUR, stops = { tours[1], enemySpawnNear(tours[1]) } }
-	plans[4] = { kind = TOUR, stops = { tours[2], enemySpawnNear(tours[2]) } }
+	plans [3] = { kind = TOUR, stops = { tours [1], enemySpawnNear (tours [1]) } }
+	plans [4] = { kind = TOUR, stops = { tours [2], enemySpawnNear (tours [2]) } }
 	return plans
 end
 
@@ -207,17 +211,17 @@ end
 -- and its length. clear(a, b): whether a soldier can walk straight from a
 -- to b (the controller's hull trace); a point is kept too where skipping it
 -- would make the line from the last kept point cut through the world.
-function Thin(points, clear)
+function Thin (points, clear)
 	local kept, length, since = {}, 0, 0
-	for i, p in ipairs(points) do
+	for i, p in ipairs (points) do
 		if i > 1 then
-			local d = Distance(points[i - 1], p)
+			local d = Distance (points [i - 1], p)
 			length = length + d
 			since = since + d
 		end
-		local nextPoint = points[i + 1]
-		if i == 1 or not nextPoint or since >= WAYPOINT_SPACING or not clear(kept[#kept], nextPoint) then
-			kept[#kept + 1] = p
+		local nextPoint = points [i + 1]
+		if i == 1 or not nextPoint or since >= WAYPOINT_SPACING or not clear (kept [#kept], nextPoint) then
+			kept [#kept + 1] = p
 			since = 0
 		end
 	end
@@ -227,25 +231,25 @@ end
 -- Where a team's squads muster for a mission (wartactics.mission): the
 -- first point of its lane (its direct lane, which leaves its spawn) not in
 -- its own spawn room (inRoom(p)), so just outside it; its last when all are.
-function Muster(lane, inRoom)
+function Muster (lane, inRoom)
 	local points = lane.points
-	for _, p in ipairs(points) do
-		if not inRoom(p) then return p end
+	for _, p in ipairs (points) do
+		if not inRoom (p) then return p end
 	end
-	return points[#points]
+	return points [#points]
 end
 
 -- What is left of a lane from pos: to its nearest waypoint, then along the
 -- lane from there to its end, so a winding lane is measured as walked.
-function Remaining(lane, pos)
+function Remaining (lane, pos)
 	local points = lane.points
 	local nearest, best = 1, huge
-	for i, p in ipairs(points) do
-		local d = Distance(pos, p)
+	for i, p in ipairs (points) do
+		local d = Distance (pos, p)
 		if d < best then nearest, best = i, d end
 	end
 	local left = best
-	for i = nearest, #points - 1 do left = left + Distance(points[i], points[i + 1]) end
+	for i = nearest, #points - 1 do left = left + Distance (points [i], points [i + 1]) end
 	return left
 end
 
@@ -253,20 +257,20 @@ end
 -- by its team and the spawn its lanes leave, to the MUSTER_GRID cell.
 MUSTER_GRID = 64
 
-function MusterKey(team, spawn)
-	return team .. ":" .. floor(spawn.x / MUSTER_GRID) .. ":" .. floor(spawn.y / MUSTER_GRID) .. ":"
-		.. floor((spawn.z or 0) / MUSTER_GRID)
+function MusterKey (team, spawn)
+	return team .. ":" .. floor (spawn.x / MUSTER_GRID) .. ":" .. floor (spawn.y / MUSTER_GRID) .. ":"
+		.. floor ((spawn.z or 0) / MUSTER_GRID)
 end
 
 -- The lanes a squad of job `role` may take, by index: those of its kinds
 -- (JOB_KINDS), or every lane when none of those could be planned.
-function Choices(lanes, role)
+function Choices (lanes, role)
 	local choices = {}
-	for i, lane in ipairs(lanes) do
-		if JOB_KINDS[role][lane.kind] then choices[#choices + 1] = i end
+	for i, lane in ipairs (lanes) do
+		if JOB_KINDS [role] [lane.kind] then choices [#choices + 1] = i end
 	end
 	if #choices > 0 then return choices end
-	for i = 1, #lanes do choices[i] = i end
+	for i = 1, #lanes do choices [i] = i end
 	return choices
 end
 
@@ -277,64 +281,64 @@ end
 -- taken while it is one of the plan's. A squad with its lanes off (lanesOff,
 -- by hand) takes none and goes straight. fireTeams: features.aiwar.model's;
 -- lanesByTeam: team -> lanes.
-function Assign(fireTeams, lanesByTeam)
+function Assign (fireTeams, lanesByTeam)
 	local taken = {}
 	local waiting = {}
-	for _, fireTeam in ipairs(fireTeams) do
-		local lanes = lanesByTeam[fireTeam.team]
+	for _, fireTeam in ipairs (fireTeams) do
+		local lanes = lanesByTeam [fireTeam.team]
 		if fireTeam.mission then
 			fireTeam.laneKey, fireTeam.laneIndex = nil, nil
-			for i, lane in ipairs(lanes or {}) do
+			for i, lane in ipairs (lanes or {}) do
 				if lane == fireTeam.mission.way then
-					taken[lanes] = taken[lanes] or {}
-					taken[lanes][i] = (taken[lanes][i] or 0) + 1
+					taken [lanes] = taken [lanes] or {}
+					taken [lanes] [i] = (taken [lanes] [i] or 0) + 1
 				end
 			end
-		elseif JOBS[fireTeam.role] and lanes and #lanes > 0 and not fireTeam.lanesOff then
-			if fireTeam.laneKey == lanes.key and lanes[fireTeam.laneIndex] then
-				taken[lanes] = taken[lanes] or {}
-				taken[lanes][fireTeam.laneIndex] = (taken[lanes][fireTeam.laneIndex] or 0) + 1
+		elseif JOBS [fireTeam.role] and lanes and #lanes > 0 and not fireTeam.lanesOff then
+			if fireTeam.laneKey == lanes.key and lanes [fireTeam.laneIndex] then
+				taken [lanes] = taken [lanes] or {}
+				taken [lanes] [fireTeam.laneIndex] = (taken [lanes] [fireTeam.laneIndex] or 0) + 1
 			else
-				waiting[#waiting + 1] = fireTeam
+				waiting [#waiting + 1] = fireTeam
 			end
 		else
 			fireTeam.laneKey, fireTeam.laneIndex, fireTeam.lane = nil, nil, nil
 		end
 	end
-	for _, fireTeam in ipairs(waiting) do
-		local lanes = lanesByTeam[fireTeam.team]
-		taken[lanes] = taken[lanes] or {}
+	for _, fireTeam in ipairs (waiting) do
+		local lanes = lanesByTeam [fireTeam.team]
+		taken [lanes] = taken [lanes] or {}
 		local best
-		for _, i in ipairs(Choices(lanes, fireTeam.role)) do
-			if best == nil or (taken[lanes][i] or 0) < (taken[lanes][best] or 0) then best = i end
+		for _, i in ipairs (Choices (lanes, fireTeam.role)) do
+			if best == nil or (taken [lanes] [i] or 0) < (taken [lanes] [best] or 0) then best = i end
 		end
-		taken[lanes][best] = (taken[lanes][best] or 0) + 1
+		taken [lanes] [best] = (taken [lanes] [best] or 0) + 1
 		fireTeam.laneKey, fireTeam.laneIndex = lanes.key, best
 	end
-	for _, fireTeam in ipairs(fireTeams) do
-		local lanes = lanesByTeam[fireTeam.team]
+	for _, fireTeam in ipairs (fireTeams) do
+		local lanes = lanesByTeam [fireTeam.team]
 		if fireTeam.mission then
 			fireTeam.lane = fireTeam.mission.way
 		else
-			fireTeam.lane = fireTeam.laneIndex and lanes and lanes[fireTeam.laneIndex] or nil
+			fireTeam.lane = fireTeam.laneIndex and lanes and lanes [fireTeam.laneIndex] or nil
 		end
 	end
 end
 
 -- The waypoint a walker at pos makes for next, from index: past the ones it
 -- has reached, or a nearer one up to LOOKAHEAD further along.
-function Next(lane, pos, index)
+function Next (lane, pos, index)
 	local points = lane.points
 	index = index or 1
-	while points[index] and Distance(pos, points[index]) <= WAYPOINT_REACH do index = index + 1 end
-	local best, bestDistance = index, points[index] and Distance(pos, points[index])
+	while points [index] and Distance (pos, points [index]) <= WAYPOINT_REACH do index = index + 1 end
+	local best, bestDistance = index, points [index] and Distance (pos, points [index])
 	for i = index + 1, index + LOOKAHEAD do
-		if points[i] then
-			local d = Distance(pos, points[i])
+		if points [i] then
+			local d = Distance (pos, points [i])
 			if d < bestDistance then best, bestDistance = i, d end
 		end
 	end
-	while points[best] and Distance(pos, points[best]) <= WAYPOINT_REACH do best = best + 1 end
+	while points [best] and Distance (pos, points [best]) <= WAYPOINT_REACH do best = best + 1 end
 	return best
 end
 
@@ -342,10 +346,10 @@ end
 -- lane: the waypoint, or nil once the lane is done (walked to its end, or
 -- the waypoint no nearer the lane's end than the walker is). A lane is
 -- walked to its own end, so a tour runs on past the objective.
-function Target(lane, pos, index)
-	local point = lane.points[index]
+function Target (lane, pos, index)
+	local point = lane.points [index]
 	if not point then return nil end
-	local goal = lane.points[#lane.points]
-	if Distance(point, goal) >= Distance(pos, goal) then return nil end
+	local goal = lane.points [#lane.points]
+	if Distance (point, goal) >= Distance (pos, goal) then return nil end
 	return point
 end

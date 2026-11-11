@@ -15,11 +15,11 @@ local Rounds = gameplay.rounds
 local Teams = gameplay.teams
 local Players = gameplay.players
 local Geometry = math.geometry
-module(...)
+module (...)
 
 local C = Players.COND
 
-Mode = Rounds.Mode:Extend("mvm")
+Mode = Rounds.Mode:Extend ("mvm")
 Mode.OBJECTIVE = true
 -- Over every other mode a map can carry.
 Mode.PRIORITY = 5
@@ -29,7 +29,7 @@ Mode.FLAG_INVADERS = Teams.BLUE
 -- No bomb is taken before the wave starts.
 Mode.FLAG_WAITS_FOR_WAVE = true
 
-function Mode:MayWinByPoints(team, q) return false end
+function Mode:MayWinByPoints (team, q) return false end
 
 -- An MvM game begins with at least MIN_DEFENDERS players and NPCs on RED;
 -- BLU's robots are the wave's.
@@ -40,33 +40,35 @@ Mode.PLAYERS_NEEDED = { team = Teams.RED, count = MIN_DEFENDERS }
 SETUP_SECONDS = 30
 
 -- The popfiles' StartWaveOutput, the same on every map that has one.
-WAVE_START_OUTPUTS = {
+WAVE_START_OUTPUTS =
+{
 	{
 		target = "wave_start_relay",
-		input = "Trigger",
-	},
+		input = "Trigger"
+	}
 }
 
 -- candidates: { pos }s, the invaders in their spawn room. The one nearest
 -- the bomb's home, or nil.
-function BombCarrier(candidates, home)
+function BombCarrier (candidates, home)
 	local best, bestRange
-	for _, c in ipairs(candidates) do
-		local range = Geometry.Distance(c.pos, home)
+	for _, c in ipairs (candidates) do
+		local range = Geometry.Distance (c.pos, home)
 		if not best or range < bestRange then best, bestRange = c, range end
 	end
 	return best
 end
 
 -- What an invader in its spawn room gets, renewed while it stays.
-SPAWN_PROTECTION = {
+SPAWN_PROTECTION =
+{
 	{ cond = C.INVULNERABLE, seconds = 0.5 },
 	{ cond = C.INVULNERABLE_HIDE_UNLESS_DAMAGED, seconds = 0.5 },
 	{ cond = C.INVULNERABLE_WEARINGOFF, seconds = 0.5 },
-	{ cond = C.IMMUNE_TO_PUSHBACK, seconds = 1.0 },
+	{ cond = C.IMMUNE_TO_PUSHBACK, seconds = 1.0 }
 }
 
 -- Whether one of team standing in a spawn room of roomTeam is protected.
-function Protected(team, roomTeam, invaders)
+function Protected (team, roomTeam, invaders)
 	return team == invaders and roomTeam == invaders
 end

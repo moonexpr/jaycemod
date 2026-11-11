@@ -9,23 +9,25 @@
 -- more players.
 local Teams = gameplay.teams
 local lower, max, min = string.lower, math.max, math.min
-module(...)
+module (...)
 
 -- tf_bot_quota_mode: NORMAL keeps quota bots; FILL tops the players on the
 -- game teams up to quota; MATCH keeps quota bots for each of them.
 NORMAL, FILL, MATCH = "normal", "fill", "match"
-local MODES = {
+local MODES =
+{
 	[NORMAL] = NORMAL,
 	[FILL] = FILL,
-	[MATCH] = MATCH,
+	[MATCH] = MATCH
 }
 
 -- ns_soldiers_actor: who the war's soldiers are, never both: NPC, its own
 -- NextBots (no bots kept), or BOT, bot players (no NPCs drafted).
 NPC, BOT = "npc", "bot"
-local ACTORS = {
+local ACTORS =
+{
 	[NPC] = NPC,
-	[BOT] = BOT,
+	[BOT] = BOT
 }
 
 -- What a step does.
@@ -35,20 +37,20 @@ ADD, KICK = "add", "kick"
 local VACATE = 1
 
 -- A tf_bot_quota_mode value, or nil for none of its words.
-function Mode(text)
-	return MODES[lower(text)]
+function Mode (text)
+	return MODES [lower (text)]
 end
 
 -- An ns_soldiers_actor value, or nil for none of its words.
-function Actors(text)
-	return ACTORS[lower(text)]
+function Actors (text)
+	return ACTORS [lower (text)]
 end
 
 -- The bots wanted. settings: { mode, quota, joinAfterPlayer, actors,
 -- soldiers (the war's teams' sizes added up: BOT's quota when it is 0) };
 -- population: { humans (on the game teams), spectators (humans on no game
 -- team), bots, slots (the server's most players) }.
-function Wanted(settings, population)
+function Wanted (settings, population)
 	if settings.actors == NPC then return 0 end
 	local humans = population.humans
 	local connected = humans + population.spectators
@@ -60,13 +62,13 @@ function Wanted(settings, population)
 		wanted = wanted * connected
 	end
 	if settings.joinAfterPlayer and connected == 0 then wanted = 0 end
-	wanted = min(wanted, population.slots - connected - VACATE)
-	return max(wanted, 0)
+	wanted = min (wanted, population.slots - connected - VACATE)
+	return max (wanted, 0)
 end
 
 -- ADD or KICK one bot toward the quota, or nil on it.
-function Step(settings, population)
-	local wanted = Wanted(settings, population)
+function Step (settings, population)
+	local wanted = Wanted (settings, population)
 	if population.bots < wanted then return ADD end
 	if population.bots > wanted then return KICK end
 	return nil
@@ -75,30 +77,30 @@ end
 -- The team a new bot joins: players[team], each team's players now, and
 -- sizes[team], each team's size (the scenario's, which may be uneven): the
 -- team furthest below its size, else, both as far, the auto-assigned one.
-function TeamToJoin(players, sizes)
+function TeamToJoin (players, sizes)
 	local red, blue = Teams.RED, Teams.BLUE
-	local redShort, blueShort = sizes[red] - players[red], sizes[blue] - players[blue]
+	local redShort, blueShort = sizes [red] - players [red], sizes [blue] - players [blue]
 	if redShort ~= blueShort and (redShort > 0 or blueShort > 0) then
 		return redShort > blueShort and red or blue
 	end
-	return Teams.AutoTeam(players[red], players[blue])
+	return Teams.AutoTeam (players [red], players [blue])
 end
 
 -- The team that should give up a bot so the split follows the sizes: the one
 -- over its size while the other is under it (bots keep their team across a
 -- map load, so a split made before the sizes changed stays); nil otherwise.
-function TeamOverSize(players, sizes)
+function TeamOverSize (players, sizes)
 	local red, blue = Teams.RED, Teams.BLUE
-	if players[red] > sizes[red] and players[blue] < sizes[blue] then return red end
-	if players[blue] > sizes[blue] and players[red] < sizes[red] then return blue end
+	if players [red] > sizes [red] and players [blue] < sizes [blue] then return red end
+	if players [blue] > sizes [blue] and players [red] < sizes [red] then return blue end
 	return nil
 end
 
 -- The team a bot is kicked from: teams[team] = { players, bots } for RED
 -- and BLU; the one with more players, on an even split the one with more
 -- bots, and only a team with a bot to kick. nil with no bots.
-function TeamToKick(teams)
-	local red, blue = teams[Teams.RED], teams[Teams.BLUE]
+function TeamToKick (teams)
+	local red, blue = teams [Teams.RED], teams [Teams.BLUE]
 	if red.bots == 0 and blue.bots == 0 then return nil end
 	if red.bots == 0 then return Teams.BLUE end
 	if blue.bots == 0 then return Teams.RED end

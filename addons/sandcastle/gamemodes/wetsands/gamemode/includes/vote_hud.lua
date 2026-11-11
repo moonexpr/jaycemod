@@ -9,7 +9,7 @@
 -- result. The game's vote state is ws/sh_votes.lua's game_vote_state.
 local ceil, floor, format, ipairs, max, min, tostring = math.ceil, math.floor, string.format, ipairs, math.max, math.min, tostring
 local Vote = gameplay.vote
-module(...)
+module (...)
 
 -- VoteActive: 8,150 150x144, border TFFatLineBorderOpaque.
 PANEL_X, PANEL_Y, PANEL_W, ACTIVE_TALL = 8, 150, 150, 144
@@ -76,40 +76,42 @@ local OPTION_KEYS = { "F1", "F2", "F3", "F4" }
 local SECONDS_PER_MINUTE = 60
 
 -- votehud.res's LabelOption<i>, from the panel's top.
-function RowY(i)
+function RowY (i)
 	return OPTION_Y + (i - 1) * OPTION_TALL
 end
 
-local function Clock(seconds)
-	local s = max(0, ceil(seconds))
-	return format("%d:%02d", floor(s / SECONDS_PER_MINUTE), s % SECONDS_PER_MINUTE)
+local function Clock (seconds)
+	local s = max (0, ceil (seconds))
+	return format ("%d:%02d", floor (s / SECONDS_PER_MINUTE), s % SECONDS_PER_MINUTE)
 end
 
-local function YesNoRows(state)
+local function YesNoRows (state)
 	local mine = state.mine
-	return {
+	return
+	{
 		{
 			text = mine and YES_INSTRUCTION or YES_BALLOT,
 			lit = state.cast == Vote.BALLOT_YES,
-			cast = mine and { yes = true, choice = 0 } or nil,
+			cast = mine and { yes = true, choice = 0 } or nil
 		},
 		{
 			text = mine and NO_INSTRUCTION or NO_BALLOT,
 			lit = state.cast == Vote.BALLOT_NO,
-			cast = mine and { yes = false, choice = 0 } or nil,
-		},
+			cast = mine and { yes = false, choice = 0 } or nil
+		}
 	}
 end
 
-local function ChoiceRows(state)
+local function ChoiceRows (state)
 	local rows = {}
-	for i, option in ipairs(state.options) do
-		local key = state.mine and OPTION_KEYS[i]
-		rows[i] = {
+	for i, option in ipairs (state.options) do
+		local key = state.mine and OPTION_KEYS [i]
+		rows [i] =
+		{
 			text = key and key .. ". " .. option or option,
 			lit = state.cast == i,
-			count = tostring(state.counts[i]),
-			cast = state.mine and { yes = false, choice = i } or nil,
+			count = tostring (state.counts [i]),
+			cast = state.mine and { yes = false, choice = i } or nil
 		}
 	end
 	return rows
@@ -121,18 +123,19 @@ end
 -- }: what clicking it casts; nil for a player who may not vote) }), yesNo
 -- (the count line and vote bar show), yes, no (their counts), tall (the
 -- panel's height, grown past five rows) }.
-function Active(state, now)
+function Active (state, now)
 	local yesNo = #state.options == 0
-	local rows = yesNo and YesNoRows(state) or ChoiceRows(state)
-	return {
-		header = format(HEADER, state.caller ~= "" and state.caller or SERVER_CALLER),
-		clock = Clock(state.ends - now),
+	local rows = yesNo and YesNoRows (state) or ChoiceRows (state)
+	return
+	{
+		header = format (HEADER, state.caller ~= "" and state.caller or SERVER_CALLER),
+		clock = Clock (state.ends - now),
 		issue = state.question,
 		rows = rows,
 		yesNo = yesNo,
-		yes = tostring(state.yes),
-		no = tostring(state.no),
-		tall = max(ACTIVE_TALL, OPTION_Y + #rows * OPTION_TALL + BOTTOM_PAD),
+		yes = tostring (state.yes),
+		no = tostring (state.no),
+		tall = max (ACTIVE_TALL, OPTION_Y + #rows * OPTION_TALL + BOTTOM_PAD)
 	}
 end
 
@@ -141,16 +144,17 @@ local PASSED_TITLE, FAILED_TITLE = "Vote Passed", "Vote Failed"
 
 -- The result's panel, from game_vote_ended's fields: { icon, title, passed,
 -- text (PassedResult or FailedReason) }.
-function Result(fields)
-	return {
+function Result (fields)
+	return
+	{
 		icon = fields.passed and YES_ICON or NO_ICON,
 		title = fields.passed and PASSED_TITLE or FAILED_TITLE,
 		passed = fields.passed,
-		text = fields.text,
+		text = fields.text
 	}
 end
 
 -- How opaque the result is at now when it goes at untilTime, 0 to 1.
-function ResultAlpha(now, untilTime)
-	return max(0, min(1, (untilTime - now) / RESULT_FADE))
+function ResultAlpha (now, untilTime)
+	return max (0, min (1, (untilTime - now) / RESULT_FADE))
 end

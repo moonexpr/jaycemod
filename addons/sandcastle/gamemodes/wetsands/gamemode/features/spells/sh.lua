@@ -1,7 +1,8 @@
 -- The spells feature's particles, in both realms: the server precaches the
 -- names the spells and their projectiles play (CTFSpellBook::Precache) and
 -- clients need the files to draw them.
-local FILES = {
+local FILES =
+{
 	"particles/halloween.pcf", -- the spells' own: wheels, bats, goop, orbs, trails
 	"particles/cinefx.pcf", -- bombinomicon_burningdebris, bomibomicon_ring
 	"particles/class_fx.pcf", -- heavy_ring_of_fire
@@ -9,10 +10,11 @@ local FILES = {
 	"particles/explosion.pcf", -- ExplosionCore_MidAir
 	"particles/eyeboss.pcf", -- eyeboss_tp_player, eyeboss_death
 	"particles/drg_cowmangler.pcf", -- the lightning orb's end
-	"particles/item_fx.pcf", -- unusual_bubbles_green_fumes
+	"particles/item_fx.pcf" -- unusual_bubbles_green_fumes
 }
 
-local NAMES = {
+local NAMES =
+{
 	"spell_cast_wheel_red",
 	"spell_cast_wheel_blue",
 	"bombinomicon_burningdebris",
@@ -44,8 +46,8 @@ local NAMES = {
 	"spell_fireball_small_blue",
 	"spell_teleport_red",
 	"spell_teleport_blue",
-	"unusual_bubbles_green_fumes",
+	"unusual_bubbles_green_fumes"
 }
 
-for _, path in ipairs(FILES) do game.AddParticles(path) end
-for _, name in ipairs(NAMES) do PrecacheParticleSystem(name) end
+for _, path in ipairs (FILES) do game.AddParticles (path) end
+for _, name in ipairs (NAMES) do PrecacheParticleSystem (name) end

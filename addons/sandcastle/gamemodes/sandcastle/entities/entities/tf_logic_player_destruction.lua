@@ -7,7 +7,8 @@ ENT.Type = "point"
 ENT.Base = "ws_stub_point"
 
 ENT.StubReason = "Player Destruction scoring is not supported; the round limits decide its rounds"
-ENT.StubInputs = {
+ENT.StubInputs =
+{
 	scoreredpoints = true,
 	scorebluepoints = true,
 	enablemaxscoreupdating = true,
@@ -15,10 +16,10 @@ ENT.StubInputs = {
 	setcountdowntimer = true,
 	setcountdownimage = true,
 	setflagresetdelay = true,
-	setpointsonplayerdeath = true,
+	setpointsonplayerdeath = true
 }
 
-function ENT:Initialize()
-	baseclass.Get("ws_stub_point").Initialize(self)
-	WS.Feature("rounds"):SetMode(WS.require("features.rounds.destruction").Mode)
+function ENT:Initialize ()
+	baseclass.Get ("ws_stub_point").Initialize (self)
+	WS.Feature ("rounds"):SetMode (WS.require ("features.rounds.destruction").Mode)
 end

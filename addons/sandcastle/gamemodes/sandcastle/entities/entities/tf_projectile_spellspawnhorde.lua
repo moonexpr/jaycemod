@@ -1,7 +1,7 @@
 -- tf_projectile_spellspawnhorde (CTFProjectile_SpellSpawnHorde): the
 -- skeleton horde spell's skull, which bursts into three skull grenades
 -- (features.spells.skeleton_horde).
-AddCSLuaFile()
+AddCSLuaFile ()
 
 ENT.Type = "anim"
 ENT.Base = "ws_spell_projectile"
@@ -9,7 +9,8 @@ ENT.Spawnable = false
 ENT.Variant = "games.gameplay.projectile.jar"
 ENT.Model = "models/props_mvm/mvm_human_skull_collide.mdl"
 ENT.ModelScale = 1
-ENT.Trails = {
+ENT.Trails =
+{
 	[TEAM_RED] = "unusual_bubbles_green_fumes",
-	[TEAM_BLUE] = "unusual_bubbles_green_fumes",
+	[TEAM_BLUE] = "unusual_bubbles_green_fumes"
 }

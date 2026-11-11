@@ -10,7 +10,7 @@
 -- bottom centre (CTFHudObjectiveStatus::SetVisiblePanels).
 local ceil, cos, floor, ipairs, max, pi, sin = math.ceil, math.cos, math.floor, ipairs, math.max, math.pi, math.sin
 local Rounds = gameplay.rounds
-module(...)
+module (...)
 
 UNITS_TALL = 480 -- a proportional screen's height in HUD units
 ICON = 24 -- cooler-hud's ControlPointIcon.res wide and tall (stock 33)
@@ -35,13 +35,13 @@ REASON_WEIGHT = 500
 REASON_PULSE = 3
 
 -- How red the reason text is at time now: 0 white, 1 red, smoothly between.
-function ReasonRedness(now)
-	return (1 - cos(2 * pi * now / REASON_PULSE)) / 2
+function ReasonRedness (now)
+	return (1 - cos (2 * pi * now / REASON_PULSE)) / 2
 end
 
 -- Whether the icons show in a round with HUD type hudType (a Rounds.HUD_*);
 -- mvm: an MvM map, where the bomb's panel is the only objective shown.
-function Shown(hudType, mvm)
+function Shown (hudType, mvm)
 	return not mvm and hudType ~= Rounds.HUD_PAYLOAD and hudType ~= Rounds.HUD_DEATHMATCH
 end
 
@@ -49,13 +49,13 @@ end
 -- as games.gameplay.capture's HUD state gives it) has an icon: a point in the
 -- current mini-round (the master's team_control_point_round; every point
 -- without mini-rounds) that is not hidden. The layout skips the rest.
-function HasIcon(p)
+function HasIcon (p)
 	return p.inRound and not p.hidden
 end
 
 -- The icons' rows' content, in units above the screen's foot, for the
 -- objectives' stack (ws.tf_hud's ObjectiveLifts): { bottom, top }.
-function Span(rowCount)
+function Span (rowCount)
 	local bottom = BOTTOM_OFFSET + GAP_Y
 	return { bottom = bottom, top = bottom + rowCount * (ICON + LABEL + GAP_Y) }
 end
@@ -66,31 +66,33 @@ end
 -- icon's and the cappers line's height, how far the outline shows round
 -- each icon (at least a pixel), the panel's top, and each row's icons'
 -- { x, y } in pixels, left to right.
-function Layout(rowSizes, w, h, lift)
+function Layout (rowSizes, w, h, lift)
 	local unit = h / UNITS_TALL
-	local size, label = floor(ICON * unit), floor(LABEL * unit)
-	local gapX, gapY = floor(GAP_X * unit), floor(GAP_Y * unit)
+	local size, label = floor (ICON * unit), floor (LABEL * unit)
+	local gapX, gapY = floor (GAP_X * unit), floor (GAP_Y * unit)
 	local pitch = size + label + gapY
-	local top = h - floor((BOTTOM_OFFSET + (lift or 0)) * unit) - gapY - #rowSizes * pitch
+	local top = h - floor ((BOTTOM_OFFSET + (lift or 0)) * unit) - gapY - #rowSizes * pitch
 	local rows = {}
-	for line, count in ipairs(rowSizes) do
-		local x = floor((w - (count * size + (count - 1) * gapX)) / 2)
+	for line, count in ipairs (rowSizes) do
+		local x = floor ((w - (count * size + (count - 1) * gapX)) / 2)
 		local y = top + gapY + (line - 1) * pitch
 		local icons = {}
 		for i = 1, count do
-			icons[i] = {
+			icons [i] =
+			{
 				x = x + (i - 1) * (size + gapX),
-				y = y,
+				y = y
 			}
 		end
-		rows[line] = icons
+		rows [line] = icons
 	end
-	return {
+	return
+	{
 		size = size,
 		label = label,
-		outline = max(1, floor(OUTLINE * unit)),
+		outline = max (1, floor (OUTLINE * unit)),
 		top = top,
-		rows = rows,
+		rows = rows
 	}
 end
 
@@ -101,21 +103,23 @@ end
 -- icon's rounded square so the icon's rim covers the hole's edge. The outer
 -- corner is rounder than the hole's by the ring's width, so the ring is as
 -- wide at the corners as along the sides.
-function Outline(x, y, size, outline)
-	local inset = ceil(size * ICON_INSET) + 1
-	local hole = {
+function Outline (x, y, size, outline)
+	local inset = ceil (size * ICON_INSET) + 1
+	local hole =
+	{
 		x = x + inset,
 		y = y + inset,
 		w = size - 2 * inset,
 		h = size - 2 * inset,
-		corner = max(0, floor(size * ICON_CORNER) - 1),
+		corner = max (0, floor (size * ICON_CORNER) - 1)
 	}
-	local outer = {
+	local outer =
+	{
 		x = x - outline,
 		y = y - outline,
 		w = size + 2 * outline,
 		h = size + 2 * outline,
-		corner = hole.corner + outline + inset,
+		corner = hole.corner + outline + inset
 	}
 	return { outer = outer, hole = hole }
 end
@@ -123,24 +127,25 @@ end
 -- The outline of box ({ x, y, w, h, corner }) as points, clockwise from
 -- its top left corner's arc, segments steps an arc; a square-cornered box
 -- is its four corners. For a convex polygon (surface.DrawPoly).
-function RoundedRect(box, segments)
+function RoundedRect (box, segments)
 	local r = box.corner
 	if r <= 0 then
-		return {
+		return
+		{
 			{ x = box.x, y = box.y },
 			{ x = box.x + box.w, y = box.y },
 			{ x = box.x + box.w, y = box.y + box.h },
-			{ x = box.x, y = box.y + box.h },
+			{ x = box.x, y = box.y + box.h }
 		}
 	end
 	local left, right, top, bottom = box.x + r, box.x + box.w - r, box.y + r, box.y + box.h - r
 	local centres = { { left, top }, { right, top }, { right, bottom }, { left, bottom } }
 	local points = {}
-	for corner, c in ipairs(centres) do
+	for corner, c in ipairs (centres) do
 		local from = pi + (corner - 1) * pi / 2
 		for step = 0, segments do
 			local a = from + step * (pi / 2) / segments
-			points[#points + 1] = { x = c[1] + r * cos(a), y = c[2] + r * sin(a) }
+			points [#points + 1] = { x = c [1] + r * cos (a), y = c [2] + r * sin (a) }
 		end
 	end
 	return points

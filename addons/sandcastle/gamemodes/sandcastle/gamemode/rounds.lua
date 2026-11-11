@@ -7,13 +7,13 @@
 
 -----------------------------------------------------------]]
 
-include( "includes/modules/round_manager.lua" )
+include ("includes/modules/round_manager.lua")
 
-DEFINE_BASECLASS( "gamemode_base" )
+DEFINE_BASECLASS ("gamemode_base")
 
-function GM:RoundThink()
+function GM:RoundThink ()
 
-	round_manager.Think( self:IsGameplay() )
+	round_manager.Think (self:IsGameplay ())
 
 end
 
@@ -21,9 +21,9 @@ end
 	Name: gamemode:RoundWin()
 	Desc: A map ended the round
 -----------------------------------------------------------]]
-function GM:RoundWin( winner, info )
+function GM:RoundWin (winner, info)
 
-	round_manager.Declare( winner )
+	round_manager.Declare (winner)
 
 end
 
@@ -31,10 +31,10 @@ end
 	Name: gamemode:PlayerDeath()
 	Desc: The games being played hear of it
 -----------------------------------------------------------]]
-function GM:PlayerDeath( ply, inflictor, attacker )
+function GM:PlayerDeath (ply, inflictor, attacker)
 
-	BaseClass.PlayerDeath( self, ply, inflictor, attacker )
-	game_manager.RunActive( "PlayerDeath", ply, inflictor, attacker )
+	BaseClass.PlayerDeath (self, ply, inflictor, attacker)
+	game_manager.RunActive ("PlayerDeath", ply, inflictor, attacker)
 
 end
 
@@ -42,11 +42,11 @@ end
 	Name: gamemode:PlayerDeathThink()
 	Desc: The dead wait for the next round
 -----------------------------------------------------------]]
-function GM:PlayerDeathThink( ply )
+function GM:PlayerDeathThink (ply)
 
-	if ( self:IsGameplay() && self:GetRoundState() == ROUND_ACTIVE ) then return false end
+	if self:IsGameplay () and self:GetRoundState () == ROUND_ACTIVE then return false end
 
-	return BaseClass.PlayerDeathThink( self, ply )
+	return BaseClass.PlayerDeathThink (self, ply)
 
 end
 
@@ -54,14 +54,14 @@ end
 	Name: gamemode:PlayerLoadout()
 	Desc: Sandbox's tools stay out of a round
 -----------------------------------------------------------]]
-function GM:PlayerLoadout( ply )
+function GM:PlayerLoadout (ply)
 
-	BaseClass.PlayerLoadout( self, ply )
+	BaseClass.PlayerLoadout (self, ply)
 
-	if ( !self:IsGameplay() ) then return end
+	if not self:IsGameplay () then return end
 
-	ply:StripWeapon( "weapon_physgun" )
-	ply:StripWeapon( "gmod_tool" )
-	ply:StripWeapon( "gmod_camera" )
+	ply:StripWeapon ("weapon_physgun")
+	ply:StripWeapon ("gmod_tool")
+	ply:StripWeapon ("gmod_camera")
 
 end

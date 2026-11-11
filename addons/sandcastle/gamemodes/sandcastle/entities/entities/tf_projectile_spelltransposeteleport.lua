@@ -1,14 +1,15 @@
 -- tf_projectile_spelltransposeteleport (CTFProjectile_SpellTransposeTeleport):
 -- the teleport spell's jar, which remembers where it has been
 -- (features.spells.teleport).
-AddCSLuaFile()
+AddCSLuaFile ()
 
 ENT.Type = "anim"
 ENT.Base = "ws_spell_projectile"
 ENT.Spawnable = false
 ENT.Variant = "games.gameplay.projectile.jar"
 ENT.ModelScale = 0.01
-ENT.Trails = {
+ENT.Trails =
+{
 	[TEAM_RED] = "spell_teleport_red",
-	[TEAM_BLUE] = "spell_teleport_blue",
+	[TEAM_BLUE] = "spell_teleport_blue"
 }

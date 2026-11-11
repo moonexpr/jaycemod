@@ -1,4 +1,4 @@
-AddCSLuaFile()
+AddCSLuaFile ()
 
 -- weapon_sg552: a standard CS:S SWEP; its base owns shared behavior.
 
@@ -9,8 +9,8 @@ SWEP.Category = "Counter-Strike: Source"
 SWEP.Spawnable = true
 SWEP.Slot = 0
 SWEP.SlotPos = 0
-SWEP.ViewModel = Model("models/weapons/cstrike/c_rif_sg552.mdl")
-SWEP.WorldModel = Model("models/weapons/w_rif_sg552.mdl")
+SWEP.ViewModel = Model ("models/weapons/cstrike/c_rif_sg552.mdl")
+SWEP.WorldModel = Model ("models/weapons/w_rif_sg552.mdl")
 SWEP.ViewModelFOV = 54
 SWEP.ViewModelFlip = false
 SWEP.UseHands = true
@@ -25,17 +25,20 @@ SWEP.SingleShotSound = "Weapon_SG552.Single"
 SWEP.SpecialSound3 = "Default.Zoom"
 SWEP.Primary = { ClipSize = 30, DefaultClip = 30, Automatic = true, Ammo = "BULLET_PLAYER_556MM" }
 SWEP.Secondary = { ClipSize = -1, DefaultClip = -1, Automatic = false, Ammo = "none" }
-SWEP.Stats = {
-	Ballistics = {
+SWEP.Stats =
+{
+	Ballistics =
+	{
 		Damage = 33,
 		BulletCount = 1,
 		CycleTime = 0.09,
 		Penetration = 2,
 		Range = 8192,
 		RangeModifier = 0.955,
-		FullAuto = true,
+		FullAuto = true
 	},
-	Accuracy = {
+	Accuracy =
+	{
 		Crouch = 0.00405,
 		Fire = 0.01227,
 		Jump = 0.33464,
@@ -45,27 +48,30 @@ SWEP.Stats = {
 		RecoveryCrouch = 0.27631,
 		RecoveryStand = 0.38683,
 		Spread = 0.0006,
-		Stand = 0.0054,
+		Stand = 0.0054
 	},
-	AlternateAccuracy = {
+	AlternateAccuracy =
+	{
 		Crouch = 0.00284,
 		Fire = 0.00859,
-		Stand = 0.00378,
+		Stand = 0.00378
 	},
-	Kick = {
+	Kick =
+	{
 		UpBase = 1,
 		LateralBase = 0.375,
 		UpModifier = 0.175,
 		LateralModifier = 0.0375,
 		UpMax = 5.75,
 		LateralMax = 1.75,
-		Flip = 8,
+		Flip = 8
 	},
-	Mode = {
+	Mode =
+	{
 		Type = "scope",
 		Speed = 235,
-		FOV = { 55 },
-	},
+		FOV = { 55 }
+	}
 }
 SWEP.SoldierClip = 30
 SWEP.SoldierInterval = 0.09

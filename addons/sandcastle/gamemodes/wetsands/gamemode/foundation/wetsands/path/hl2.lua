@@ -15,8 +15,8 @@
 -- has the native one in its place, which keeps this contract.
 local band = bit.band
 local Path = wetsands.path
-local TFBot = require("foundation.wetsands.path.tfbot")
-module(...)
+local TFBot = require ("foundation.wetsands.path.tfbot")
+module (...)
 
 -- nav.h's NavAttributeType
 NAV_MESH_CROUCH = 0x00000001
@@ -36,33 +36,34 @@ LIMITS = { stepHeight = STEP_HEIGHT, jumpHeight = STEP_HEIGHT, deathDropHeight =
 -- GetMaxJumpHeight); it climbs nav ladders (nextsoldier.locomotion.ladder).
 SOLDIER_DROP_HEIGHT = 1000
 SOLDIER_JUMP_HEIGHT = 72
-SOLDIER_LIMITS = {
+SOLDIER_LIMITS =
+{
 	stepHeight = STEP_HEIGHT,
 	jumpHeight = SOLDIER_JUMP_HEIGHT,
 	deathDropHeight = SOLDIER_DROP_HEIGHT,
 	crouches = true,
-	ladders = true,
+	ladders = true
 }
 
 -- Whether a walker within limits cannot cross an area of these NAV_MESH_*
 -- attributes: a crouch area unless it crouches, a jump area unless it jumps.
-local function Uncrossable(attributes, limits)
-	if band(attributes, NAV_MESH_CROUCH) ~= 0 and not limits.crouches then return true end
-	return band(attributes, NAV_MESH_JUMP) ~= 0 and limits.jumpHeight <= limits.stepHeight
+local function Uncrossable (attributes, limits)
+	if band (attributes, NAV_MESH_CROUCH) ~= 0 and not limits.crouches then return true end
+	return band (attributes, NAV_MESH_JUMP) ~= 0 and limits.jumpHeight <= limits.stepHeight
 end
 
 -- Whether a walker in an area of these attributes must crouch there.
-function MustCrouch(attributes)
-	return band(attributes, NAV_MESH_CROUCH) ~= 0
+function MustCrouch (attributes)
+	return band (attributes, NAV_MESH_CROUCH) ~= 0
 end
 
-function Cost(step, limits, bot)
-	if step.hasFrom and Uncrossable(step.attributes, limits) then return Path.IMPASSABLE end
-	return TFBot.Cost(step, limits, bot)
+function Cost (step, limits, bot)
+	if step.hasFrom and Uncrossable (step.attributes, limits) then return Path.IMPASSABLE end
+	return TFBot.Cost (step, limits, bot)
 end
 
-function Model(limits, bot)
-	local model = TFBot.Model(limits, bot)
+function Model (limits, bot)
+	local model = TFBot.Model (limits, bot)
 	model.attributeRule = true
 	return model
 end

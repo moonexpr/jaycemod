@@ -5,7 +5,7 @@ local Geometry = math.geometry
 local Noise = nextsoldier.body.noise
 local Select = list.select
 local ipairs, sqrt = ipairs, math.sqrt
-module("nextsoldier.locomotion")
+module ("nextsoldier.locomotion")
 
 DETOUR_MARGIN = 8 -- room past the blocker and the walker's own width
 
@@ -20,13 +20,13 @@ local UP = { x = 0, y = 0, z = 1 }
 -- centre and how far it reaches from it across the ground; radius: the
 -- walker's. Returns the two points beside the blocker at from's height, the
 -- one nearer to first; none for a way with no length across the ground.
-function DetourBeside(from, to, center, extent, radius)
-	local way = Geometry.Normalize({ x = to.x - from.x, y = to.y - from.y, z = 0 })
+function DetourBeside (from, to, center, extent, radius)
+	local way = Geometry.Normalize ({ x = to.x - from.x, y = to.y - from.y, z = 0 })
 	if not way then return {} end
-	local out = Geometry.Scale(Geometry.Cross(UP, way), extent + radius + DETOUR_MARGIN)
-	local a = Geometry.Add({ x = center.x, y = center.y, z = from.z }, out)
-	local b = Geometry.Sub({ x = center.x, y = center.y, z = from.z }, out)
-	if Geometry.Distance2D(b, to) < Geometry.Distance2D(a, to) then a, b = b, a end
+	local out = Geometry.Scale (Geometry.Cross (UP, way), extent + radius + DETOUR_MARGIN)
+	local a = Geometry.Add ({ x = center.x, y = center.y, z = from.z }, out)
+	local b = Geometry.Sub ({ x = center.x, y = center.y, z = from.z }, out)
+	if Geometry.Distance2D (b, to) < Geometry.Distance2D (a, to) then a, b = b, a end
 	return { a, b }
 end
 
@@ -40,21 +40,21 @@ end
 RAPPEL_SPEED = 160
 
 -- The deepest drop fallen without rappelling, under gravity.
-local function SurvivedDrop(gravity)
+local function SurvivedDrop (gravity)
 	return Noise.FATAL_FALL_SPEED ^ 2 / (2 * gravity)
 end
 
 -- Whether a drop this deep is rappelled.
-function Rappels(depth, gravity)
-	return depth > SurvivedDrop(gravity)
+function Rappels (depth, gravity)
+	return depth > SurvivedDrop (gravity)
 end
 
 -- How fast to come down now, falling at downSpeed with height to the floor,
 -- and whether it rappels: as it falls, unless it would land at a speed that
 -- kills or rappels already; then no faster than RAPPEL_SPEED, to the floor.
 -- Returns the speed, rappelling.
-function RappelDescent(downSpeed, height, gravity, rappelling)
-	local landing = sqrt(downSpeed * downSpeed + 2 * gravity * height)
+function RappelDescent (downSpeed, height, gravity, rappelling)
+	local landing = sqrt (downSpeed * downSpeed + 2 * gravity * height)
 	if not rappelling and landing <= Noise.FATAL_FALL_SPEED then return downSpeed, false end
 	return downSpeed < RAPPEL_SPEED and downSpeed or RAPPEL_SPEED, true
 end
@@ -62,7 +62,7 @@ end
 -- Where a rappel's rope is tied: where it left the ground (leftGround), a little
 -- above the surface, else, never having stood, a body's height above it.
 local ANCHOR_RISE = 4
-function RappelAnchor(pos, leftGround, height)
+function RappelAnchor (pos, leftGround, height)
 	if leftGround then return { x = leftGround.x, y = leftGround.y, z = leftGround.z + ANCHOR_RISE } end
 	return { x = pos.x, y = pos.y, z = pos.z + height }
 end
@@ -72,7 +72,7 @@ IMPACT_SPEED = 100
 IMPACT_RECOVERY = 0.45
 
 -- The speed a body in this gait moves at now, recovering until recoveredAt (nil: not).
-function Recovering(gait, now, recoveredAt)
+function Recovering (gait, now, recoveredAt)
 	if recoveredAt and now < recoveredAt and gait > IMPACT_SPEED then return IMPACT_SPEED end
 	return gait
 end
@@ -96,45 +96,45 @@ CORNER_TURN_DOT = 0.985 -- cos 10 degrees: a bend gentler than this is no turn
 CORNER_STEP = 8
 CORNER_PUSH_MAX = 96
 
-local function Unit(a, b)
+local function Unit (a, b)
 	local dx, dy = b.x - a.x, b.y - a.y
-	local length = sqrt(dx * dx + dy * dy)
+	local length = sqrt (dx * dx + dy * dy)
 	if length == 0 then return nil end
 	return { x = dx / length, y = dy / length }
 end
 
-local function Direction(x, y)
-	local length = sqrt(x * x + y * y)
+local function Direction (x, y)
+	local length = sqrt (x * x + y * y)
 	return { x = x / length, y = y / length }
 end
 
-local function Pushed(p, w, distance)
+local function Pushed (p, w, distance)
 	return { x = p.x + w.x * distance, y = p.y + w.y * distance, z = p.z }
 end
 
 -- The point(s) to walk in place of p, met from prev and left for nxt, and
 -- whether they are clear (false: no push within CORNER_PUSH_MAX clears the
 -- turn, and p is left as planned).
-function RoundCorner(prev, p, nxt, clear)
-	local u, v = Unit(prev, p), Unit(p, nxt)
+function RoundCorner (prev, p, nxt, clear)
+	local u, v = Unit (prev, p), Unit (p, nxt)
 	if not u or not v then return { p }, true end
 	local dot = u.x * v.x + u.y * v.y
 	if dot >= CORNER_TURN_DOT then return { p }, true end
 	if dot >= 0 then
-		if clear(prev, p) and clear(p, nxt) then return { p }, true end
-		local w = Direction(u.x - v.x, u.y - v.y)
+		if clear (prev, p) and clear (p, nxt) then return { p }, true end
+		local w = Direction (u.x - v.x, u.y - v.y)
 		for distance = CORNER_STEP, CORNER_PUSH_MAX, CORNER_STEP do
-			local q = Pushed(p, w, distance)
-			if clear(prev, q) and clear(q, nxt) then return { q }, true end
+			local q = Pushed (p, w, distance)
+			if clear (prev, q) and clear (q, nxt) then return { q }, true end
 		end
 		return { p }, false
 	end
 	local mx, my = u.x + v.x, u.y + v.y
-	local m = (mx * mx + my * my) > 1e-12 and Direction(mx, my) or { x = -u.y, y = u.x }
-	local wa, wb = Direction(u.x - m.x, u.y - m.y), Direction(m.x - v.x, m.y - v.y)
+	local m = (mx * mx + my * my) > 1e-12 and Direction (mx, my) or { x = -u.y, y = u.x }
+	local wa, wb = Direction (u.x - m.x, u.y - m.y), Direction (m.x - v.x, m.y - v.y)
 	for distance = CORNER_STEP, CORNER_PUSH_MAX, CORNER_STEP do
-		local a, b = Pushed(p, wa, distance), Pushed(p, wb, distance)
-		if clear(prev, a) and clear(a, b) and clear(b, nxt) then return { a, b }, true end
+		local a, b = Pushed (p, wa, distance), Pushed (p, wb, distance)
+		if clear (prev, a) and clear (a, b) and clear (b, nxt) then return { a, b }, true end
 	end
 	return { p }, false
 end
@@ -143,20 +143,20 @@ end
 -- and the goal no further below its feet than its height (a wide body rides a
 -- slope well above the floor under it; a deck overhead is another place) nor
 -- further above them than `within`.
-function Arrived(pos, goal, within, height)
+function Arrived (pos, goal, within, height)
 	local dx, dy, rise = pos.x - goal.x, pos.y - goal.y, pos.z - goal.z
 	return dx * dx + dy * dy <= within * within and rise <= height and rise >= -within
 end
 
 -- The route with each of its turns rounded, each from the point before it as
 -- rounded; its first and last points stay.
-function RoundCorners(points, clear)
+function RoundCorners (points, clear)
 	if #points <= 2 then return points end
-	local out = { points[1] }
+	local out = { points [1] }
 	for i = 2, #points - 1 do
-		for _, q in ipairs((RoundCorner(out[#out], points[i], points[i + 1], clear))) do out[#out + 1] = q end
+		for _, q in ipairs ((RoundCorner (out [#out], points [i], points [i + 1], clear))) do out [#out + 1] = q end
 	end
-	out[#out + 1] = points[#points]
+	out [#out + 1] = points [#points]
 	return out
 end
 
@@ -165,10 +165,11 @@ end
 -- way round is looked along every STEP_SCAN as far as STEP_REACH, for where it falls;
 -- its walk ends STEP_PAST beyond, so it is still walking as it does.
 local STEP_SCAN, STEP_REACH, STEP_PAST = 8, 96, 24
-local DIAGONAL = sqrt(0.5)
-local COMPASS = {
+local DIAGONAL = sqrt (0.5)
+local COMPASS =
+{
 	{ 1, 0 }, { DIAGONAL, DIAGONAL }, { 0, 1 }, { -DIAGONAL, DIAGONAL },
-	{ -1, 0 }, { -DIAGONAL, -DIAGONAL }, { 0, -1 }, { DIAGONAL, -DIAGONAL },
+	{ -1, 0 }, { -DIAGONAL, -DIAGONAL }, { 0, -1 }, { DIAGONAL, -DIAGONAL }
 }
 
 -- Standing on a route's points: the engine lays them for the width it searched with, so
@@ -176,16 +177,16 @@ local COMPASS = {
 -- can never reach holds it there. STAND_STEP, as far as STAND_REACH: where it looks.
 local STAND_STEP, STAND_REACH = 8, 56
 
-local function StandOn(prev, p, nxt, stands, reaches)
-	if stands(p) then return p end
+local function StandOn (prev, p, nxt, stands, reaches)
+	if stands (p) then return p end
 	for distance = STAND_STEP, STAND_REACH, STAND_STEP do
 		local places = {}
-		for _, way in ipairs(COMPASS) do
-			local q = Pushed(p, { x = way[1], y = way[2] }, distance)
-			if stands(q) and reaches(p, q) then places[#places + 1] = q end
+		for _, way in ipairs (COMPASS) do
+			local q = Pushed (p, { x = way [1], y = way [2] }, distance)
+			if stands (q) and reaches (p, q) then places [#places + 1] = q end
 		end
-		local nearest = Select.Lowest(places, function(q)
-			return Geometry.Distance2D(prev, q) + Geometry.Distance2D(q, nxt)
+		local nearest = Select.Lowest (places, function (q)
+			return Geometry.Distance2D (prev, q) + Geometry.Distance2D (q, nxt)
 		end)
 		if nearest then return nearest end
 	end
@@ -195,40 +196,41 @@ end
 -- The route with each point its body cannot stand on moved to the nearest place it can,
 -- each from the point before it as moved; its first and last points stay. stands(q):
 -- whether the body fits at q. reaches(p, q): no wall between them.
-function StandPoints(points, stands, reaches)
+function StandPoints (points, stands, reaches)
 	if #points <= 2 then return points end
-	local out = { points[1] }
+	local out = { points [1] }
 	for i = 2, #points - 1 do
-		out[i] = StandOn(out[i - 1], points[i], points[i + 1], stands, reaches)
+		out [i] = StandOn (out [i - 1], points [i], points [i + 1], stands, reaches)
 	end
-	out[#points] = points[#points]
+	out [#points] = points [#points]
 	return out
 end
 
 -- Whether a route's point is a drop it has come to: more than depth below it, and
 -- within near across the ground.
-function DropBelow(pos, point, depth, near)
-	return pos.z - point.z > depth and Geometry.Distance2D(pos, point) <= near
+function DropBelow (pos, point, depth, near)
+	return pos.z - point.z > depth and Geometry.Distance2D (pos, point) <= near
 end
 
 -- The point to walk to from pos to fall to landing, or nil with no way within reach:
 -- of the ways clear(q) lets it go on until falls(q), the one falling nearest the landing.
-function StepOff(pos, landing, clear, falls)
+function StepOff (pos, landing, clear, falls)
 	local ways = {}
-	for _, way in ipairs(COMPASS) do
+	for _, way in ipairs (COMPASS) do
 		for along = STEP_SCAN, STEP_REACH, STEP_SCAN do
-			local q = { x = pos.x + way[1] * along, y = pos.y + way[2] * along, z = pos.z }
-			if not clear(q) then break end
-			if falls(q) then
-				ways[#ways + 1] = {
+			local q = { x = pos.x + way [1] * along, y = pos.y + way [2] * along, z = pos.z }
+			if not clear (q) then break end
+			if falls (q) then
+				ways [#ways + 1] =
+				{
 					falls = q,
-					walk = { x = q.x + way[1] * STEP_PAST, y = q.y + way[2] * STEP_PAST, z = pos.z },
+					walk = { x = q.x + way [1] * STEP_PAST, y = q.y + way [2] * STEP_PAST, z = pos.z }
 				}
 				break
 			end
 		end
 	end
-	local nearest = Select.Lowest(ways, function(way) return Geometry.Distance2D(way.falls, landing) end)
+	local nearest = Select.Lowest (ways, function (way) return Geometry.Distance2D (way.falls, landing) end)
 	return nearest and nearest.walk
 end
 
@@ -240,19 +242,20 @@ local AVOID_RANGE, AVOID_LEAD, AVOID_MARGIN = 50, 100, 2
 
 -- The point to make for on the way from pos to target: target, or a point veered off
 -- the one side blocked(from, to) says is. halfWidth: the body's.
-function Avoid(pos, target, halfWidth, blocked)
-	local way = Unit(pos, target)
+function Avoid (pos, target, halfWidth, blocked)
+	local way = Unit (pos, target)
 	if not way then return target end
 	local left = { x = -way.y, y = way.x }
 	local offset = halfWidth / 2 + AVOID_MARGIN
-	local fromLeft, fromRight = Pushed(pos, left, offset), Pushed(pos, left, -offset)
-	local leftBlocked = blocked(fromLeft, Pushed(fromLeft, way, AVOID_RANGE))
-	local rightBlocked = blocked(fromRight, Pushed(fromRight, way, AVOID_RANGE))
+	local fromLeft, fromRight = Pushed (pos, left, offset), Pushed (pos, left, -offset)
+	local leftBlocked = blocked (fromLeft, Pushed (fromLeft, way, AVOID_RANGE))
+	local rightBlocked = blocked (fromRight, Pushed (fromRight, way, AVOID_RANGE))
 	if leftBlocked == rightBlocked then return target end
 	local side = leftBlocked and -1 or 1
-	return {
+	return
+	{
 		x = pos.x + AVOID_LEAD * (way.x + side * left.x),
 		y = pos.y + AVOID_LEAD * (way.y + side * left.y),
-		z = target.z,
+		z = target.z
 	}
 end

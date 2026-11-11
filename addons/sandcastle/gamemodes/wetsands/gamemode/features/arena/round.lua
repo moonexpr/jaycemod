@@ -11,9 +11,9 @@
 -- the points' own locks are the map's. OnCapEnabled fires once as that time
 -- passes. A team wins by killing the other or by capturing the point.
 local setmetatable = setmetatable
-local ControlPoints = require("features.rounds.control_points")
-local State = require("games.gameplay.rounds.state")
-module(...)
+local ControlPoints = require ("features.rounds.control_points")
+local State = require ("games.gameplay.rounds.state")
+module (...)
 
 -- The FGD's CapEnableDelay default.
 CAP_ENABLE_DELAY_DEFAULT = 0
@@ -25,18 +25,19 @@ PREROUND_MIN, PREROUND_MAX = 5, 15
 ROUND_START_LINE = "Announcer.AM_RoundStartRandom"
 -- CHudArenaCapPointCountdown::OnTick: the seconds before the point opens,
 -- spoken, then the cap-enabled line.
-COUNTDOWN_LINES = {
+COUNTDOWN_LINES =
+{
 	[5] = "Announcer.RoundBegins5Seconds",
 	[4] = "Announcer.RoundBegins4Seconds",
 	[3] = "Announcer.RoundBegins3Seconds",
 	[2] = "Announcer.RoundBegins2Seconds",
-	[1] = "Announcer.RoundBegins1Seconds",
+	[1] = "Announcer.RoundBegins1Seconds"
 }
 CAP_ENABLED_LINE = "Announcer.AM_CapEnabledRandom"
 
 -- The mode ---------------------------------------------------------------------------
 
-Mode = ControlPoints.Mode:Extend("arena")
+Mode = ControlPoints.Mode:Extend ("arena")
 -- Over every other game type: CTFGameRules::Activate makes a map with a
 -- tf_logic_arena arena, whatever else it has.
 Mode.PRIORITY = 4
@@ -57,17 +58,17 @@ Mode.PLAYERS_NEEDED = { count = MIN_PLAYERS }
 -- settings.arenaPreroundTime: mp_arena_preround_time, spent as the arena
 -- round's setup (TF2 spends it frozen in the pre-round; here the pre-round
 -- is every mode's one-second hold).
-function Mode:SetupSeconds(settings)
+function Mode:SetupSeconds (settings)
 	return settings.arenaPreroundTime
 end
 
 -- settings.arenaRoundTime: mp_arena_round_time.
-function Mode:StalemateSeconds(settings)
+function Mode:StalemateSeconds (settings)
 	return settings.arenaRoundTime
 end
 
 -- CTFGameRules::SetupOnStalemateStart: the override when above 0, else the map's.
-function CapEnableDelay(override, mapDelay)
+function CapEnableDelay (override, mapDelay)
 	if override > 0 then return override end
 	return mapDelay
 end
@@ -78,22 +79,23 @@ local Logic = {}
 Logic.__index = Logic
 
 -- kv = { capEnableDelay }, the map's CapEnableDelay or nil for the FGD's.
-function New(kv)
-	return setmetatable({
-		capEnableDelay = kv.capEnableDelay or CAP_ENABLE_DELAY_DEFAULT,
-		fired = false,
-	}, Logic)
+function New (kv)
+	return setmetatable (
+		{
+			capEnableDelay = kv.capEnableDelay or CAP_ENABLE_DELAY_DEFAULT,
+			fired = false
+		}, Logic)
 end
 
 -- The round's delay, given mp_arena_override_cap_enable_time.
-function Logic:CapEnableDelay(override)
-	return CapEnableDelay(override, self.capEnableDelay)
+function Logic:CapEnableDelay (override)
+	return CapEnableDelay (override, self.capEnableDelay)
 end
 
 -- CArenaLogic::ArenaLogicThink: whether OnCapEnabled fires now. Only in
 -- STALEMATE; it fires once as the round's cap-enable time (capEnableAt, nil
 -- for none) passes, and a time still to come re-arms it.
-function Logic:Think(now, state, capEnableAt)
+function Logic:Think (now, state, capEnableAt)
 	if state ~= State.STALEMATE or capEnableAt == nil then return false end
 	if capEnableAt > now then
 		self.fired = false

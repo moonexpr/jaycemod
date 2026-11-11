@@ -14,7 +14,7 @@
 local Teams = gameplay.teams
 local Geometry = math.geometry
 local ipairs, pairs, error, tostring, abs, setmetatable = ipairs, pairs, error, tostring, math.abs, setmetatable
-module(...)
+module (...)
 
 SENTRY, TELEPORTER, DOOR = "sentry", "teleporter", "door"
 
@@ -38,73 +38,73 @@ SPAWN_PRICE = { [SENTRY] = 2000, [TELEPORTER] = 500 }
 -- last has gone.
 DOOR_OPEN_REACH, DOOR_CLOSE_DELAY = 96, 1
 
-function Constructed(kind, startedAt, now)
-	local time = BUILD_TIME[kind]
-	if not time then error("no building of kind " .. tostring(kind), 2) end
+function Constructed (kind, startedAt, now)
+	local time = BUILD_TIME [kind]
+	if not time then error ("no building of kind " .. tostring (kind), 2) end
 	local share = (now - startedAt) / time
 	if share >= 1 then return 1 end
 	return share
 end
 
-function Harms(team, attackerTeam)
+function Harms (team, attackerTeam)
 	return attackerTeam ~= team or (team ~= Teams.RED and team ~= Teams.BLUE)
 end
 
-function Target(from, candidates, team, sees)
+function Target (from, candidates, team, sees)
 	local best, nearest
-	for _, candidate in ipairs(candidates) do
+	for _, candidate in ipairs (candidates) do
 		if candidate.team ~= team and candidate.team >= Teams.FIRST_GAME_TEAM then
-			local d = Geometry.Distance(from, candidate.pos)
-			if d <= SENTRY_RANGE and (not best or d < nearest) and sees(candidate) then best, nearest = candidate, d end
+			local d = Geometry.Distance (from, candidate.pos)
+			if d <= SENTRY_RANGE and (not best or d < nearest) and sees (candidate) then best, nearest = candidate, d end
 		end
 	end
 	return best
 end
 
 -- toward - angle, in (-180, 180].
-local function Difference(angle, toward)
+local function Difference (angle, toward)
 	local d = (toward - angle) % 360
 	if d > 180 then d = d - 360 end
 	return d
 end
 
-function Turn(angle, toward, dt)
-	local d, step = Difference(angle, toward), SENTRY_TURN_RATE * dt
-	if abs(d) <= step then return angle + d end
+function Turn (angle, toward, dt)
+	local d, step = Difference (angle, toward), SENTRY_TURN_RATE * dt
+	if abs (d) <= step then return angle + d end
 	return angle + (d > 0 and step or -step)
 end
 
-function OnTarget(angle, toward) return abs(Difference(angle, toward)) <= SENTRY_FIRE_CONE end
+function OnTarget (angle, toward) return abs (Difference (angle, toward)) <= SENTRY_FIRE_CONE end
 
-function Carries(team, riderTeam) return team >= Teams.FIRST_GAME_TEAM and riderTeam == team end
+function Carries (team, riderTeam) return team >= Teams.FIRST_GAME_TEAM and riderTeam == team end
 
-function Charged(lastTrip, now) return lastTrip == nil or now - lastTrip >= TELEPORTER_RECHARGE end
+function Charged (lastTrip, now) return lastTrip == nil or now - lastTrip >= TELEPORTER_RECHARGE end
 
-function Passes(team, walkerTeam) return walkerTeam >= Teams.FIRST_GAME_TEAM and walkerTeam == team end
+function Passes (team, walkerTeam) return walkerTeam >= Teams.FIRST_GAME_TEAM and walkerTeam == team end
 
 local Barrier = {}
 Barrier.__index = Barrier
 
-function Barriers() return setmetatable({ doors = {}, areas = {} }, Barrier) end
+function Barriers () return setmetatable ({ doors = {}, areas = {} }, Barrier) end
 
-function Barrier:Add(id, team, areaIds)
-	self.doors[id] = { team = team, areas = areaIds }
-	for _, area in ipairs(areaIds) do
-		self.areas[area] = self.areas[area] or {}
-		self.areas[area][id] = team
+function Barrier:Add (id, team, areaIds)
+	self.doors [id] = { team = team, areas = areaIds }
+	for _, area in ipairs (areaIds) do
+		self.areas [area] = self.areas [area] or {}
+		self.areas [area] [id] = team
 	end
 end
 
-function Barrier:Remove(id)
-	local door = self.doors[id]
+function Barrier:Remove (id)
+	local door = self.doors [id]
 	if not door then return end
-	self.doors[id] = nil
-	for _, area in ipairs(door.areas) do self.areas[area][id] = nil end
+	self.doors [id] = nil
+	for _, area in ipairs (door.areas) do self.areas [area] [id] = nil end
 end
 
-function Barrier:Blocks(areaId, walkerTeam)
-	for _, team in pairs(self.areas[areaId] or {}) do
-		if not Passes(team, walkerTeam) then return true end
+function Barrier:Blocks (areaId, walkerTeam)
+	for _, team in pairs (self.areas [areaId] or {}) do
+		if not Passes (team, walkerTeam) then return true end
 	end
 	return false
 end

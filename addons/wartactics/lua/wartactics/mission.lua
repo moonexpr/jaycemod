@@ -64,7 +64,7 @@ local error, ipairs, pairs, setmetatable, max, min, tostring = error, ipairs, pa
 local Distance = math.geometry.Distance
 local Lanes = wartactics.lanes
 local Transaction = transaction
-module(...)
+module (...)
 
 ADVANCE = "advance"
 -- The special missions (docs/special-missions-plan.md), each on a target
@@ -88,25 +88,25 @@ WAIT_MAX = 45
 CASUALTY_SHARE = 0.5
 STUCK_TIME, PROGRESS_STEP = 20, 128
 
-local function Frozen(_, key) error("a mission is not changed: " .. tostring(key), 2) end
+local function Frozen (_, key) error ("a mission is not changed: " .. tostring (key), 2) end
 
-function New(spec)
-	if not KINDS[spec.kind] then error("no mission kind " .. tostring(spec.kind), 2) end
-	if not (spec.size and spec.size >= 1) then error("a mission needs a size of 1 or more", 2) end
-	if not (spec.wait and spec.wait >= 0) then error("a mission's wait is never negative", 2) end
-	if not (spec.way and spec.way.points and spec.way.points[1]) then error("a mission needs a way", 2) end
-	if SPECIAL[spec.kind] and not (spec.target and spec.target.room and spec.target.door) then
-		error("a " .. spec.kind .. " needs its target room and door", 2)
+function New (spec)
+	if not KINDS [spec.kind] then error ("no mission kind " .. tostring (spec.kind), 2) end
+	if not (spec.size and spec.size >= 1) then error ("a mission needs a size of 1 or more", 2) end
+	if not (spec.wait and spec.wait >= 0) then error ("a mission's wait is never negative", 2) end
+	if not (spec.way and spec.way.points and spec.way.points [1]) then error ("a mission needs a way", 2) end
+	if SPECIAL [spec.kind] and not (spec.target and spec.target.room and spec.target.door) then
+		error ("a " .. spec.kind .. " needs its target room and door", 2)
 	end
 	local fields = { kind = spec.kind, way = spec.way, size = spec.size, wait = spec.wait, issued = spec.issued,
 		alpha = spec.alpha == true, target = spec.target }
-	return setmetatable({}, { __index = fields, __newindex = Frozen })
+	return setmetatable ({}, { __index = fields, __newindex = Frozen })
 end
 
 -- Whether a squad of team other than except holds the alpha's mission and
 -- is not regrouping.
-local function AlphaOut(fireTeams, team, except)
-	for _, other in ipairs(fireTeams) do
+local function AlphaOut (fireTeams, team, except)
+	for _, other in ipairs (fireTeams) do
 		if other ~= except and other.team == team and other.mission and other.mission.alpha and not other.regrouping then
 			return true
 		end
@@ -115,50 +115,50 @@ local function AlphaOut(fireTeams, team, except)
 end
 
 -- Whether a squad of job role may be an alpha: its lanes hold the direct one.
-local function MayLead(role)
-	return Lanes.JOB_KINDS[role] ~= nil and Lanes.JOB_KINDS[role][Lanes.DIRECT] == true
+local function MayLead (role)
+	return Lanes.JOB_KINDS [role] ~= nil and Lanes.JOB_KINDS [role] [Lanes.DIRECT] == true
 end
 
 -- With no alpha out, the first squad of team out on another mission, not
 -- regrouping, that may be an alpha: it asks again, to be the alpha.
-function Promote(fireTeams, team)
-	if AlphaOut(fireTeams, team, nil) then return nil end
-	for _, squad in ipairs(fireTeams) do
-		if squad.team == team and squad.missionLed and squad.mission and not squad.regrouping and MayLead(squad.role) then
+function Promote (fireTeams, team)
+	if AlphaOut (fireTeams, team, nil) then return nil end
+	for _, squad in ipairs (fireTeams) do
+		if squad.team == team and squad.missionLed and squad.mission and not squad.regrouping and MayLead (squad.role) then
 			return squad
 		end
 	end
 	return nil
 end
 
-local function Direct(lanes)
-	for _, lane in ipairs(lanes) do
+local function Direct (lanes)
+	for _, lane in ipairs (lanes) do
 		if lane.kind == Lanes.DIRECT then return lane end
 	end
-	return lanes[1]
+	return lanes [1]
 end
 
 -- Of the lanes the job takes, the one fewest other squads' missions are on;
 -- the first planned on a tie.
-local function LeastTaken(fireTeams, fireTeam, lanes)
+local function LeastTaken (fireTeams, fireTeam, lanes)
 	local best, bestCount
-	for _, i in ipairs(Lanes.Choices(lanes, fireTeam.role)) do
+	for _, i in ipairs (Lanes.Choices (lanes, fireTeam.role)) do
 		local count = 0
-		for _, other in ipairs(fireTeams) do
-			if other ~= fireTeam and other.team == fireTeam.team and other.mission and other.mission.way == lanes[i] then
+		for _, other in ipairs (fireTeams) do
+			if other ~= fireTeam and other.team == fireTeam.team and other.mission and other.mission.way == lanes [i] then
 				count = count + 1
 			end
 		end
-		if best == nil or count < bestCount then best, bestCount = lanes[i], count end
+		if best == nil or count < bestCount then best, bestCount = lanes [i], count end
 	end
 	return best
 end
 
 -- The room's door nearest a point.
-local function DoorToward(room, p)
+local function DoorToward (room, p)
 	local best, bestDistance
-	for _, door in ipairs(room.doors) do
-		local d = Distance(door.pos, p)
+	for _, door in ipairs (room.doors) do
+		local d = Distance (door.pos, p)
 		if not best or d < bestDistance then best, bestDistance = door, d end
 	end
 	return best
@@ -166,12 +166,12 @@ end
 
 -- A mission's target in a room ({ id, center, doors }): the room, its centre, and its door
 -- nearest from, where the squad comes from (the enemy's way in, for an ambush).
-function Target(room, from)
-	return { room = room.id, pos = room.center, door = DoorToward(room, from) }
+function Target (room, from)
+	return { room = room.id, pos = room.center, door = DoorToward (room, from) }
 end
 
 -- Each kind's worth in a room, 0 when it is none of it.
-local function Worth(room, spec)
+local function Worth (room, spec)
 	local odds = spec.size * ASSAULT_ODDS
 	local ambush = room.theirs and room.guarded == 0 and room.traffic >= AMBUSH_TRAFFIC and room.traffic or 0
 	local assault = room.ours and room.guarded > 0 and room.guarded <= odds and room.guarded or 0
@@ -180,12 +180,12 @@ local function Worth(room, spec)
 	return { [AMBUSH] = ambush, [ASSAULT] = assault, [TOPPLE] = topple }
 end
 
-function Choose(spec)
+function Choose (spec)
 	local bestKind, bestRoom, bestWorth
-	for _, room in ipairs(spec.rooms) do
-		if not spec.taken[room.id] and room.doors[1] then
-			for _, kind in ipairs({ TOPPLE, ASSAULT, AMBUSH }) do
-				local worth = (not spec.kinds or spec.kinds[kind]) and Worth(room, spec)[kind] or 0
+	for _, room in ipairs (spec.rooms) do
+		if not spec.taken [room.id] and room.doors [1] then
+			for _, kind in ipairs ({ TOPPLE, ASSAULT, AMBUSH }) do
+				local worth = (not spec.kinds or spec.kinds [kind]) and Worth (room, spec) [kind] or 0
 				if worth > 0 and (not bestWorth or worth > bestWorth or (worth == bestWorth and room.id < bestRoom.id)) then
 					bestKind, bestRoom, bestWorth = kind, room, worth
 				end
@@ -194,70 +194,72 @@ function Choose(spec)
 	end
 	if not bestKind then return nil end
 	local from = bestKind == AMBUSH and spec.enemyFrom or spec.ourFrom
-	return bestKind, Target(bestRoom, from)
+	return bestKind, Target (bestRoom, from)
 end
 
 -- The rooms other squads of the team hold missions in, beside those given.
-local function Taken(fireTeams, fireTeam, given)
+local function Taken (fireTeams, fireTeam, given)
 	local taken = {}
-	for room in pairs(given or {}) do taken[room] = true end
-	for _, other in ipairs(fireTeams) do
+	for room in pairs (given or {}) do taken [room] = true end
+	for _, other in ipairs (fireTeams) do
 		local target = other ~= fireTeam and other.team == fireTeam.team and other.mission and other.mission.target
-		if target then taken[target.room] = true end
+		if target then taken [target.room] = true end
 	end
 	return taken
 end
 
-function Issue(spec)
+function Issue (spec)
 	local fireTeam, lanes = spec.fireTeam, spec.lanes
-	if not Lanes.JOBS[fireTeam.role] then error("a squad of job " .. tostring(fireTeam.role) .. " asks for no mission", 2) end
-	if not (lanes and lanes[1]) then Transaction.Refuse(NO_LANES, "its team has no lanes planned yet") end
-	local alpha = MayLead(fireTeam.role) and not AlphaOut(spec.fireTeams, fireTeam.team, fireTeam)
+	if not Lanes.JOBS [fireTeam.role] then error ("a squad of job " .. tostring (fireTeam.role) .. " asks for no mission", 2) end
+	if not (lanes and lanes [1]) then Transaction.Refuse (NO_LANES, "its team has no lanes planned yet") end
+	local alpha = MayLead (fireTeam.role) and not AlphaOut (spec.fireTeams, fireTeam.team, fireTeam)
 	local kind, target = ADVANCE, nil
 	if spec.given then
 		-- by hand (the Path Follower stool): its kind and target, on the way it would take
 		kind, target = spec.given.kind, spec.given.target
 	elseif not alpha and spec.special then
 		local special = {}
-		for k, v in pairs(spec.special) do special[k] = v end
-		special.taken = Taken(spec.fireTeams, fireTeam, spec.special.taken)
-		local chosen, at = Choose(special)
+		for k, v in pairs (spec.special) do special [k] = v end
+		special.taken = Taken (spec.fireTeams, fireTeam, spec.special.taken)
+		local chosen, at = Choose (special)
 		if chosen then kind, target = chosen, at end
 	end
-	return New({
-		kind = kind,
-		way = alpha and Direct(lanes) or LeastTaken(spec.fireTeams, fireTeam, lanes),
-		size = spec.size,
-		wait = Wait({ missing = spec.missing, nextWave = not spec.regrouped and spec.nextWave or nil, now = spec.now,
-			travel = spec.travel }),
-		issued = spec.now,
-		alpha = alpha,
-		target = target,
-	})
+	return New (
+		{
+			kind = kind,
+			way = alpha and Direct (lanes) or LeastTaken (spec.fireTeams, fireTeam, lanes),
+			size = spec.size,
+			wait = Wait ({ missing = spec.missing, nextWave = not spec.regrouped and spec.nextWave or nil, now = spec.now,
+				travel = spec.travel }),
+			issued = spec.now,
+			alpha = alpha,
+			target = target
+		}
+	)
 end
 
-function Waited(mission, now)
+function Waited (mission, now)
 	return now >= mission.issued + mission.wait
 end
 
-function Wait(spec)
+function Wait (spec)
 	if spec.missing <= 0 then return 0 end
-	local wave = spec.nextWave and max(0, spec.nextWave - spec.now) or 0
-	return min(WAIT_MAX, wave + spec.travel)
+	local wave = spec.nextWave and max (0, spec.nextWave - spec.now) or 0
+	return min (WAIT_MAX, wave + spec.travel)
 end
 
-function Casualties(strength, alive)
+function Casualties (strength, alive)
 	return alive <= strength * CASUALTY_SHARE
 end
 
 local Track_ = {}
 Track_.__index = Track_
 
-function Track(remaining, now)
-	return setmetatable({ best = remaining, at = now }, Track_)
+function Track (remaining, now)
+	return setmetatable ({ best = remaining, at = now }, Track_)
 end
 
-function Track_:Stuck(remaining, now)
+function Track_:Stuck (remaining, now)
 	if remaining <= self.best - PROGRESS_STEP then
 		self.best, self.at = remaining, now
 		return false
@@ -265,7 +267,7 @@ function Track_:Stuck(remaining, now)
 	return now - self.at >= STUCK_TIME
 end
 
-function Track_:Reset(remaining, now)
+function Track_:Reset (remaining, now)
 	self.best, self.at = remaining, now
 end
 
@@ -277,7 +279,7 @@ ARRIVED = 400
 -- keeping its mission until a new one comes. fireTeam: the squad's
 -- blackboard (missionLed, regrouping, musterAt, musterArrived,
 -- missionWanted, regroupCalled, missionTrack).
-function Recall(fireTeam, why)
+function Recall (fireTeam, why)
 	fireTeam.regrouping, fireTeam.missionLed = why, nil
 	fireTeam.musterAt, fireTeam.musterArrived, fireTeam.missionWanted = nil, nil, nil
 	fireTeam.regroupCalled, fireTeam.missionTrack = nil, nil
@@ -286,18 +288,18 @@ end
 -- A squad whose mission is done (an ambush sprung and fought, or never
 -- sprung): it lets the mission go and asks afresh, mustering where it
 -- stands (its leader past the muster).
-function Finish(fireTeam)
-	Recall(fireTeam, nil)
+function Finish (fireTeam)
+	Recall (fireTeam, nil)
 	fireTeam.mission, fireTeam.sprung, fireTeam.ambushSetAt, fireTeam.halted = nil, nil, nil, nil
 	fireTeam.stackedAt, fireTeam.breachAt, fireTeam.clearSince = nil, nil, nil
 end
 
-function Regroup(track, strength, alive, remaining, now, fighting)
-	if Casualties(strength, alive) then return CASUALTIES end
+function Regroup (track, strength, alive, remaining, now, fighting)
+	if Casualties (strength, alive) then return CASUALTIES end
 	if fighting or remaining <= ARRIVED then
-		track:Reset(remaining, now)
+		track:Reset (remaining, now)
 		return nil
 	end
-	if track:Stuck(remaining, now) then return STUCK end
+	if track:Stuck (remaining, now) then return STUCK end
 	return nil
 end

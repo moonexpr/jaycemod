@@ -12,13 +12,13 @@
 --     class; its lines keep their numbers and its error is raised again
 local ipairs = ipairs
 local format, match = string.format, string.match
-module(...)
+module (...)
 
 local REPO_PREFIXES = { "^addons/sandcastle/gamemodes/", "^addons/[%w_]+/lua/" }
 
-function LuaPath(path)
-	for _, prefix in ipairs(REPO_PREFIXES) do
-		local stripped, count = path:gsub(prefix, "", 1)
+function LuaPath (path)
+	for _, prefix in ipairs (REPO_PREFIXES) do
+		local stripped, count = path:gsub (prefix, "", 1)
 		if count == 1 then return stripped end
 	end
 	return path
@@ -30,35 +30,36 @@ local SHARED_NAMES = { sh = true, shared = true }
 -- Trees whose files both realms load: foundation, the games modules, the soldier's addons.
 local SHARED_TREES = { "/gamemode/foundation/", "/gamemode/includes/", "^nextsoldier/", "^wartactics/" }
 
-function Script(luaPath)
-	local dir, class = match(luaPath, "([%w_]+)/([%w_]+)%.lua$")
+function Script (luaPath)
+	local dir, class = match (luaPath, "([%w_]+)/([%w_]+)%.lua$")
 	if dir == "entities" then return { kind = "entity", class = class } end
 	if dir == "weapons" then return { kind = "weapon", class = class } end
 	return nil
 end
 
-function Realm(luaPath)
-	local name = match(luaPath, "([%w_]+)%.lua$") or ""
-	if SERVER_NAMES[name] or match(name, "^sv_") then return "sv" end
-	if CLIENT_NAMES[name] or match(name, "^cl_") then return "cl" end
-	if SHARED_NAMES[name] or match(name, "^sh_") or Script(luaPath) then return "sh" end
-	for _, tree in ipairs(SHARED_TREES) do
-		if match(luaPath, tree) then return "sh" end
+function Realm (luaPath)
+	local name = match (luaPath, "([%w_]+)%.lua$") or ""
+	if SERVER_NAMES [name] or match (name, "^sv_") then return "sv" end
+	if CLIENT_NAMES [name] or match (name, "^cl_") then return "cl" end
+	if SHARED_NAMES [name] or match (name, "^sh_") or Script (luaPath) then return "sh" end
+	for _, tree in ipairs (SHARED_TREES) do
+		if match (luaPath, tree) then return "sh" end
 	end
 	return "sv"
 end
 
 -- What a script's file fills, and how it is registered.
-local SCRIPTS = {
+local SCRIPTS =
+{
 	entity = { global = "ENT", folder = "entities/", register = "scripted_ents.Register" },
-	weapon = { global = "SWEP", folder = "weapons/", register = "weapons.Register" },
+	weapon = { global = "SWEP", folder = "weapons/", register = "weapons.Register" }
 }
 
 -- All on the source's first line and after its last, so its lines keep their numbers.
-function Wrapped(source, script)
-	local kind = script and SCRIPTS[script.kind]
-	local open = kind and format("%s = { Folder = %q } ", kind.global, kind.folder .. script.class) or ""
-	local register = kind and format("if __dev_ok then %s(%s, %q) end %s = nil ", kind.register, kind.global, script.class, kind.global) or ""
+function Wrapped (source, script)
+	local kind = script and SCRIPTS [script.kind]
+	local open = kind and format ("%s = { Folder = %q } ", kind.global, kind.folder .. script.class) or ""
+	local register = kind and format ("if __dev_ok then %s(%s, %q) end %s = nil ", kind.register, kind.global, script.class, kind.global) or ""
 	return "GM = GAMEMODE " .. open .. "local __dev_ok, __dev_err = pcall(function(...) " .. source
 		.. "\nend, ...) GM = nil " .. register .. "if not __dev_ok then error(__dev_err, 0) end"
 end

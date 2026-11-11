@@ -4,12 +4,14 @@
 -- COLLISION_GROUP_NONE and nothing filtered by default. With no origin, each is a preset whose
 -- :Each(origins) is a generator over them:
 --   for tr, spot in TracePlayer(nil, 1):Each(spots) do ... end
-local traces = world.trace.New({
-	Hull = util.TraceHull,
-	Line = util.TraceLine,
-	Vector = Vector,
-	mask = MASK_NPCSOLID,
-	group = COLLISION_GROUP_NONE,
-})
+local traces = world.trace.New (
+	{
+		Hull = util.TraceHull,
+		Line = util.TraceLine,
+		Vector = Vector,
+		mask = MASK_NPCSOLID,
+		group = COLLISION_GROUP_NONE
+	}
+)
 
 TraceCube, TracePlayer, TraceSphere, TraceFrustum = traces.Cube, traces.Player, traces.Sphere, traces.Frustum

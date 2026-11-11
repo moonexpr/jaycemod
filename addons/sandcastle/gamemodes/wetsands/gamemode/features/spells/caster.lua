@@ -34,13 +34,14 @@
 -- A launched projectile's config holds { spell (its index), position,
 -- velocity, team } and what its spell adds; the projectile binds to a Shot
 -- and calls its Impact when it lands.
-module(...)
+module (...)
 
 -- Source's damage type bits.
 DMG_BURN = 8
 DMG_BLAST = 64
 
-METHODS = {
+METHODS =
+{
 	"Now",
 	"RandomFloat",
 	"RandomInt",
@@ -78,5 +79,5 @@ METHODS = {
 	"Particle",
 	"AttachParticle",
 	"Tracer",
-	"EmitSound",
+	"EmitSound"
 }

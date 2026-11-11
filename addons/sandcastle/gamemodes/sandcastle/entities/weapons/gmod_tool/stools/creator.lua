@@ -1,53 +1,52 @@
-
 TOOL.AddToMenu = false
-TOOL.ClientConVar[ "type" ] = "0"
-TOOL.ClientConVar[ "name" ] = "0"
-TOOL.ClientConVar[ "override" ] = ""
+TOOL.ClientConVar ["type"] = "0"
+TOOL.ClientConVar ["name"] = "0"
+TOOL.ClientConVar ["override"] = ""
 
 TOOL.Information = { { name = "left" } }
 
-function TOOL:LeftClick( trace )
+function TOOL:LeftClick (trace)
 
-	local type = self:GetClientNumber( "type", 0 )
-	local name = self:GetClientInfo( "name" )
+	local type = self:GetClientNumber ("type", 0)
+	local name = self:GetClientInfo ("name")
 
-	if ( CLIENT ) then return true end
+	if CLIENT then return true end
 
-	if ( type == 0 ) then
+	if type == 0 then
 
-		Spawn_SENT( self:GetOwner(), name, trace )
+		Spawn_SENT (self:GetOwner (), name, trace)
 
-	elseif ( type == 1 ) then
+	elseif type == 1 then
 
-		Spawn_Vehicle( self:GetOwner(), name, trace )
+		Spawn_Vehicle (self:GetOwner (), name, trace)
 
-	elseif ( type == 2 ) then
+	elseif type == 2 then
 
 		-- Load a weapon just like left clicking would
 		local weapon = ""
-		local gmod_npcweapon = self:GetOwner():GetInfo( "gmod_npcweapon" )
-		if ( gmod_npcweapon != "" ) then
+		local gmod_npcweapon = self:GetOwner ():GetInfo ("gmod_npcweapon")
+		if gmod_npcweapon ~= "" then
 			weapon = gmod_npcweapon
 		else
-			local NPCinfo = list.GetEntry( "NPC", name )
-			weapon = table.Random( NPCinfo and NPCinfo.Weapons or {} ) or ""
+			local NPCinfo = list.GetEntry ("NPC", name)
+			weapon = table.Random (NPCinfo and NPCinfo.Weapons or {}) or ""
 		end
 
-		local override = self:GetOwner():GetInfo( "creator_override" )
-		if ( override != "" ) then weapon = override end
+		local override = self:GetOwner ():GetInfo ("creator_override")
+		if override ~= "" then weapon = override end
 
-		Spawn_NPC( self:GetOwner(), name, weapon, trace )
+		Spawn_NPC (self:GetOwner (), name, weapon, trace)
 
-	elseif ( type == 3 ) then
+	elseif type == 3 then
 
-		Spawn_Weapon( self:GetOwner(), name, trace )
+		Spawn_Weapon (self:GetOwner (), name, trace)
 
-	elseif ( type == 4 ) then
+	elseif type == 4 then
 
 		local skinAndGroups = {}
-		local override = self:GetOwner():GetInfo( "creator_override" )
-		if ( override != "" ) then skinAndGroups = string.Split( override, " " ) end
-		CCSpawn( self:GetOwner(), nil, { name, unpack( skinAndGroups ) }, name, trace ) -- Props, Ragdolls, Effects
+		local override = self:GetOwner ():GetInfo ("creator_override")
+		if override ~= "" then skinAndGroups = string.Split (override, " ") end
+		CCSpawn (self:GetOwner (), nil, { name, unpack (skinAndGroups) }, name, trace) -- Props, Ragdolls, Effects
 
 	end
 

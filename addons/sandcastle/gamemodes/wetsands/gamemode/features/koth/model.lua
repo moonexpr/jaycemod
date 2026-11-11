@@ -10,10 +10,10 @@
 -- hill wins when its clock reads zero and the timer may expire, so an
 -- enemy on the point holds it at zero in overtime.
 local Rounds = gameplay.rounds
-local ControlPoints = require("features.rounds.control_points")
+local ControlPoints = require ("features.rounds.control_points")
 local Teams = gameplay.teams
 local ipairs, setmetatable = ipairs, setmetatable
-module(...)
+module (...)
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 
@@ -23,9 +23,10 @@ UNLOCK_POINT_DEFAULT = 30
 
 -- CKothLogic::InputRoundSpawn's names, which 7 maps AddOutput or send
 -- inputs to.
-CLOCK_NAME = {
+CLOCK_NAME =
+{
 	[BLUE] = "zz_blue_koth_timer",
-	[RED] = "zz_red_koth_timer",
+	[RED] = "zz_red_koth_timer"
 }
 -- InputRoundSpawn creates BLU's clock, then RED's.
 local CLOCK_ORDER = { BLUE, RED }
@@ -40,33 +41,39 @@ TIMER_ADD = "addtime"
 
 -- tf_logic_koth's clock inputs (lower-cased) -> the team's clock and the
 -- timer input.
-CLOCK_INPUTS = {
-	setredtimer = {
+CLOCK_INPUTS =
+{
+	setredtimer =
+	{
 		team = RED,
-		timerInput = TIMER_SET,
+		timerInput = TIMER_SET
 	},
-	setbluetimer = {
+	setbluetimer =
+	{
 		team = BLUE,
-		timerInput = TIMER_SET,
+		timerInput = TIMER_SET
 	},
-	addredtimer = {
+	addredtimer =
+	{
 		team = RED,
-		timerInput = TIMER_ADD,
+		timerInput = TIMER_ADD
 	},
-	addbluetimer = {
+	addbluetimer =
+	{
 		team = BLUE,
-		timerInput = TIMER_ADD,
-	},
+		timerInput = TIMER_ADD
+	}
 }
 
-local ENEMY = {
+local ENEMY =
+{
 	[RED] = BLUE,
-	[BLUE] = RED,
+	[BLUE] = RED
 }
 
 -- The mode ---------------------------------------------------------------------------
 
-Mode = ControlPoints.Mode:Extend("koth")
+Mode = ControlPoints.Mode:Extend ("koth")
 Mode.PRIORITY = 3
 Mode.HUD = Rounds.HUD_KOTH
 -- CTeamplayRoundBasedRules::CreateTimeLimitTimer returns in koth.
@@ -77,23 +84,25 @@ Mode.ANNOUNCES_TIME_ADDED = false
 -- CTeamControlPointMaster::CheckWinConditions (team_control_point_master.cpp,
 -- and team_control_point_round.cpp's): the owner of every point wins only at
 -- its clock's zero and while TimerMayExpire holds. Without a clock, at once.
-function Mode:MayWinByPoints(team, q)
+function Mode:MayWinByPoints (team, q)
 	return q.clockRemaining == nil or (q.clockRemaining <= 0 and q.timerMayExpire)
 end
 
 -- PlaySpecialCapSounds: in koth every cap, winning or not and whatever the
 -- score style, plays Hud.PointCaptured, then Success to the cappers and
 -- Failure to the other game teams, from FIRST_GAME_TEAM up.
-function Mode:CapSounds(capTeam, q)
+function Mode:CapSounds (capTeam, q)
 	local lines = {}
-	for _, team in ipairs({ RED, BLUE }) do
-		lines[#lines + 1] = {
+	for _, team in ipairs ({ RED, BLUE }) do
+		lines [#lines + 1] =
+		{
 			team = team,
-			sound = POINT_CAPTURED,
+			sound = POINT_CAPTURED
 		}
-		lines[#lines + 1] = {
+		lines [#lines + 1] =
+		{
 			team = team,
-			sound = team == capTeam and ControlPoints.SUCCESS or ControlPoints.FAILURE,
+			sound = team == capTeam and ControlPoints.SUCCESS or ControlPoints.FAILURE
 		}
 	end
 	return lines
@@ -101,8 +110,8 @@ end
 
 -- CTFGameRulesProxy::InputSet<Team>KothClockActive: the team's clock
 -- resumes and the enemy's pauses. Returns (resume, pause).
-function ClockActive(team)
-	return team, ENEMY[team]
+function ClockActive (team)
+	return team, ENEMY [team]
 end
 
 -- The logic ---------------------------------------------------------------------------
@@ -112,22 +121,24 @@ Logic.__index = Logic
 
 -- kv = { timerLength, unlockPoint }, the map's timer_length and
 -- unlock_point; either absent takes CKothLogic's default.
-function New(kv)
-	return setmetatable({
-		timerLength = kv.timerLength or TIMER_LENGTH_DEFAULT,
-		unlockPoint = kv.unlockPoint or UNLOCK_POINT_DEFAULT,
-	}, Logic)
+function New (kv)
+	return setmetatable (
+		{
+			timerLength = kv.timerLength or TIMER_LENGTH_DEFAULT,
+			unlockPoint = kv.unlockPoint or UNLOCK_POINT_DEFAULT
+		}, Logic)
 end
 
 -- InputRoundSpawn: the clocks to make, in order, each set to timer_length
 -- and paused: { { team, name, length }... }.
-function Logic:Clocks()
+function Logic:Clocks ()
 	local clocks = {}
-	for _, team in ipairs(CLOCK_ORDER) do
-		clocks[#clocks + 1] = {
+	for _, team in ipairs (CLOCK_ORDER) do
+		clocks [#clocks + 1] =
+		{
 			team = team,
-			name = CLOCK_NAME[team],
-			length = self.timerLength,
+			name = CLOCK_NAME [team],
+			length = self.timerLength
 		}
 	end
 	return clocks
@@ -136,10 +147,11 @@ end
 -- InputRoundActivate, for every point: SetLocked with unlock_point
 -- (CTeamControlPoint::InputSetLocked locks for a value > 0), then
 -- SetUnlockTime when it is positive. { locked, unlockTime or nil }.
-function Logic:PointLock()
+function Logic:PointLock ()
 	local timed = self.unlockPoint > 0
-	return {
+	return
+	{
 		locked = timed,
-		unlockTime = timed and self.unlockPoint or nil,
+		unlockTime = timed and self.unlockPoint or nil
 	}
 end

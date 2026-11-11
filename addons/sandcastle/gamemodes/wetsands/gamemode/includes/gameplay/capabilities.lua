@@ -8,7 +8,7 @@
 --   (an unknown capability is our bug: an error, never a player's
 --   refusal); set:Has(capability)
 local error, pairs, setmetatable, tostring = error, pairs, setmetatable, tostring
-module(...)
+module (...)
 
 AMBUSH = "ambush"
 KNOWN = { [AMBUSH] = true }
@@ -16,22 +16,22 @@ KNOWN = { [AMBUSH] = true }
 local Set = {}
 Set.__index = Set
 
-local function Of(members)
-	return setmetatable({ members = members }, Set)
+local function Of (members)
+	return setmetatable ({ members = members }, Set)
 end
 
-function None()
-	return Of({})
+function None ()
+	return Of ({})
 end
 
-function Set:With(capability)
-	if not KNOWN[capability] then error("unknown AI capability " .. tostring(capability), 2) end
+function Set:With (capability)
+	if not KNOWN [capability] then error ("unknown AI capability " .. tostring (capability), 2) end
 	local members = {}
-	for member in pairs(self.members) do members[member] = true end
-	members[capability] = true
-	return Of(members)
+	for member in pairs (self.members) do members [member] = true end
+	members [capability] = true
+	return Of (members)
 end
 
-function Set:Has(capability)
-	return self.members[capability] == true
+function Set:Has (capability)
+	return self.members [capability] == true
 end

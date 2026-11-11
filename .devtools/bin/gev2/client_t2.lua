@@ -15,30 +15,30 @@ local KEY = "gamemode/features/capture/cl.lua"
 local CACHE_PATH = "MOD"
 local out = {}
 
-local function Say(...)
+local function Say (...)
 	local parts = {}
-	for i = 1, select("#", ...) do parts[#parts + 1] = tostring(select(i, ...)) end
-	out[#out + 1] = table.concat(parts, " | ")
+	for i = 1, select ("#", ...) do parts [#parts + 1] = tostring (select (i, ...)) end
+	out [#out + 1] = table.concat (parts, " | ")
 end
 
-Say("realm", SERVER and "server" or "client", "VERSION", VERSION, "map", game.GetMap())
-Say("time", os.date("!%Y-%m-%dT%H:%M:%SZ"), "sv_allowcslua", GetConVarString("sv_allowcslua"))
-Say("running WS_T2", tostring(WS_T2))
-if CLIENT then Say("capture loaded here", tostring(WS.FeatureLoaded("capture"))) end
+Say ("realm", SERVER and "server" or "client", "VERSION", VERSION, "map", game.GetMap ())
+Say ("time", os.date ("!%Y-%m-%dT%H:%M:%SZ"), "sv_allowcslua", GetConVarString ("sv_allowcslua"))
+Say ("running WS_T2", tostring (WS_T2))
+if CLIENT then Say ("capture loaded here", tostring (WS.FeatureLoaded ("capture"))) end
 
-local text = file.Read(GAMEMODE.FolderName .. "/" .. KEY, "LUA")
+local text = file.Read (GAMEMODE.FolderName .. "/" .. KEY, "LUA")
 if not text then
-	Say("on disk", KEY, "file.Read returned nil")
+	Say ("on disk", KEY, "file.Read returned nil")
 else
-	local name = util.SHA256(text .. "\0"):sub(1, 40)
-	Say("on disk WS_T2", tostring(text:match('WS_T2%s*=%s*"([^"]*)"')))
-	Say("on disk", KEY, "bytes", #text, "cache name", name)
+	local name = util.SHA256 (text .. "\0"):sub (1, 40)
+	Say ("on disk WS_T2", tostring (text:match ('WS_T2%s*=%s*"([^"]*)"')))
+	Say ("on disk", KEY, "bytes", #text, "cache name", name)
 	if CLIENT then
-		Say("on disk text in cache", file.Exists("cache/lua/" .. name .. ".lua", CACHE_PATH) and "yes" or "no")
+		Say ("on disk text in cache", file.Exists ("cache/lua/" .. name .. ".lua", CACHE_PATH) and "yes" or "no")
 	end
 end
 
 local dir = DIR .. (SERVER and "out" or "client_out")
-file.CreateDir(dir)
-file.Write(dir .. "/" .. NAME .. ".txt", table.concat(out, "\n") .. "\n")
-print("ws_tests: gev2 " .. NAME .. " done")
+file.CreateDir (dir)
+file.Write (dir .. "/" .. NAME .. ".txt", table.concat (out, "\n") .. "\n")
+print ("ws_tests: gev2 " .. NAME .. " done")

@@ -10,16 +10,17 @@
 --   model has no jump.
 local ipairs = ipairs
 local upper = string.upper
-module("nextsoldier.body.jump")
+module ("nextsoldier.body.jump")
 
 START, FLOAT, LAND = "START", "FLOAT", "LAND"
 
 local PRIMARY, SECONDARY, MELEE = "PRIMARY", "SECONDARY", "MELEE"
 
 -- A hold type's TF2 weapon slot; what is not here jumps as with a primary.
-local SLOTS = {
+local SLOTS =
+{
 	pistol = SECONDARY, revolver = SECONDARY, duel = SECONDARY,
-	melee = MELEE, melee2 = MELEE, knife = MELEE, fist = MELEE, grenade = MELEE, slam = MELEE,
+	melee = MELEE, melee2 = MELEE, knife = MELEE, fist = MELEE, grenade = MELEE, slam = MELEE
 }
 
 -- A hold type's name in a GMod player model's acts, where it is not its own.
@@ -27,21 +28,21 @@ local GMOD_HOLDS = { smg = "SMG1" }
 
 local NPC_ACTS = { [START] = "ACT_JUMP", [FLOAT] = "ACT_GLIDE", [LAND] = "ACT_LAND" }
 
-function Candidates(hold, phase)
-	local slot = SLOTS[hold] or PRIMARY
+function Candidates (hold, phase)
+	local slot = SLOTS [hold] or PRIMARY
 	local names = { "ACT_MP_JUMP_" .. phase .. "_" .. slot }
-	if slot ~= PRIMARY then names[#names + 1] = "ACT_MP_JUMP_" .. phase .. "_" .. PRIMARY end
+	if slot ~= PRIMARY then names [#names + 1] = "ACT_MP_JUMP_" .. phase .. "_" .. PRIMARY end
 	if phase ~= LAND then
-		names[#names + 1] = "ACT_HL2MP_JUMP_" .. (GMOD_HOLDS[hold] or upper(hold))
-		names[#names + 1] = "ACT_HL2MP_JUMP_SLAM"
+		names [#names + 1] = "ACT_HL2MP_JUMP_" .. (GMOD_HOLDS [hold] or upper (hold))
+		names [#names + 1] = "ACT_HL2MP_JUMP_SLAM"
 	end
-	names[#names + 1] = NPC_ACTS[phase]
+	names [#names + 1] = NPC_ACTS [phase]
 	return names
 end
 
-function Pick(hold, phase, has)
-	for _, name in ipairs(Candidates(hold, phase)) do
-		if has(name) then return name end
+function Pick (hold, phase, has)
+	for _, name in ipairs (Candidates (hold, phase)) do
+		if has (name) then return name end
 	end
 	return nil
 end

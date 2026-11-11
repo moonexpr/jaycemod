@@ -6,7 +6,7 @@
 -- a splash: Drenches says who it soaks (JarExplode).
 local require = require
 local Projectile = gameplay.projectile
-module(...)
+module (...)
 
 local NONE, DETONATE, BOUNCE = Projectile.NONE, Projectile.DETONATE, Projectile.BOUNCE
 
@@ -23,26 +23,27 @@ URINE_TIME = 10
 -- (CanGetWet). near = { team, alive, distance, wallBetween, invulnerable,
 -- phased, wet }. A jar with no thrower (the Wheel of Fate's) is nobody's
 -- team, so it soaks everyone.
-function Drenches(near, jarTeam)
+function Drenches (near, jarTeam)
 	if not near.alive or near.distance > RADIUS or near.wallBetween then return false end
 	if near.team == jarTeam then return false end
 	return not (near.invulnerable or near.phased or near.wet)
 end
 
-function NewState(config, now)
-	return {
+function NewState (config, now)
+	return
+	{
 		detonateAt = now + config.fuse,
 		armedAt = now + config.armDelay,
-		armed = config.armDelay <= 0,
+		armed = config.armDelay <= 0
 	}
 end
 
-function OnTouch(state, other)
+function OnTouch (state, other)
 	if state.armed and (other.world or other.enemy) then return DETONATE end
 	return BOUNCE
 end
 
-function Tick(state, now)
+function Tick (state, now)
 	state.armed = now >= state.armedAt
 	if now >= state.detonateAt then return DETONATE end
 	return NONE

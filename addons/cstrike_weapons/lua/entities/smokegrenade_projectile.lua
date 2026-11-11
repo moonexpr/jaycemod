@@ -1,4 +1,4 @@
-AddCSLuaFile()
+AddCSLuaFile ()
 
 -- smokegrenade_projectile: CS:S's smoke grenade, thrown. Once its fuse is
 -- spent and it has come to rest, it pours a cloud of CS:S's smoke
@@ -10,16 +10,16 @@ ENT.Model = "models/weapons/w_eq_smokegrenade_thrown.mdl"
 ENT.BounceSound = "SmokeGrenade.Bounce"
 ENT.WaitsForRest = true
 
-function ENT:SetupDataTables()
-	self:NetworkVar("Float", 0, "SmokedAt")
+function ENT:SetupDataTables ()
+	self:NetworkVar ("Float", 0, "SmokedAt")
 end
 
-function ENT:Detonate()
-	self:EmitSound("BaseSmokeEffect.Sound")
-	local effect = EffectData()
-	effect:SetOrigin(self:GetPos())
-	effect:SetScale(self.GrenadeRadius)
-	effect:SetMagnitude(self.GrenadeDuration)
-	util.Effect("cstrike_smoke", effect, true, true)
-	SafeRemoveEntityDelayed(self, self.GrenadeDuration + 3)
+function ENT:Detonate ()
+	self:EmitSound ("BaseSmokeEffect.Sound")
+	local effect = EffectData ()
+	effect:SetOrigin (self:GetPos ())
+	effect:SetScale (self.GrenadeRadius)
+	effect:SetMagnitude (self.GrenadeDuration)
+	util.Effect ("cstrike_smoke", effect, true, true)
+	SafeRemoveEntityDelayed (self, self.GrenadeDuration + 3)
 end

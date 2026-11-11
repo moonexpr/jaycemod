@@ -12,34 +12,36 @@ local VARIANT = "features.hazards.croc"
 local CONTENT_PATH = "GAME"
 
 -- GetCrocModel: croc_model only when the file exists.
-local function CrocModel(name, default)
-	if name and file.Exists(name, CONTENT_PATH) then return name end
+local function CrocModel (name, default)
+	if name and file.Exists (name, CONTENT_PATH) then return name end
 	return default
 end
 
-function ENT:TriggerInit()
-	local model = CrocModel(self:Key("croc_model"), WS.require(VARIANT).MODEL)
-	util.PrecacheModel(model)
-	self.hazards = WS.Feature("hazards")
-	self.hazards:Bind(self, VARIANT, {
-		team = self.team,
-		model = model,
-	})
+function ENT:TriggerInit ()
+	local model = CrocModel (self:Key ("croc_model"), WS.require (VARIANT).MODEL)
+	util.PrecacheModel (model)
+	self.hazards = WS.Feature ("hazards")
+	self.hazards:Bind (self, VARIANT,
+		{
+			team = self.team,
+			model = model
+		}
+	)
 end
 
-function ENT:OnRemove()
-	self.hazards:Unbind(self)
+function ENT:OnRemove ()
+	self.hazards:Unbind (self)
 end
 
-function ENT:PlayerStartTouch(ply)
-	if not self:PassesTriggerFilters(ply) then return end
-	self.hazards:Touched(self, ply)
+function ENT:PlayerStartTouch (ply)
+	if not self:PassesTriggerFilters (ply) then return end
+	self.hazards:Touched (self, ply)
 end
 
-function ENT:PlayerEndTouch(ply)
-	self.hazards:Left(self, ply)
+function ENT:PlayerEndTouch (ply)
+	self.hazards:Left (self, ply)
 end
 
-function ENT:TriggerThink()
-	self.hazards:Think(self)
+function ENT:TriggerThink ()
+	self.hazards:Think (self)
 end

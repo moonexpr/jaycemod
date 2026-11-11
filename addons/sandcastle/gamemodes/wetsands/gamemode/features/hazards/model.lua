@@ -37,7 +37,7 @@
 -- the binding credit an attacker's owner (the archer, not the arrow).
 local setmetatable = setmetatable
 local ceil, floor = math.ceil, math.floor
-module(...)
+module (...)
 
 NONE, EXPLODE, FIZZLE, ZAP = "none", "explode", "fizzle", "zap"
 ANIMATE, HURT = "animate", "hurt"
@@ -49,92 +49,97 @@ MOVE_PHYSICS, MOVE_TOSS = "vphysics", "flygravity"
 Nothing = { kind = NONE }
 
 -- fields: EXPLODE's, less kind.
-function Explode(fields)
+function Explode (fields)
 	fields.kind = EXPLODE
 	return fields
 end
 
-function Fizzle(particles)
-	return {
+function Fizzle (particles)
+	return
+	{
 		kind = FIZZLE,
-		particles = particles,
+		particles = particles
 	}
 end
 
-function Zap(targets, particle)
-	return {
+function Zap (targets, particle)
+	return
+	{
 		kind = ZAP,
 		targets = targets,
-		particle = particle,
+		particle = particle
 	}
 end
 
-function Animate(model, sequence, target)
-	return {
+function Animate (model, sequence, target)
+	return
+	{
 		kind = ANIMATE,
 		model = model,
 		sequence = sequence,
-		target = target,
+		target = target
 	}
 end
 
-function Hurt(hits, damage, dmgType)
-	return {
+function Hurt (hits, damage, dmgType)
+	return
+	{
 		kind = HURT,
 		hits = hits,
 		damage = damage,
-		dmgType = dmgType,
+		dmgType = dmgType
 	}
 end
 
 local Hazard = {}
 Hazard.__index = Hazard
 
-function New(variant, config, now)
-	return setmetatable({
-		variant = variant,
-		state = variant.NewState(config, now),
-		dead = false,
-	}, Hazard)
+function New (variant, config, now)
+	return setmetatable (
+		{
+			variant = variant,
+			state = variant.NewState (config, now),
+			dead = false
+		}, Hazard)
 end
 
-function Hazard:Team() return self.variant.Team(self.state) end
-function Hazard:CreditsOwner() return self.variant.CREDITS_OWNER == true end
-function Hazard:IsFinished() return self.dead end
+function Hazard:Team () return self.variant.Team (self.state) end
+function Hazard:CreditsOwner () return self.variant.CREDITS_OWNER == true end
+function Hazard:IsFinished () return self.dead end
 
-function Hazard:Body()
+function Hazard:Body ()
 	if self.variant.Body == nil then return nil end
-	return self.variant.Body(self.state)
+	return self.variant.Body (self.state)
 end
 
 -- The variant's handler, unless the hazard is dead or the variant has none.
-local function Handle(self, handler, ...)
+local function Handle (self, handler, ...)
 	if self.dead or handler == nil then return Nothing end
-	local outcome = handler(self.state, ...)
+	local outcome = handler (self.state, ...)
 	if outcome.kind == EXPLODE or outcome.kind == FIZZLE then self.dead = true end
 	return outcome
 end
 
-function Hazard:Damaged(damage) return Handle(self, self.variant.OnDamaged, damage) end
-function Hazard:Touch(toucher) return Handle(self, self.variant.OnTouch, toucher) end
-function Hazard:Tick(now) return Handle(self, self.variant.Tick, now) end
+function Hazard:Damaged (damage) return Handle (self, self.variant.OnDamaged, damage) end
+function Hazard:Touch (toucher) return Handle (self, self.variant.OnTouch, toucher) end
+function Hazard:Tick (now) return Handle (self, self.variant.Tick, now) end
 
 -- Whether the variant takes the input; the engine handles the rest (Kill,
 -- AddOutput).
-function Hazard:Accepts(name)
+function Hazard:Accepts (name)
 	local inputs = self.variant.INPUTS
-	return inputs ~= nil and inputs[name] ~= nil
+	return inputs ~= nil and inputs [name] ~= nil
 end
 
-function Hazard:Input(name, value)
-	if not self:Accepts(name) then return Nothing end
-	return Handle(self, self.variant.OnInput, name, value)
+function Hazard:Input (name, value)
+	if not self:Accepts (name) then return Nothing end
+	return Handle (self, self.variant.OnInput, name, value)
 end
 
 -- CBaseEntity::OnTakeDamage: health is an integer, so what is left after a
 -- hit truncates toward zero; at 0 or below the entity is killed.
-function TakeHealth(health, amount)
+function TakeHealth (health, amount)
 	local left = health - amount
-	if left >= 0 then return floor(left) end
-	return ceil(left)
+	if left >= 0 then return floor (left) end
+	return ceil (left)
 end

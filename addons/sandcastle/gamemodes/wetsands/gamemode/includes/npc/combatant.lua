@@ -19,9 +19,10 @@
 --   controller
 --   Tag() -> the tag controller, SetBossHealth(fraction) (0 hides the bar),
 --   SpawnPoints(name) -> the origins of the info_targets of that name
-module(...)
+module (...)
 
-METHODS = {
+METHODS =
+{
 	-- sides
 	"GetTeamNumber",
 	"TeamOf",
@@ -41,5 +42,5 @@ METHODS = {
 	"HolidayActive",
 	"Tag",
 	"SetBossHealth",
-	"SpawnPoints",
+	"SpawnPoints"
 }

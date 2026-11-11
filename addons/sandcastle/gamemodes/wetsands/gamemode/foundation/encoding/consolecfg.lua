@@ -7,19 +7,19 @@
 -- This is the Lua twin, which clients run; a server with native/foundation
 -- has the native one in its place, which keeps this contract.
 local sub = string.sub
-module(...)
+module (...)
 
 local QUOTE, SLASH, SEMICOLON = '"', "/", ";"
 
 -- The line with its comment removed, and whether it chains commands.
-local function Strip(line)
+local function Strip (line)
 	local quoted = false
 	for i = 1, #line do
-		local c = sub(line, i, i)
+		local c = sub (line, i, i)
 		if c == QUOTE then
 			quoted = not quoted
-		elseif not quoted and c == SLASH and sub(line, i + 1, i + 1) == SLASH then
-			return sub(line, 1, i - 1), false
+		elseif not quoted and c == SLASH and sub (line, i + 1, i + 1) == SLASH then
+			return sub (line, 1, i - 1), false
 		elseif not quoted and c == SEMICOLON then
 			return line, true
 		end
@@ -27,20 +27,20 @@ local function Strip(line)
 	return line, false
 end
 
-local function Trim(s)
-	return (s:gsub("^%s+", ""):gsub("%s+$", ""))
+local function Trim (s)
+	return (s:gsub ("^%s+", ""):gsub ("%s+$", ""))
 end
 
 -- The commands, in order, and the lines refused for chaining commands.
-function Commands(text)
+function Commands (text)
 	local commands, refused = {}, {}
-	for line in (text .. "\n"):gmatch("([^\n]*)\n") do
-		local stripped, chained = Strip((line:gsub("\r$", "")))
-		local command = Trim(stripped)
+	for line in (text .. "\n"):gmatch ("([^\n]*)\n") do
+		local stripped, chained = Strip ((line:gsub ("\r$", "")))
+		local command = Trim (stripped)
 		if chained then
-			refused[#refused + 1] = command
+			refused [#refused + 1] = command
 		elseif command ~= "" then
-			commands[#commands + 1] = command
+			commands [#commands + 1] = command
 		end
 	end
 	return commands, refused

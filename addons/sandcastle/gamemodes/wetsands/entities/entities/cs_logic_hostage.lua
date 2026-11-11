@@ -6,15 +6,15 @@
 -- and makes one with the defaults on a map without one (Controller:Config).
 ENT.Type = "point"
 
-function ENT:KeyValue(key, value)
+function ENT:KeyValue (key, value)
 	self.wsKeyValues = self.wsKeyValues or {}
-	self.wsKeyValues[string.lower(key)] = value
+	self.wsKeyValues [string.lower (key)] = value
 end
 
 -- The settings, parsed once (a value that is not one is refused, naming its key).
-function ENT:Config()
+function ENT:Config ()
 	if not self.wsConfig then
-		self.wsConfig = WS.require("features.hostage.config").Parse(self.wsKeyValues or {})
+		self.wsConfig = WS.require ("features.hostage.config").Parse (self.wsKeyValues or {})
 	end
 	return self.wsConfig
 end

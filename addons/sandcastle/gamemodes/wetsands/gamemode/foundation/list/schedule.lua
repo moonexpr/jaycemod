@@ -31,98 +31,100 @@
 local coroutine, error, select, setmetatable, tostring, type, unpack = coroutine, error, select, setmetatable, tostring, type, unpack
 local traceback = debug.traceback
 local Queue = list.queue
-module(...)
+module (...)
 
 local Scheduler = {}
 Scheduler.__index = Scheduler
 
-function New(clock)
-	return setmetatable({
-		clock = clock,
-		tasks = Queue.New(),
-		current = nil, -- the task running, while Run resumes one
-		deadline = 0,
-	}, Scheduler)
+function New (clock)
+	return setmetatable (
+		{
+			clock = clock,
+			tasks = Queue.New (),
+			current = nil, -- the task running, while Run resumes one
+			deadline = 0
+		}, Scheduler)
 end
 
-function Scheduler:Spawn(fn, ...)
-	local co = coroutine.create(fn)
-	local task = {
+function Scheduler:Spawn (fn, ...)
+	local co = coroutine.create (fn)
+	local task =
+	{
 		co = co,
 		args = { ... },
-		n = select("#", ...),
-		started = false,
+		n = select ("#", ...),
+		started = false
 	}
-	self.tasks:PushBack(task)
+	self.tasks:PushBack (task)
 	return task
 end
 
 -- Whether the code calling is the running task itself, not a coroutine of
 -- its own inside it, which a yield here would suspend instead.
-local function InTask(self)
-	return self.current ~= nil and coroutine.running() == self.current.co
+local function InTask (self)
+	return self.current ~= nil and coroutine.running () == self.current.co
 end
 
-function Scheduler:Yield()
-	if not InTask(self) then return false end
-	coroutine.yield()
+function Scheduler:Yield ()
+	if not InTask (self) then return false end
+	coroutine.yield ()
 	return true
 end
 
-function Scheduler:Wait(ready)
-	if not InTask(self) then error("only a running task can wait", 2) end
-	if ready() then return end
+function Scheduler:Wait (ready)
+	if not InTask (self) then error ("only a running task can wait", 2) end
+	if ready () then return end
 	self.current.waiting = ready
-	coroutine.yield()
+	coroutine.yield ()
 end
 
-function Scheduler:CheckYield()
-	if not InTask(self) or self.clock:Now() < self.deadline then return false end
-	coroutine.yield()
+function Scheduler:CheckYield ()
+	if not InTask (self) or self.clock:Now () < self.deadline then return false end
+	coroutine.yield ()
 	return true
 end
 
-local function Resume(task)
-	if task.started then return coroutine.resume(task.co) end
+local function Resume (task)
+	if task.started then return coroutine.resume (task.co) end
 	task.started = true
-	return coroutine.resume(task.co, unpack(task.args, 1, task.n))
+	return coroutine.resume (task.co, unpack (task.args, 1, task.n))
 end
 
-function Scheduler:Run(seconds)
+function Scheduler:Run (seconds)
 	local tasks = self.tasks
-	if tasks:Size() == 0 then return end
-	self.deadline = self.clock:Now() + seconds
+	if tasks:Size () == 0 then return end
+	self.deadline = self.clock:Now () + seconds
 	local parked = 0 -- parked tasks passed by since one last ran
 	repeat
-		local task = tasks:PopFront()
-		if task.limit and task.limit:IsElapsed() then
+		local task = tasks:PopFront ()
+		if task.limit and task.limit:IsElapsed () then
 			parked = 0
 			local onExpire = task.onExpire
 			task.limit, task.onExpire = nil, nil
-			if onExpire then onExpire(task) end
-		elseif task.waiting and not task.waiting() then
-			tasks:PushBack(task)
+			if onExpire then onExpire (task) end
+		elseif task.waiting and not task.waiting () then
+			tasks:PushBack (task)
 			parked = parked + 1
 		else
 			task.waiting = nil
 			parked = 0
 			self.current = task
-			local ok, err = Resume(task)
+			local ok, err = Resume (task)
 			self.current = nil
-			if not ok then error(traceback(task.co, tostring(err)), 0) end
-			if coroutine.status(task.co) ~= "dead" then tasks:PushBack(task) end
+			if not ok then error (traceback (task.co, tostring (err)), 0) end
+			if coroutine.status (task.co) ~= "dead" then tasks:PushBack (task) end
 		end
-	until tasks:Size() == 0 or parked >= tasks:Size() or self.clock:Now() >= self.deadline
+	until tasks:Size () == 0 or parked >= tasks:Size () or self.clock:Now () >= self.deadline
 end
 
-function Scheduler:Limit(task, countdown, onExpire)
-	if task.limit then error("a task has one countdown", 2) end
-	if type(countdown) ~= "table" and type(countdown) ~= "userdata" or type(countdown.IsElapsed) ~= "function" then
-		error("a task's countdown must say whether it has elapsed (IsElapsed)", 2)
+function Scheduler:Limit (task, countdown, onExpire)
+	if task.limit then error ("a task has one countdown", 2) end
+	if type (countdown) ~= "table" and type (countdown) ~= "userdata" or type (countdown.IsElapsed) ~= "function" then
+		error ("a task's countdown must say whether it has elapsed (IsElapsed)", 2)
 	end
 	task.limit, task.onExpire = countdown, onExpire
 end
 
-function Scheduler:Count()
-	return self.tasks:Size()
+function Scheduler:Count ()
+	return self.tasks:Size ()
 end

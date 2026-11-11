@@ -9,19 +9,19 @@ local CvarFile = encoding.cvarfile
 local DIR = "sandcastle"
 
 -- name: the group's file; convars: its client convars.
-function WS.PersistClientConVars(name, convars)
+function WS.PersistClientConVars (name, convars)
 	local path = DIR .. "/settings_" .. name .. ".txt"
 	local names = {}
-	for i, convar in ipairs(convars) do names[i] = convar:GetName() end
-	local saved = file.Read(path, "DATA")
+	for i, convar in ipairs (convars) do names [i] = convar:GetName () end
+	local saved = file.Read (path, "DATA")
 	if saved then
-		for convar, value in pairs(CvarFile.Read(saved, names)) do RunConsoleCommand(convar, value) end
+		for convar, value in pairs (CvarFile.Read (saved, names)) do RunConsoleCommand (convar, value) end
 	end
-	local function Save()
+	local function Save ()
 		local values = {}
-		for _, convar in ipairs(convars) do values[convar:GetName()] = convar:GetString() end
-		file.CreateDir(DIR)
-		file.Write(path, CvarFile.Write(names, values))
+		for _, convar in ipairs (convars) do values [convar:GetName ()] = convar:GetString () end
+		file.CreateDir (DIR)
+		file.Write (path, CvarFile.Write (names, values))
 	end
-	for _, convar in ipairs(names) do cvars.AddChangeCallback(convar, Save, "ws_settings_" .. name) end
+	for _, convar in ipairs (names) do cvars.AddChangeCallback (convar, Save, "ws_settings_" .. name) end
 end

@@ -6,22 +6,22 @@
 
 -----------------------------------------------------------]]
 
-include( "player_extension.lua" )
-include( "persistence.lua" )
-include( "save_load.lua" )
-include( "player_class/player_sandbox.lua" )
-include( "drive/drive_sandbox.lua" )
-include( "editor_player.lua" )
+include ("player_extension.lua")
+include ("persistence.lua")
+include ("save_load.lua")
+include ("player_class/player_sandbox.lua")
+include ("drive/drive_sandbox.lua")
+include ("editor_player.lua")
 
 --
 -- Make BaseClass available
 --
-DEFINE_BASECLASS( "gamemode_base" )
+DEFINE_BASECLASS ("gamemode_base")
 
-GM.Name 	= "Sandcastle"
-GM.Author 	= "TEAM GARRY"
-GM.Email 	= "teamgarry@garrysmod.com"
-GM.Website 	= "www.garrysmod.com"
+GM.Name    = "Sandcastle"
+GM.Author  = "TEAM GARRY"
+GM.Email   = "teamgarry@garrysmod.com"
+GM.Website = "www.garrysmod.com"
 
 --[[
  Note: This is so that in addons you can do stuff like
@@ -36,117 +36,115 @@ GM.IsSandboxDerived = true
 TEAM_RED, TEAM_BLUE = 2, 3
 TF_TEAM_UNASSIGNED, TF_TEAM_SPECTATOR = 0, 1
 
-include( "includes/modules/net2.lua" )
-include( "includes/modules/game_events.lua" )
-include( "includes/modules/game_manager.lua" )
-include( "includes/modules/game_timer.lua" )
-include( "controllers.lua" )
-include( "gamerules/game_default.lua" )
-include( "gamerules/game_elimination.lua" )
-include( "gamerules/game_control_points.lua" )
-include( "gamerules/game_ctf.lua" )
-include( "gamerules/game_payload.lua" )
+include ("includes/modules/net2.lua")
+include ("includes/modules/game_events.lua")
+include ("includes/modules/game_manager.lua")
+include ("includes/modules/game_timer.lua")
+include ("controllers.lua")
+include ("gamerules/game_default.lua")
+include ("gamerules/game_elimination.lua")
+include ("gamerules/game_control_points.lua")
+include ("gamerules/game_ctf.lua")
+include ("gamerules/game_payload.lua")
 
 ROUND_WAITING, ROUND_PREPARE, ROUND_ACTIVE, ROUND_OVER = 0, 1, 2, 3
 
-local gameplay = CreateConVar( "sandcastle_gameplay", "0", { FCVAR_ARCHIVE, FCVAR_NOTIFY, FCVAR_REPLICATED }, "1: gameplay mode, with teams and rounds; 0: Sandbox mode" )
+local gameplay = CreateConVar ("sandcastle_gameplay", "0", { FCVAR_ARCHIVE, FCVAR_NOTIFY, FCVAR_REPLICATED }, "1: gameplay mode, with teams and rounds; 0: Sandbox mode")
 
-function GM:IsGameplay()
-	return gameplay:GetBool()
+function GM:IsGameplay ()
+	return gameplay:GetBool ()
 end
 
-function GM:GetRoundState()
-	return GetGlobal2Int( "SandcastleRoundState", ROUND_WAITING )
+function GM:GetRoundState ()
+	return GetGlobal2Int ("SandcastleRoundState", ROUND_WAITING)
 end
 
-function GM:GetRoundEnd()
-	return game_timer.EndTime( game_timer.ROUND )
+function GM:GetRoundEnd ()
+	return game_timer.EndTime (game_timer.ROUND)
 end
 
-function GM:CreateTeams()
+function GM:CreateTeams ()
 
-	team.SetUp( TEAM_RED, "RED", Color( 184, 56, 59 ) )
-	team.SetUp( TEAM_BLUE, "BLU", Color( 88, 133, 162 ) )
-	team.SetSpawnPoint( TEAM_RED, { "info_player_terrorist", "info_player_rebel", "info_player_teamspawn" } )
-	team.SetSpawnPoint( TEAM_BLUE, { "info_player_counterterrorist", "info_player_combine", "info_player_teamspawn" } )
+	team.SetUp (TEAM_RED, "RED", Color (184, 56, 59))
+	team.SetUp (TEAM_BLUE, "BLU", Color (88, 133, 162))
+	team.SetSpawnPoint (TEAM_RED, { "info_player_terrorist", "info_player_rebel", "info_player_teamspawn" })
+	team.SetSpawnPoint (TEAM_BLUE, { "info_player_counterterrorist", "info_player_combine", "info_player_teamspawn" })
 
 end
 
-function GM:Think()
+function GM:Think ()
 
-	BaseClass.Think( self )
+	BaseClass.Think (self)
 
 	-- base reads this for its team menu, team spawns and team scoreboard
-	self.TeamBased = self:IsGameplay()
+	self.TeamBased = self:IsGameplay ()
 
-	if ( SERVER ) then
-		game_timer.Think()
-		self:RoundThink()
-		game_manager.RunActive( "Think" )
+	if SERVER then
+		game_timer.Think ()
+		self:RoundThink ()
+		game_manager.RunActive ("Think")
 	else
-		game_manager.UpdatePanels()
+		game_manager.UpdatePanels ()
 	end
 
 end
 
-cleanup.Register( "props" )
-cleanup.Register( "ragdolls" )
-cleanup.Register( "effects" )
-cleanup.Register( "npcs" )
-cleanup.Register( "constraints" )
-cleanup.Register( "ropeconstraints" )
-cleanup.Register( "sents" )
-cleanup.Register( "vehicles" )
+cleanup.Register ("props")
+cleanup.Register ("ragdolls")
+cleanup.Register ("effects")
+cleanup.Register ("npcs")
+cleanup.Register ("constraints")
+cleanup.Register ("ropeconstraints")
+cleanup.Register ("sents")
+cleanup.Register ("vehicles")
 
-
-local physgun_limited = CreateConVar( "physgun_limited", "0", FCVAR_REPLICATED, "Prevent the Physics Gun from picking up certain map entities." )
+local physgun_limited = CreateConVar ("physgun_limited", "0", FCVAR_REPLICATED, "Prevent the Physics Gun from picking up certain map entities.")
 
 --[[---------------------------------------------------------
    Name: gamemode:CanTool( ply, trace, mode, tool, button )
    Return true if the player is allowed to use this tool
 -----------------------------------------------------------]]
-function GM:CanTool( ply, trace, mode, tool, button )
+function GM:CanTool (ply, trace, mode, tool, button)
 
 	-- The jeep spazzes out when applying something
 	-- todo: Find out what it's reacting badly to and change it in _physprops
-	if ( mode == "physprop" && trace.Entity:IsValid() && ( trace.Entity:GetClass() == "prop_vehicle_jeep" || trace.Entity:GetClass() == "prop_vehicle_apc" ) ) then
+	if mode == "physprop" and trace.Entity:IsValid () and (trace.Entity:GetClass () == "prop_vehicle_jeep" or trace.Entity:GetClass () == "prop_vehicle_apc") then
 		return false
 	end
 
 	-- If we have a toolsallowed table, check to make sure the toolmode is in it
-	if ( trace.Entity.m_tblToolsAllowed ) then
+	if trace.Entity.m_tblToolsAllowed then
 
 		local vFound = false
-		for k, v in pairs( trace.Entity.m_tblToolsAllowed ) do
-			if ( mode == v ) then vFound = true end
+		for k, v in pairs (trace.Entity.m_tblToolsAllowed) do
+			if mode == v then vFound = true end
 		end
 
-		if ( !vFound ) then return false end
+		if not vFound then return false end
 
 	end
 
 	-- Give the entity a chance to decide
-	if ( trace.Entity.CanTool ) then
-		return trace.Entity:CanTool( ply, trace, mode, tool, button )
+	if trace.Entity.CanTool then
+		return trace.Entity:CanTool (ply, trace, mode, tool, button)
 	end
 
 	return true
 
 end
 
-
 --[[---------------------------------------------------------
    Name: gamemode:GravGunPunt( )
    Desc: We're about to punt an entity (primary fire).
 		 Return true if we're allowed to.
 -----------------------------------------------------------]]
-function GM:GravGunPunt( ply, ent )
+function GM:GravGunPunt (ply, ent)
 
-	if ( ent:IsValid() && ent.GravGunPunt ) then
-		return ent:GravGunPunt( ply )
+	if ent:IsValid () and ent.GravGunPunt then
+		return ent:GravGunPunt (ply)
 	end
 
-	return BaseClass.GravGunPunt( self, ply, ent )
+	return BaseClass.GravGunPunt (self, ply, ent)
 
 end
 
@@ -154,59 +152,57 @@ end
    Name: gamemode:GravGunPickupAllowed( )
    Desc: Return true if we're allowed to pickup entity
 -----------------------------------------------------------]]
-function GM:GravGunPickupAllowed( ply, ent )
+function GM:GravGunPickupAllowed (ply, ent)
 
-	if ( ent:IsValid() && ent.GravGunPickupAllowed ) then
-		return ent:GravGunPickupAllowed( ply )
+	if ent:IsValid () and ent.GravGunPickupAllowed then
+		return ent:GravGunPickupAllowed (ply)
 	end
 
-	return BaseClass.GravGunPickupAllowed( self, ply, ent )
+	return BaseClass.GravGunPickupAllowed (self, ply, ent)
 
 end
-
 
 --[[---------------------------------------------------------
    Name: gamemode:PhysgunPickup( )
    Desc: Return true if player can pickup entity
 -----------------------------------------------------------]]
-function GM:PhysgunPickup( ply, ent )
+function GM:PhysgunPickup (ply, ent)
 
 	-- Don't pick up persistent props
-	if ( ent:GetPersistent() && GetConVarString( "sbox_persist" ):Trim() != "" ) then return false end
+	if ent:GetPersistent () and GetConVarString ("sbox_persist"):Trim () ~= "" then return false end
 
-	if ( ent:IsValid() && ent.PhysgunPickup ) then
-		return ent:PhysgunPickup( ply )
+	if ent:IsValid () and ent.PhysgunPickup then
+		return ent:PhysgunPickup (ply)
 	end
 
 	-- Some entities specifically forbid physgun interaction
-	if ( ent.PhysgunDisabled ) then return false end
+	if ent.PhysgunDisabled then return false end
 
-	local EntClass = ent:GetClass()
+	local EntClass = ent:GetClass ()
 
 	-- Never pick up players
-	if ( EntClass == "player" ) then return false end
+	if EntClass == "player" then return false end
 
-	if ( physgun_limited:GetBool() ) then
+	if physgun_limited:GetBool () then
 
-		if ( string.find( EntClass, "prop_dynamic" ) ) then return false end
-		if ( string.find( EntClass, "prop_door" ) ) then return false end
+		if string.find (EntClass, "prop_dynamic") then return false end
+		if string.find (EntClass, "prop_door") then return false end
 
 		-- Don't move physboxes if the mapper logic says no
-		if ( EntClass == "func_physbox" && ent:HasSpawnFlags( SF_PHYSBOX_MOTIONDISABLED ) ) then return false  end
+		if EntClass == "func_physbox" and ent:HasSpawnFlags (SF_PHYSBOX_MOTIONDISABLED) then return false end
 
 		-- If the physics object is frozen by the mapper, don't allow us to move it.
-		if ( string.find( EntClass, "prop_" ) && ( ent:HasSpawnFlags( SF_PHYSPROP_MOTIONDISABLED ) || ent:HasSpawnFlags( SF_PHYSPROP_PREVENT_PICKUP ) ) ) then return false end
+		if string.find (EntClass, "prop_") and (ent:HasSpawnFlags (SF_PHYSPROP_MOTIONDISABLED) or ent:HasSpawnFlags (SF_PHYSPROP_PREVENT_PICKUP)) then return false end
 
 		-- Allow physboxes, but get rid of all other func_'s (ladder etc)
-		if ( EntClass != "func_physbox" && string.find( EntClass, "func_" ) ) then return false end
-
+		if EntClass ~= "func_physbox" and string.find (EntClass, "func_") then return false end
 
 	end
 
-	if ( SERVER ) then
+	if SERVER then
 
-		ply:SendHint( "PhysgunFreeze", 2 )
-		ply:SendHint( "PhysgunUse", 8 )
+		ply:SendHint ("PhysgunFreeze", 2)
+		ply:SendHint ("PhysgunUse", 8)
 
 	end
 
@@ -214,22 +210,21 @@ function GM:PhysgunPickup( ply, ent )
 
 end
 
-
 --[[---------------------------------------------------------
    Name: gamemode:EntityKeyValue( ent, key, value )
    Desc: Called when an entity has a keyvalue set
 	      Returning a string it will override the value
 -----------------------------------------------------------]]
-function GM:EntityKeyValue( ent, key, value )
+function GM:EntityKeyValue (ent, key, value)
 
 	-- Physgun not allowed on this prop..
-	if ( key == "gmod_allowphysgun" && value == "0" ) then
+	if key == "gmod_allowphysgun" and value == "0" then
 		ent.PhysgunDisabled = true
 	end
 
 	-- Prop has a list of tools that are allowed on it.
-	if ( key == "gmod_allowtools" ) then
-		ent.m_tblToolsAllowed = string.Explode( " ", value )
+	if key == "gmod_allowtools" then
+		ent.m_tblToolsAllowed = string.Explode (" ", value)
 	end
 
 end
@@ -239,17 +234,17 @@ end
    Desc: Player pressed the noclip key, return true if
 		  the player is allowed to noclip, false to block
 -----------------------------------------------------------]]
-function GM:PlayerNoClip( pl, on )
+function GM:PlayerNoClip (pl, on)
 
 	-- Don't allow if player is in vehicle
-	if ( !IsValid( pl ) || pl:InVehicle() || !pl:Alive() ) then return false end
+	if not IsValid (pl) or pl:InVehicle () or not pl:Alive () then return false end
 
 	-- Always allow to turn off noclip, and in single player
-	if ( !on || game.SinglePlayer() ) then return true end
+	if not on or game.SinglePlayer () then return true end
 
-	if ( self:IsGameplay() ) then return false end
+	if self:IsGameplay () then return false end
 
-	return GetConVarNumber( "sbox_noclip" ) > 0
+	return GetConVarNumber ("sbox_noclip") > 0
 
 end
 
@@ -257,53 +252,52 @@ end
    Name: gamemode:CanProperty( pl, property, ent )
    Desc: Can the player do this property, to this entity?
 -----------------------------------------------------------]]
-function GM:CanProperty( pl, property, ent )
+function GM:CanProperty (pl, property, ent)
 
 	--
 	-- Always a chance some bastard got through
 	--
-	if ( !IsValid( ent ) ) then return false end
-
+	if not IsValid (ent) then return false end
 
 	--
 	-- If we have a toolsallowed table, check to make sure the toolmode is in it
 	-- This is used by things like map entities
 	--
-	if ( ent.m_tblToolsAllowed ) then
+	if ent.m_tblToolsAllowed then
 
 		local vFound = false
-		for k, v in pairs( ent.m_tblToolsAllowed ) do
-			if ( property == v ) then vFound = true end
+		for k, v in pairs (ent.m_tblToolsAllowed) do
+			if property == v then vFound = true end
 		end
 
-		if ( !vFound ) then return false end
+		if not vFound then return false end
 
 	end
 
 	--
 	-- Who can who bone manipulate?
 	--
-	if ( property == "bonemanipulate" ) then
+	if property == "bonemanipulate" then
 
-		if ( game.SinglePlayer() ) then return true end
+		if game.SinglePlayer () then return true end
 
-		if ( ent:IsNPC() ) then return GetConVarNumber( "sbox_bonemanip_npc" ) != 0 end
-		if ( ent:IsPlayer() ) then return GetConVarNumber( "sbox_bonemanip_player" ) != 0 end
+		if ent:IsNPC () then return GetConVarNumber ("sbox_bonemanip_npc") ~= 0 end
+		if ent:IsPlayer () then return GetConVarNumber ("sbox_bonemanip_player") ~= 0 end
 
-		return GetConVarNumber( "sbox_bonemanip_misc" ) != 0
+		return GetConVarNumber ("sbox_bonemanip_misc") ~= 0
 
 	end
 
 	--
 	-- Weapons can only be property'd if nobody is holding them
 	--
-	if ( ent:IsWeapon() and IsValid( ent:GetOwner() ) ) then
+	if ent:IsWeapon () and IsValid (ent:GetOwner ()) then
 		return false
 	end
 
 	-- Give the entity a chance to decide
-	if ( ent.CanProperty ) then
-		return ent:CanProperty( pl, property )
+	if ent.CanProperty then
+		return ent:CanProperty (pl, property)
 	end
 
 	return true
@@ -314,27 +308,27 @@ end
    Name: gamemode:CanDrive( pl, ent )
    Desc: Return true to let the entity drive.
 -----------------------------------------------------------]]
-function GM:CanDrive( pl, ent )
+function GM:CanDrive (pl, ent)
 
-	local classname = ent:GetClass()
+	local classname = ent:GetClass ()
 
 	--
 	-- Only let physics based NPCs be driven for now
 	--
-	if ( ent:IsNPC() ) then
+	if ent:IsNPC () then
 
-		if ( classname == "npc_cscanner" ) then return true end
-		if ( classname == "npc_clawscanner" ) then return true end
-		if ( classname == "npc_manhack" ) then return true end
-		if ( classname == "npc_turret_floor" ) then return true end
-		if ( classname == "npc_rollermine" ) then return true end
+		if classname == "npc_cscanner" then return true end
+		if classname == "npc_clawscanner" then return true end
+		if classname == "npc_manhack" then return true end
+		if classname == "npc_turret_floor" then return true end
+		if classname == "npc_rollermine" then return true end
 
 		return false
 
 	end
 
-	if ( classname == "prop_dynamic" ) then return false end
-	if ( classname == "prop_door" ) then return false end
+	if classname == "prop_dynamic" then return false end
+	if classname == "prop_door" then return false end
 
 	--
 	-- I'm guessing we'll find more things we don't want the player to fly around during development
@@ -344,39 +338,38 @@ function GM:CanDrive( pl, ent )
 
 end
 
-
 --[[---------------------------------------------------------
 	To update the player's animation during a drive
 -----------------------------------------------------------]]
-function GM:PlayerDriveAnimate( ply )
+function GM:PlayerDriveAnimate (ply)
 
-	local driving = ply:GetDrivingEntity()
-	if ( !IsValid( driving ) ) then return end
+	local driving = ply:GetDrivingEntity ()
+	if not IsValid (driving) then return end
 
-	ply:SetPlaybackRate( 1 )
-	ply:ResetSequence( ply:SelectWeightedSequence( ACT_HL2MP_IDLE_MAGIC ) )
+	ply:SetPlaybackRate (1)
+	ply:ResetSequence (ply:SelectWeightedSequence (ACT_HL2MP_IDLE_MAGIC))
 
 	--
 	-- Work out the direction from the player to the entity, and set parameters
 	--
-	local DirToEnt = driving:GetPos() - ( ply:GetPos() + Vector( 0, 0, 50 ) )
-	local AimAng = DirToEnt:Angle()
+	local DirToEnt = driving:GetPos () - (ply:GetPos () + Vector (0, 0, 50))
+	local AimAng = DirToEnt:Angle ()
 
-	if ( AimAng.p > 180 ) then
+	if AimAng.p > 180 then
 		AimAng.p = AimAng.p - 360
 	end
 
-	ply:SetPoseParameter( "aim_yaw",		0 )
-	ply:SetPoseParameter( "aim_pitch",		AimAng.p )
-	ply:SetPoseParameter( "move_x",			0 )
-	ply:SetPoseParameter( "move_y",			0 )
-	ply:SetPoseParameter( "move_yaw",		0 )
-	ply:SetPoseParameter( "move_scale",		0 )
+	ply:SetPoseParameter ("aim_yaw", 0)
+	ply:SetPoseParameter ("aim_pitch", AimAng.p)
+	ply:SetPoseParameter ("move_x", 0)
+	ply:SetPoseParameter ("move_y", 0)
+	ply:SetPoseParameter ("move_yaw", 0)
+	ply:SetPoseParameter ("move_scale", 0)
 
 	AimAng.p = 0
 	AimAng.r = 0
 
-	ply:SetRenderAngles( AimAng )
-	ply:SetEyeTarget( driving:GetPos() )
+	ply:SetRenderAngles (AimAng)
+	ply:SetEyeTarget (driving:GetPos ())
 
 end

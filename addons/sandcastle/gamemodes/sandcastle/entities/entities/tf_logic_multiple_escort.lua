@@ -5,10 +5,10 @@
 ENT.Type = "point"
 ENT.Base = "base_point"
 
-function ENT:Initialize()
-	WS.Feature("payload"):BindEscort(self)
+function ENT:Initialize ()
+	WS.Feature ("payload"):BindEscort (self)
 end
 
-function ENT:UpdateTransmitState()
+function ENT:UpdateTransmitState ()
 	return TRANSMIT_NEVER
 end

@@ -4,197 +4,199 @@
 -- soldiers join the fight where the map has no TF2 team spawns at their
 -- team's HL2 deathmatch spawns, else at the nav mesh's hiding spots split
 -- between the teams (features.aiwar.spawns).
-local T = dofile("tests/harness.lua")
-local FS = dofile("tests/fake_soldier.lua")
-local FP = dofile("tests/fake_points.lua")
-local AiWar = T.require("features.aiwar.model")
+local T = dofile ("tests/harness.lua")
+local FS = dofile ("tests/fake_soldier.lua")
+local FP = dofile ("tests/fake_points.lua")
+local AiWar = T.require ("features.aiwar.model")
 local Explore = wartactics.explore
-local Scenario = T.require("features.aiwar.scenario")
-local Freeform = T.require("features.aiwar.scenario.freeform")
-local Spawns = T.require("features.aiwar.spawns")
+local Scenario = T.require ("features.aiwar.scenario")
+local Freeform = T.require ("features.aiwar.scenario.freeform")
+local Spawns = T.require ("features.aiwar.spawns")
 local Squad = wartactics.squad
 local Tactics = wartactics.fireteam
 local Teams = gameplay.teams
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local P = FS.Point
-local WAYPOINTS = { P(-1000, 0), P(1000, 0), P(0, 1000), P(0, -1000) }
-local ROLE = Freeform.DOCTRINE.ROLES[AiWar.EXPLORE]
+local WAYPOINTS = { P (-1000, 0), P (1000, 0), P (0, 1000), P (0, -1000) }
+local ROLE = Freeform.DOCTRINE.ROLES [AiWar.EXPLORE]
 
 -- A field at now 100 with no points, the nav mesh's waypoints and these players.
-local function Field(t)
+local function Field (t)
 	t = t or {}
 	t.points = {}
-	local field = FP.Field(t)
+	local field = FP.Field (t)
 	field.now = t.now or 100
 	field.waypoints = WAYPOINTS
 	field.players = t.players or { [RED] = {}, [BLUE] = {} }
 	return field
 end
 
-local function Brief(field, scenario)
-	scenario = scenario or Freeform.Scenario:New()
-	scenario:Brief(field, field.now)
+local function Brief (field, scenario)
+	scenario = scenario or Freeform.Scenario:New ()
+	scenario:Brief (field, field.now)
 	return field, scenario
 end
 
-T.test("a rounds mode the war does not know, or none, is fought freeform", function()
-	T.eq(Scenario.For(nil), Freeform.Scenario, "no rounds")
-	T.eq(Scenario.For("none"), Freeform.Scenario, "a mode without a standard objective")
-	T.eq(Scenario.For("arena") ~= Freeform.Scenario, true, "a known mode keeps its own")
+T.test ("a rounds mode the war does not know, or none, is fought freeform", function ()
+	T.eq (Scenario.For (nil), Freeform.Scenario, "no rounds")
+	T.eq (Scenario.For ("none"), Freeform.Scenario, "a mode without a standard objective")
+	T.eq (Scenario.For ("arena") ~= Freeform.Scenario, true, "a known mode keeps its own")
 end)
 
-T.test("freeform needs both bases and the nav mesh's waypoints, and fights in bigger squads", function()
-	T.eq(Freeform.Scenario:MapLacks(Field()), nil, "may start")
-	local bare = Field()
+T.test ("freeform needs both bases and the nav mesh's waypoints, and fights in bigger squads", function ()
+	T.eq (Freeform.Scenario:MapLacks (Field ()), nil, "may start")
+	local bare = Field ()
 	bare.waypoints = {}
-	T.eq(Freeform.Scenario:MapLacks(bare), wartactics.scenario.WAYPOINTS, "no nav mesh, no war")
-	T.eq(Freeform.Scenario.SQUAD_SIZE > AiWar.FIRE_TEAM_SIZE, true, "bigger squads")
+	T.eq (Freeform.Scenario:MapLacks (bare), wartactics.scenario.WAYPOINTS, "no nav mesh, no war")
+	T.eq (Freeform.Scenario.SQUAD_SIZE > AiWar.FIRE_TEAM_SIZE, true, "bigger squads")
 end)
 
-T.test("every soldier explores", function()
-	local field, scenario = Brief(Field())
-	local entries, defense = scenario:Stances(field, field.now)
-	for _, team in ipairs({ RED, BLUE }) do
-		T.eq(#entries[team].stance, 1, "one share")
-		T.eq(entries[team].stance[1].role, AiWar.EXPLORE, "explore")
-		T.eq(defense[team], 0, "no defense")
+T.test ("every soldier explores", function ()
+	local field, scenario = Brief (Field ())
+	local entries, defense = scenario:Stances (field, field.now)
+	for _, team in ipairs ({ RED, BLUE }) do
+		T.eq (#entries [team].stance, 1, "one share")
+		T.eq (entries [team].stance [1].role, AiWar.EXPLORE, "explore")
+		T.eq (defense [team], 0, "no defense")
 	end
 end)
 
-T.test("lanes lead to the enemy's base, unless both teams start in the same place", function()
-	local field, scenario = Brief(Field())
-	T.eq(scenario:Front(field, RED).x, field.bases[BLUE].x, "RED's to BLU's")
-	local shared = Field({ bases = { [RED] = P(0, 0), [BLUE] = P(10, 0) } })
-	T.eq(scenario:Front(Brief(shared), RED), nil, "the same spawns: no lanes")
+T.test ("lanes lead to the enemy's base, unless both teams start in the same place", function ()
+	local field, scenario = Brief (Field ())
+	T.eq (scenario:Front (field, RED).x, field.bases [BLUE].x, "RED's to BLU's")
+	local shared = Field ({ bases = { [RED] = P (0, 0), [BLUE] = P (10, 0) } })
+	T.eq (scenario:Front (Brief (shared), RED), nil, "the same spawns: no lanes")
 end)
 
 -- A battle of one RED squad, its leader at `at`.
-local function SquadOf(n)
-	local battle = FP.Battle(Freeform.Scenario)
-	battle:Enlist(RED, n)
-	battle:Start(Field({ now = battle.now }))
+local function SquadOf (n)
+	local battle = FP.Battle (Freeform.Scenario)
+	battle:Enlist (RED, n)
+	battle:Start (Field ({ now = battle.now }))
 	return battle
 end
 
-T.test("a squad of the war's forming holds SQUAD_SIZE soldiers", function()
-	local battle = SquadOf(Freeform.Scenario.SQUAD_SIZE)
-	local first = battle.soldiers[1].member.fireTeam
-	for _, s in ipairs(battle.soldiers) do T.eq(s.member.fireTeam, first, s.member.handle .. " in one squad") end
+T.test ("a squad of the war's forming holds SQUAD_SIZE soldiers", function ()
+	local battle = SquadOf (Freeform.Scenario.SQUAD_SIZE)
+	local first = battle.soldiers [1].member.fireTeam
+	for _, s in ipairs (battle.soldiers) do T.eq (s.member.fireTeam, first, s.member.handle .. " in one squad") end
 end)
 
-T.test("a squad explores without following a living teammate", function()
-	local battle = SquadOf(4)
-	local leader = Squad.Leader(battle.soldiers[1].member.fireTeam)
-	leader.pos = P(0, 0)
-	local field = Brief(Field({ players = {
-		[RED] = { { handle = "near", pos = P(800, 200) } },
-		[BLUE] = { { handle = "enemy", pos = P(100, 0) } },
-	} }))
-	local goal = ROLE.Goal(field, leader)
+T.test ("a squad explores without following a living teammate", function ()
+	local battle = SquadOf (4)
+	local leader = Squad.Leader (battle.soldiers [1].member.fireTeam)
+	leader.pos = P (0, 0)
+	local field = Brief (Field ({ players =
+		{
+			[RED] = { { handle = "near", pos = P (800, 200) } },
+			[BLUE] = { { handle = "enemy", pos = P (100, 0) } }
+		}
+	}))
+	local goal = ROLE.Goal (field, leader)
 	local waypoint = false
-	for _, w in ipairs(WAYPOINTS) do
+	for _, w in ipairs (WAYPOINTS) do
 		if w.x == goal.x and w.y == goal.y then waypoint = true end
 	end
-	T.eq(waypoint, true, "a waypoint despite a teammate being available")
+	T.eq (waypoint, true, "a waypoint despite a teammate being available")
 end)
 
-T.test("a squad fights first, then explores instead of following a player", function()
-	local battle = SquadOf(4)
-	local fireTeam = battle.soldiers[1].member.fireTeam
-	local leader = Squad.Leader(fireTeam)
-	local seen = P(-1500, -1500)
-	Tactics.Report(fireTeam, seen, battle.now)
-	local field = Field({ now = battle.now, players = { [RED] = { { handle = "near", pos = P(800, 200) } }, [BLUE] = {} } })
-	local _, scenario = Brief(field)
-	scenario:Command(battle.war, field, field.now)
-	T.eq(ROLE.Goal(field, leader).x, seen.x, "the contact")
-	field = Field({ now = battle.now + Tactics.CONTACT_MEMORY + 1, players = { [RED] = { { handle = "near", pos = P(800, 200) } }, [BLUE] = {} } })
-	scenario:Command(battle.war, field, field.now)
-	T.eq(ROLE.Goal(field, leader).x, seen.x, "engaged: where it was")
-	field = Field({ now = battle.now + Explore.ENGAGED_FOR + 1, players = { [RED] = { { handle = "near", pos = P(800, 200) } }, [BLUE] = {} } })
-	scenario:Command(battle.war, field, field.now)
-	local goal = ROLE.Goal(field, leader)
-	T.eq(goal.x == 800 and goal.y == 200, false, "then a waypoint, not the player")
+T.test ("a squad fights first, then explores instead of following a player", function ()
+	local battle = SquadOf (4)
+	local fireTeam = battle.soldiers [1].member.fireTeam
+	local leader = Squad.Leader (fireTeam)
+	local seen = P (-1500, -1500)
+	Tactics.Report (fireTeam, seen, battle.now)
+	local field = Field ({ now = battle.now, players = { [RED] = { { handle = "near", pos = P (800, 200) } }, [BLUE] = {} } })
+	local _, scenario = Brief (field)
+	scenario:Command (battle.war, field, field.now)
+	T.eq (ROLE.Goal (field, leader).x, seen.x, "the contact")
+	field = Field ({ now = battle.now + Tactics.CONTACT_MEMORY + 1, players = { [RED] = { { handle = "near", pos = P (800, 200) } }, [BLUE] = {} } })
+	scenario:Command (battle.war, field, field.now)
+	T.eq (ROLE.Goal (field, leader).x, seen.x, "engaged: where it was")
+	field = Field ({ now = battle.now + Explore.ENGAGED_FOR + 1, players = { [RED] = { { handle = "near", pos = P (800, 200) } }, [BLUE] = {} } })
+	scenario:Command (battle.war, field, field.now)
+	local goal = ROLE.Goal (field, leader)
+	T.eq (goal.x == 800 and goal.y == 200, false, "then a waypoint, not the player")
 end)
 
 -- Spawns ---------------------------------------------------------------------------
 
-local function Present(classes)
+local function Present (classes)
 	local set = {}
-	for _, c in ipairs(classes) do set[c] = true end
-	return function(class) return set[class] == true end
+	for _, c in ipairs (classes) do set [c] = true end
+	return function (class) return set [class] == true end
 end
 
-T.test("without TF2's team spawns, each faction joins at its HL2 deathmatch spawns, whichever its team", function()
-	local present = Present({ "info_player_combine", "info_player_rebel", "info_player_deathmatch" })
-	T.eq(table.concat(Spawns.Classes(AiWar.COMBINE, present), ","), "info_player_combine", "the Combine's")
-	T.eq(table.concat(Spawns.Classes(AiWar.RESISTANCE, present), ","), "info_player_rebel", "the rebels'")
-	T.eq(#Spawns.Classes(nil, present), 0, "no faction, none")
+T.test ("without TF2's team spawns, each faction joins at its HL2 deathmatch spawns, whichever its team", function ()
+	local present = Present ({ "info_player_combine", "info_player_rebel", "info_player_deathmatch" })
+	T.eq (table.concat (Spawns.Classes (AiWar.COMBINE, present), ","), "info_player_combine", "the Combine's")
+	T.eq (table.concat (Spawns.Classes (AiWar.RESISTANCE, present), ","), "info_player_rebel", "the rebels'")
+	T.eq (#Spawns.Classes (nil, present), 0, "no faction, none")
 end)
 
-T.test("a team without its own spawns joins at hiding spots; the shared starts are the last resort", function()
-	T.eq(#Spawns.Classes(AiWar.RESISTANCE, Present({ "info_player_combine", "info_player_start" })), 0, "no rebels' spawns: none of its own")
-	T.eq(table.concat(Spawns.Shared(Present({ "info_player_deathmatch", "info_player_start" })), ","),
+T.test ("a team without its own spawns joins at hiding spots; the shared starts are the last resort", function ()
+	T.eq (#Spawns.Classes (AiWar.RESISTANCE, Present ({ "info_player_combine", "info_player_start" })), 0, "no rebels' spawns: none of its own")
+	T.eq (table.concat (Spawns.Shared (Present ({ "info_player_deathmatch", "info_player_start" })), ","),
 		"info_player_deathmatch,info_player_start", "every shared kind")
-	T.eq(#Spawns.Shared(Present({})), 0, "none at all")
+	T.eq (#Spawns.Shared (Present ({})), 0, "none at all")
 end)
 
-T.test("the hiding spots are split between the teams along the map's longest side", function()
+T.test ("the hiding spots are split between the teams along the map's longest side", function ()
 	-- wide along y: RED takes the low y half, BLU the high
-	local spots = { P(0, 3000), P(100, -3000), P(-100, 1000), P(50, -1000) }
-	local red, blue = Spawns.Split(spots, RED), Spawns.Split(spots, BLUE)
-	T.eq(#red, 2, "half to RED")
-	T.eq(#blue, 2, "half to BLU")
-	for _, p in ipairs(red) do T.eq(p.y < 0, true, "RED's low") end
-	for _, p in ipairs(blue) do T.eq(p.y > 0, true, "BLU's high") end
-	local odd = { P(-1000, 0), P(0, 0), P(1000, 0) }
-	T.eq(#Spawns.Split(odd, RED) + #Spawns.Split(odd, BLUE), 4, "an odd one out in the middle is both teams'")
-	T.eq(#Spawns.Split({}, RED), 0, "no spots, none")
+	local spots = { P (0, 3000), P (100, -3000), P (-100, 1000), P (50, -1000) }
+	local red, blue = Spawns.Split (spots, RED), Spawns.Split (spots, BLUE)
+	T.eq (#red, 2, "half to RED")
+	T.eq (#blue, 2, "half to BLU")
+	for _, p in ipairs (red) do T.eq (p.y < 0, true, "RED's low") end
+	for _, p in ipairs (blue) do T.eq (p.y > 0, true, "BLU's high") end
+	local odd = { P (-1000, 0), P (0, 0), P (1000, 0) }
+	T.eq (#Spawns.Split (odd, RED) + #Spawns.Split (odd, BLUE), 4, "an odd one out in the middle is both teams'")
+	T.eq (#Spawns.Split ({}, RED), 0, "no spots, none")
 end)
 
 -- A graph of areas: links[a] = the areas a soldier crosses to from a (a
 -- drop it rappels down is a link one way only).
-local function Neighbors(links)
-	return function(area) return links[area] or {} end
+local function Neighbors (links)
+	return function (area) return links [area] or {} end
 end
 
-local function Spot(area) return { x = 0, y = 0, z = 0, area = area } end
+local function Spot (area) return { x = 0, y = 0, z = 0, area = area } end
 
-local function Areas(spots)
+local function Areas (spots)
 	local list = {}
-	for i, spot in ipairs(spots) do list[i] = spot.area end
-	table.sort(list)
-	return table.concat(list, ",")
+	for i, spot in ipairs (spots) do list [i] = spot.area end
+	table.sort (list)
+	return table.concat (list, ",")
 end
 
-T.test("spawn bases are the spots every other base reaches, and reaches back", function()
+T.test ("spawn bases are the spots every other base reaches, and reaches back", function ()
 	-- 1 <-> 2 <-> 3 is the map; 4 is a roof reached only by dropping off it
 	-- (4 -> 1); 5 and 6 are a pit one only drops into (3 -> 5) and walks
 	-- about in (5 <-> 6) but never leaves
 	local links = { [1] = { 2 }, [2] = { 1, 3 }, [3] = { 2, 5 }, [4] = { 1 }, [5] = { 6 }, [6] = { 5 } }
-	local spots = { Spot(4), Spot(1), Spot(5), Spot(3), Spot(6), Spot(2) }
-	T.eq(Areas(Spawns.Connected(spots, Neighbors(links))), "1,2,3", "the roof and the pit are left out")
+	local spots = { Spot (4), Spot (1), Spot (5), Spot (3), Spot (6), Spot (2) }
+	T.eq (Areas (Spawns.Connected (spots, Neighbors (links))), "1,2,3", "the roof and the pit are left out")
 end)
 
-T.test("a drop rappelled down is a way in, so a loop through it joins", function()
+T.test ("a drop rappelled down is a way in, so a loop through it joins", function ()
 	-- a ledge 4 above 1, dropped from (4 -> 1) and climbed back by stairs (2 -> 4)
 	local links = { [1] = { 2 }, [2] = { 1, 4 }, [4] = { 1 } }
-	T.eq(Areas(Spawns.Connected({ Spot(1), Spot(2), Spot(4) }, Neighbors(links))), "1,2,4", "all three")
+	T.eq (Areas (Spawns.Connected ({ Spot (1), Spot (2), Spot (4) }, Neighbors (links))), "1,2,4", "all three")
 end)
 
-T.test("the largest group of bases wins; spots on one area count each", function()
+T.test ("the largest group of bases wins; spots on one area count each", function ()
 	-- two islands: 1 <-> 2 holds three spots, 7 <-> 8 two
 	local links = { [1] = { 2 }, [2] = { 1 }, [7] = { 8 }, [8] = { 7 } }
-	local spots = { Spot(7), Spot(8), Spot(1), Spot(1), Spot(2) }
-	T.eq(Areas(Spawns.Connected(spots, Neighbors(links))), "1,1,2", "the bigger island")
-	T.eq(#Spawns.Connected({}, Neighbors(links)), 0, "no spots, none")
-	T.eq(Areas(Spawns.Connected({ Spot(9) }, Neighbors({}))), "9", "a lone spot is its own group")
+	local spots = { Spot (7), Spot (8), Spot (1), Spot (1), Spot (2) }
+	T.eq (Areas (Spawns.Connected (spots, Neighbors (links))), "1,1,2", "the bigger island")
+	T.eq (#Spawns.Connected ({}, Neighbors (links)), 0, "no spots, none")
+	T.eq (Areas (Spawns.Connected ({ Spot (9) }, Neighbors ({}))), "9", "a lone spot is its own group")
 end)
 
-T.test("between equal groups, the first spot's group wins, whatever the order of areas", function()
+T.test ("between equal groups, the first spot's group wins, whatever the order of areas", function ()
 	local links = { [1] = { 2 }, [2] = { 1 }, [7] = { 8 }, [8] = { 7 } }
-	T.eq(Areas(Spawns.Connected({ Spot(7), Spot(1), Spot(8), Spot(2) }, Neighbors(links))), "7,8", "7 came first")
+	T.eq (Areas (Spawns.Connected ({ Spot (7), Spot (1), Spot (8), Spot (2) }, Neighbors (links))), "7,8", "7 came first")
 end)
 
-T.finish()
+T.finish ()

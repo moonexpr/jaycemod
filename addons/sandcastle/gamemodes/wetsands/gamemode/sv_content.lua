@@ -5,16 +5,16 @@
 -- name (.devtools/bin/kill_icons_art.py names its sheets for what they hold).
 local ROOT = "gamemodes/" .. GM.FolderName .. "/content/"
 
-function GM:GetDownloadsList(dir, downloads)
+function GM:GetDownloadsList (dir, downloads)
 	dir, downloads = dir or "", downloads or {}
-	local files, dirs = file.Find(ROOT .. dir .. "*", "GAME")
-	for _, name in ipairs(files) do downloads[#downloads + 1] = dir .. name end
-	for _, name in ipairs(dirs) do self:GetDownloadsList(dir .. name .. "/", downloads) end
+	local files, dirs = file.Find (ROOT .. dir .. "*", "GAME")
+	for _, name in ipairs (files) do downloads [#downloads + 1] = dir .. name end
+	for _, name in ipairs (dirs) do self:GetDownloadsList (dir .. name .. "/", downloads) end
 	return downloads
 end
 
-function GM:SendDownloadsList()
-	for _, path in ipairs(self:GetDownloadsList()) do resource.AddFile(path) end
+function GM:SendDownloadsList ()
+	for _, path in ipairs (self:GetDownloadsList ()) do resource.AddFile (path) end
 end
 
-GM:SendDownloadsList()
+GM:SendDownloadsList ()

@@ -8,16 +8,16 @@
 -- Areas are ids; the caller answers for the nav mesh.
 local ipairs = ipairs
 local Graph = graph.search
-module(...)
+module (...)
 
 -- starts: area ids to flood from; Neighbors(id) -> ids; Blocked(id) ->
 -- true for an area the flood may not enter; Outside(id) -> true for an area
 -- only reached through a gate left open; limit: the most areas to take.
 -- Returns the ids reached and whether the flood leaked.
-function Flood(starts, Neighbors, Blocked, Outside, limit)
+function Flood (starts, Neighbors, Blocked, Outside, limit)
 	local open = {}
-	for _, id in ipairs(starts) do
-		if not Blocked(id) then open[#open + 1] = id end
+	for _, id in ipairs (starts) do
+		if not Blocked (id) then open [#open + 1] = id end
 	end
-	return Graph.Flood(open, Neighbors, function(id) return not Blocked(id) end, limit, Outside)
+	return Graph.Flood (open, Neighbors, function (id) return not Blocked (id) end, limit, Outside)
 end

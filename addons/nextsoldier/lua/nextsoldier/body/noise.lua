@@ -5,7 +5,7 @@
 -- it fell (CGameMovement::CheckFalling, shareddefs.h's HL2 fall speeds),
 -- and how far a noise carries to a listener (DrGBase's hearing of a
 -- player's sounds).
-module("nextsoldier.body.noise")
+module ("nextsoldier.body.noise")
 
 -- A step below WALK_SPEED is silent; from RUN_SPEED on it is a run (crouched:
 -- the crouched speeds).
@@ -20,7 +20,7 @@ local WALK_VOLUME, RUN_VOLUME, CROUCH_VOLUME = 0.2, 0.5, 0.65
 -- soldiers').
 local PLAYED_GAIN = 2
 
-function Played(volume)
+function Played (volume)
 	local played = volume * PLAYED_GAIN
 	if played > 1 then return 1 end
 	return played
@@ -29,7 +29,7 @@ end
 -- The next step of a walker on the ground at speed, { interval (seconds
 -- to the one after), volume, running }, or nil while it is too slow to make
 -- one.
-function Step(speed, crouched)
+function Step (speed, crouched)
 	local walk, run = WALK_SPEED, RUN_SPEED
 	if crouched then walk, run = CROUCH_WALK_SPEED, CROUCH_RUN_SPEED end
 	if speed < walk then return nil end
@@ -52,15 +52,16 @@ JUMP_LANDING_VOLUME = LANDING_VOLUME
 
 -- A rappel's sounds, HL2's Combine zipline: the clip catching the rope, the rope
 -- running through it (again every RAPPEL_RUN_EVERY seconds), boots on the floor.
-RAPPEL_SOUNDS = {
+RAPPEL_SOUNDS =
+{
 	clip = { "npc/combine_soldier/zipline_clip1.wav", "npc/combine_soldier/zipline_clip2.wav" },
 	run = { "npc/combine_soldier/zipline1.wav", "npc/combine_soldier/zipline2.wav" },
-	land = { "npc/combine_soldier/zipline_hitground1.wav", "npc/combine_soldier/zipline_hitground2.wav" },
+	land = { "npc/combine_soldier/zipline_hitground1.wav", "npc/combine_soldier/zipline_hitground2.wav" }
 }
 RAPPEL_RUN_EVERY = 1.3
 
 -- The volume of the step a landing at fallSpeed makes; 0, none.
-function Landing(fallSpeed)
+function Landing (fallSpeed)
 	if fallSpeed > MAX_SAFE_FALL_SPEED then return UNSAFE_VOLUME end
 	if fallSpeed > MAX_SAFE_FALL_SPEED / 2 then return HARDER_VOLUME end
 	if fallSpeed < MIN_BOUNCE_SPEED then return 0 end
@@ -69,7 +70,7 @@ end
 
 -- Whether a landing at fallSpeed knocks the walker about (a player's view
 -- is punched): its body staggers.
-function HardLanding(fallSpeed)
+function HardLanding (fallSpeed)
 	return fallSpeed >= HARD_LANDING_SPEED
 end
 
@@ -77,14 +78,14 @@ end
 -- listener that cannot see where it was made hears it HIDDEN_HEARING as far.
 HIDDEN_HEARING = 0.5
 
-function HearingRange(soundLevel, volume)
+function HearingRange (soundLevel, volume)
 	return (soundLevel / 2) ^ 2 * volume
 end
 
 -- Whether a listener distance away, seeing the sound's origin or not, with
 -- its hearing coefficient (0: deaf), hears it.
-function Hears(soundLevel, volume, distance, seen, coefficient)
-	local reach = HearingRange(soundLevel, volume) * coefficient
+function Hears (soundLevel, volume, distance, seen, coefficient)
+	local reach = HearingRange (soundLevel, volume) * coefficient
 	if not seen then reach = reach * HIDDEN_HEARING end
 	return coefficient > 0 and distance <= reach
 end

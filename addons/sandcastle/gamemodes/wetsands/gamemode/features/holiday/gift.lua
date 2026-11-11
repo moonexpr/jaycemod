@@ -8,9 +8,9 @@
 -- features.holiday.halloween's LIFETIME. Then :Target(), :Touch(player)
 -- -> taken, :Tick(now) -> NONE, DESPAWN or REMOVE.
 local require = require
-local Holiday = require("features.holiday.model")
+local Holiday = require ("features.holiday.model")
 local setmetatable = setmetatable
-module(...)
+module (...)
 
 -- CTFGameRules::LevelInitPostEntity takes tf_halloween_gift_spawn_location
 -- origins only while this holiday is on.
@@ -29,25 +29,26 @@ NONE, DESPAWN, REMOVE = "none", "despawn", "remove"
 local Gift = {}
 Gift.__index = Gift
 
-function New(config, now)
-	return setmetatable({
-		target = config.player,
-		despawnAt = now + config.lifetime,
-		removeAt = nil,
-		gone = false,
-	}, Gift)
+function New (config, now)
+	return setmetatable (
+		{
+			target = config.player,
+			despawnAt = now + config.lifetime,
+			removeAt = nil,
+			gone = false
+		}, Gift)
 end
 
-function Gift:Target() return self.target end
+function Gift:Target () return self.target end
 
 -- ValidTouch and MyTouch: only the target takes it, once.
-function Gift:Touch(player)
+function Gift:Touch (player)
 	if self.gone or player ~= self.target then return false end
 	self.gone = true
 	return true
 end
 
-function Gift:Tick(now)
+function Gift:Tick (now)
 	if self.gone then return NONE end
 	if self.despawnAt and now >= self.despawnAt then
 		self.target = nil

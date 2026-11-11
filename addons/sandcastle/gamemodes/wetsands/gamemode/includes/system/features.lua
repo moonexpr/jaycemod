@@ -21,22 +21,23 @@
 -- features already loaded); a kind no handler takes on this realm is
 -- skipped (the server plays no soundscape), a kind not in KINDS refused.
 local error, format, ipairs, match, pairs, pcall, setfenv, setmetatable, tostring, type =
-	error, string.format, ipairs, string.match, pairs, pcall, setfenv, setmetatable, tostring, type
+error, string.format, ipairs, string.match, pairs, pcall, setfenv, setmetatable, tostring, type
 local concat, sort = table.concat, table.sort
 local floor = math.floor
-module(...)
+module (...)
 
 ROOT = "features/"
 -- Features switched off: their code stays, but nothing may load them.
-OFF = {
-	nodegraph = true, -- the AI node graph from the nav mesh; not needed now
+OFF =
+{
+	nodegraph = true -- the AI node graph from the nav mesh; not needed now
 }
 SHARED, SERVER, CLIENT = "sh", "sv", "cl"
 
 -- The parts a client loads, in order.
 CLIENT_PARTS = { SHARED, CLIENT }
 
-function PartPath(name, part)
+function PartPath (name, part)
 	return ROOT .. name .. "/" .. part .. ".lua"
 end
 
@@ -45,7 +46,7 @@ SOUNDSCAPES, MODELS, MATERIALS = "soundscapes", "models", "materials"
 KINDS = { SOUNDSCAPES, MODELS, MATERIALS }
 local IS_KIND = { [SOUNDSCAPES] = true, [MODELS] = true, [MATERIALS] = true }
 
-function ResourcesPath(name)
+function ResourcesPath (name)
 	return ROOT .. name .. "/resources.lua"
 end
 
@@ -53,46 +54,47 @@ end
 -- (relative to the gamemode folder, or an addon's tree: WS.LoaderFile).
 CLIENT_DIRS = { "foundation/", "includes/", "wartactics/", "features/", "vendor/" }
 
-local REALM_OF = {
+local REALM_OF =
+{
 	[SERVER] = SERVER,
 	[CLIENT] = CLIENT,
-	[SHARED] = SHARED,
+	[SHARED] = SHARED
 }
 
 -- A file's realm from its base name: SERVER, CLIENT or SHARED when it is
 -- exactly sv.lua, cl.lua or sh.lua or starts with sv_, cl_ or sh_; nil for a
 -- module.
-function Realm(fileName)
-	return REALM_OF[match(fileName, "^(%a%a)%.lua$") or match(fileName, "^(%a%a)_")]
+function Realm (fileName)
+	return REALM_OF [match (fileName, "^(%a%a)%.lua$") or match (fileName, "^(%a%a)_")]
 end
 
 -- Whether a file (a base name) is sent to clients: every one but the server's.
-function Ships(fileName)
-	return Realm(fileName) ~= SERVER
+function Ships (fileName)
+	return Realm (fileName) ~= SERVER
 end
 
-local function AddClientFiles(port, dir, paths)
-	local fileNames, dirNames = port:Find(dir)
-	for _, fileName in ipairs(fileNames) do
-		if match(fileName, "%.lua$") and Ships(fileName) then paths[#paths + 1] = dir .. fileName end
+local function AddClientFiles (port, dir, paths)
+	local fileNames, dirNames = port:Find (dir)
+	for _, fileName in ipairs (fileNames) do
+		if match (fileName, "%.lua$") and Ships (fileName) then paths [#paths + 1] = dir .. fileName end
 	end
-	for _, dirName in ipairs(dirNames) do AddClientFiles(port, dir .. dirName .. "/", paths) end
+	for _, dirName in ipairs (dirNames) do AddClientFiles (port, dir .. dirName .. "/", paths) end
 end
 
 -- Every .lua file under dirs, at any depth, that ships, sorted.
 --   port:Find(dir) -> fileNames, dirNames (dir ends in "/").
-function ClientFiles(port, dirs)
+function ClientFiles (port, dirs)
 	local paths = {}
-	for _, dir in ipairs(dirs) do AddClientFiles(port, dir, paths) end
-	sort(paths)
+	for _, dir in ipairs (dirs) do AddClientFiles (port, dir, paths) end
+	sort (paths)
 	return paths
 end
 
 -- A realm root (sv.lua, cl.lua, sh.lua) is its feature's composition root: it
 -- declares the state and runs its parts, <realm>_<part>.lua beside it, in
 -- order; a part may register its own wiring under ids unique to the feature.
-function PartFile(name, part)
-	if not REALM_OF[match(part, "^(%a%a)_[%w_]+$")] then error("not a feature part: " .. part, 0) end
+function PartFile (name, part)
+	if not REALM_OF [match (part, "^(%a%a)_[%w_]+$")] then error ("not a feature part: " .. part, 0) end
 	return ROOT .. name .. "/" .. part .. ".lua"
 end
 
@@ -100,168 +102,172 @@ end
 -- root's own, getfenv(1)) with the arguments and returns its values.
 --   port:Compile(path) -> the file's chunk, or nil when it is missing or
 --   does not compile.
-function Parts(port, env, name)
-	return function(part, ...)
-		local path = PartFile(name, part)
-		local chunk = port:Compile(path)
-		if not chunk then error(path .. " did not compile", 0) end
-		return setfenv(chunk, env)(...)
+function Parts (port, env, name)
+	return function (part, ...)
+		local path = PartFile (name, part)
+		local chunk = port:Compile (path)
+		if not chunk then error (path .. " did not compile", 0) end
+		return setfenv (chunk, env) (...)
 	end
 end
 
 -- What differs between the realms: which file is the realm's own part, how a
 -- realm decides a name is unknown, and whether it tells clients.
-local REALMS = {
-	[SERVER] = {
+local REALMS =
+{
+	[SERVER] =
+	{
 		label = "server",
 		tellsClients = true,
-		MissingMessage = function(name, hasShared, hasOwn)
-			if not hasOwn then return format("unknown feature %q: no %s", name, PartPath(name, SERVER)) end
-		end,
+		MissingMessage = function (name, hasShared, hasOwn)
+			if not hasOwn then return format ("unknown feature %q: no %s", name, PartPath (name, SERVER)) end
+		end
 	},
-	[CLIENT] = {
+	[CLIENT] =
+	{
 		label = "client",
 		tellsClients = false,
-		MissingMessage = function(name, hasShared, hasOwn)
+		MissingMessage = function (name, hasShared, hasOwn)
 			if not (hasShared or hasOwn) then
-				return format("unknown feature %q: no %s or %s", name, PartPath(name, CLIENT), PartPath(name, SHARED))
+				return format ("unknown feature %q: no %s or %s", name, PartPath (name, CLIENT), PartPath (name, SHARED))
 			end
-		end,
-	},
+		end
+	}
 }
 
 local Loader = {}
 Loader.__index = Loader
 
 -- realm: SERVER or CLIENT.
-function New(realm, port)
-	return setmetatable({
-		realm = realm,
-		spec = REALMS[realm],
-		port = port,
-		values = {},
-		loaded = {},
-		loading = {},
-		failed = {},
-		order = {},
-		hasClientPart = {},
-		resources = {}, -- feature -> kind -> names, as its resources.lua named them
-		handlers = {}, -- kind -> handler(names, feature)
-	}, Loader)
+function New (realm, port)
+	return setmetatable (
+		{
+			realm = realm,
+			spec = REALMS [realm],
+			port = port,
+			values = {},
+			loaded = {},
+			loading = {},
+			failed = {},
+			order = {},
+			hasClientPart = {},
+			resources = {}, -- feature -> kind -> names, as its resources.lua named them
+			handlers = {} -- kind -> handler(names, feature)
+		}, Loader)
 end
 
-local function RunTable(port, path)
-	local value = port:Run(path)
-	if type(value) ~= "table" then
-		error(format("%s returned %s, not its table", path, type(value)), 0)
+local function RunTable (port, path)
+	local value = port:Run (path)
+	if type (value) ~= "table" then
+		error (format ("%s returned %s, not its table", path, type (value)), 0)
 	end
 	return value
 end
 
-local function CheckKind(kind, what)
-	if not IS_KIND[kind] then error(format("%s: %q is not a resource kind (%s)", what, tostring(kind), concat(KINDS, ", ")), 0) end
+local function CheckKind (kind, what)
+	if not IS_KIND [kind] then error (format ("%s: %q is not a resource kind (%s)", what, tostring (kind), concat (KINDS, ", ")), 0) end
 end
 
 -- The feature's resources (none without a resources.lua), each kind checked.
-local function ReadResources(port, name)
-	local path = ResourcesPath(name)
-	if not port:Exists(path) then return {} end
-	local resources = RunTable(port, path)
-	for kind in pairs(resources) do CheckKind(kind, path) end
+local function ReadResources (port, name)
+	local path = ResourcesPath (name)
+	if not port:Exists (path) then return {} end
+	local resources = RunTable (port, path)
+	for kind in pairs (resources) do CheckKind (kind, path) end
 	return resources
 end
 
-local function HandOut(self, name, resources)
-	for _, kind in ipairs(KINDS) do
-		local handler, names = self.handlers[kind], resources[kind]
-		if handler and names then handler(names, name) end
+local function HandOut (self, name, resources)
+	for _, kind in ipairs (KINDS) do
+		local handler, names = self.handlers [kind], resources [kind]
+		if handler and names then handler (names, name) end
 	end
 end
 
 -- handler(names, feature) takes this realm's resources of kind: those of
 -- every feature that loads, and of each already loaded.
-function Loader:Handle(kind, handler)
-	CheckKind(kind, "a handler")
-	self.handlers[kind] = handler
-	for _, name in ipairs(self.order) do
-		local names = self.resources[name][kind]
-		if names then handler(names, name) end
+function Loader:Handle (kind, handler)
+	CheckKind (kind, "a handler")
+	self.handlers [kind] = handler
+	for _, name in ipairs (self.order) do
+		local names = self.resources [name] [kind]
+		if names then handler (names, name) end
 	end
 end
 
 -- Dependencies a part loads finish first, so the order is dependency order.
-local function Load(self, name)
+local function Load (self, name)
 	local port = self.port
-	local sharedPath, ownPath = PartPath(name, SHARED), PartPath(name, self.realm)
-	local hasShared, hasOwn = port:Exists(sharedPath), port:Exists(ownPath)
-	local missing = self.spec.MissingMessage(name, hasShared, hasOwn)
-	if missing then error(missing, 0) end
+	local sharedPath, ownPath = PartPath (name, SHARED), PartPath (name, self.realm)
+	local hasShared, hasOwn = port:Exists (sharedPath), port:Exists (ownPath)
+	local missing = self.spec.MissingMessage (name, hasShared, hasOwn)
+	if missing then error (missing, 0) end
 
-	self.loading[name] = true
+	self.loading [name] = true
 	local resources
-	local ok, value = pcall(function()
-		resources = ReadResources(port, name)
-		HandOut(self, name, resources)
-		if hasShared then port:Run(sharedPath) end
-		return hasOwn and RunTable(port, ownPath) or nil
+	local ok, value = pcall (function ()
+		resources = ReadResources (port, name)
+		HandOut (self, name, resources)
+		if hasShared then port:Run (sharedPath) end
+		return hasOwn and RunTable (port, ownPath) or nil
 	end)
-	self.loading[name] = nil
+	self.loading [name] = nil
 	if not ok then
 		-- its parts may have run in part, so it is never loaded again
-		self.failed[name] = value
-		error(value, 0)
+		self.failed [name] = value
+		error (value, 0)
 	end
 
-	local clientPart = hasShared or port:Exists(PartPath(name, CLIENT))
-	self.values[name] = value
-	self.resources[name] = resources
-	self.loaded[name] = true
-	self.hasClientPart[name] = clientPart
-	self.order[#self.order + 1] = name
-	if self.spec.tellsClients and clientPart then port:TellClients(name) end
+	local clientPart = hasShared or port:Exists (PartPath (name, CLIENT))
+	self.values [name] = value
+	self.resources [name] = resources
+	self.loaded [name] = true
+	self.hasClientPart [name] = clientPart
+	self.order [#self.order + 1] = name
+	if self.spec.tellsClients and clientPart then port:TellClients (name) end
 	return value
 end
 
 -- The realm's part of the feature (the controller on the server, the view
 -- on the client), loading it on the first call.
-function Loader:Feature(name)
-	if self.loaded[name] then return self.values[name] end
-	if OFF[name] then error(format("feature %q is switched off (games.system.features OFF)", name), 0) end
-	if self.failed[name] ~= nil then
-		error(format("feature %q failed to load: %s", name, tostring(self.failed[name])), 0)
+function Loader:Feature (name)
+	if self.loaded [name] then return self.values [name] end
+	if OFF [name] then error (format ("feature %q is switched off (games.system.features OFF)", name), 0) end
+	if self.failed [name] ~= nil then
+		error (format ("feature %q failed to load: %s", name, tostring (self.failed [name])), 0)
 	end
-	if self.loading[name] then
-		error(format("feature %q is still loading: a cyclic dependency", name), 0)
+	if self.loading [name] then
+		error (format ("feature %q is still loading: a cyclic dependency", name), 0)
 	end
-	return Load(self, name)
+	return Load (self, name)
 end
 
 -- Whether the feature has loaded, without loading it.
-function Loader:IsLoaded(name)
-	return self.loaded[name] == true
+function Loader:IsLoaded (name)
+	return self.loaded [name] == true
 end
 
 -- Every loaded feature, in load order.
-function Loader:Loaded()
+function Loader:Loaded ()
 	local list = {}
-	for i, name in ipairs(self.order) do list[i] = name end
+	for i, name in ipairs (self.order) do list [i] = name end
 	return list
 end
 
 -- What a joining client must load: the loaded features with a client part,
 -- in load order.
-function Loader:ClientFeatures()
+function Loader:ClientFeatures ()
 	local list = {}
-	for _, name in ipairs(self.order) do
-		if self.hasClientPart[name] then list[#list + 1] = name end
+	for _, name in ipairs (self.order) do
+		if self.hasClientPart [name] then list [#list + 1] = name end
 	end
 	return list
 end
 
 -- One console line for comparing maps' Lua RAM: collectgarbage("count")
 -- now, and again after a full collection.
-function Loader:MemoryReport(countKB, collectedKB)
-	local names = #self.order > 0 and concat(self.order, ", ") or "none"
-	return format("Lua memory (%s): %d KB, %d KB after a full collection; features (%d): %s",
-		self.spec.label, floor(countKB), floor(collectedKB), #self.order, names)
+function Loader:MemoryReport (countKB, collectedKB)
+	local names = #self.order > 0 and concat (self.order, ", ") or "none"
+	return format ("Lua memory (%s): %d KB, %d KB after a full collection; features (%d): %s",
+		self.spec.label, floor (countKB), floor (collectedKB), #self.order, names)
 end

@@ -22,7 +22,7 @@
 local require = require
 local Teams = gameplay.teams
 local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
-module(...)
+module (...)
 
 -- SPELL_EMPTY and SPELL_UNKNOWN (tf_weapon_spellbook.cpp)
 EMPTY, UNKNOWN = -1, -2
@@ -51,31 +51,32 @@ USE_MOBILITY = "mobility"
 SpellBook = {}
 SpellBook.__index = SpellBook
 
-function SpellBook.New(set)
-	return setmetatable({
-		set = set,
-		selected = EMPTY,
-		charges = 0,
-		nextSpell = EMPTY,
-		rollingUntil = nil,
-		nextCastAt = 0,
-		nextDenyAt = 0,
-	}, SpellBook)
+function SpellBook.New (set)
+	return setmetatable (
+		{
+			set = set,
+			selected = EMPTY,
+			charges = 0,
+			nextSpell = EMPTY,
+			rollingUntil = nil,
+			nextCastAt = 0,
+			nextDenyAt = 0
+		}, SpellBook)
 end
 
-function SpellBook:Strategy(index)
-	return require(self.set.Strategy(index))
+function SpellBook:Strategy (index)
+	return require (self.set.Strategy (index))
 end
 
 -- SetSelectedSpell: a spell comes with its full charges; EMPTY and UNKNOWN
 -- have none.
-function SpellBook:Select(index)
+function SpellBook:Select (index)
 	self.selected = index
 	self.charges = 0
-	if index >= 0 then self.charges = self.set.Definition(index).charges end
+	if index >= 0 then self.charges = self.set.Definition (index).charges end
 end
 
-function SpellBook:HasASpellWithCharges()
+function SpellBook:HasASpellWithCharges ()
 	return self.charges > 0 or self.selected == UNKNOWN
 end
 
@@ -83,50 +84,51 @@ end
 -- is refused while a spell with charges is held or rolling; otherwise the
 -- book shows UNKNOWN until the roll finishes ROLL_TIME later. random(lo, hi)
 -- draws an integer.
-function SpellBook:Pickup(tier, now, random)
-	if tier == self.set.TIER_COMMON and self:HasASpellWithCharges() then return false end
-	self.nextSpell = self.set.Roll(tier, random)
-	self:Select(UNKNOWN)
+function SpellBook:Pickup (tier, now, random)
+	if tier == self.set.TIER_COMMON and self:HasASpellWithCharges () then return false end
+	self.nextSpell = self.set.Roll (tier, random)
+	self:Select (UNKNOWN)
 	self.rollingUntil = now + self.set.ROLL_TIME
 	return true
 end
 
 -- RollNewSpellFinish
-function SpellBook:Tick(now)
+function SpellBook:Tick (now)
 	if self.rollingUntil == nil or now < self.rollingUntil then return nil end
 	self.rollingUntil = nil
-	self:Select(self.nextSpell)
+	self:Select (self.nextSpell)
 	return ROLLED
 end
 
 -- CanCastSpell, and PrimaryAttack's wait for m_flTimeNextSpell.
-function SpellBook:CanCast(now)
+function SpellBook:CanCast (now)
 	return self.charges > 0 and self.selected >= 0 and self.selected < self.set.COUNT and now >= self.nextCastAt
 end
 
 -- CastSpell and PaySpellCost: the charge is spent before the spell runs, so
 -- a spell that finds no room to throw is spent all the same.
-function SpellBook:Cast(caster, now)
-	if not self:CanCast(now) then return false end
+function SpellBook:Cast (caster, now)
+	if not self:CanCast (now) then return false end
 	self.charges = self.charges - 1
 	self.nextCastAt = now + self.set.CAST_COOLDOWN
-	self:Strategy(self.selected).Cast(caster)
+	self:Strategy (self.selected).Cast (caster)
 	return true
 end
 
 -- Whether a refused cast plays the deny sound: not during the cooldown
 -- (PrimaryAttack returns first), and at most every DENY_INTERVAL.
-function SpellBook:Deny(now)
+function SpellBook:Deny (now)
 	if now < self.nextCastAt or now < self.nextDenyAt then return false end
 	self.nextDenyAt = now + DENY_INTERVAL
 	return true
 end
 
-function SpellBook:State()
-	return {
+function SpellBook:State ()
+	return
+	{
 		selected = self.selected,
 		charges = self.charges,
-		rollingUntil = self.rollingUntil,
+		rollingUntil = self.rollingUntil
 	}
 end
 
@@ -136,31 +138,32 @@ end
 Shot = {}
 Shot.__index = Shot
 
-function Shot.New(strategy, class, config, now)
+function Shot.New (strategy, class, config, now)
 	local state = {}
-	if strategy.NewShot then state = strategy.NewShot(class, config, now) end
-	return setmetatable({
-		strategy = strategy,
-		class = class,
-		config = config,
-		state = state,
-	}, Shot)
+	if strategy.NewShot then state = strategy.NewShot (class, config, now) end
+	return setmetatable (
+		{
+			strategy = strategy,
+			class = class,
+			config = config,
+			state = state
+		}, Shot)
 end
 
-function Shot:Index()
+function Shot:Index ()
 	return self.strategy.INDEX
 end
 
-function Shot:Tick(caster, where, now)
+function Shot:Tick (caster, where, now)
 	if not self.strategy.Tick then return nil end
-	return self.strategy.Tick(caster, self.state, where, now)
+	return self.strategy.Tick (caster, self.state, where, now)
 end
 
-function Shot:Impact(caster, impact)
+function Shot:Impact (caster, impact)
 	impact.class = self.class
 	impact.config = self.config
 	impact.state = self.state
-	return self.strategy.Impact(caster, impact)
+	return self.strategy.Impact (caster, impact)
 end
 
 -------------------------------------------------------------------------------
@@ -169,88 +172,89 @@ end
 Library = {}
 Library.__index = Library
 
-function Library.New(set)
-	return setmetatable({
-		set = set,
-		books = {},
-		armed = {}, -- holders whose book came with the weapon, not the rules
-	}, Library)
+function Library.New (set)
+	return setmetatable (
+		{
+			set = set,
+			books = {},
+			armed = {} -- holders whose book came with the weapon, not the rules
+		}, Library)
 end
 
-function Library:BookOf(holder)
-	return self.books[holder]
+function Library:BookOf (holder)
+	return self.books [holder]
 end
 
 -- While spells are on, each living RED or BLU player holds a book.
 -- candidate = { holder, team, alive }.
-local function MayHold(on, candidate)
+local function MayHold (on, candidate)
 	return on and candidate.alive and (candidate.team == Teams.RED or candidate.team == Teams.BLUE)
 end
 
 -- A book for any caster (a player or an NPC); a holder keeps the one it has.
-function Library:Grant(holder)
-	self.books[holder] = self.books[holder] or SpellBook.New(self.set)
-	return self.books[holder]
+function Library:Grant (holder)
+	self.books [holder] = self.books [holder] or SpellBook.New (self.set)
+	return self.books [holder]
 end
 
-function Library:Revoke(holder)
-	self.books[holder] = nil
-	self.armed[holder] = nil
+function Library:Revoke (holder)
+	self.books [holder] = nil
+	self.armed [holder] = nil
 end
 
 -- A caster gone from the game.
-function Library:Forget(holder)
-	self.books[holder] = nil
-	self.armed[holder] = nil
+function Library:Forget (holder)
+	self.books [holder] = nil
+	self.armed [holder] = nil
 end
 
 -- The weapon equipped (from the spawn menu, say) by a holder with no book:
 -- it is armed with one that the rules leave alone until Disarm. Returns
 -- whether it was; a holder of the rules' book keeps that one.
-function Library:Arm(holder)
-	if self.books[holder] then return false end
-	self.books[holder] = SpellBook.New(self.set)
-	self.armed[holder] = true
+function Library:Arm (holder)
+	if self.books [holder] then return false end
+	self.books [holder] = SpellBook.New (self.set)
+	self.armed [holder] = true
 	return true
 end
 
 -- The weapon gone: an armed holder's book goes with it.
-function Library:Disarm(holder)
-	if self.armed[holder] then self:Revoke(holder) end
+function Library:Disarm (holder)
+	if self.armed [holder] then self:Revoke (holder) end
 end
 
 -- Grants and revokes the candidates' books to match; returns the holders
 -- granted and those revoked, in the candidates' order. Casters that are
 -- not candidates, and armed ones, keep what they hold.
-function Library:Sync(on, candidates)
+function Library:Sync (on, candidates)
 	local granted, revoked = {}, {}
-	for _, candidate in ipairs(candidates) do
+	for _, candidate in ipairs (candidates) do
 		local holder = candidate.holder
-		local holds, may = self.books[holder] ~= nil, self.armed[holder] or MayHold(on, candidate)
+		local holds, may = self.books [holder] ~= nil, self.armed [holder] or MayHold (on, candidate)
 		if may and not holds then
-			self:Grant(holder)
-			granted[#granted + 1] = holder
+			self:Grant (holder)
+			granted [#granted + 1] = holder
 		elseif holds and not may then
-			self:Revoke(holder)
-			revoked[#revoked + 1] = holder
+			self:Revoke (holder)
+			revoked [#revoked + 1] = holder
 		end
 	end
 	return granted, revoked
 end
 
 -- Every caster holding a book.
-function Library:Holders()
+function Library:Holders ()
 	local holders = {}
-	for holder in pairs(self.books) do holders[#holders + 1] = holder end
+	for holder in pairs (self.books) do holders [#holders + 1] = holder end
 	return holders
 end
 
 -- A new life: TF2 regenerates the player's items, so any book starts over.
 -- Returns whether the player holds one.
-function Library:Respawn(on, candidate)
-	self.books[candidate.holder] = nil
-	if not (self.armed[candidate.holder] or MayHold(on, candidate)) then return false end
-	self.books[candidate.holder] = SpellBook.New(self.set)
+function Library:Respawn (on, candidate)
+	self.books [candidate.holder] = nil
+	if not (self.armed [candidate.holder] or MayHold (on, candidate)) then return false end
+	self.books [candidate.holder] = SpellBook.New (self.set)
 	return true
 end
 
@@ -258,31 +262,31 @@ end
 -- rolling for it. Only a caster holding a book collects one (TF2 lets a
 -- player with none take a rare pickup and get nothing; any passing caster,
 -- NPCs included, would waste it here).
-function Library:Pickup(holder, tier, now, random)
-	local book = self.books[holder]
+function Library:Pickup (holder, tier, now, random)
+	local book = self.books [holder]
 	if book == nil then return false, false end
-	local rolled = book:Pickup(tier, now, random)
+	local rolled = book:Pickup (tier, now, random)
 	return rolled, rolled
 end
 
 -- Ticks every book; returns the holders whose roll finished.
-function Library:Tick(now)
+function Library:Tick (now)
 	local rolled = {}
-	for holder, book in pairs(self.books) do
-		if book:Tick(now) == ROLLED then rolled[#rolled + 1] = holder end
+	for holder, book in pairs (self.books) do
+		if book:Tick (now) == ROLLED then rolled [#rolled + 1] = holder end
 	end
 	return rolled
 end
 
 -- The Shot for a projectile or spawner of spell `index`.
-function Library:Shot(index, class, config, now)
-	return Shot.New(require(self.set.Strategy(index)), class, config, now)
+function Library:Shot (index, class, config, now)
+	return Shot.New (require (self.set.Strategy (index)), class, config, now)
 end
 
 -- A shot lands. A refunded spell goes back into the thrower's current book
 -- (the spawn boss's SetSelectedSpell), whatever it holds by then.
-function Library:Impact(holder, shot, caster, impact)
-	if shot:Impact(caster, impact) ~= REFUND then return end
-	local book = self.books[holder]
-	if book then book:Select(shot:Index()) end
+function Library:Impact (holder, shot, caster, impact)
+	if shot:Impact (caster, impact) ~= REFUND then return end
+	local book = self.books [holder]
+	if book then book:Select (shot:Index ()) end
 end

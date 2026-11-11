@@ -5,7 +5,7 @@
 -- team's squads; a squad's next mission, the room and kind it is issued for; and the ways out of
 -- a room, for the legs' panic.
 local Controller = ...
-local Marks = WS.require("features.aiwar.marks")
+local Marks = WS.require ("features.aiwar.marks")
 local Tactics = wartactics.fireteam
 local Mission = wartactics.mission
 local Rooms = wartactics.rooms
@@ -20,54 +20,54 @@ local MARKS_GLOBAL = "ns_marks"
 -- room's breadth.
 local DANGER_REACH = 768
 
-function Controller:MarksOf()
-	self.marks = self.marks or Marks.New()
+function Controller:MarksOf ()
+	self.marks = self.marks or Marks.New ()
 	return self.marks
 end
 
 -- Clients are told, and the areas to avoid are closed now; posts and rallies reach the next field.
-function Controller:MarksChanged()
-	SetGlobal2String(MARKS_GLOBAL, self:MarksOf():Encode())
-	self:ApplyHazards()
+function Controller:MarksChanged ()
+	SetGlobal2String (MARKS_GLOBAL, self:MarksOf ():Encode ())
+	self:ApplyHazards ()
 end
 
-function Controller:Mark(kind, team, pos)
-	self:MarksOf():Add(kind, team, pos)
-	self:MarksChanged()
+function Controller:Mark (kind, team, pos)
+	self:MarksOf ():Add (kind, team, pos)
+	self:MarksChanged ()
 end
 
 -- The DANGER mark of team's nearest point, within DANGER_REACH, or nil.
-function Controller:DangerNear(team, point)
-	return self:MarksOf():DangerNear(team, point, DANGER_REACH)
+function Controller:DangerNear (team, point)
+	return self:MarksOf ():DangerNear (team, point, DANGER_REACH)
 end
 
 -- How many marks near pos were taken.
-function Controller:Unmark(pos, reach)
-	local removed = self:MarksOf():RemoveNear(pos, reach)
-	if removed > 0 then self:MarksChanged() end
+function Controller:Unmark (pos, reach)
+	local removed = self:MarksOf ():RemoveNear (pos, reach)
+	if removed > 0 then self:MarksChanged () end
 	return removed
 end
 
 -- The nav areas the AVOID marks close, id -> true.
-function Controller:MarkedAvoid()
+function Controller:MarkedAvoid ()
 	local set = {}
-	for _, mark in ipairs(self:MarksOf():All()) do
+	for _, mark in ipairs (self:MarksOf ():All ()) do
 		if mark.kind == Marks.AVOID then
-			local at = Vector(mark.pos.x, mark.pos.y, mark.pos.z)
-			for _, area in ipairs(navmesh.Find(at, AVOID_REACH, AVOID_HEIGHT, AVOID_HEIGHT)) do set[area:GetID()] = true end
+			local at = Vector (mark.pos.x, mark.pos.y, mark.pos.z)
+			for _, area in ipairs (navmesh.Find (at, AVOID_REACH, AVOID_HEIGHT, AVOID_HEIGHT)) do set [area:GetID ()] = true end
 		end
 	end
 	return set
 end
 
 -- Each think: the ENEMY marks reported to their team's squads.
-function Controller:MarksThink(now)
+function Controller:MarksThink (now)
 	if now < (self.nextMarkReport or 0) then return end
 	self.nextMarkReport = now + ENEMY_EVERY
-	for _, mark in ipairs(self:MarksOf():All()) do
+	for _, mark in ipairs (self:MarksOf ():All ()) do
 		if mark.kind == Marks.ENEMY then
-			for _, fireTeam in ipairs(self.war.fireTeams) do
-				if fireTeam.team == mark.team then Tactics.Report(fireTeam, mark.pos, now) end
+			for _, fireTeam in ipairs (self.war.fireTeams) do
+				if fireTeam.team == mark.team then Tactics.Report (fireTeam, mark.pos, now) end
 			end
 		end
 	end
@@ -75,40 +75,40 @@ end
 
 -- A squad's next mission by hand: kind (a wartactics.mission kind) in the room at pos, or
 -- ADVANCE for none; the squad lets its mission go and asks afresh. Returns true, or false and why.
-function Controller:GiveMission(fireTeam, kind, pos)
+function Controller:GiveMission (fireTeam, kind, pos)
 	local room
 	if kind ~= Mission.ADVANCE then
-		local area = navmesh.GetNearestNavArea(Vector(pos.x, pos.y, pos.z))
-		room = IsValid(area) and self.rooms and Rooms.RoomOf(self.rooms, area:GetID())
-		if not room or room.outdoor or not room.doors or not room.doors[1] then
+		local area = navmesh.GetNearestNavArea (Vector (pos.x, pos.y, pos.z))
+		room = IsValid (area) and self.rooms and Rooms.RoomOf (self.rooms, area:GetID ())
+		if not room or room.outdoor or not room.doors or not room.doors [1] then
 			return false, "no room indoors with a door there (or the map's rooms are not found yet)"
 		end
 	end
 	fireTeam.missionGiven = { kind = kind, room = room }
 	fireTeam.missionsOff = nil
-	Mission.Finish(fireTeam)
+	Mission.Finish (fireTeam)
 	return true
 end
 
 -- What MissionSpec gives Issue for a squad's mission by hand, or nil: its target's door toward
 -- where the squad comes from, its team's lanes' start (the enemy's, for an ambush).
-function Controller:GivenMission(fireTeam, lanes)
+function Controller:GivenMission (fireTeam, lanes)
 	local given = fireTeam.missionGiven
 	if not given then return nil end
 	if not given.room then return { kind = given.kind } end
-	local field = self.war:Field()
-	local from = lanes and lanes[1] and lanes[1].points[1]
+	local field = self.war:Field ()
+	local from = lanes and lanes [1] and lanes [1].points [1]
 	if given.kind == Mission.AMBUSH then
-		local theirs = field and field.lanes and field.lanes[Teams.EnemyOf(fireTeam.team)]
-		from = theirs and theirs[1] and theirs[1].points[1] or from
+		local theirs = field and field.lanes and field.lanes [Teams.EnemyOf (fireTeam.team)]
+		from = theirs and theirs [1] and theirs [1].points [1] or from
 	end
-	return { kind = given.kind, target = Mission.Target(given.room, from or given.room.center) }
+	return { kind = given.kind, target = Mission.Target (given.room, from or given.room.center) }
 end
 
 -- What sees a point from a room: eyes on a lattice EYES across its block, ROOM_EYES_INSET clear of
 -- its walls, at a standing eye's height; a point is seen when a line from any of them to its own
 -- eye height meets no wall (glass and other breakables are seen through).
-local EYES, ROOM_EYES_INSET, EYE_HEIGHT = 3, 48, Vector(0, 0, 64)
+local EYES, ROOM_EYES_INSET, EYE_HEIGHT = 3, 48, Vector (0, 0, 64)
 -- What a point in a room is worth to fight from: the share of the room's other ways in (its doors
 -- and windows but the one the squad comes by) a standing eye there sees, weighed THREAT_WEIGHT;
 -- the share of a FLOOR_SAMPLES-square lattice over its floor it sees; and the share of COVER_RAYS
@@ -116,7 +116,7 @@ local EYES, ROOM_EYES_INSET, EYE_HEIGHT = 3, 48, Vector(0, 0, 64)
 local THREAT_WEIGHT, COVER_WEIGHT = 2, 0.5
 -- The classes' names of the teams (sv_classes' TEAMS), by number.
 local TEAM_NAMES = { [WS.TEAM_RED] = "RED", [WS.TEAM_BLUE] = "BLU" }
-local FLOOR_SAMPLES, COVER_RAYS, COVER_REACH, CHEST = 5, 8, 64, Vector(0, 0, 40)
+local FLOOR_SAMPLES, COVER_RAYS, COVER_REACH, CHEST = 5, 8, 64, Vector (0, 0, 40)
 -- Where one walking up to an entrance looks in from: LOOKOUT_ALONG out from it, LOOKOUT_ACROSS to
 -- either side.
 local LOOKOUT_ALONG, LOOKOUT_ACROSS = { 96, 192, 384 }, { -128, 0, 128 }
@@ -126,12 +126,12 @@ local LOOKOUT_ALONG, LOOKOUT_ACROSS = { 96, 192, 384 }, { -128, 0, 128 }
 -- doorway nearest from it comes in by, what it sees, what a point in it is worth to fight from, and,
 -- given the squad's team, the enemy that team has marked in it nearest its middle (an ENEMY mark); nil where the map's rooms are not found,
 -- none is there, or it has no door.
-function Controller:RoomForSquad(point, from, team)
-	local area = navmesh.GetNearestNavArea(Vector(point.x, point.y, point.z))
-	local room = self.rooms and IsValid(area) and Rooms.RoomOf(self.rooms, area:GetID())
-	if not (room and room.doors and room.doors[1]) then return nil end
+function Controller:RoomForSquad (point, from, team)
+	local area = navmesh.GetNearestNavArea (Vector (point.x, point.y, point.z))
+	local room = self.rooms and IsValid (area) and Rooms.RoomOf (self.rooms, area:GetID ())
+	if not (room and room.doors and room.doors [1]) then return nil end
 	local entry
-	for _, door in ipairs(room.doors) do
+	for _, door in ipairs (room.doors) do
 		local d = (door.pos.x - from.x) ^ 2 + (door.pos.y - from.y) ^ 2
 		if not entry or d < entry.d then entry = { pos = door.pos, d = d } end
 	end
@@ -139,71 +139,71 @@ function Controller:RoomForSquad(point, from, team)
 	for i = 0, EYES - 1 do
 		for j = 0, EYES - 1 do
 			local t, u = i / (EYES - 1), j / (EYES - 1)
-			eyes[#eyes + 1] = Vector(room.lo.x + ROOM_EYES_INSET + (room.hi.x - room.lo.x - 2 * ROOM_EYES_INSET) * t,
+			eyes [#eyes + 1] = Vector (room.lo.x + ROOM_EYES_INSET + (room.hi.x - room.lo.x - 2 * ROOM_EYES_INSET) * t,
 				room.lo.y + ROOM_EYES_INSET + (room.hi.y - room.lo.y - 2 * ROOM_EYES_INSET) * u, room.center.z) + EYE_HEIGHT
 		end
 	end
-	local function Seen(p)
-		local target = Vector(p.x, p.y, p.z) + EYE_HEIGHT
-		for _, eye in ipairs(eyes) do
-			if not util.TraceLine({ start = eye, endpos = target, mask = MASK_SOLID_BRUSHONLY }).Hit then return true end
+	local function Seen (p)
+		local target = Vector (p.x, p.y, p.z) + EYE_HEIGHT
+		for _, eye in ipairs (eyes) do
+			if not util.TraceLine ({ start = eye, endpos = target, mask = MASK_SOLID_BRUSHONLY }).Hit then return true end
 		end
 		return false
 	end
 	local threats = {}
-	for _, door in ipairs(room.doors) do
-		if door.pos ~= entry.pos then threats[#threats + 1] = Vector(door.pos.x, door.pos.y, door.pos.z) + EYE_HEIGHT end
+	for _, door in ipairs (room.doors) do
+		if door.pos ~= entry.pos then threats [#threats + 1] = Vector (door.pos.x, door.pos.y, door.pos.z) + EYE_HEIGHT end
 	end
-	for _, window in ipairs(room.windows or {}) do threats[#threats + 1] = Vector(window.pos.x, window.pos.y, window.pos.z) end
+	for _, window in ipairs (room.windows or {}) do threats [#threats + 1] = Vector (window.pos.x, window.pos.y, window.pos.z) end
 	local floor = {}
 	for i = 0, FLOOR_SAMPLES - 1 do
 		for j = 0, FLOOR_SAMPLES - 1 do
 			local t, u = (i + 0.5) / FLOOR_SAMPLES, (j + 0.5) / FLOOR_SAMPLES
-			floor[#floor + 1] = Vector(room.lo.x + (room.hi.x - room.lo.x) * t, room.lo.y + (room.hi.y - room.lo.y) * u, room.center.z) + EYE_HEIGHT
+			floor [#floor + 1] = Vector (room.lo.x + (room.hi.x - room.lo.x) * t, room.lo.y + (room.hi.y - room.lo.y) * u, room.center.z) + EYE_HEIGHT
 		end
 	end
-	local function Sees(from, targets)
+	local function Sees (from, targets)
 		if #targets == 0 then return 0 end
 		local seen = 0
-		for _, target in ipairs(targets) do
-			if not util.TraceLine({ start = from, endpos = target, mask = MASK_SOLID_BRUSHONLY }).Hit then seen = seen + 1 end
+		for _, target in ipairs (targets) do
+			if not util.TraceLine ({ start = from, endpos = target, mask = MASK_SOLID_BRUSHONLY }).Hit then seen = seen + 1 end
 		end
 		return seen / #targets
 	end
-	local function Score(p)
-		local eye, chest = Vector(p.x, p.y, p.z) + EYE_HEIGHT, Vector(p.x, p.y, p.z) + CHEST
+	local function Score (p)
+		local eye, chest = Vector (p.x, p.y, p.z) + EYE_HEIGHT, Vector (p.x, p.y, p.z) + CHEST
 		local walls = 0
 		for k = 0, COVER_RAYS - 1 do
 			local angle = k / COVER_RAYS * 2 * math.pi
-			local reach = chest + Vector(math.cos(angle), math.sin(angle), 0) * COVER_REACH
-			if util.TraceLine({ start = chest, endpos = reach, mask = MASK_SOLID_BRUSHONLY }).Hit then walls = walls + 1 end
+			local reach = chest + Vector (math.cos (angle), math.sin (angle), 0) * COVER_REACH
+			if util.TraceLine ({ start = chest, endpos = reach, mask = MASK_SOLID_BRUSHONLY }).Hit then walls = walls + 1 end
 		end
-		return THREAT_WEIGHT * Sees(eye, threats) + Sees(eye, floor) + COVER_WEIGHT * walls / COVER_RAYS
+		return THREAT_WEIGHT * Sees (eye, threats) + Sees (eye, floor) + COVER_WEIGHT * walls / COVER_RAYS
 	end
-	local at = function(p) return { x = p.x, y = p.y, z = p.z } end
+	local at = function (p) return { x = p.x, y = p.y, z = p.z } end
 	local enemy
-	for _, mark in ipairs(team and self:MarksOf():Of(team, Marks.ENEMY) or {}) do
+	for _, mark in ipairs (team and self:MarksOf ():Of (team, Marks.ENEMY) or {}) do
 		local p = mark.pos
 		if p.x >= room.lo.x and p.x <= room.hi.x and p.y >= room.lo.y and p.y <= room.hi.y
-			and (not enemy or math.geometry.Distance2D(p, room.center) < math.geometry.Distance2D(enemy, room.center)) then
+			and (not enemy or math.geometry.Distance2D (p, room.center) < math.geometry.Distance2D (enemy, room.center)) then
 			enemy = p
 		end
 	end
 	local exits = {}
-	for i, door in ipairs(room.doors) do exits[i] = at(door.pos) end
+	for i, door in ipairs (room.doors) do exits [i] = at (door.pos) end
 	-- each door with the team's flow into the room by it, and the enemy's: their incursion routes
 	-- and breaches entering there (the classes' entrances, once found; none while they are not)
 	local entrances = {}
-	for i, door in ipairs(room.doors) do entrances[i] = { pos = exits[i], flow = 0, enemyFlow = 0 } end
-	local classes = team and self:Classes()
+	for i, door in ipairs (room.doors) do entrances [i] = { pos = exits [i], flow = 0, enemyFlow = 0 } end
+	local classes = team and self:Classes ()
 	if team then
-		local ourName = TEAM_NAMES[team]
-		local enemyName = TEAM_NAMES[Teams.EnemyOf(team)]
-		for _, e in ipairs(classes and classes.entrances or {}) do
+		local ourName = TEAM_NAMES [team]
+		local enemyName = TEAM_NAMES [Teams.EnemyOf (team)]
+		for _, e in ipairs (classes and classes.entrances or {}) do
 			if e.room == room and (e.team == ourName or e.team == enemyName) then
 				local nearest
-				for _, entrance in ipairs(entrances) do
-					if not nearest or math.geometry.Distance2D(entrance.pos, e.via) < math.geometry.Distance2D(nearest.pos, e.via) then
+				for _, entrance in ipairs (entrances) do
+					if not nearest or math.geometry.Distance2D (entrance.pos, e.via) < math.geometry.Distance2D (nearest.pos, e.via) then
 						nearest = entrance
 					end
 				end
@@ -214,35 +214,35 @@ function Controller:RoomForSquad(point, from, team)
 	end
 	-- what one walking up to an entrance sees inside through it: a line from any lookout on its
 	-- approach (LOOKOUT_ALONG out from it, LOOKOUT_ACROSS either side) to the point, at eye height
-	local function Watched(p, entrance)
-		local out = math.geometry.Normalize2D(math.geometry.Sub(entrance, room.center))
-		local target = Vector(p.x, p.y, p.z) + EYE_HEIGHT
-		for _, along in ipairs(LOOKOUT_ALONG) do
-			for _, across in ipairs(LOOKOUT_ACROSS) do
-				local eye = Vector(entrance.x + out.x * along - out.y * across, entrance.y + out.y * along + out.x * across,
+	local function Watched (p, entrance)
+		local out = math.geometry.Normalize2D (math.geometry.Sub (entrance, room.center))
+		local target = Vector (p.x, p.y, p.z) + EYE_HEIGHT
+		for _, along in ipairs (LOOKOUT_ALONG) do
+			for _, across in ipairs (LOOKOUT_ACROSS) do
+				local eye = Vector (entrance.x + out.x * along - out.y * across, entrance.y + out.y * along + out.x * across,
 					entrance.z) + EYE_HEIGHT
-				if not util.TraceLine({ start = eye, endpos = target, mask = MASK_SOLID_BRUSHONLY }).Hit then return true end
+				if not util.TraceLine ({ start = eye, endpos = target, mask = MASK_SOLID_BRUSHONLY }).Hit then return true end
 			end
 		end
 		return false
 	end
 	-- its own nav areas, which a squad staging round it keeps out of
 	local inside = {}
-	for _, id in ipairs(room.areas) do inside[id] = true end
+	for _, id in ipairs (room.areas) do inside [id] = true end
 	-- its name, as the map gives it (info_room)
-	local hinted = (self:RoomHints() or {})[room]
-	return { center = at(room.center), lo = at(room.lo), hi = at(room.hi), entry = at(entry.pos), exits = exits,
+	local hinted = (self:RoomHints () or {}) [room]
+	return { center = at (room.center), lo = at (room.lo), hi = at (room.hi), entry = at (entry.pos), exits = exits,
 		entrances = entrances, inside = inside, seen = Seen, watched = Watched, score = Score,
-		enemy = enemy and at(enemy), label = hinted and hinted.label }
+		enemy = enemy and at (enemy), label = hinted and hinted.label }
 end
 
 -- The doors of the room at point, as the ways out a panicked squad makes for (the legs'
 -- SetExits), or nil where the map's rooms are not found or none is there.
-function Controller:ExitsAt(point)
-	local area = navmesh.GetNearestNavArea(Vector(point.x, point.y, point.z))
-	local room = self.rooms and IsValid(area) and Rooms.RoomOf(self.rooms, area:GetID())
-	if not (room and room.doors and room.doors[1]) then return nil end
+function Controller:ExitsAt (point)
+	local area = navmesh.GetNearestNavArea (Vector (point.x, point.y, point.z))
+	local room = self.rooms and IsValid (area) and Rooms.RoomOf (self.rooms, area:GetID ())
+	if not (room and room.doors and room.doors [1]) then return nil end
 	local exits = {}
-	for i, door in ipairs(room.doors) do exits[i] = door.pos end
+	for i, door in ipairs (room.doors) do exits [i] = door.pos end
 	return exits
 end

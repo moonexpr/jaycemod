@@ -10,11 +10,12 @@
 -- squad, kept as any call; nil for a line that is no call.
 local error, format, tostring, setmetatable = error, string.format, tostring, setmetatable
 local pairs = pairs
-module("nextsoldier.squad.comms.radio")
+module ("nextsoldier.squad.comms.radio")
 
 DIRECTOR, SQUAD = "director", "squad"
 
-CALLS = {
+CALLS =
+{
 	STATUS = "Status report.",
 	ALL_CLEAR = "All clear.",
 	CONTACT = "Contact!",
@@ -31,42 +32,42 @@ CALLS = {
 	VACATE = "Clear to vacate.",
 	DEFEND = "Negative. Hold the location.",
 	ATTACK = "Negative. Assault the next room.",
-	STANDBY = "Negative. Stand by.",
+	STANDBY = "Negative. Stand by."
 }
 
 -- Each call's words, back to the call: a line said aloud is its call.
 local BY_LINE = {}
-for call, words in pairs(CALLS) do BY_LINE[words] = call end
+for call, words in pairs (CALLS) do BY_LINE [words] = call end
 
 -- Each order's channel, gone with the order.
-local channels = setmetatable({}, { __mode = "k" })
+local channels = setmetatable ({}, { __mode = "k" })
 
-function Calls(order)
-	local channel = channels[order]
+function Calls (order)
+	local channel = channels [order]
 	if not channel then
 		channel = {}
-		channels[order] = channel
+		channels [order] = channel
 	end
 	return channel
 end
 
-function Say(order, from, to, call, ...)
-	local words = CALLS[call]
-	if not words then error("no squad call " .. tostring(call), 2) end
+function Say (order, from, to, call, ...)
+	local words = CALLS [call]
+	if not words then error ("no squad call " .. tostring (call), 2) end
 	if from ~= order.leader and to ~= order.leader then
-		error(from == DIRECTOR and "the director speaks only to the squad's leader" or "a member speaks only to its leader", 2)
+		error (from == DIRECTOR and "the director speaks only to the squad's leader" or "a member speaks only to its leader", 2)
 	end
-	local entry = { from = from, to = to, call = call, text = format(words, ...) }
-	local channel = Calls(order)
-	channel[#channel + 1] = entry
+	local entry = { from = from, to = to, call = call, text = format (words, ...) }
+	local channel = Calls (order)
+	channel [#channel + 1] = entry
 	return entry
 end
 
-function Line(order, from, line)
-	local call = BY_LINE[line]
+function Line (order, from, line)
+	local call = BY_LINE [line]
 	if not (call and order) then return nil end
 	local entry = { from = from, to = SQUAD, call = call, text = line }
-	local channel = Calls(order)
-	channel[#channel + 1] = entry
+	local channel = Calls (order)
+	channel [#channel + 1] = entry
 	return entry
 end

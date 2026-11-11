@@ -19,12 +19,12 @@
 --   "capped"   ours, the enemy capping it (critical from CRITICAL_PROGRESS)
 --   "lost"     theirs
 local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
-local AiWar = require("features.aiwar.model")
-local Orders = require("features.aiwar.ns_behaviors")
+local AiWar = require ("features.aiwar.model")
+local Orders = require ("features.aiwar.ns_behaviors")
 local Teams = gameplay.teams
 local Base = wartactics.scenario
-local CP = require("features.aiwar.scenario.control_points")
-module(...)
+local CP = require ("features.aiwar.scenario.control_points")
+module (...)
 
 MODE = "arena"
 
@@ -36,14 +36,14 @@ local CAPTURE, ASSAULT, HOLD, DEFEND, EXPLORE = AiWar.CAPTURE, AiWar.ASSAULT, Ai
 
 -- Whether the point may be captured now: the round has its cap-enable time
 -- and it has passed.
-local function Open(field, now)
+local function Open (field, now)
 	return field.capEnableAt ~= nil and now >= field.capEnableAt
 end
 
 -- The point: the round's one a team can fight over, or nil.
-local function ThePoint(field)
-	for _, point in ipairs(field.points) do
-		if CP.Eligible(point) then return point end
+local function ThePoint (field)
+	for _, point in ipairs (field.points) do
+		if CP.Eligible (point) then return point end
 	end
 	return nil
 end
@@ -54,111 +54,119 @@ end
 -- EXPLORE_ROLE): an explorer squad goes for where it fights, else its
 -- lane's end, else its waypoint (the scenario's board, field.explore).
 DOCTRINE = {}
-for k, v in pairs(CP.DOCTRINE) do DOCTRINE[k] = v end
+for k, v in pairs (CP.DOCTRINE) do DOCTRINE [k] = v end
 DOCTRINE.NAME = "arena"
 
 -- The scenario ---------------------------------------------------------------------
 
-Scenario = CP.Scenario:Extend(MODE)
+Scenario = CP.Scenario:Extend (MODE)
 -- Its Brief reads the points, both bases and the waypoints to explore.
 Scenario.NEEDS = { Base.BASES, Base.POINTS, Base.WAYPOINTS }
 
 -- The point is a target to the team without it once open, whatever
 -- mayCapture says, as King of the Hill's hill always is.
-function Scenario:Attack(field, team)
-	local point = ThePoint(field)
-	if point and Open(field, field.now) and point.owner ~= team then return { point } end
+function Scenario:Attack (field, team)
+	local point = ThePoint (field)
+	if point and Open (field, field.now) and point.owner ~= team then return { point } end
 	return {}
 end
 
-function Scenario:Defend(field, team)
-	local point = ThePoint(field)
-	if point and Open(field, field.now) and point.owner == team then return { point } end
+function Scenario:Defend (field, team)
+	local point = ThePoint (field)
+	if point and Open (field, field.now) and point.owner == team then return { point } end
 	return {}
 end
 
 -- Nobody waits by a shut point: they explore.
-function Scenario:Staging(field, team, attack)
+function Scenario:Staging (field, team, attack)
 	return nil
 end
 
 -- The lanes lead to the point, shut or open, so the squads come at it by
 -- several ways once it opens; on a map without one, to the enemy's base.
-function Scenario:Front(field, team)
-	local point = ThePoint(field)
+function Scenario:Front (field, team)
+	local point = ThePoint (field)
 	if point then return point.zone.center end
-	return field.bases[EnemyOf(team)]
+	return field.bases [EnemyOf (team)]
 end
 
-function Scenario:Brief(field, now)
-	CP.Scenario.Brief(self, field, now)
+function Scenario:Brief (field, now)
+	CP.Scenario.Brief (self, field, now)
 	field.doctrine = DOCTRINE
 end
 
 -- Stances ---------------------------------------------------------------------
 
-SHARES = {
-	[SHUT] = {
+SHARES =
+{
+	[SHUT] =
+	{
 		roles = { EXPLORE },
-		weights = { 1 },
+		weights = { 1 }
 	},
-	[OPEN] = {
+	[OPEN] =
+	{
 		roles = { CAPTURE, ASSAULT, EXPLORE },
-		weights = { 4, 3, 3 },
+		weights = { 4, 3, 3 }
 	},
-	[HELD] = {
+	[HELD] =
+	{
 		roles = { HOLD, DEFEND, EXPLORE },
-		weights = { 3, 4, 3 },
+		weights = { 3, 4, 3 }
 	},
-	[CAPPED] = {
+	[CAPPED] =
+	{
 		roles = { HOLD, DEFEND, EXPLORE },
-		weights = { 6, 3, 1 },
+		weights = { 6, 3, 1 }
 	},
-	[LOST] = {
+	[LOST] =
+	{
 		roles = { CAPTURE, ASSAULT, EXPLORE },
-		weights = { 5, 3, 2 },
-	},
+		weights = { 5, 3, 2 }
+	}
 }
 
 local stances = {} -- key -> stance: the same situation, the same table
 
-local function Entry(key, critical)
-	if not stances[key] then
-		local stance, shares = {}, SHARES[key]
-		for i, role in ipairs(shares.roles) do
-			stance[i] = {
+local function Entry (key, critical)
+	if not stances [key] then
+		local stance, shares = {}, SHARES [key]
+		for i, role in ipairs (shares.roles) do
+			stance [i] =
+			{
 				role = role,
-				weight = shares.weights[i],
+				weight = shares.weights [i]
 			}
 		end
-		stances[key] = stance
+		stances [key] = stance
 	end
-	return {
-		stance = stances[key],
+	return
+	{
+		stance = stances [key],
 		key = key,
-		critical = critical,
+		critical = critical
 	}
 end
 
-local function TeamEntry(field, team, now)
-	local point = ThePoint(field)
-	if not point or not Open(field, now) then return Entry(SHUT, false) end
-	local enemy = EnemyOf(team)
+local function TeamEntry (field, team, now)
+	local point = ThePoint (field)
+	if not point or not Open (field, now) then return Entry (SHUT, false) end
+	local enemy = EnemyOf (team)
 	if point.owner == team then
-		if point.capping == enemy then return Entry(CAPPED, point.progress >= CP.CRITICAL_PROGRESS) end
-		return Entry(HELD, false)
+		if point.capping == enemy then return Entry (CAPPED, point.progress >= CP.CRITICAL_PROGRESS) end
+		return Entry (HELD, false)
 	end
-	if point.owner == enemy then return Entry(LOST, false) end
-	return Entry(OPEN, false)
+	if point.owner == enemy then return Entry (LOST, false) end
+	return Entry (OPEN, false)
 end
 
 -- The point's holder is all defense, the rest all offense.
-function Scenario:Stances(field, now)
+function Scenario:Stances (field, now)
 	local entries, defense = {}, {}
-	local point = ThePoint(field)
-	for _, team in ipairs(TEAMS) do
-		entries[team] = TeamEntry(field, team, now)
-		defense[team] = point and Open(field, now) and point.owner == team and 1 or 0
+	local point = ThePoint (field)
+	for _, team in ipairs (TEAMS) do
+		entries [team] = TeamEntry (field, team, now)
+		defense [team] = point and Open (field, now) and point.owner == team and 1 or 0
 	end
 	return entries, defense
 end

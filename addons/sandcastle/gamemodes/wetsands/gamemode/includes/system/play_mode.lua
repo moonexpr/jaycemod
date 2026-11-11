@@ -5,16 +5,16 @@
 -- games.system.gamemode owns the transition between modes; this only names
 -- the one a rule should apply.
 local error, type = error, type
-module(...)
+module (...)
 
 SANDBOX, GAMEPLAY, AIWAR, ARENA = "sandbox", "gameplay", "aiwar", "arena"
 
 local FACTS = { "roundsActive", "gameplayStopped", "aiwar", "arena" }
 
 -- facts = { roundsActive, gameplayStopped, aiwar, arena }, booleans.
-function Of(facts)
+function Of (facts)
 	for i = 1, #FACTS do
-		if type(facts[FACTS[i]]) ~= "boolean" then error("play mode: fact " .. FACTS[i] .. " is not a boolean", 2) end
+		if type (facts [FACTS [i]]) ~= "boolean" then error ("play mode: fact " .. FACTS [i] .. " is not a boolean", 2) end
 	end
 	if not facts.roundsActive or facts.gameplayStopped then return SANDBOX end
 	if facts.aiwar then return AIWAR end
@@ -22,6 +22,6 @@ function Of(facts)
 	return GAMEPLAY
 end
 
-function IsSandbox(mode)
+function IsSandbox (mode)
 	return mode == SANDBOX
 end

@@ -4,19 +4,19 @@
 local POINT_CLASS = "team_control_point"
 local SETTLE = 1
 
-return function(t)
-	local capture = t:Feature("capture")
-	if not capture then return t:Skip("capture not loaded") end
-	if not ents.FindByClass(POINT_CLASS)[1] then return t:Skip("the map has no " .. POINT_CLASS) end
-	game.CleanUpMap()
-	t:Wait(SETTLE)
+return function (t)
+	local capture = t:Feature ("capture")
+	if not capture then return t:Skip ("capture not loaded") end
+	if not ents.FindByClass (POINT_CLASS) [1] then return t:Skip ("the map has no " .. POINT_CLASS) end
+	game.CleanUpMap ()
+	t:Wait (SETTLE)
 
-	local points = ents.FindByClass(POINT_CLASS)
+	local points = ents.FindByClass (POINT_CLASS)
 	local missing = {}
-	for _, point in ipairs(points) do
-		if not capture:Set():Has(point) then missing[#missing + 1] = tostring(point) end
+	for _, point in ipairs (points) do
+		if not capture:Set ():Has (point) then missing [#missing + 1] = tostring (point) end
 	end
-	t:Check("every " .. POINT_CLASS .. " is in the capture set after a cleanup", #missing == 0,
-		string.format("%d of %d missing: %s", #missing, #points, table.concat(missing, ", ")))
+	t:Check ("every " .. POINT_CLASS .. " is in the capture set after a cleanup", #missing == 0,
+		string.format ("%d of %d missing: %s", #missing, #points, table.concat (missing, ", ")))
 
 end

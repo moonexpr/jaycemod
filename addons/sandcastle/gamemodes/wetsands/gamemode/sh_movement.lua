@@ -11,11 +11,11 @@ local Movement = gameplay.movement
 
 local CONVAR_CHECK = 1
 
-local function V(p) return Vector(p.x, p.y, p.z) end
+local function V (p) return Vector (p.x, p.y, p.z) end
 
-local function ApplyHull(ply, body)
-	ply:SetHull(V(body.hullMin), V(body.hullMax))
-	ply:SetHullDuck(V(body.duckHullMin), V(body.duckHullMax))
+local function ApplyHull (ply, body)
+	ply:SetHull (V (body.hullMin), V (body.hullMax))
+	ply:SetHullDuck (V (body.duckHullMin), V (body.duckHullMax))
 	ply.wsMovementBody = body
 end
 
@@ -24,30 +24,30 @@ end
 -- and 82, so at a ledge the client falls off where the server stands, and
 -- the camera bounces as the server corrects it), so the hull itself is
 -- checked every move, not only a change of the body.
-local function HullIs(ply, body)
-	local _, maxs = ply:GetHull()
-	local _, duckMaxs = ply:GetHullDuck()
+local function HullIs (ply, body)
+	local _, maxs = ply:GetHull ()
+	local _, duckMaxs = ply:GetHullDuck ()
 	return maxs.x == body.hullMax.x and maxs.z == body.hullMax.z and duckMaxs.z == body.duckHullMax.z
 end
 
-hook.Add("SetupMove", "ws_movement", function(ply)
-	local body = Movement.For(WS.Active())
-	if ply.wsMovementBody ~= body or not HullIs(ply, body) then ApplyHull(ply, body) end
+hook.Add ("SetupMove", "ws_movement", function (ply)
+	local body = Movement.For (WS.Active ())
+	if ply.wsMovementBody ~= body or not HullIs (ply, body) then ApplyHull (ply, body) end
 end)
 
 if CLIENT then return end
 
-function WS.ApplyMovement(ply)
-	local body = Movement.For(WS.Active())
-	ApplyHull(ply, body)
-	ply:SetViewOffset(Vector(0, 0, body.view))
-	ply:SetViewOffsetDucked(Vector(0, 0, body.duckView))
-	ply:SetJumpPower(body.jumpSpeed)
-	ply:SetStepSize(body.stepHeight)
+function WS.ApplyMovement (ply)
+	local body = Movement.For (WS.Active ())
+	ApplyHull (ply, body)
+	ply:SetViewOffset (Vector (0, 0, body.view))
+	ply:SetViewOffsetDucked (Vector (0, 0, body.duckView))
+	ply:SetJumpPower (body.jumpSpeed)
+	ply:SetStepSize (body.stepHeight)
 end
 
-timer.Create("ws_movement_convars", CONVAR_CHECK, 0, function()
-	for name, value in pairs(Movement.For(WS.Active()).convars) do
-		if GetConVarString(name) ~= value then RunConsoleCommand(name, value) end
+timer.Create ("ws_movement_convars", CONVAR_CHECK, 0, function ()
+	for name, value in pairs (Movement.For (WS.Active ()).convars) do
+		if GetConVarString (name) ~= value then RunConsoleCommand (name, value) end
 	end
 end)

@@ -18,49 +18,53 @@ local SETTINGS = "ws_gameplay_settings"
 local E = WS.Events
 local COUNT_BITS = 8
 
-E.Define("game_gameplay_chat", {
-	title = E.String(),
-	lines = E.List(E.String(), COUNT_BITS),
-})
-E.Define("game_gameplay_transition_cancelled", {
-	sounds = E.List(E.String(), COUNT_BITS),
-})
+E.Define ("game_gameplay_chat",
+	{
+		title = E.String (),
+		lines = E.List (E.String (), COUNT_BITS)
+	}
+)
+E.Define ("game_gameplay_transition_cancelled",
+	{
+		sounds = E.List (E.String (), COUNT_BITS)
+	}
+)
 -- A game called off (its countdown, or its wait for players): each client
 -- says so in its chat, with the UI's hint.
-E.Define("game_gameplay_called_off", {})
+E.Define ("game_gameplay_called_off", {})
 
 if SERVER then
-	local function Command(name, want, help)
-		concommand.Add(name, function(ply)
-			if not WS.Can(ply, Permissions.MATCH) then
-				ply:ChatPrint("Gameplay: you may not do that")
+	local function Command (name, want, help)
+		concommand.Add (name, function (ply)
+			if not WS.Can (ply, Permissions.MATCH) then
+				ply:ChatPrint ("Gameplay: you may not do that")
 				return
 			end
-			WS.Feature("gamemode"):Request(want, Gamemode.SOURCE_BUTTON, ply)
+			WS.Feature ("gamemode"):Request (want, Gamemode.SOURCE_BUTTON, ply)
 		end, nil, help)
 	end
 
-	Command("mp_gameplay_begin", Gamemode.GAMEPLAY,
+	Command ("mp_gameplay_begin", Gamemode.GAMEPLAY,
 		"Begin Gameplay mode: a countdown, then the rounds restart and everyone chooses a team")
 
 	-- Kept in WS across a Lua refresh: whether the map has loaded. The
 	-- rounds controller applies the mode (StartAtLoad) once its rules exist.
-	hook.Add("InitPostEntity", "ws_gamemode", function()
+	hook.Add ("InitPostEntity", "ws_gamemode", function ()
 		WS.gamemodeLoaded = true
 		-- A map with no tf_gamerules starts no game of its own. The next tick,
 		-- as the gamerules are made in this same hook.
-		timer.Simple(0, function()
-			if not WS.Active() then WS.Feature("gamemode"):Request(Gamemode.GAMEPLAY, Gamemode.SOURCE_CONSOLE) end
+		timer.Simple (0, function ()
+			if not WS.Active () then WS.Feature ("gamemode"):Request (Gamemode.GAMEPLAY, Gamemode.SOURCE_CONSOLE) end
 		end)
 	end)
 
 	-- One settings entity a map, made again when a cleanup removes it.
-	local function KeepSettings()
-		if IsValid(ents.FindByClass(SETTINGS)[1]) then return end
-		ents.Create(SETTINGS):Spawn()
+	local function KeepSettings ()
+		if IsValid (ents.FindByClass (SETTINGS) [1]) then return end
+		ents.Create (SETTINGS):Spawn ()
 	end
-	hook.Add("InitPostEntity", "ws_gameplay_settings", KeepSettings)
-	hook.Add("PostCleanupMap", "ws_gameplay_settings", KeepSettings)
+	hook.Add ("InitPostEntity", "ws_gameplay_settings", KeepSettings)
+	hook.Add ("PostCleanupMap", "ws_gameplay_settings", KeepSettings)
 	return
 end
 
@@ -70,48 +74,48 @@ local HELP = "Begin Game announces a new game, "
 
 local PROPERTIES_TALL = 420
 
-local function BuildPanel(panel)
-	panel:ClearControls()
-	panel:Help(HELP)
-	local status = panel:Help("")
-	function status:Think()
-		local text = WS.Active() and "Status: Gameplay mode" or "This map has no rounds."
-		if self:GetText() ~= text then self:SetText(text) end
+local function BuildPanel (panel)
+	panel:ClearControls ()
+	panel:Help (HELP)
+	local status = panel:Help ("")
+	function status:Think ()
+		local text = WS.Active () and "Status: Gameplay mode" or "This map has no rounds."
+		if self:GetText () ~= text then self:SetText (text) end
 	end
-	panel:Button("Begin Game", "mp_gameplay_begin")
+	panel:Button ("Begin Game", "mp_gameplay_begin")
 	-- the settings entity's fields, admins' to edit; it arrives with the map,
 	-- and again after a cleanup
-	local settings = vgui.Create("DEntityProperties", panel)
-	settings:SetTall(PROPERTIES_TALL)
-	panel:AddItem(settings)
-	function settings:Think()
-		local ent = ents.FindByClass(SETTINGS)[1]
-		if IsValid(ent) then self:SetEntity(ent) end
+	local settings = vgui.Create ("DEntityProperties", panel)
+	settings:SetTall (PROPERTIES_TALL)
+	panel:AddItem (settings)
+	function settings:Think ()
+		local ent = ents.FindByClass (SETTINGS) [1]
+		if IsValid (ent) then self:SetEntity (ent) end
 	end
 end
 
 -- A new game's description in chat: the title in gold, the objectives in white.
-local TITLE_COLOR, LINE_COLOR = Color(255, 205, 80), Color(235, 235, 235)
+local TITLE_COLOR, LINE_COLOR = Color (255, 205, 80), Color (235, 235, 235)
 
-E.Listen("game_gameplay_chat", "ws_gameplay", function(fields)
-	chat.AddText(TITLE_COLOR, fields.title)
-	for _, line in ipairs(fields.lines) do chat.AddText(LINE_COLOR, line) end
+E.Listen ("game_gameplay_chat", "ws_gameplay", function (fields)
+	chat.AddText (TITLE_COLOR, fields.title)
+	for _, line in ipairs (fields.lines) do chat.AddText (LINE_COLOR, line) end
 end)
 
 -- The pregame panel going chimes (features/gamemode/cl.lua).
-E.Listen("game_gameplay_called_off", "ws_gameplay", function()
-	chat.AddText(TITLE_COLOR, "Game called off. Carry on.")
+E.Listen ("game_gameplay_called_off", "ws_gameplay", function ()
+	chat.AddText (TITLE_COLOR, "Game called off. Carry on.")
 end)
 
 -- A countdown called off: silence what it played.
-E.Listen("game_gameplay_transition_cancelled", "ws_gameplay", function(fields)
-	local ply = LocalPlayer()
-	if not IsValid(ply) then return end
-	for _, path in ipairs(fields.sounds) do ply:StopSound(path) end
+E.Listen ("game_gameplay_transition_cancelled", "ws_gameplay", function (fields)
+	local ply = LocalPlayer ()
+	if not IsValid (ply) then return end
+	for _, path in ipairs (fields.sounds) do ply:StopSound (path) end
 end)
 
-hook.Add("PopulateToolMenu", "ws_gameplay", function()
-	spawnmenu.AddToolMenuOption("Utilities", "Admin", "ws_gameplay", "Gameplay Settings", "", "", BuildPanel)
+hook.Add ("PopulateToolMenu", "ws_gameplay", function ()
+	spawnmenu.AddToolMenuOption ("Utilities", "Admin", "ws_gameplay", "Gameplay Settings", "", "", BuildPanel)
 end)
 
 -- Sandbox mode draws no label of its own on the HUD (WS.HUD): it is

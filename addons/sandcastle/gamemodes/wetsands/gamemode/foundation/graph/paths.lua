@@ -15,11 +15,11 @@
 -- src/bind/paths.rs): only the server runs the war that uses it, and the
 -- server loads the binary. This Lua twin is a stub until clients need it.
 local error = error
-module(...)
+module (...)
 
 -- TODO(Claude): the Lua oracle of graph.paths, the native twin's walks step
 -- for step (.devtools/bin/incursion.py is their reference), when a client
 -- needs it; until then it refuses, naming the native twin.
-function New()
-	error("graph.paths is native only (native/foundation): its Lua twin is a TODO(Claude) stub", 2)
+function New ()
+	error ("graph.paths is native only (native/foundation): its Lua twin is a TODO(Claude) stub", 2)
 end

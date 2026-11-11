@@ -20,7 +20,7 @@ local Transaction = transaction
 local Sets = world.sets
 local Teams = gameplay.teams
 local ceil, error, format, ipairs, pairs, remove, tostring, type = math.ceil, error, string.format, ipairs, pairs, table.remove, tostring, type
-module(...)
+module (...)
 
 KIND_KICK = "kick"
 KIND_MAP = "map"
@@ -35,10 +35,11 @@ KIND_NEXTMAP = "nextmap"
 CALLABLE = { KIND_DIFFICULTY, KIND_MAP, KIND_SUPPORT, KIND_RESET, KIND_SCRAMBLE }
 
 -- The kinds that change a running match, so need the rounds running.
-local NEEDS_ROUNDS = {
+local NEEDS_ROUNDS =
+{
 	[KIND_RESET] = true,
 	[KIND_SCRAMBLE] = true,
-	[KIND_SUPPORT] = true,
+	[KIND_SUPPORT] = true
 }
 
 QUORUM_SHARE = 0.5
@@ -63,7 +64,8 @@ NOT_ON_TEAM = "not on a team"
 SAME_DIFFICULTY = "same difficulty"
 
 -- The refusals that are the player's mistake.
-PLAYER = {
+PLAYER =
+{
 	[IN_PROGRESS] = true,
 	[KICK_BY_REPORTS] = true,
 	[DISABLED] = true,
@@ -77,7 +79,7 @@ PLAYER = {
 	[NOT_A_CHOICE] = true,
 	[ALREADY_SUPPORTED] = true,
 	[NOT_ON_TEAM] = true,
-	[SAME_DIFFICULTY] = true,
+	[SAME_DIFFICULTY] = true
 }
 
 -- Why a vote failed (GameUI_vote_failed_quorum and _yesno).
@@ -89,61 +91,66 @@ FAILED_YES = "Not enough players voted \"Yes.\""
 DIFFICULTIES = { "easy", "normal", "hard", "expert" }
 
 -- A level's tf_bot_difficulty value, or nil for a name that is not one.
-function DifficultyLevel(name)
-	for i, level in ipairs(DIFFICULTIES) do
+function DifficultyLevel (name)
+	for i, level in ipairs (DIFFICULTIES) do
 		if level == name then return i - 1 end
 	end
 	return nil
 end
 
 -- The team a support vote by a member of `own` helps.
-local OTHER_TEAM = {
+local OTHER_TEAM =
+{
 	[Teams.RED] = Teams.BLUE,
-	[Teams.BLUE] = Teams.RED,
+	[Teams.BLUE] = Teams.RED
 }
 
-local KIND = Sets.Named("vote kind", {
-	KIND_KICK,
-	KIND_MAP,
-	KIND_RESET,
-	KIND_SCRAMBLE,
-	KIND_SUPPORT,
-	KIND_DIFFICULTY,
-	KIND_NEXTMAP,
-})
+local KIND = Sets.Named ("vote kind",
+	{
+		KIND_KICK,
+		KIND_MAP,
+		KIND_RESET,
+		KIND_SCRAMBLE,
+		KIND_SUPPORT,
+		KIND_DIFFICULTY,
+		KIND_NEXTMAP
+	}
+)
 
-function New()
-	return {
+function New ()
+	return
+	{
 		current = nil,
 		queue = {}, -- votes waiting: a kick's { target, reason }, or choices' { kind, options }
-		calledAt = {}, -- caller -> when they last called
+		calledAt = {} -- caller -> when they last called
 	}
 end
 
-function Current(book)
+function Current (book)
 	return book.current
 end
 
 -- facts = { electorate (a list), duration }; leaving out is a key to keep
 -- out of the electorate (a kick's target).
-local function Start(book, kind, subject, caller, now, facts, leavingOut)
+local function Start (book, kind, subject, caller, now, facts, leavingOut)
 	local voters, count = {}, 0
-	for _, voter in ipairs(facts.electorate) do
+	for _, voter in ipairs (facts.electorate) do
 		if voter ~= leavingOut then
-			voters[voter] = true
+			voters [voter] = true
 			count = count + 1
 		end
 	end
-	local vote = {
+	local vote =
+	{
 		kind = kind,
 		subject = subject,
 		caller = caller,
 		ends = now + facts.duration,
 		voters = voters,
 		electorateSize = count,
-		choices = {}, -- voter -> true (yes) or false (no)
+		choices = {} -- voter -> true (yes) or false (no)
 	}
-	if caller ~= nil and voters[caller] then vote.choices[caller] = true end
+	if caller ~= nil and voters [caller] then vote.choices [caller] = true end
 	book.current = vote
 	return vote
 end
@@ -154,84 +161,86 @@ end
 -- Teams.UNASSIGNED), for a difficulty vote difficulty (the level set). A
 -- support vote is about the caller's other team, and only the caller's team
 -- votes. The vote, or a refusal.
-function Call(book, req, now, facts)
+function Call (book, req, now, facts)
 	local kind = req.kind
-	KIND:Check(kind)
-	if kind == KIND_KICK then Transaction.Refuse(KICK_BY_REPORTS, "To remove a player, hold Tab, right-click them and report them.") end
-	if book.current then Transaction.Refuse(IN_PROGRESS, "A vote is currently in progress.") end
-	if not facts.enabled[kind] then Transaction.Refuse(DISABLED, "Server has disabled that issue.") end
-	if NEEDS_ROUNDS[kind] and PlayMode.IsSandbox(facts.mode) then Transaction.Refuse(MODE, "This vote needs a game running.") end
-	if kind == KIND_SCRAMBLE and facts.scramblePending then Transaction.Refuse(SCRAMBLE_PENDING, "Teams are already set to be scrambled.") end
+	KIND:Check (kind)
+	if kind == KIND_KICK then Transaction.Refuse (KICK_BY_REPORTS, "To remove a player, hold Tab, right-click them and report them.") end
+	if book.current then Transaction.Refuse (IN_PROGRESS, "A vote is currently in progress.") end
+	if not facts.enabled [kind] then Transaction.Refuse (DISABLED, "Server has disabled that issue.") end
+	if NEEDS_ROUNDS [kind] and PlayMode.IsSandbox (facts.mode) then Transaction.Refuse (MODE, "This vote needs a game running.") end
+	if kind == KIND_SCRAMBLE and facts.scramblePending then Transaction.Refuse (SCRAMBLE_PENDING, "Teams are already set to be scrambled.") end
 	local subject = req.subject
 	if kind == KIND_DIFFICULTY then
-		if DifficultyLevel(subject) == nil then Transaction.Refuse(NOT_A_CHOICE, "That is not a difficulty.") end
-		if subject == facts.difficulty then Transaction.Refuse(SAME_DIFFICULTY, "The soldiers are already set to " .. subject .. ".") end
+		if DifficultyLevel (subject) == nil then Transaction.Refuse (NOT_A_CHOICE, "That is not a difficulty.") end
+		if subject == facts.difficulty then Transaction.Refuse (SAME_DIFFICULTY, "The soldiers are already set to " .. subject .. ".") end
 	end
 	if kind == KIND_SUPPORT then
-		local own = facts.teams[req.caller]
-		subject = OTHER_TEAM[own]
-		if subject == nil then Transaction.Refuse(NOT_ON_TEAM, "Join a team to call this vote.") end
-		if facts.supported == subject then Transaction.Refuse(ALREADY_SUPPORTED, "That team is already being helped.") end
+		local own = facts.teams [req.caller]
+		subject = OTHER_TEAM [own]
+		if subject == nil then Transaction.Refuse (NOT_ON_TEAM, "Join a team to call this vote.") end
+		if facts.supported == subject then Transaction.Refuse (ALREADY_SUPPORTED, "That team is already being helped.") end
 		local team = {}
-		for _, voter in ipairs(facts.electorate) do
-			if facts.teams[voter] == own then team[#team + 1] = voter end
+		for _, voter in ipairs (facts.electorate) do
+			if facts.teams [voter] == own then team [#team + 1] = voter end
 		end
 		local narrowed = {}
-		for k, v in pairs(facts) do narrowed[k] = v end
+		for k, v in pairs (facts) do narrowed [k] = v end
 		narrowed.electorate = team
 		facts = narrowed
 	end
-	local last = book.calledAt[req.caller]
+	local last = book.calledAt [req.caller]
 	if last ~= nil and now - last < facts.cooldown then
-		Transaction.Refuse(COOLDOWN, format("You cannot call a vote for %d seconds.", ceil(facts.cooldown - (now - last))))
+		Transaction.Refuse (COOLDOWN, format ("You cannot call a vote for %d seconds.", ceil (facts.cooldown - (now - last))))
 	end
-	book.calledAt[req.caller] = now
-	return Start(book, kind, subject, req.caller, now, facts, nil)
+	book.calledAt [req.caller] = now
+	return Start (book, kind, subject, req.caller, now, facts, nil)
 end
 
 -- Reports reached the count against target: their kick vote now, or nil
 -- with it queued behind the running vote. facts adds immune (key -> true).
-function StartKick(book, target, reason, now, facts)
-	if facts.immune[target] then Transaction.Refuse(IMMUNE, "You may not vote to kick the server admin.") end
+function StartKick (book, target, reason, now, facts)
+	if facts.immune [target] then Transaction.Refuse (IMMUNE, "You may not vote to kick the server admin.") end
 	if book.current then
-		book.queue[#book.queue + 1] = {
+		book.queue [#book.queue + 1] =
+		{
 			target = target,
-			reason = reason,
+			reason = reason
 		}
 		return nil
 	end
-	local vote = Start(book, KIND_KICK, target, nil, now, facts, target)
+	local vote = Start (book, KIND_KICK, target, nil, now, facts, target)
 	vote.reason = reason
 	return vote
 end
 
-local function StartOptions(book, kind, options, now, facts)
-	local vote = Start(book, kind, "", nil, now, facts, nil)
+local function StartOptions (book, kind, options, now, facts)
+	local vote = Start (book, kind, "", nil, now, facts, nil)
 	vote.options = options
 	return vote
 end
 
 -- The server's vote of choices among options (a list of what players read),
 -- now, or nil with it queued behind the running vote.
-function StartChoices(book, kind, options, now, facts)
+function StartChoices (book, kind, options, now, facts)
 	if book.current then
-		book.queue[#book.queue + 1] = {
+		book.queue [#book.queue + 1] =
+		{
 			kind = kind,
-			options = options,
+			options = options
 		}
 		return nil
 	end
-	return StartOptions(book, kind, options, now, facts)
+	return StartOptions (book, kind, options, now, facts)
 end
 
 -- The next queued vote, started, once no vote runs; else nil.
-function Next(book, now, facts)
+function Next (book, now, facts)
 	if book.current then return nil end
 	while #book.queue > 0 do
-		local waiting = remove(book.queue, 1)
-		if waiting.options then return StartOptions(book, waiting.kind, waiting.options, now, facts) end
-		if not facts.immune[waiting.target] then
-			local vote = Start(book, KIND_KICK, waiting.target, nil, now, facts, waiting.target)
+		local waiting = remove (book.queue, 1)
+		if waiting.options then return StartOptions (book, waiting.kind, waiting.options, now, facts) end
+		if not facts.immune [waiting.target] then
+			local vote = Start (book, KIND_KICK, waiting.target, nil, now, facts, waiting.target)
 			vote.reason = waiting.reason
 			return vote
 		end
@@ -241,26 +250,26 @@ end
 
 -- A voter's vote: yes (true) or no on a yes-or-no vote, an option's number
 -- on a vote of choices.
-function Cast(book, voter, choice)
+function Cast (book, voter, choice)
 	local vote = book.current
-	if not vote then Transaction.Refuse(NO_VOTE, "No vote is running.") end
-	if not vote.voters[voter] then Transaction.Refuse(NOT_VOTER, "You cannot vote in this vote.") end
-	if vote.choices[voter] ~= nil then Transaction.Refuse(ALREADY_VOTED, "You have already voted.") end
+	if not vote then Transaction.Refuse (NO_VOTE, "No vote is running.") end
+	if not vote.voters [voter] then Transaction.Refuse (NOT_VOTER, "You cannot vote in this vote.") end
+	if vote.choices [voter] ~= nil then Transaction.Refuse (ALREADY_VOTED, "You have already voted.") end
 	if vote.options then
-		if type(choice) ~= "number" or vote.options[choice] == nil then Transaction.Refuse(NOT_A_CHOICE, "That is not one of the choices.") end
-		vote.choices[voter] = choice
+		if type (choice) ~= "number" or vote.options [choice] == nil then Transaction.Refuse (NOT_A_CHOICE, "That is not one of the choices.") end
+		vote.choices [voter] = choice
 		return
 	end
-	if type(choice) ~= "boolean" then Transaction.Refuse(NOT_A_CHOICE, "This vote is yes or no.") end
-	vote.choices[voter] = choice
+	if type (choice) ~= "boolean" then Transaction.Refuse (NOT_A_CHOICE, "This vote is yes or no.") end
+	vote.choices [voter] = choice
 end
 
 -- What a voter cast, as their card shows it: an option's number on a vote
 -- of choices, else BALLOT_YES or BALLOT_NO; BALLOT_NONE before they vote.
 BALLOT_NONE, BALLOT_YES, BALLOT_NO = 0, 1, 2
 
-function Ballot(vote, voter)
-	local choice = vote.choices[voter]
+function Ballot (vote, voter)
+	local choice = vote.choices [voter]
 	if choice == nil then return BALLOT_NONE end
 	if choice == true then return BALLOT_YES end
 	if choice == false then return BALLOT_NO end
@@ -276,53 +285,54 @@ end
 HEARD_STARTED = "started"
 HEARD_CAST = "cast"
 
-local function SameVote(before, after)
+local function SameVote (before, after)
 	return before.running and before.question == after.question and before.ends == after.ends
 end
 
-function Heard(before, after)
+function Heard (before, after)
 	if not after.running then return nil end
-	if not SameVote(before, after) then return HEARD_STARTED end
+	if not SameVote (before, after) then return HEARD_STARTED end
 	if before.cast == BALLOT_NONE and after.cast ~= BALLOT_NONE then return HEARD_CAST end
 	return nil
 end
 
 -- A vote of choices' picks: each option's count, in the options' order.
-function Counts(vote)
+function Counts (vote)
 	local counts = {}
-	for i = 1, #vote.options do counts[i] = 0 end
-	for _, choice in pairs(vote.choices) do counts[choice] = counts[choice] + 1 end
+	for i = 1, #vote.options do counts [i] = 0 end
+	for _, choice in pairs (vote.choices) do counts [choice] = counts [choice] + 1 end
 	return counts
 end
 
-function Tally(vote)
+function Tally (vote)
 	local yes, no = 0, 0
-	for _, choice in pairs(vote.choices) do
+	for _, choice in pairs (vote.choices) do
 		if choice then yes = yes + 1 else no = no + 1 end
 	end
 	return yes, no
 end
 
 -- The votes a vote needs cast to count.
-function Quorum(vote)
-	return ceil((vote.options and CHOICE_QUORUM_SHARE or QUORUM_SHARE) * vote.electorateSize)
+function Quorum (vote)
+	return ceil ((vote.options and CHOICE_QUORUM_SHARE or QUORUM_SHARE) * vote.electorateSize)
 end
 
-local function Close(book, vote, passed, why, choice)
+local function Close (book, vote, passed, why, choice)
 	book.current = nil
-	return {
+	return
+	{
 		vote = vote,
 		passed = passed,
 		why = why,
-		choice = choice,
+		choice = choice
 	}
 end
 
 -- A vote of choices' winner: the most picked option, the first listed of a tie.
-local function Winner(vote)
-	local counts, best = Counts(vote), 1
-	for i, count in ipairs(counts) do
-		if count > counts[best] then best = i end
+local function Winner (vote)
+	local counts, best = Counts (vote), 1
+	for i, count in ipairs (counts) do
+		if count > counts [best] then best = i end
 	end
 	return best
 end
@@ -331,39 +341,39 @@ end
 -- force: closed now, as the level changes): { vote, passed, why, choice (a
 -- vote of choices' winner), drawn (true when nobody picked it) }; else nil.
 -- random(n) (1..n) draws a vote of choices' winner when nobody picked.
-function Finish(book, now, force, random)
+function Finish (book, now, force, random)
 	local vote = book.current
 	if not vote then return nil end
 	local cast = 0
-	for _ in pairs(vote.choices) do cast = cast + 1 end
+	for _ in pairs (vote.choices) do cast = cast + 1 end
 	-- nobody to vote (an empty server) waits out the time
 	local everyone = vote.electorateSize > 0 and cast >= vote.electorateSize
 	if now < vote.ends and not everyone and not force then return nil end
 	if vote.options and cast == 0 then
-		local result = Close(book, vote, true, nil, random(#vote.options))
+		local result = Close (book, vote, true, nil, random (#vote.options))
 		result.drawn = true
 		return result
 	end
-	if cast < Quorum(vote) then return Close(book, vote, false, FAILED_QUORUM) end
-	if vote.options then return Close(book, vote, true, nil, Winner(vote)) end
-	local yes = Tally(vote)
-	if yes < PASS_SHARE * cast then return Close(book, vote, false, FAILED_YES) end
-	return Close(book, vote, true, nil)
+	if cast < Quorum (vote) then return Close (book, vote, false, FAILED_QUORUM) end
+	if vote.options then return Close (book, vote, true, nil, Winner (vote)) end
+	local yes = Tally (vote)
+	if yes < PASS_SHARE * cast then return Close (book, vote, false, FAILED_YES) end
+	return Close (book, vote, true, nil)
 end
 
 -- A player left: they no longer vote, and a kick waiting for them is
 -- dropped. When they were the running kick's target the vote is over, as it
 -- wanted: its result.
-function Leave(book, player)
+function Leave (book, player)
 	for i = #book.queue, 1, -1 do
-		if book.queue[i].target == player then remove(book.queue, i) end
+		if book.queue [i].target == player then remove (book.queue, i) end
 	end
 	local vote = book.current
 	if not vote then return nil end
-	if vote.kind == KIND_KICK and vote.subject == player then return Close(book, vote, true, nil) end
-	if vote.voters[player] then
-		vote.voters[player] = nil
-		vote.choices[player] = nil
+	if vote.kind == KIND_KICK and vote.subject == player then return Close (book, vote, true, nil) end
+	if vote.voters [player] then
+		vote.voters [player] = nil
+		vote.choices [player] = nil
 		vote.electorateSize = vote.electorateSize - 1
 	end
 	return nil

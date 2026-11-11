@@ -2,15 +2,16 @@
 -- the Lua one (the oracle, published by the index) and the native one
 -- (native/wetsands, which a server installs over it). Every case runs
 -- through each, and the two must also agree with each other.
-local T = dofile("tests/harness.lua")
+local T = dofile ("tests/harness.lua")
 local Pathfinder = graph.pathfinder
-local HL2 = T.require("foundation.wetsands.path.hl2")
-local TFBot = T.require("foundation.wetsands.path.tfbot")
+local HL2 = T.require ("foundation.wetsands.path.hl2")
+local TFBot = T.require ("foundation.wetsands.path.tfbot")
 local Lanes = wartactics.lanes
 
-local IMPLEMENTATIONS = {
+local IMPLEMENTATIONS =
+{
 	{ "lua", wetsands.navsearch },
-	{ "native", T.native("wetsands").wetsands.navsearch },
+	{ "native", T.native ("wetsands").wetsands.navsearch }
 }
 
 local RED, BLUE = 2, 3
@@ -19,385 +20,394 @@ local CELL = 100
 --  1 - 2 - 3 - 4
 --   \     /
 --      5
-local AREAS = {
+local AREAS =
+{
 	{ 1, 0, 0, { { 2, CELL }, { 5, 2 * CELL } } },
 	{ 2, CELL, 0, { { 1, CELL }, { 3, CELL } } },
 	{ 3, 2 * CELL, 0, { { 2, CELL }, { 4, CELL }, { 5, 2 * CELL } } },
 	{ 4, 3 * CELL, 0, { { 3, CELL } } },
-	{ 5, CELL, CELL, { { 1, 2 * CELL }, { 3, 2 * CELL } } },
+	{ 5, CELL, CELL, { { 1, 2 * CELL }, { 3, 2 * CELL } } }
 }
 
-local function Mesh(NavSearch, attributes)
-	local mesh = NavSearch.Mesh()
-	for _, a in ipairs(AREAS) do mesh:Area(a[1], a[2], a[3], 0, (attributes or {})[a[1]] or 0) end
-	for _, a in ipairs(AREAS) do
-		for _, link in ipairs(a[4]) do mesh:Link(a[1], link[1], link[2], 0) end
+local function Mesh (NavSearch, attributes)
+	local mesh = NavSearch.Mesh ()
+	for _, a in ipairs (AREAS) do mesh:Area (a [1], a [2], a [3], 0, (attributes or {}) [a [1]] or 0) end
+	for _, a in ipairs (AREAS) do
+		for _, link in ipairs (a [4]) do mesh:Link (a [1], link [1], link [2], 0) end
 	end
-	mesh:Seal()
+	mesh:Seal ()
 	return mesh
 end
 
-local function Bot()
+local function Bot ()
 	return { entIndex = 12, now = 30, team = RED, route = TFBot.FASTEST_ROUTE, miniBoss = false, roundWon = false, winningTeam = 0, penalized = {} }
 end
 
 local GOAL = { x = 3 * CELL, y = 0, z = 0 }
 
-local function Run(search)
-	while search:Step(1) == Pathfinder.RUNNING do end
+local function Run (search)
+	while search:Step (1) == Pathfinder.RUNNING do end
 	return search
 end
 
-local function Joined(list) return table.concat(list, " ") end
+local function Joined (list) return table.concat (list, " ") end
 
 -- A Distances result, area id -> walk, as "id=walk" in id order.
-local function Walks(walks)
+local function Walks (walks)
 	local ids, out = {}, {}
-	for id in pairs(walks) do ids[#ids + 1] = id end
-	table.sort(ids)
-	for i, id in ipairs(ids) do out[i] = id .. "=" .. string.format("%.6f", walks[id]) end
-	return table.concat(out, " ")
+	for id in pairs (walks) do ids [#ids + 1] = id end
+	table.sort (ids)
+	for i, id in ipairs (ids) do out [i] = id .. "=" .. string.format ("%.6f", walks [id]) end
+	return table.concat (out, " ")
 end
 
-local function Search(NavSearch, fields)
+local function Search (NavSearch, fields)
 	fields = fields or {}
-	return NavSearch.New(fields.mesh or Mesh(NavSearch), fields.strategy or HL2, fields.limits or HL2.SOLDIER_LIMITS,
-		fields.bot or Bot(), fields.start or 1, fields.goal or 4, fields.goalPos or GOAL, fields.maxExpanded or Pathfinder.MAX_EXPANDED,
+	return NavSearch.New (fields.mesh or Mesh (NavSearch), fields.strategy or HL2, fields.limits or HL2.SOLDIER_LIMITS,
+		fields.bot or Bot (), fields.start or 1, fields.goal or 4, fields.goalPos or GOAL, fields.maxExpanded or Pathfinder.MAX_EXPANDED,
 		fields.told, fields.rules)
 end
 
 -- The engine's CNavArea and CNavLadder, as a calculator reads them.
-local function EngineArea(id, costSoFar, heights)
-	return {
-		GetID = function() return id end,
-		GetCostSoFar = function() return costSoFar or 0 end,
-		ComputeAdjacentConnectionHeightChange = function(_, to) return (heights or {})[to:GetID()] or 0 end,
+local function EngineArea (id, costSoFar, heights)
+	return
+	{
+		GetID = function () return id end,
+		GetCostSoFar = function () return costSoFar or 0 end,
+		ComputeAdjacentConnectionHeightChange = function (_, to) return (heights or {}) [to:GetID ()] or 0 end
 	}
 end
 
-local function EngineLadder(length)
-	return { GetLength = function() return length end }
+local function EngineLadder (length)
+	return { GetLength = function () return length end }
 end
 
 -- A calculator over Mesh(N) and told, for the strategy (TFBot by default).
-local function Calculator(N, fields)
+local function Calculator (N, fields)
 	fields = fields or {}
-	local known = N.Told(fields.mesh or Mesh(N), fields.told)
-	return N.Calculator(known, fields.strategy or TFBot, fields.limits or HL2.SOLDIER_LIMITS, fields.bot or Bot())
+	local known = N.Told (fields.mesh or Mesh (N), fields.told)
+	return N.Calculator (known, fields.strategy or TFBot, fields.limits or HL2.SOLDIER_LIMITS, fields.bot or Bot ())
 end
 
 -- Each case: name, a function of an implementation returning what it saw.
-local CASES = {
-	{ "walks the mesh to the goal by the cheapest way", function(N)
-		local s = Run(Search(N))
-		return { s.status, Joined(s:Route()), s.expanded, s.closest }
+local CASES =
+{
+	{ "walks the mesh to the goal by the cheapest way", function (N)
+		local s = Run (Search (N))
+		return { s.status, Joined (s:Route ()), s.expanded, s.closest }
 	end },
-	{ "a closed area sends the route the long way round", function(N)
-		local s = Run(Search(N, { told = { closed = { [2] = true } } }))
-		return { s.status, Joined(s:Route()) }
+	{ "a closed area sends the route the long way round", function (N)
+		local s = Run (Search (N, { told = { closed = { [2] = true } } }))
+		return { s.status, Joined (s:Route ()) }
 	end },
-	{ "an uncrossable link is closed one way only", function(N)
-		local there = Run(Search(N, { told = { uncrossable = { [3] = { [4] = true } } } }))
-		local back = Run(Search(N, { start = 4, goal = 1, goalPos = { x = 0, y = 0, z = 0 }, told = { uncrossable = { [3] = { [4] = true } } } }))
-		return { there.status, Joined(there:Route()), back.status }
+	{ "an uncrossable link is closed one way only", function (N)
+		local there = Run (Search (N, { told = { uncrossable = { [3] = { [4] = true } } } }))
+		local back = Run (Search (N, { start = 4, goal = 1, goalPos = { x = 0, y = 0, z = 0 }, told = { uncrossable = { [3] = { [4] = true } } } }))
+		return { there.status, Joined (there:Route ()), back.status }
 	end },
-	{ "an enemy spawn room is closed until the round is won", function(N)
-		local closed = Run(Search(N, { told = { rooms = { [2] = BLUE } } }))
-		local bot = Bot()
+	{ "an enemy spawn room is closed until the round is won", function (N)
+		local closed = Run (Search (N, { told = { rooms = { [2] = BLUE } } }))
+		local bot = Bot ()
 		bot.roundWon, bot.winningTeam = true, RED
-		local won = Run(Search(N, { bot = bot, told = { rooms = { [2] = BLUE } } }))
-		return { Joined(closed:Route()), Joined(won:Route()) }
+		local won = Run (Search (N, { bot = bot, told = { rooms = { [2] = BLUE } } }))
+		return { Joined (closed:Route ()), Joined (won:Route ()) }
 	end },
-	{ "told estimates steer the search", function(N)
-		local s = Run(Search(N, { told = { estimates = { [2] = 1e6 } } }))
-		return { s.status, Joined(s:Route()), s.expanded }
+	{ "told estimates steer the search", function (N)
+		local s = Run (Search (N, { told = { estimates = { [2] = 1e6 } } }))
+		return { s.status, Joined (s:Route ()), s.expanded }
 	end },
-	{ "rules are asked once an area and a link, and refuse", function(N)
+	{ "rules are asked once an area and a link, and refuse", function (N)
 		local asked, crossed = {}, 0
-		local s = Run(Search(N, { rules = {
-			traversable = function(id) asked[#asked + 1] = id return id ~= 3 end,
-			crossable = function() crossed = crossed + 1 return true end,
-		} }))
+		local s = Run (Search (N, { rules =
+			{
+				traversable = function (id) asked [#asked + 1] = id return id ~= 3 end,
+				crossable = function () crossed = crossed + 1 return true end
+			}
+		}))
 		local seen = {}
-		for _, id in ipairs(asked) do seen[id] = (seen[id] or 0) + 1 end
+		for _, id in ipairs (asked) do seen [id] = (seen [id] or 0) + 1 end
 		local once = true
-		for _, n in pairs(seen) do once = once and n == 1 end
-		return { s.status, Joined(s:Route()), once, crossed > 0 }
+		for _, n in pairs (seen) do once = once and n == 1 end
+		return { s.status, Joined (s:Route ()), once, crossed > 0 }
 	end },
-	{ "a room rule is asked once an area, after what the search was told", function(N)
+	{ "a room rule is asked once an area, after what the search was told", function (N)
 		local asked = {}
-		local s = Run(Search(N, { told = { rooms = { [5] = RED } }, rules = {
-			room = function(id) asked[id] = (asked[id] or 0) + 1 return id == 2 and BLUE or 0 end,
-		} }))
+		local s = Run (Search (N, { told = { rooms = { [5] = RED } }, rules =
+			{
+				room = function (id) asked [id] = (asked [id] or 0) + 1 return id == 2 and BLUE or 0 end
+			}
+		}))
 		local once = true
-		for _, n in pairs(asked) do once = once and n == 1 end
-		return { s.status, Joined(s:Route()), once, asked[5] == nil }
+		for _, n in pairs (asked) do once = once and n == 1 end
+		return { s.status, Joined (s:Route ()), once, asked [5] == nil }
 	end },
-	{ "a crouch area is closed to a walker that cannot crouch", function(N)
-		local mesh = Mesh(N, { [2] = HL2.NAV_MESH_CROUCH })
-		local s = Run(Search(N, { mesh = mesh, limits = HL2.LIMITS }))
-		return { s.status, Joined(s:Route()) }
+	{ "a crouch area is closed to a walker that cannot crouch", function (N)
+		local mesh = Mesh (N, { [2] = HL2.NAV_MESH_CROUCH })
+		local s = Run (Search (N, { mesh = mesh, limits = HL2.LIMITS }))
+		return { s.status, Joined (s:Route ()) }
 	end },
-	{ "the lanes' penalty pushes a plan off an earlier lane", function(N)
-		local bot = Bot()
+	{ "the lanes' penalty pushes a plan off an earlier lane", function (N)
+		local bot = Bot ()
 		bot.penalized = { [2] = true }
-		local s = Run(Search(N, { strategy = Lanes.Strategy, bot = bot, goal = 3, goalPos = { x = 2 * CELL, y = 0, z = 0 } }))
-		return { s.status, Joined(s:Route()) }
+		local s = Run (Search (N, { strategy = Lanes.Strategy, bot = bot, goal = 3, goalPos = { x = 2 * CELL, y = 0, z = 0 } }))
+		return { s.status, Joined (s:Route ()) }
 	end },
-	{ "a search past its limit gives up with the closest route", function(N)
-		local s = Run(Search(N, { maxExpanded = 1 }))
-		return { s.status, s.expanded, Joined(s:Route()) }
+	{ "a search past its limit gives up with the closest route", function (N)
+		local s = Run (Search (N, { maxExpanded = 1 }))
+		return { s.status, s.expanded, Joined (s:Route ()) }
 	end },
-	{ "a start that is the goal is found at once", function(N)
-		local s = Search(N, { start = 2, goal = 2 })
-		return { s.status, Joined(s:Route()), s:Step(1) }
+	{ "a start that is the goal is found at once", function (N)
+		local s = Search (N, { start = 2, goal = 2 })
+		return { s.status, Joined (s:Route ()), s:Step (1) }
 	end },
-	{ "a failed search knows how it reached every area", function(N)
-		local s = Run(Search(N, { told = { closed = { [4] = true } } }))
+	{ "a failed search knows how it reached every area", function (N)
+		local s = Run (Search (N, { told = { closed = { [4] = true } } }))
 		local parents = {}
-		for id = 1, 5 do parents[#parents + 1] = tostring(s.parent[id]) end
-		return { s.status, Joined(parents), s.start, s.goal, s.maxExpanded }
+		for id = 1, 5 do parents [#parents + 1] = tostring (s.parent [id]) end
+		return { s.status, Joined (parents), s.start, s.goal, s.maxExpanded }
 	end },
-	{ "a route to an area on the way", function(N)
-		local s = Run(Search(N))
-		return { Joined(s:Route(3)) }
+	{ "a route to an area on the way", function (N)
+		local s = Run (Search (N))
+		return { Joined (s:Route (3)) }
 	end },
-	{ "a goal position is read by indexing, as GMod's Vector is", function(N)
-		local vector = setmetatable({}, { __index = function(_, key) return ({ x = 3 * CELL, y = 0, z = 0 })[key] end })
-		local s = Run(Search(N, { goalPos = vector }))
-		return { s.status, Joined(s:Route()) }
+	{ "a goal position is read by indexing, as GMod's Vector is", function (N)
+		local vector = setmetatable ({}, { __index = function (_, key) return ({ x = 3 * CELL, y = 0, z = 0 }) [key] end })
+		local s = Run (Search (N, { goalPos = vector }))
+		return { s.status, Joined (s:Route ()) }
 	end },
-	{ "an area the mesh lacks is refused", function(N)
-		local ok = pcall(Search, N, { goal = 9 })
-		local mesh = Mesh(N)
-		local sealed = pcall(mesh.Area, mesh, 9, 0, 0, 0, 0)
+	{ "an area the mesh lacks is refused", function (N)
+		local ok = pcall (Search, N, { goal = 9 })
+		local mesh = Mesh (N)
+		local sealed = pcall (mesh.Area, mesh, 9, 0, 0, 0, 0)
 		return { ok, sealed }
 	end },
-	{ "a mesh says whether it is sealed, and once sealed how many areas it has", function(N)
-		local mesh = N.Mesh()
-		mesh:Area(1, 0, 0, 0, 0)
-		local before, counted = mesh:Sealed(), pcall(mesh.Areas, mesh)
-		mesh:Seal()
-		return { before, counted, mesh:Sealed(), mesh:Areas(), Mesh(N):Areas() }
+	{ "a mesh says whether it is sealed, and once sealed how many areas it has", function (N)
+		local mesh = N.Mesh ()
+		mesh:Area (1, 0, 0, 0, 0)
+		local before, counted = mesh:Sealed (), pcall (mesh.Areas, mesh)
+		mesh:Seal ()
+		return { before, counted, mesh:Sealed (), mesh:Areas (), Mesh (N):Areas () }
 	end },
-	{ "a calculator gives the first area nothing and prices the engine's moves", function(N)
-		local cost = Calculator(N)
-		return { cost(EngineArea(1), nil, nil, nil, -1), cost(EngineArea(2), EngineArea(1, 50), nil, nil, -1),
-			cost(EngineArea(5), EngineArea(1, 0), nil, nil, -1), cost(EngineArea(2), EngineArea(1, 0), nil, nil, 150) }
+	{ "a calculator gives the first area nothing and prices the engine's moves", function (N)
+		local cost = Calculator (N)
+		return { cost (EngineArea (1), nil, nil, nil, -1), cost (EngineArea (2), EngineArea (1, 50), nil, nil, -1),
+			cost (EngineArea (5), EngineArea (1, 0), nil, nil, -1), cost (EngineArea (2), EngineArea (1, 0), nil, nil, 150) }
 	end },
-	{ "a calculator refuses a destination or opening the caller's hull cannot fit", function(N)
-		local cost = Calculator(N)
-		return { cost(EngineArea(2), EngineArea(1), nil, nil, -1, false),
-			cost(EngineArea(2), EngineArea(1), nil, nil, -1, true),
-			cost(EngineArea(2), EngineArea(1)),
-			cost(EngineArea(2), EngineArea(1), EngineLadder(10), nil, -1, false) }
+	{ "a calculator refuses a destination or opening the caller's hull cannot fit", function (N)
+		local cost = Calculator (N)
+		return { cost (EngineArea (2), EngineArea (1), nil, nil, -1, false),
+			cost (EngineArea (2), EngineArea (1), nil, nil, -1, true),
+			cost (EngineArea (2), EngineArea (1)),
+			cost (EngineArea (2), EngineArea (1), EngineLadder (10), nil, -1, false) }
 	end },
-	{ "a calculator closes what its Told holds: areas, links one way, enemy rooms", function(N)
+	{ "a calculator closes what its Told holds: areas, links one way, enemy rooms", function (N)
 		local told = { closed = { [5] = true }, uncrossable = { [3] = { [4] = true } }, rooms = { [2] = BLUE } }
-		local cost = Calculator(N, { told = told })
-		local won = Bot()
+		local cost = Calculator (N, { told = told })
+		local won = Bot ()
 		won.roundWon, won.winningTeam = true, RED
-		local winners = Calculator(N, { told = told, bot = won })
-		return { cost(EngineArea(5), EngineArea(1)), cost(EngineArea(4), EngineArea(3)), cost(EngineArea(3), EngineArea(4)),
-			cost(EngineArea(2), EngineArea(1)), winners(EngineArea(2), EngineArea(1)) }
+		local winners = Calculator (N, { told = told, bot = won })
+		return { cost (EngineArea (5), EngineArea (1)), cost (EngineArea (4), EngineArea (3)), cost (EngineArea (3), EngineArea (4)),
+			cost (EngineArea (2), EngineArea (1)), winners (EngineArea (2), EngineArea (1)) }
 	end },
-	{ "a calculator's Told is a copy: changing the tables after changes nothing", function(N)
+	{ "a calculator's Told is a copy: changing the tables after changes nothing", function (N)
 		local told = { closed = {} }
-		local cost = Calculator(N, { told = told })
-		told.closed[2] = true
-		return { cost(EngineArea(2), EngineArea(1)) }
+		local cost = Calculator (N, { told = told })
+		told.closed [2] = true
+		return { cost (EngineArea (2), EngineArea (1)) }
 	end },
-	{ "a search told a Told runs as one told its tables", function(N)
-		local mesh, routes = Mesh(N), {}
-		for _, told in ipairs({ { closed = { [2] = true } }, { uncrossable = { [3] = { [4] = true } } }, { rooms = { [2] = BLUE } } }) do
-			local held = Run(Search(N, { mesh = mesh, told = N.Told(mesh, told) }))
-			local tables = Run(Search(N, { mesh = mesh, told = told }))
-			routes[#routes + 1] = held.status .. " " .. Joined(held:Route())
-			routes[#routes + 1] = tostring(held.status == tables.status and Joined(held:Route()) == Joined(tables:Route())
+	{ "a search told a Told runs as one told its tables", function (N)
+		local mesh, routes = Mesh (N), {}
+		for _, told in ipairs ({ { closed = { [2] = true } }, { uncrossable = { [3] = { [4] = true } } }, { rooms = { [2] = BLUE } } }) do
+			local held = Run (Search (N, { mesh = mesh, told = N.Told (mesh, told) }))
+			local tables = Run (Search (N, { mesh = mesh, told = told }))
+			routes [#routes + 1] = held.status .. " " .. Joined (held:Route ())
+			routes [#routes + 1] = tostring (held.status == tables.status and Joined (held:Route ()) == Joined (tables:Route ())
 				and held.expanded == tables.expanded)
 		end
 		return routes
 	end },
-	{ "a search's Told is a copy: changing the tables after changes nothing", function(N)
-		local mesh, told = Mesh(N), { closed = {} }
-		local known = N.Told(mesh, told)
-		told.closed[2] = true
-		return { Joined(Run(Search(N, { mesh = mesh, told = known })):Route()) }
+	{ "a search's Told is a copy: changing the tables after changes nothing", function (N)
+		local mesh, told = Mesh (N), { closed = {} }
+		local known = N.Told (mesh, told)
+		told.closed [2] = true
+		return { Joined (Run (Search (N, { mesh = mesh, told = known })):Route ()) }
 	end },
-	{ "rules are asked only of what a search's Told leaves open", function(N)
-		local mesh, asked = Mesh(N), {}
-		local s = Run(Search(N, { mesh = mesh, told = N.Told(mesh, { closed = { [2] = true } }), rules = {
-			traversable = function(id) asked[id] = true return true end,
-		} }))
-		return { Joined(s:Route()), tostring(asked[2] == nil), tostring(asked[5] == true) }
+	{ "rules are asked only of what a search's Told leaves open", function (N)
+		local mesh, asked = Mesh (N), {}
+		local s = Run (Search (N, { mesh = mesh, told = N.Told (mesh, { closed = { [2] = true } }), rules =
+			{
+				traversable = function (id) asked [id] = true return true end
+			}
+		}))
+		return { Joined (s:Route ()), tostring (asked [2] == nil), tostring (asked [5] == true) }
 	end },
-	{ "a search refuses a Told of another mesh", function(N)
-		local mesh = Mesh(N)
-		return { (pcall(Search, N, { mesh = mesh, told = N.Told(Mesh(N)) })) }
+	{ "a search refuses a Told of another mesh", function (N)
+		local mesh = Mesh (N)
+		return { (pcall (Search, N, { mesh = mesh, told = N.Told (Mesh (N)) })) }
 	end },
-	{ "a calculator prices a climb, a jump and a fall by the mesh's rise", function(N)
+	{ "a calculator prices a climb, a jump and a fall by the mesh's rise", function (N)
 		local limits = HL2.SOLDIER_LIMITS
-		local mesh = N.Mesh()
-		for id = 1, 4 do mesh:Area(id, id * CELL, 0, 0, 0) end
-		mesh:Link(1, 2, CELL, limits.stepHeight + 1) -- a jump
-		mesh:Link(2, 3, CELL, limits.jumpHeight) -- too high
-		mesh:Link(1, 4, CELL, -limits.deathDropHeight - 1) -- too deep
-		mesh:Seal()
-		local cost = Calculator(N, { mesh = mesh })
-		return { cost(EngineArea(2), EngineArea(1)), cost(EngineArea(3), EngineArea(2)), cost(EngineArea(4), EngineArea(1)) }
+		local mesh = N.Mesh ()
+		for id = 1, 4 do mesh:Area (id, id * CELL, 0, 0, 0) end
+		mesh:Link (1, 2, CELL, limits.stepHeight + 1) -- a jump
+		mesh:Link (2, 3, CELL, limits.jumpHeight) -- too high
+		mesh:Link (1, 4, CELL, -limits.deathDropHeight - 1) -- too deep
+		mesh:Seal ()
+		local cost = Calculator (N, { mesh = mesh })
+		return { cost (EngineArea (2), EngineArea (1)), cost (EngineArea (3), EngineArea (2)), cost (EngineArea (4), EngineArea (1)) }
 	end },
-	{ "a ladder move is priced by its length, whatever the engine's height change", function(N)
-		local cost = Calculator(N, { strategy = HL2 })
-		return { cost(EngineArea(4), EngineArea(1, 10, { [4] = 40 }), EngineLadder(250), nil, -1),
-			cost(EngineArea(4), EngineArea(1, 10, { [4] = 4000 }), EngineLadder(250), nil, -1) }
+	{ "a ladder move is priced by its length, whatever the engine's height change", function (N)
+		local cost = Calculator (N, { strategy = HL2 })
+		return { cost (EngineArea (4), EngineArea (1, 10, { [4] = 40 }), EngineLadder (250), nil, -1),
+			cost (EngineArea (4), EngineArea (1, 10, { [4] = 4000 }), EngineLadder (250), nil, -1) }
 	end },
-	{ "a walker that climbs no ladders is refused a ladder move", function(N)
-		local cost = Calculator(N, { strategy = HL2, limits = HL2.LIMITS })
-		return { cost(EngineArea(4), EngineArea(1, 10), EngineLadder(250), nil, -1) }
+	{ "a walker that climbs no ladders is refused a ladder move", function (N)
+		local cost = Calculator (N, { strategy = HL2, limits = HL2.LIMITS })
+		return { cost (EngineArea (4), EngineArea (1, 10), EngineLadder (250), nil, -1) }
 	end },
-	{ "a calculator refuses a move the mesh lacks, and a Told what it names amiss", function(N)
-		local cost = Calculator(N)
-		local mesh = Mesh(N)
-		local unsealed = N.Mesh()
-		return { (pcall(cost, EngineArea(4), EngineArea(1))), (pcall(N.Told, mesh, { closed = { [9] = true } })),
-			(pcall(N.Told, mesh, { uncrossable = { [1] = { [4] = true } } })), (pcall(N.Told, unsealed)),
-			(pcall(N.Calculator, {}, TFBot, HL2.SOLDIER_LIMITS, Bot())) }
+	{ "a calculator refuses a move the mesh lacks, and a Told what it names amiss", function (N)
+		local cost = Calculator (N)
+		local mesh = Mesh (N)
+		local unsealed = N.Mesh ()
+		return { (pcall (cost, EngineArea (4), EngineArea (1))), (pcall (N.Told, mesh, { closed = { [9] = true } })),
+			(pcall (N.Told, mesh, { uncrossable = { [1] = { [4] = true } } })), (pcall (N.Told, unsealed)),
+			(pcall (N.Calculator, {}, TFBot, HL2.SOLDIER_LIMITS, Bot ())) }
 	end },
-	{ "distances walk from the nearest start, up to the limit", function(N)
-		local mesh = Mesh(N)
-		return { Walks(N.Distances(mesh, { 1 }, math.huge, HL2.SOLDIER_LIMITS)), Walks(N.Distances(mesh, { 1, 4 }, math.huge, HL2.SOLDIER_LIMITS)),
-			Walks(N.Distances(mesh, { 1 }, 2 * CELL, HL2.SOLDIER_LIMITS)), Walks(N.Distances(mesh, { 4 }, 0, HL2.SOLDIER_LIMITS)) }
+	{ "distances walk from the nearest start, up to the limit", function (N)
+		local mesh = Mesh (N)
+		return { Walks (N.Distances (mesh, { 1 }, math.huge, HL2.SOLDIER_LIMITS)), Walks (N.Distances (mesh, { 1, 4 }, math.huge, HL2.SOLDIER_LIMITS)),
+			Walks (N.Distances (mesh, { 1 }, 2 * CELL, HL2.SOLDIER_LIMITS)), Walks (N.Distances (mesh, { 4 }, 0, HL2.SOLDIER_LIMITS)) }
 	end },
-	{ "distances keep to links the limits can walk", function(N)
+	{ "distances keep to links the limits can walk", function (N)
 		local limits = HL2.SOLDIER_LIMITS
-		local mesh = N.Mesh()
-		for id = 1, 4 do mesh:Area(id, id * CELL, 0, 0, 0) end
-		mesh:Link(1, 2, CELL, limits.jumpHeight - 1) -- a climb it makes
-		mesh:Link(2, 3, CELL, limits.jumpHeight) -- one too high
-		mesh:Link(2, 4, CELL, -limits.deathDropHeight) -- the deepest drop it takes
-		mesh:Link(4, 3, CELL, -limits.deathDropHeight - 1) -- one too deep
-		mesh:Seal()
-		return { Walks(N.Distances(mesh, { 1 }, math.huge, limits)) }
+		local mesh = N.Mesh ()
+		for id = 1, 4 do mesh:Area (id, id * CELL, 0, 0, 0) end
+		mesh:Link (1, 2, CELL, limits.jumpHeight - 1) -- a climb it makes
+		mesh:Link (2, 3, CELL, limits.jumpHeight) -- one too high
+		mesh:Link (2, 4, CELL, -limits.deathDropHeight) -- the deepest drop it takes
+		mesh:Link (4, 3, CELL, -limits.deathDropHeight - 1) -- one too deep
+		mesh:Seal ()
+		return { Walks (N.Distances (mesh, { 1 }, math.huge, limits)) }
 	end },
-	{ "distances keep off the links told uncrossable, one way only", function(N)
-		local mesh = Mesh(N)
+	{ "distances keep off the links told uncrossable, one way only", function (N)
+		local mesh = Mesh (N)
 		local told = { uncrossable = { [2] = { [3] = true } } }
-		return { Walks(N.Distances(mesh, { 1 }, math.huge, HL2.SOLDIER_LIMITS, told)), Walks(N.Distances(mesh, { 4 }, math.huge, HL2.SOLDIER_LIMITS, told)) }
+		return { Walks (N.Distances (mesh, { 1 }, math.huge, HL2.SOLDIER_LIMITS, told)), Walks (N.Distances (mesh, { 4 }, math.huge, HL2.SOLDIER_LIMITS, told)) }
 	end },
-	{ "distances over a map's worth of areas", function(N)
-		local mesh, x, size = N.Mesh(), 41, 40
-		local function Next(n) x = (x * 1103515245 + 12345) % 2147483648 return x % n end
-		for id = 1, size * size do mesh:Area(id, (id - 1) % size * CELL, math.floor((id - 1) / size) * CELL, 0, 0) end
+	{ "distances over a map's worth of areas", function (N)
+		local mesh, x, size = N.Mesh (), 41, 40
+		local function Next (n) x = (x * 1103515245 + 12345) % 2147483648 return x % n end
+		for id = 1, size * size do mesh:Area (id, (id - 1) % size * CELL, math.floor ((id - 1) / size) * CELL, 0, 0) end
 		local told = { uncrossable = {} }
 		for id = 1, size * size do
-			for _, d in ipairs({ 1, -1, size, -size }) do
+			for _, d in ipairs ({ 1, -1, size, -size }) do
 				local to = id + d
-				if to >= 1 and to <= size * size and not (math.abs(d) == 1 and math.floor((to - 1) / size) ~= math.floor((id - 1) / size)) then
-					mesh:Link(id, to, CELL + Next(37) / 7, Next(90) - 45)
-					if Next(23) == 0 then told.uncrossable[id] = told.uncrossable[id] or {} told.uncrossable[id][to] = true end
+				if to >= 1 and to <= size * size and not (math.abs (d) == 1 and math.floor ((to - 1) / size) ~= math.floor ((id - 1) / size)) then
+					mesh:Link (id, to, CELL + Next (37) / 7, Next (90) - 45)
+					if Next (23) == 0 then told.uncrossable [id] = told.uncrossable [id] or {} told.uncrossable [id] [to] = true end
 				end
 			end
 		end
-		mesh:Seal()
-		return { Walks(N.Distances(mesh, { 1, size * size }, 30 * CELL, HL2.SOLDIER_LIMITS, told)) }
+		mesh:Seal ()
+		return { Walks (N.Distances (mesh, { 1, size * size }, 30 * CELL, HL2.SOLDIER_LIMITS, told)) }
 	end },
-	{ "distances refuse a start the mesh lacks", function(N)
-		return { (pcall(N.Distances, Mesh(N), { 9 }, math.huge, HL2.SOLDIER_LIMITS)) }
-	end },
+	{ "distances refuse a start the mesh lacks", function (N)
+		return { (pcall (N.Distances, Mesh (N), { 9 }, math.huge, HL2.SOLDIER_LIMITS)) }
+	end }
 }
 
 local seen = {}
-for _, case in ipairs(CASES) do
-	for _, implementation in ipairs(IMPLEMENTATIONS) do
-		local name, NavSearch = implementation[1], implementation[2]
-		T.test(name .. ": " .. case[1], function()
-			local ok, result = pcall(case[2], NavSearch)
-			T.eq(ok, true, "ran: " .. tostring(result))
-			seen[case[1]] = seen[case[1]] or {}
-			seen[case[1]][name] = ok and table.concat((function()
+for _, case in ipairs (CASES) do
+	for _, implementation in ipairs (IMPLEMENTATIONS) do
+		local name, NavSearch = implementation [1], implementation [2]
+		T.test (name .. ": " .. case [1], function ()
+			local ok, result = pcall (case [2], NavSearch)
+			T.eq (ok, true, "ran: " .. tostring (result))
+			seen [case [1]] = seen [case [1]] or {}
+			seen [case [1]] [name] = ok and table.concat ((function ()
 				local parts = {}
-				for i, v in ipairs(result) do parts[i] = tostring(v) end
+				for i, v in ipairs (result) do parts [i] = tostring (v) end
 				return parts
-			end)(), " | ") or nil
+			end) (), " | ") or nil
 		end)
 	end
 end
 
-T.test("the two implementations agree on every case", function()
-	for _, case in ipairs(CASES) do
-		local both = seen[case[1]] or {}
-		T.eq(both.native, both.lua, case[1])
+T.test ("the two implementations agree on every case", function ()
+	for _, case in ipairs (CASES) do
+		local both = seen [case [1]] or {}
+		T.eq (both.native, both.lua, case [1])
 	end
 end)
 
-T.test("the Lua implementation's answers are the expected ones", function()
-	T.eq(seen["walks the mesh to the goal by the cheapest way"].lua, "found | 1 2 3 4 | 3 | 4", "straight")
-	T.eq(seen["a closed area sends the route the long way round"].lua, "found | 1 5 3 4", "round")
-	T.eq(seen["an uncrossable link is closed one way only"].lua, "failed | 1 2 3 | found", "one way")
-	T.eq(seen["an enemy spawn room is closed until the round is won"].lua, "1 5 3 4 | 1 2 3 4", "rooms")
-	T.eq(seen["rules are asked once an area and a link, and refuse"].lua, "failed | 1 2 | true | true", "rules")
-	T.eq(seen["a crouch area is closed to a walker that cannot crouch"].lua, "found | 1 5 3 4", "crouch")
-	T.eq(seen["a room rule is asked once an area, after what the search was told"].lua, "found | 1 5 3 4 | true | true", "room rule")
-	T.eq(seen["the lanes' penalty pushes a plan off an earlier lane"].lua, "found | 1 5 3", "lanes")
-	T.eq(seen["a start that is the goal is found at once"].lua, "found | 2 | found", "no move")
-	T.eq(seen["an area the mesh lacks is refused"].lua, "false | false", "refused")
-	T.eq(seen["a mesh says whether it is sealed, and once sealed how many areas it has"].lua, "false | false | true | 1 | 5", "sealed, areas")
-	T.eq(seen["a calculator gives the first area nothing and prices the engine's moves"].lua, "0 | 150 | 200 | 150", "calculator")
-	T.eq(seen["a calculator refuses a destination or opening the caller's hull cannot fit"].lua,
+T.test ("the Lua implementation's answers are the expected ones", function ()
+	T.eq (seen ["walks the mesh to the goal by the cheapest way"].lua, "found | 1 2 3 4 | 3 | 4", "straight")
+	T.eq (seen ["a closed area sends the route the long way round"].lua, "found | 1 5 3 4", "round")
+	T.eq (seen ["an uncrossable link is closed one way only"].lua, "failed | 1 2 3 | found", "one way")
+	T.eq (seen ["an enemy spawn room is closed until the round is won"].lua, "1 5 3 4 | 1 2 3 4", "rooms")
+	T.eq (seen ["rules are asked once an area and a link, and refuse"].lua, "failed | 1 2 | true | true", "rules")
+	T.eq (seen ["a crouch area is closed to a walker that cannot crouch"].lua, "found | 1 5 3 4", "crouch")
+	T.eq (seen ["a room rule is asked once an area, after what the search was told"].lua, "found | 1 5 3 4 | true | true", "room rule")
+	T.eq (seen ["the lanes' penalty pushes a plan off an earlier lane"].lua, "found | 1 5 3", "lanes")
+	T.eq (seen ["a start that is the goal is found at once"].lua, "found | 2 | found", "no move")
+	T.eq (seen ["an area the mesh lacks is refused"].lua, "false | false", "refused")
+	T.eq (seen ["a mesh says whether it is sealed, and once sealed how many areas it has"].lua, "false | false | true | 1 | 5", "sealed, areas")
+	T.eq (seen ["a calculator gives the first area nothing and prices the engine's moves"].lua, "0 | 150 | 200 | 150", "calculator")
+	T.eq (seen ["a calculator refuses a destination or opening the caller's hull cannot fit"].lua,
 		"-1 | 100 | 100 | -1", "hull clearance")
-	T.eq(seen["a calculator closes what its Told holds: areas, links one way, enemy rooms"].lua, "-1 | -1 | 100 | -1 | 100", "calculator told")
-	T.eq(seen["a calculator's Told is a copy: changing the tables after changes nothing"].lua, "100", "told copied")
-	T.eq(seen["a search told a Told runs as one told its tables"].lua,
+	T.eq (seen ["a calculator closes what its Told holds: areas, links one way, enemy rooms"].lua, "-1 | -1 | 100 | -1 | 100", "calculator told")
+	T.eq (seen ["a calculator's Told is a copy: changing the tables after changes nothing"].lua, "100", "told copied")
+	T.eq (seen ["a search told a Told runs as one told its tables"].lua,
 		"found 1 5 3 4 | true | failed 1 2 3 | true | found 1 5 3 4 | true", "search told a Told")
-	T.eq(seen["a search's Told is a copy: changing the tables after changes nothing"].lua, "1 2 3 4", "search's Told copied")
-	T.eq(seen["rules are asked only of what a search's Told leaves open"].lua, "1 5 3 4 | true | true", "rules after a Told")
-	T.eq(seen["a search refuses a Told of another mesh"].lua, "false", "another mesh's Told")
-	T.eq(seen["a calculator prices a climb, a jump and a fall by the mesh's rise"].lua, "200 | -1 | -1", "rise")
-	T.eq(seen["a ladder move is priced by its length, whatever the engine's height change"].lua, "260 | 260", "ladder")
-	T.eq(seen["a walker that climbs no ladders is refused a ladder move"].lua, "-1", "no ladders")
-	T.eq(seen["a calculator refuses a move the mesh lacks, and a Told what it names amiss"].lua, "false | false | false | false | false", "refused moves")
-	T.eq(seen["distances walk from the nearest start, up to the limit"].lua,
+	T.eq (seen ["a search's Told is a copy: changing the tables after changes nothing"].lua, "1 2 3 4", "search's Told copied")
+	T.eq (seen ["rules are asked only of what a search's Told leaves open"].lua, "1 5 3 4 | true | true", "rules after a Told")
+	T.eq (seen ["a search refuses a Told of another mesh"].lua, "false", "another mesh's Told")
+	T.eq (seen ["a calculator prices a climb, a jump and a fall by the mesh's rise"].lua, "200 | -1 | -1", "rise")
+	T.eq (seen ["a ladder move is priced by its length, whatever the engine's height change"].lua, "260 | 260", "ladder")
+	T.eq (seen ["a walker that climbs no ladders is refused a ladder move"].lua, "-1", "no ladders")
+	T.eq (seen ["a calculator refuses a move the mesh lacks, and a Told what it names amiss"].lua, "false | false | false | false | false", "refused moves")
+	T.eq (seen ["distances walk from the nearest start, up to the limit"].lua,
 		"1=0.000000 2=100.000000 3=200.000000 4=300.000000 5=200.000000"
-		.. " | 1=0.000000 2=100.000000 3=100.000000 4=0.000000 5=200.000000"
-		.. " | 1=0.000000 2=100.000000 3=200.000000 5=200.000000"
-		.. " | 4=0.000000", "distances")
-	T.eq(seen["distances keep to links the limits can walk"].lua, "1=0.000000 2=100.000000 4=200.000000", "walkable")
-	T.eq(seen["distances keep off the links told uncrossable, one way only"].lua,
+			.. " | 1=0.000000 2=100.000000 3=100.000000 4=0.000000 5=200.000000"
+			.. " | 1=0.000000 2=100.000000 3=200.000000 5=200.000000"
+			.. " | 4=0.000000", "distances")
+	T.eq (seen ["distances keep to links the limits can walk"].lua, "1=0.000000 2=100.000000 4=200.000000", "walkable")
+	T.eq (seen ["distances keep off the links told uncrossable, one way only"].lua,
 		"1=0.000000 2=100.000000 3=400.000000 4=500.000000 5=200.000000 | 1=300.000000 2=200.000000 3=100.000000 4=0.000000 5=300.000000", "uncrossable")
-	T.eq(seen["distances refuse a start the mesh lacks"].lua, "false", "refused start")
+	T.eq (seen ["distances refuse a start the mesh lacks"].lua, "false", "refused start")
 end)
 
 -- The cost model is one: a calculator answers the engine with what
 -- strategy.Cost answers for the step the npc controller's FillStep builds
 -- from the same move, for every strategy, link and told state.
-T.test("a calculator's price is the strategy's Cost of the engine's step", function()
-	local Ground = T.require("foundation.wetsands.path.ground")
-	local Scatter = T.require("foundation.wetsands.path.scatter")
+T.test ("a calculator's price is the strategy's Cost of the engine's step", function ()
+	local Ground = T.require ("foundation.wetsands.path.ground")
+	local Scatter = T.require ("foundation.wetsands.path.scatter")
 	local strategies = { { "ground", Ground }, { "hl2", HL2 }, { "tfbot", TFBot }, { "scatter", Scatter } }
 	local tolds = { {}, { closed = { [3] = true }, rooms = { [2] = BLUE, [5] = RED }, uncrossable = { [1] = { [5] = true } } } }
 	local limits = HL2.SOLDIER_LIMITS
-	for _, implementation in ipairs(IMPLEMENTATIONS) do
-		local N = implementation[2]
-		local mesh = N.Mesh()
-		for _, a in ipairs(AREAS) do mesh:Area(a[1], a[2], a[3], 0, a[1] == 4 and HL2.NAV_MESH_CROUCH or 0) end
-		for _, a in ipairs(AREAS) do
-			for i, link in ipairs(a[4]) do mesh:Link(a[1], link[1], link[2], (i * 23) % 60 - 30) end
+	for _, implementation in ipairs (IMPLEMENTATIONS) do
+		local N = implementation [2]
+		local mesh = N.Mesh ()
+		for _, a in ipairs (AREAS) do mesh:Area (a [1], a [2], a [3], 0, a [1] == 4 and HL2.NAV_MESH_CROUCH or 0) end
+		for _, a in ipairs (AREAS) do
+			for i, link in ipairs (a [4]) do mesh:Link (a [1], link [1], link [2], (i * 23) % 60 - 30) end
 		end
-		mesh:Seal()
-		for _, entry in ipairs(strategies) do
-			for _, told in ipairs(tolds) do
-				local bot = Bot()
-				local cost = N.Calculator(N.Told(mesh, told), entry[2], limits, bot)
-				for _, a in ipairs(AREAS) do
-					for i, link in ipairs(a[4]) do
-						local from, to, rise = a[1], link[1], (i * 23) % 60 - 30
-						local refused = told.uncrossable and told.uncrossable[from] and told.uncrossable[from][to]
-						local step = { hasFrom = true, traversable = not (told.closed and told.closed[to]), length = -1,
-							centerDistance = link[2], heightChange = rise, fromCostSoFar = 40, areaId = to,
-							spawnRoomTeam = told.rooms and told.rooms[to] or 0, attributes = to == 4 and HL2.NAV_MESH_CROUCH or 0 }
-						local want = refused and wetsands.path.IMPASSABLE or entry[2].Cost(step, limits, bot)
-						local got = cost(EngineArea(to), EngineArea(from, 40), nil, nil, -1)
-						T.eq(got, want, implementation[1] .. " " .. entry[1] .. " " .. from .. "->" .. to)
+		mesh:Seal ()
+		for _, entry in ipairs (strategies) do
+			for _, told in ipairs (tolds) do
+				local bot = Bot ()
+				local cost = N.Calculator (N.Told (mesh, told), entry [2], limits, bot)
+				for _, a in ipairs (AREAS) do
+					for i, link in ipairs (a [4]) do
+						local from, to, rise = a [1], link [1], (i * 23) % 60 - 30
+						local refused = told.uncrossable and told.uncrossable [from] and told.uncrossable [from] [to]
+						local step = { hasFrom = true, traversable = not (told.closed and told.closed [to]), length = -1,
+							centerDistance = link [2], heightChange = rise, fromCostSoFar = 40, areaId = to,
+							spawnRoomTeam = told.rooms and told.rooms [to] or 0, attributes = to == 4 and HL2.NAV_MESH_CROUCH or 0 }
+						local want = refused and wetsands.path.IMPASSABLE or entry [2].Cost (step, limits, bot)
+						local got = cost (EngineArea (to), EngineArea (from, 40), nil, nil, -1)
+						T.eq (got, want, implementation [1] .. " " .. entry [1] .. " " .. from .. "->" .. to)
 					end
 				end
 			end
@@ -405,4 +415,4 @@ T.test("a calculator's price is the strategy's Cost of the engine's step", funct
 	end
 end)
 
-T.finish()
+T.finish ()

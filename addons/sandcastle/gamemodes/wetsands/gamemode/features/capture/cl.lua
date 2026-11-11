@@ -12,10 +12,10 @@
 -- icon_obj_timer. The local player standing on a point sees why they may not
 -- capture it (CControlPointProgressBar). The unlock countdown speaks 5..1,
 -- then the capture-enabled line (CControlPointCountdown::OnTick).
-WS.Feature("rounds")
+WS.Feature ("rounds")
 local Capture = gameplay.capture
-local Hud = WS.require("features.capture.hud")
-local Feed = WS.require("features.aiwar.kill_feed")
+local Hud = WS.require ("features.capture.hud")
+local Feed = WS.require ("features.aiwar.kill_feed")
 local Rounds = gameplay.rounds
 
 local NOBODY, RED, BLUE = WS.TEAM_UNASSIGNED, WS.TEAM_RED, WS.TEAM_BLUE
@@ -37,9 +37,9 @@ local PANEL_HEIGHT = 34
 local CORNER = 6
 
 -- The capture panel, TF2's target ID: a white rounded border round a dark fill.
-local PANEL_BORDER, PANEL_FILL, PANEL_EDGE = 2, Color(30, 28, 26, 235), color_white
+local PANEL_BORDER, PANEL_FILL, PANEL_EDGE = 2, Color (30, 28, 26, 235), color_white
 local ANCHOR_LIFT = 24 -- how far above the object's top the panel sits
-local ALERT = Color(230, 60, 40)
+local ALERT = Color (230, 60, 40)
 
 local FONT_NUMBER = "Sandcastle.Capture.Number"
 local FONT_TIMER = "Sandcastle.Capture.Timer"
@@ -47,38 +47,47 @@ local FONT_LABEL = "Sandcastle.Capture.Label"
 local FONT_REASON = "Sandcastle.Capture.Reason"
 
 -- HUD units to pixels on a screen h pixels tall, at least one.
-local function Pixels(units, h)
-	return math.max(1, math.floor(units * h / Hud.UNITS_TALL))
+local function Pixels (units, h)
+	return math.max (1, math.floor (units * h / Hud.UNITS_TALL))
 end
 
 -- The icons' fonts, sized with the screen's height.
-local function CreateFonts()
-	surface.CreateFont(FONT_NUMBER, {
-		font = NUMBER_FONT,
-		size = Pixels(NUMBER_FONT_SIZE, ScrH()),
-		weight = 500,
-	})
-	surface.CreateFont(FONT_TIMER, {
-		font = TIMER_FONT,
-		size = Pixels(TIMER_FONT_SIZE, ScrH()),
-		weight = TIMER_FONT_WEIGHT,
-	})
-	surface.CreateFont(FONT_LABEL, {
-		font = "TF2 Build",
-		size = Pixels(Hud.LABEL, ScrH()),
-		weight = 500,
-	})
-	surface.CreateFont(FONT_REASON, {
-		font = Hud.REASON_FONT,
-		size = Pixels(Hud.REASON_TALL, ScrH()),
-		weight = Hud.REASON_WEIGHT,
-		outline = true,
-	})
+local function CreateFonts ()
+	surface.CreateFont (FONT_NUMBER,
+		{
+			font = NUMBER_FONT,
+			size = Pixels (NUMBER_FONT_SIZE, ScrH ()),
+			weight = 500
+		}
+	)
+	surface.CreateFont (FONT_TIMER,
+		{
+			font = TIMER_FONT,
+			size = Pixels (TIMER_FONT_SIZE, ScrH ()),
+			weight = TIMER_FONT_WEIGHT
+		}
+	)
+	surface.CreateFont (FONT_LABEL,
+		{
+			font = "TF2 Build",
+			size = Pixels (Hud.LABEL, ScrH ()),
+			weight = 500
+		}
+	)
+	surface.CreateFont (FONT_REASON,
+		{
+			font = Hud.REASON_FONT,
+			size = Pixels (Hud.REASON_TALL, ScrH ()),
+			weight = Hud.REASON_WEIGHT,
+			outline = true
+		}
+	)
 end
-CreateFonts()
-hook.Add("OnScreenSizeChanged", "ws_capture_fonts", CreateFonts)
+CreateFonts ()
+hook.Add ("OnScreenSizeChanged", "ws_capture_fonts", CreateFonts)
 
-local UNLOCK_WARNINGS = {
+local UNLOCK_WARNINGS =
+{
 	[60] = "Announcer.CompGame1Begins60Seconds",
 	[30] = "Announcer.CompGame1Begins30Seconds",
 	[10] = "Announcer.CompGame1Begins10Seconds",
@@ -92,51 +101,53 @@ local UNLOCK_WARNINGS = {
 local UNLOCK_WARN_FROM = 5
 local CAP_ENABLED = "Announcer.AM_CapEnabledRandom"
 
-local View = {
+local View =
+{
 	unlockAt = 0,
 	unlockArmed = {},
-	zeroArmed = false,
+	zeroArmed = false
 }
 
-local function Key(rank, field)
+local function Key (rank, field)
 	return "ws_point_" .. rank .. "_" .. field
 end
 
 -- What the controller published for the point of rank (0-based).
-local function Point(rank)
+local function Point (rank)
 	local r = rank + 1
-	return {
+	return
+	{
 		rank = rank,
-		owner = GetGlobal2Int(Key(r, "owner"), NOBODY),
-		locked = GetGlobal2Bool(Key(r, "locked"), false),
-		unlockTime = GetGlobal2Float(Key(r, "unlock_time"), 0),
-		capping = GetGlobal2Int(Key(r, "capping"), NOBODY),
-		progress = GetGlobal2Float(Key(r, "progress"), 0),
-		cappers = GetGlobal2Int(Key(r, "cappers"), 0),
-		required = GetGlobal2Int(Key(r, "required"), 0),
-		blocked = GetGlobal2Bool(Key(r, "blocked"), false),
-		redCanCap = GetGlobal2Bool(Key(r, "red_can_cap"), false),
-		blueCanCap = GetGlobal2Bool(Key(r, "blue_can_cap"), false),
-		inRound = GetGlobal2Bool(Key(r, "in_round"), true),
-		hidden = GetGlobal2Bool(Key(r, "hidden"), false),
-		name = GetGlobal2String(Key(r, "name"), ""),
-		timerEnd = GetGlobal2Float(Key(r, "timer_end"), 0),
-		icon = GetGlobal2String(Key(r, "icon"), Capture.ICON_DEFAULT[NOBODY]),
+		owner = GetGlobal2Int (Key (r, "owner"), NOBODY),
+		locked = GetGlobal2Bool (Key (r, "locked"), false),
+		unlockTime = GetGlobal2Float (Key (r, "unlock_time"), 0),
+		capping = GetGlobal2Int (Key (r, "capping"), NOBODY),
+		progress = GetGlobal2Float (Key (r, "progress"), 0),
+		cappers = GetGlobal2Int (Key (r, "cappers"), 0),
+		required = GetGlobal2Int (Key (r, "required"), 0),
+		blocked = GetGlobal2Bool (Key (r, "blocked"), false),
+		redCanCap = GetGlobal2Bool (Key (r, "red_can_cap"), false),
+		blueCanCap = GetGlobal2Bool (Key (r, "blue_can_cap"), false),
+		inRound = GetGlobal2Bool (Key (r, "in_round"), true),
+		hidden = GetGlobal2Bool (Key (r, "hidden"), false),
+		name = GetGlobal2String (Key (r, "name"), ""),
+		timerEnd = GetGlobal2Float (Key (r, "timer_end"), 0),
+		icon = GetGlobal2String (Key (r, "icon"), Capture.ICON_DEFAULT [NOBODY])
 	}
 end
 
 -- A TF2 token worded in the player's language (WS.Localize), or the
 -- token itself when no language has it.
-function View:Localize(token)
-	return WS.Localize(token) or token
+function View:Localize (token)
+	return WS.Localize (token) or token
 end
 
-local function TeamColor(team)
-	return WS.TeamColor[team] or WS.TeamColor[NOBODY]
+local function TeamColor (team)
+	return WS.TeamColor [team] or WS.TeamColor [NOBODY]
 end
 
-local function Seconds(at)
-	return math.max(0, math.ceil(at - CurTime()))
+local function Seconds (at)
+	return math.max (0, math.ceil (at - CurTime ()))
 end
 
 -- cooler-hud's ControlPointIcon.res, in its Hud.ICON-unit icon: the
@@ -153,59 +164,59 @@ end
 local ICON_UNITS = Hud.ICON
 local CAPPER_W, CAPPER_H = 10, 20
 local TIMER_BG_W = 51
-local OUTLINE_COLOR = Color(230, 230, 204) -- [0.9 0.9 0.8]
+local OUTLINE_COLOR = Color (230, 230, 204) -- [0.9 0.9 0.8]
 local HOLE_SEGMENTS = 8 -- steps in each corner of the outline's hole
 local STENCIL_HOLE = 1
-local TAN_LIGHT = Color(235, 226, 202)
+local TAN_LIGHT = Color (235, 226, 202)
 local CAP_FILL = { [RED] = "sprites/obj_icons/icon_obj_cap_red", [BLUE] = "sprites/obj_icons/icon_obj_cap_blu" }
 
 local MATERIALS = {}
-local function Mat(name)
-	MATERIALS[name] = MATERIALS[name] or Material(name)
-	return MATERIALS[name]
+local function Mat (name)
+	MATERIALS [name] = MATERIALS [name] or Material (name)
+	return MATERIALS [name]
 end
 
 -- A locked point's icon: the map icon's _locked version where one ships
 -- (the numbered icon_obj_N_*), else the icon itself, dimmed.
-local function LockedIcon(icon)
-	local locked = Mat(icon .. "_locked")
-	if not locked:IsError() then return locked, false end
-	return Mat(icon), true
+local function LockedIcon (icon)
+	local locked = Mat (icon .. "_locked")
+	if not locked:IsError () then return locked, false end
+	return Mat (icon), true
 end
 
-local function Image(material, x, y, w, h)
-	surface.SetMaterial(material)
-	surface.DrawTexturedRect(x, y, w, h)
+local function Image (material, x, y, w, h)
+	surface.SetMaterial (material)
+	surface.DrawTexturedRect (x, y, w, h)
 end
 
 -- BetterOutline2 round the icon: its outer rounded box drawn wherever the
 -- stencil does not hold the hole, a polygon (draw.RoundedBox's corner
 -- textures would mark the stencil in their transparent pixels too).
-local function DrawOutline(x, y, size, outline)
-	local ring = Hud.Outline(x, y, size, outline)
-	render.ClearStencil()
-	render.SetStencilEnable(true)
-	render.SetStencilWriteMask(255)
-	render.SetStencilTestMask(255)
-	render.SetStencilReferenceValue(STENCIL_HOLE)
-	render.SetStencilFailOperation(STENCIL_KEEP)
-	render.SetStencilZFailOperation(STENCIL_KEEP)
-	render.SetStencilCompareFunction(STENCIL_ALWAYS)
-	render.SetStencilPassOperation(STENCIL_REPLACE)
-	render.OverrideColorWriteEnable(true, false)
-	draw.NoTexture()
-	surface.SetDrawColor(255, 255, 255, 255)
-	surface.DrawPoly(Hud.RoundedRect(ring.hole, HOLE_SEGMENTS))
-	render.OverrideColorWriteEnable(false)
-	render.SetStencilCompareFunction(STENCIL_NOTEQUAL)
-	render.SetStencilPassOperation(STENCIL_KEEP)
+local function DrawOutline (x, y, size, outline)
+	local ring = Hud.Outline (x, y, size, outline)
+	render.ClearStencil ()
+	render.SetStencilEnable (true)
+	render.SetStencilWriteMask (255)
+	render.SetStencilTestMask (255)
+	render.SetStencilReferenceValue (STENCIL_HOLE)
+	render.SetStencilFailOperation (STENCIL_KEEP)
+	render.SetStencilZFailOperation (STENCIL_KEEP)
+	render.SetStencilCompareFunction (STENCIL_ALWAYS)
+	render.SetStencilPassOperation (STENCIL_REPLACE)
+	render.OverrideColorWriteEnable (true, false)
+	draw.NoTexture ()
+	surface.SetDrawColor (255, 255, 255, 255)
+	surface.DrawPoly (Hud.RoundedRect (ring.hole, HOLE_SEGMENTS))
+	render.OverrideColorWriteEnable (false)
+	render.SetStencilCompareFunction (STENCIL_NOTEQUAL)
+	render.SetStencilPassOperation (STENCIL_KEEP)
 	local o = ring.outer
-	draw.RoundedBox(o.corner, o.x, o.y, o.w, o.h, OUTLINE_COLOR)
-	render.SetStencilEnable(false)
+	draw.RoundedBox (o.corner, o.x, o.y, o.w, o.h, OUTLINE_COLOR)
+	render.SetStencilEnable (false)
 end
 
 -- The cappers' count: N, or N/required when a fixed count is needed.
-local function CappersText(p)
+local function CappersText (p)
 	if p.required > 0 then return p.cappers .. "/" .. p.required end
 	return "x" .. p.cappers
 end
@@ -216,113 +227,113 @@ end
 -- by its detail texture (capture_highlight, $separatedetailuvs), so each
 -- layer takes its own texture coordinates: a mesh quad, which surface's
 -- draws (one set) cannot give.
-local function DrawSweep(material, x, y, size, progress, alpha)
+local function DrawSweep (material, x, y, size, progress, alpha)
 	local w = size * progress
 	local u0 = 1 - progress / 2 -- the base's u at the icon's left edge
-	cam.Start2D()
-	render.SetMaterial(material)
-	mesh.Begin(MATERIAL_QUADS, 1)
-	local function Corner(px, py, u, v, mu, mv)
-		mesh.Position(Vector(px, py, 0))
-		mesh.TexCoord(0, u, v)
-		mesh.TexCoord(1, mu, mv)
-		mesh.Color(255, 255, 255, alpha)
-		mesh.AdvanceVertex()
+	cam.Start2D ()
+	render.SetMaterial (material)
+	mesh.Begin (MATERIAL_QUADS, 1)
+	local function Corner (px, py, u, v, mu, mv)
+		mesh.Position (Vector (px, py, 0))
+		mesh.TexCoord (0, u, v)
+		mesh.TexCoord (1, mu, mv)
+		mesh.Color (255, 255, 255, alpha)
+		mesh.AdvanceVertex ()
 	end
-	Corner(x, y, u0, 0, 0, 0)
-	Corner(x + w, y, 1, 0, progress, 0)
-	Corner(x + w, y + size, 1, 1, progress, 1)
-	Corner(x, y + size, u0, 1, 0, 1)
-	mesh.End()
-	cam.End2D()
+	Corner (x, y, u0, 0, 0, 0)
+	Corner (x + w, y, 1, 0, progress, 0)
+	Corner (x + w, y + size, 1, 1, progress, 1)
+	Corner (x, y + size, u0, 1, 0, 1)
+	mesh.End ()
+	cam.End2D ()
 end
 
 -- The cappers, centred on the icon as CControlPointIcon lays them out: the
 -- capture icon, then their count.
-local function DrawCappers(p, x, y, size, s)
-	local text = CappersText(p)
-	surface.SetFont(FONT_LABEL)
-	local textW = surface.GetTextSize(text)
+local function DrawCappers (p, x, y, size, s)
+	local text = CappersText (p)
+	surface.SetFont (FONT_LABEL)
+	local textW = surface.GetTextSize (text)
 	local imageW, imageH = CAPPER_W * s, CAPPER_H * s
 	local left = x + (size - (imageW + textW)) / 2
-	surface.SetDrawColor(255, 255, 255, 255)
-	Image(Mat("vgui/capture_icon"), left, y + (size - imageH) / 2, imageW, imageH)
-	draw.SimpleTextOutlined(text, FONT_LABEL, left + imageW, y + size / 2, TAN_LIGHT, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER, 1, color_black)
+	surface.SetDrawColor (255, 255, 255, 255)
+	Image (Mat ("vgui/capture_icon"), left, y + (size - imageH) / 2, imageW, imageH)
+	draw.SimpleTextOutlined (text, FONT_LABEL, left + imageW, y + size / 2, TAN_LIGHT, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER, 1, color_black)
 end
 
 -- A point's icon, size pixels square at x, y, its outline showing outline
 -- pixels round it: its owner's icon from the map (team_icon_N), the
 -- capping team's sweep with the capture, blocked or, while it is being
 -- captured, its cappers, and the unlock countdown or the point's timer.
-local function DrawIcon(p, x, y, size, outline)
+local function DrawIcon (p, x, y, size, outline)
 	local s = size / ICON_UNITS
 	local alpha = 255
-	local icon, dim = Mat(p.icon), false
-	if p.locked then icon, dim = LockedIcon(p.icon) end
-	if p.timerEnd > CurTime() then
-		surface.SetDrawColor(255, 255, 255, alpha)
-		Image(Mat("sprites/obj_icons/icon_obj_timer"), x, y, TIMER_BG_W * s, size)
-		local left = Seconds(p.timerEnd)
-		draw.SimpleText(string.format("%d:%02d", math.floor(left / 60), left % 60), FONT_TIMER,
+	local icon, dim = Mat (p.icon), false
+	if p.locked then icon, dim = LockedIcon (p.icon) end
+	if p.timerEnd > CurTime () then
+		surface.SetDrawColor (255, 255, 255, alpha)
+		Image (Mat ("sprites/obj_icons/icon_obj_timer"), x, y, TIMER_BG_W * s, size)
+		local left = Seconds (p.timerEnd)
+		draw.SimpleText (string.format ("%d:%02d", math.floor (left / 60), left % 60), FONT_TIMER,
 			x + (ICON_UNITS + (TIMER_BG_W - ICON_UNITS) / 2) * s, y + size / 2, TAN_LIGHT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	end
-	DrawOutline(x, y, size, outline)
-	surface.SetDrawColor(255, 255, 255, dim and DIM_ALPHA or alpha)
-	Image(icon, x, y, size, size)
-	if CAP_FILL[p.capping] and p.progress > 0 then DrawSweep(Mat(CAP_FILL[p.capping]), x, y, size, p.progress, alpha) end
-	surface.SetDrawColor(255, 255, 255, alpha)
+	DrawOutline (x, y, size, outline)
+	surface.SetDrawColor (255, 255, 255, dim and DIM_ALPHA or alpha)
+	Image (icon, x, y, size, size)
+	if CAP_FILL [p.capping] and p.progress > 0 then DrawSweep (Mat (CAP_FILL [p.capping]), x, y, size, p.progress, alpha) end
+	surface.SetDrawColor (255, 255, 255, alpha)
 	if p.blocked then
-		Image(Mat("hud/cart_blocked"), x + size / 4, y + size / 4, size / 2, size / 2)
+		Image (Mat ("hud/cart_blocked"), x + size / 4, y + size / 4, size / 2, size / 2)
 	elseif p.capping ~= NOBODY and p.cappers > 0 then
 		-- only a point in contest shows who is on it
-		DrawCappers(p, x, y, size, s)
+		DrawCappers (p, x, y, size, s)
 	end
-	if p.locked and p.unlockTime > CurTime() then
-		draw.SimpleTextOutlined(tostring(Seconds(p.unlockTime)), FONT_NUMBER, x + size / 2, y + size / 2, TAN_LIGHT,
+	if p.locked and p.unlockTime > CurTime () then
+		draw.SimpleTextOutlined (tostring (Seconds (p.unlockTime)), FONT_NUMBER, x + size / 2, y + size / 2, TAN_LIGHT,
 			TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
 	end
 end
 
 -- The layout's rows of the points with icons: the current round's
 -- (features.capture.hud's HasIcon).
-local function Rows(count)
+local function Rows (count)
 	local rows = {}
-	for _, row in ipairs(Capture.Layout(GetGlobal2String("ws_point_layout", ""), count)) do
+	for _, row in ipairs (Capture.Layout (GetGlobal2String ("ws_point_layout", ""), count)) do
 		local shown = {}
-		for _, rank in ipairs(row) do
-			local p = Point(rank)
-			if Hud.HasIcon(p) then shown[#shown + 1] = p end
+		for _, rank in ipairs (row) do
+			local p = Point (rank)
+			if Hud.HasIcon (p) then shown [#shown + 1] = p end
 		end
-		if #shown > 0 then rows[#rows + 1] = shown end
+		if #shown > 0 then rows [#rows + 1] = shown end
 	end
 	return rows
 end
 
 -- The rows shown now: none in a payload or deathmatch round, nor on an MvM
 -- map, where the bomb's panel is the only objective.
-local function ShownRows()
-	if not Hud.Shown(GetGlobal2Int("ws_round_hud_type", Rounds.HUD_NONE), GetGlobal2Bool("ws_mvm", false)) then return {} end
-	return Rows(GetGlobal2Int("ws_point_count", 0))
+local function ShownRows ()
+	if not Hud.Shown (GetGlobal2Int ("ws_round_hud_type", Rounds.HUD_NONE), GetGlobal2Bool ("ws_mvm", false)) then return {} end
+	return Rows (GetGlobal2Int ("ws_point_count", 0))
 end
 
 -- In the objectives' stack (ws.tf_hud's ObjectiveLifts): above frags and
 -- payload, under the flag.
-WS.TFHud.ObjectiveSpan("points", function()
-	local rows = ShownRows()
+WS.TFHud.ObjectiveSpan ("points", function ()
+	local rows = ShownRows ()
 	if #rows == 0 then return nil end
-	return Hud.Span(#rows)
+	return Hud.Span (#rows)
 end)
 
-local function DrawIcons(w, h)
-	local rows = ShownRows()
+local function DrawIcons (w, h)
+	local rows = ShownRows ()
 	if #rows == 0 then return end
 	local sizes = {}
-	for i, row in ipairs(rows) do sizes[i] = #row end
-	local layout = Hud.Layout(sizes, w, h, WS.TFHud.ObjectiveLift("points", w, h))
-	for line, row in ipairs(rows) do
-		for i, p in ipairs(row) do
-			local at = layout.rows[line][i]
-			DrawIcon(p, at.x, at.y, layout.size, layout.outline)
+	for i, row in ipairs (rows) do sizes [i] = #row end
+	local layout = Hud.Layout (sizes, w, h, WS.TFHud.ObjectiveLift ("points", w, h))
+	for line, row in ipairs (rows) do
+		for i, p in ipairs (row) do
+			local at = layout.rows [line] [i]
+			DrawIcon (p, at.x, at.y, layout.size, layout.outline)
 		end
 	end
 end
@@ -331,64 +342,64 @@ end
 -- per line of TF2's string (its "\n"), fading white -> red -> white; the
 -- box grows to hold it.
 -- A capture panel's box: TF2's white rounded border round a dark fill.
-local function PanelBox(x, y, boxW, boxH)
-	draw.RoundedBox(CORNER, x - PANEL_BORDER, y - PANEL_BORDER, boxW + 2 * PANEL_BORDER, boxH + 2 * PANEL_BORDER, PANEL_EDGE)
-	draw.RoundedBox(CORNER, x, y, boxW, boxH, PANEL_FILL)
+local function PanelBox (x, y, boxW, boxH)
+	draw.RoundedBox (CORNER, x - PANEL_BORDER, y - PANEL_BORDER, boxW + 2 * PANEL_BORDER, boxH + 2 * PANEL_BORDER, PANEL_EDGE)
+	draw.RoundedBox (CORNER, x, y, boxW, boxH, PANEL_FILL)
 end
 
 -- The object the player caps at, the panel's anchor in the world: the
 -- point, or the cart its area rides; NULL when the server names none or
 -- this client was not sent it (a hidden point).
-local function PanelAnchor(ply)
-	return ply:GetNW2Entity("ws_capture_anchor")
+local function PanelAnchor (ply)
+	return ply:GetNW2Entity ("ws_capture_anchor")
 end
 
-local function DrawReason(text, centre, bottom)
-	local lines = string.Explode("\n", text)
-	surface.SetFont(FONT_REASON)
-	local lineW, lineH = 0, select(2, surface.GetTextSize("M"))
-	for _, line in ipairs(lines) do lineW = math.max(lineW, (surface.GetTextSize(line))) end
-	local boxW = math.max(PANEL_WIDTH, lineW + 4 * INSET)
-	local boxH = math.max(PANEL_HEIGHT, lineH * #lines + 2 * INSET)
+local function DrawReason (text, centre, bottom)
+	local lines = string.Explode ("\n", text)
+	surface.SetFont (FONT_REASON)
+	local lineW, lineH = 0, select (2, surface.GetTextSize ("M"))
+	for _, line in ipairs (lines) do lineW = math.max (lineW, (surface.GetTextSize (line))) end
+	local boxW = math.max (PANEL_WIDTH, lineW + 4 * INSET)
+	local boxH = math.max (PANEL_HEIGHT, lineH * #lines + 2 * INSET)
 	local y = bottom - boxH
-	PanelBox(centre - boxW / 2, y, boxW, boxH)
-	local red = Hud.ReasonRedness(CurTime())
-	local color = Color(Lerp(red, 255, ALERT.r), Lerp(red, 255, ALERT.g), Lerp(red, 255, ALERT.b))
+	PanelBox (centre - boxW / 2, y, boxW, boxH)
+	local red = Hud.ReasonRedness (CurTime ())
+	local color = Color (Lerp (red, 255, ALERT.r), Lerp (red, 255, ALERT.g), Lerp (red, 255, ALERT.b))
 	local top = y + (boxH - lineH * #lines) / 2
-	for i, line in ipairs(lines) do
-		draw.SimpleText(line, FONT_REASON, centre, top + (i - 1) * lineH, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
+	for i, line in ipairs (lines) do
+		draw.SimpleText (line, FONT_REASON, centre, top + (i - 1) * lineH, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
 	end
 end
 
 -- The capture panel: the point's progress while the player's team caps it,
 -- else why it may not; nil when the player stands on no point.
-local function PanelRank(ply)
-	local rank = ply:GetNW2Int("ws_capture_point", NO_POINT_STOOD_ON)
-	if rank == NO_POINT_STOOD_ON or WS.State() == WS.STATE.TEAM_WIN then return nil end
+local function PanelRank (ply)
+	local rank = ply:GetNW2Int ("ws_capture_point", NO_POINT_STOOD_ON)
+	if rank == NO_POINT_STOOD_ON or WS.State () == WS.STATE.TEAM_WIN then return nil end
 	return rank
 end
 
 -- The panel, centred on centre with its bottom at bottom, in the 2D space
 -- being drawn (the screen, or the panel's plane in the world).
-local function DrawPanelAt(ply, rank, centre, bottom)
-	local reason = ply:GetNW2Int("ws_capture_reason", Capture.REASON_NONE)
-	if reason ~= Capture.REASON_NONE then return DrawReason(View:Localize(Capture.REASON_TOKEN[reason]), centre, bottom) end
+local function DrawPanelAt (ply, rank, centre, bottom)
+	local reason = ply:GetNW2Int ("ws_capture_reason", Capture.REASON_NONE)
+	if reason ~= Capture.REASON_NONE then return DrawReason (View:Localize (Capture.REASON_TOKEN [reason]), centre, bottom) end
 	local x, y = centre - PANEL_WIDTH / 2, bottom - PANEL_HEIGHT
-	PanelBox(x, y, PANEL_WIDTH, PANEL_HEIGHT)
-	local p = Point(rank - 1)
-	local c = TeamColor(p.capping)
-	surface.SetDrawColor(c.r, c.g, c.b, 255)
-	surface.DrawRect(x + INSET, y + INSET, (PANEL_WIDTH - 2 * INSET) * p.progress, PANEL_HEIGHT - 2 * INSET)
+	PanelBox (x, y, PANEL_WIDTH, PANEL_HEIGHT)
+	local p = Point (rank - 1)
+	local c = TeamColor (p.capping)
+	surface.SetDrawColor (c.r, c.g, c.b, 255)
+	surface.DrawRect (x + INSET, y + INSET, (PANEL_WIDTH - 2 * INSET) * p.progress, PANEL_HEIGHT - 2 * INSET)
 end
 
 -- Every round mode that loads capture (control points, KOTH, payload)
 -- shows its points; payload's cart points come hidden. The panel is drawn
 -- here only without an anchor in the world: above the crosshair.
-function View.Draw(w, h)
-	DrawIcons(w, h)
-	local ply = LocalPlayer()
-	local rank = PanelRank(ply)
-	if rank and not IsValid(PanelAnchor(ply)) then DrawPanelAt(ply, rank, w / 2, h / 2 - PANEL_ABOVE_CROSSHAIR) end
+function View.Draw (w, h)
+	DrawIcons (w, h)
+	local ply = LocalPlayer ()
+	local rank = PanelRank (ply)
+	if rank and not IsValid (PanelAnchor (ply)) then DrawPanelAt (ply, rank, w / 2, h / 2 - PANEL_ABOVE_CROSSHAIR) end
 end
 
 -- With an anchor, the panel stands in the world above it, as TF2's target
@@ -396,72 +407,72 @@ end
 -- a pixel, so it grows as the player comes near and walls hide it.
 local PANEL_SCALE = 0.2
 
-hook.Add("PostDrawTranslucentRenderables", "ws_capture_panel", function(_, skybox)
+hook.Add ("PostDrawTranslucentRenderables", "ws_capture_panel", function (_, skybox)
 	if skybox then return end
-	local ply = LocalPlayer()
-	local rank = PanelRank(ply)
-	local anchor = PanelAnchor(ply)
-	if not rank or not IsValid(anchor) then return end
-	local at = anchor:LocalToWorld(Vector(0, 0, anchor:OBBMaxs().z + ANCHOR_LIFT))
-	local facing = EyeAngles()
-	facing:RotateAroundAxis(facing:Forward(), 90)
-	facing:RotateAroundAxis(facing:Right(), 90)
-	cam.Start3D2D(at, facing, PANEL_SCALE)
-	DrawPanelAt(ply, rank, 0, 0)
-	cam.End3D2D()
+	local ply = LocalPlayer ()
+	local rank = PanelRank (ply)
+	local anchor = PanelAnchor (ply)
+	if not rank or not IsValid (anchor) then return end
+	local at = anchor:LocalToWorld (Vector (0, 0, anchor:OBBMaxs ().z + ANCHOR_LIFT))
+	local facing = EyeAngles ()
+	facing:RotateAroundAxis (facing:Forward (), 90)
+	facing:RotateAroundAxis (facing:Right (), 90)
+	cam.Start3D2D (at, facing, PANEL_SCALE)
+	DrawPanelAt (ply, rank, 0, 0)
+	cam.End3D2D ()
 end)
 
 -- The first locked point's pending unlock.
-local function PendingUnlock()
-	for rank = 0, GetGlobal2Int("ws_point_count", 0) - 1 do
-		local p = Point(rank)
+local function PendingUnlock ()
+	for rank = 0, GetGlobal2Int ("ws_point_count", 0) - 1 do
+		local p = Point (rank)
 		if p.locked and p.unlockTime > 0 then return p.unlockTime end
 	end
 	return 0
 end
 
-local function Play(name)
-	local ply = LocalPlayer()
-	if not IsValid(ply) then return end
+local function Play (name)
+	local ply = LocalPlayer ()
+	if not IsValid (ply) then return end
 
 	-- CHAN_VOICE2 is important here so announcer doens't talk over herself.
-	ply:EmitSound(name, SNDLVL_100dB, 100, CHAN_VOICE2)
+	ply:EmitSound (name, SNDLVL_100dB, 100, CHAN_VOICE2)
 end
 
 -- CControlPointCountdown::OnTick: armed for each second the unlock is
 -- still that far off; 5..1 while the round runs, then the capture line.
-hook.Add("Think", "ws_capture_unlock", function()
-	local pending = PendingUnlock()
+hook.Add ("Think", "ws_capture_unlock", function ()
+	local pending = PendingUnlock ()
 	if pending > 0 and pending ~= View.unlockAt then
 		View.unlockAt = pending
 		View.zeroArmed = true
-		for s in pairs(UNLOCK_WARNINGS) do View.unlockArmed[s] = pending - CurTime() >= s end
+		for s in pairs (UNLOCK_WARNINGS) do View.unlockArmed [s] = pending - CurTime () >= s end
 	end
-	if View.unlockAt <= 0 or WS.State() ~= WS.STATE.RND_RUNNING then return end
-	local left = math.floor(View.unlockAt - CurTime())
+	if View.unlockAt <= 0 or WS.State () ~= WS.STATE.RND_RUNNING then return end
+	local left = math.floor (View.unlockAt - CurTime ())
 	if left <= 0 then
-		if View.zeroArmed then Play(CAP_ENABLED) end
+		if View.zeroArmed then Play (CAP_ENABLED) end
 		View.zeroArmed = false
 		View.unlockAt = 0
-	elseif left <= UNLOCK_WARN_FROM and View.unlockArmed[left] then
-		View.unlockArmed[left] = false
-		Play(UNLOCK_WARNINGS[left])
+	elseif left <= UNLOCK_WARN_FROM and View.unlockArmed [left] then
+		View.unlockArmed [left] = false
+		Play (UNLOCK_WARNINGS [left])
 	end
 end)
 
 -- The capture's game events (sh.lua), in the kill feed as TF2 shows them
 -- (ws/cl_kill_feed.lua). A point's name is the map's token
 -- ("#Badwater_cap_1"), worded here.
-local function PointName(fields)
-	return fields.cpname ~= "" and View:Localize(fields.cpname) or ("point " .. fields.cp)
+local function PointName (fields)
+	return fields.cpname ~= "" and View:Localize (fields.cpname) or ("point " .. fields.cp)
 end
 
-WS.Events.Listen("game_teamplay_point_captured", "ws_capture_view", function(fields)
-	WS.KillFeedObjective(Feed.CAPTURED, fields.team, fields.cappers, PointName(fields))
+WS.Events.Listen ("game_teamplay_point_captured", "ws_capture_view", function (fields)
+	WS.KillFeedObjective (Feed.CAPTURED, fields.team, fields.cappers, PointName (fields))
 end)
 
-WS.Events.Listen("game_teamplay_capture_blocked", "ws_capture_view", function(fields)
-	WS.KillFeedObjective(Feed.DEFENDED, fields.team, { fields.blocker }, PointName(fields))
+WS.Events.Listen ("game_teamplay_capture_blocked", "ws_capture_view", function (fields)
+	WS.KillFeedObjective (Feed.DEFENDED, fields.team, { fields.blocker }, PointName (fields))
 end)
 
 return View

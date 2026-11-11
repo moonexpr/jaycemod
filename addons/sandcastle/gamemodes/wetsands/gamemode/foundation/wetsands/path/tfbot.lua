@@ -15,8 +15,8 @@
 -- This is the Lua twin, which clients run; a server with native/foundation
 -- has the native one in its place, which keeps this contract.
 local Path = wetsands.path
-local Scatter = require("foundation.wetsands.path.scatter")
-module(...)
+local Scatter = require ("foundation.wetsands.path.scatter")
+module (...)
 
 -- RouteType (nav_pathfind.h)
 DEFAULT_ROUTE, FASTEST_ROUTE, SAFEST_ROUTE, RETREAT_ROUTE = 0, 1, 2, 3
@@ -25,7 +25,7 @@ local IMPASSABLE = Path.IMPASSABLE
 local JUMP_PENALTY = 2 -- CTFBotPathCost's, where the zombie's is 5
 local NOBODY = 0 -- TEAM_UNASSIGNED: the area is in no spawn room
 
-local function Distance(step)
+local function Distance (step)
 	if step.ladderLength then return step.ladderLength end
 	if step.length > 0 then return step.length end
 	return step.centerDistance
@@ -34,35 +34,37 @@ end
 -- The enemy's spawn room is closed to a bot until the round is won, and then
 -- open only to the winners (CTFBotLocomotion::IsAreaTraversable, and the
 -- cost's own check, which the winners pass too).
-local function InEnemySpawnRoom(step, bot)
+local function InEnemySpawnRoom (step, bot)
 	local room = step.spawnRoomTeam
 	if room == NOBODY or room == bot.team then return false end
 	return not (bot.roundWon and bot.winningTeam == bot.team)
 end
 
-local function Preference(step, bot)
+local function Preference (step, bot)
 	if bot.route ~= DEFAULT_ROUTE or bot.miniBoss then return 1 end
-	return Scatter.Preference(bot.entIndex, step.areaId, bot.now)
+	return Scatter.Preference (bot.entIndex, step.areaId, bot.now)
 end
 
-function Cost(step, limits, bot)
+function Cost (step, limits, bot)
 	if not step.hasFrom then return 0 end
-	if not step.traversable or InEnemySpawnRoom(step, bot) then return IMPASSABLE end
-	local dist = Distance(step)
+	if not step.traversable or InEnemySpawnRoom (step, bot) then return IMPASSABLE end
+	local dist = Distance (step)
 	local deltaZ = step.heightChange
-	if not Path.Walkable(deltaZ, limits) then return IMPASSABLE end
+	if not Path.Walkable (deltaZ, limits) then return IMPASSABLE end
 	if deltaZ >= limits.stepHeight then dist = dist * JUMP_PENALTY end
-	return dist * Preference(step, bot) + step.fromCostSoFar
+	return dist * Preference (step, bot) + step.fromCostSoFar
 end
 
-function Model(limits, bot)
-	return Path.Model(limits, {
-		jumpScaled = JUMP_PENALTY,
-		rooms = true,
-		team = bot.team,
-		winners = (bot.roundWon and bot.winningTeam == bot.team) == true,
-		scatter = bot.route == DEFAULT_ROUTE and not bot.miniBoss,
-		entIndex = bot.entIndex,
-		now = bot.now,
-	})
+function Model (limits, bot)
+	return Path.Model (limits,
+		{
+			jumpScaled = JUMP_PENALTY,
+			rooms = true,
+			team = bot.team,
+			winners = (bot.roundWon and bot.winningTeam == bot.team) == true,
+			scatter = bot.route == DEFAULT_ROUTE and not bot.miniBoss,
+			entIndex = bot.entIndex,
+			now = bot.now
+		}
+	)
 end

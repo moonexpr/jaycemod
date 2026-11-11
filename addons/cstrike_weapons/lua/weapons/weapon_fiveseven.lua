@@ -1,4 +1,4 @@
-AddCSLuaFile()
+AddCSLuaFile ()
 
 -- weapon_fiveseven: a standard CS:S SWEP; its base owns shared behavior.
 
@@ -9,8 +9,8 @@ SWEP.Category = "Counter-Strike: Source"
 SWEP.Spawnable = true
 SWEP.Slot = 1
 SWEP.SlotPos = 1
-SWEP.ViewModel = Model("models/weapons/cstrike/c_pist_fiveseven.mdl")
-SWEP.WorldModel = Model("models/weapons/w_pist_fiveseven.mdl")
+SWEP.ViewModel = Model ("models/weapons/cstrike/c_pist_fiveseven.mdl")
+SWEP.WorldModel = Model ("models/weapons/w_pist_fiveseven.mdl")
 SWEP.ViewModelFOV = 54
 SWEP.ViewModelFlip = false
 SWEP.UseHands = true
@@ -24,17 +24,20 @@ SWEP.ReloadTime = 2.2
 SWEP.SingleShotSound = "Weapon_FiveSeven.Single"
 SWEP.Primary = { ClipSize = 20, DefaultClip = 20, Automatic = false, Ammo = "BULLET_PLAYER_57MM" }
 SWEP.Secondary = { ClipSize = -1, DefaultClip = -1, Automatic = false, Ammo = "none" }
-SWEP.Stats = {
-	Ballistics = {
+SWEP.Stats =
+{
+	Ballistics =
+	{
 		Damage = 25,
 		BulletCount = 1,
 		CycleTime = 0.15,
 		Penetration = 1,
 		Range = 4096,
 		RangeModifier = 0.885,
-		FullAuto = false,
+		FullAuto = false
 	},
-	Accuracy = {
+	Accuracy =
+	{
 		Crouch = 0.006,
 		Fire = 0.05883,
 		Jump = 0.25635,
@@ -44,12 +47,13 @@ SWEP.Stats = {
 		RecoveryCrouch = 0.18628,
 		RecoveryStand = 0.22353,
 		Spread = 0.004,
-		Stand = 0.01,
+		Stand = 0.01
 	},
-	Kick = {
+	Kick =
+	{
 		PunchMin = 2,
-		PunchMax = 2,
-	},
+		PunchMax = 2
+	}
 }
 SWEP.TwistCondition = 30
 SWEP.TwistDuration = 3

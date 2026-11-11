@@ -7,7 +7,7 @@
 -- wrote them.
 local ipairs = ipairs
 local Teams = gameplay.teams
-module(...)
+module (...)
 
 RED = "FACTION_SANDCASTLE_TEAM_RED"
 BLU = "FACTION_SANDCASTLE_TEAM_BLU"
@@ -21,22 +21,23 @@ LABEL = { [RED] = "Team RED", [BLU] = "Team BLU" }
 
 local OF = { [Teams.RED] = RED, [Teams.BLUE] = BLU }
 
-ALL = {
+ALL =
+{
 	{ team = Teams.RED, faction = RED },
-	{ team = Teams.BLUE, faction = BLU },
+	{ team = Teams.BLUE, faction = BLU }
 }
 
 -- The team's faction, or nil for a team that does not play.
-function Of(team)
-	return OF[team]
+function Of (team)
+	return OF [team]
 end
 
 -- What joining `team` takes: the team factions to leave (every one but its
 -- own), and the one to join (nil for a team that does not play).
-function Change(team)
+function Change (team)
 	local leave = {}
-	for _, entry in ipairs(ALL) do
-		if entry.team ~= team then leave[#leave + 1] = entry.faction end
+	for _, entry in ipairs (ALL) do
+		if entry.team ~= team then leave [#leave + 1] = entry.faction end
 	end
-	return leave, OF[team]
+	return leave, OF [team]
 end

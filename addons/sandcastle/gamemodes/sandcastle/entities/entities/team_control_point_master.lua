@@ -6,26 +6,26 @@
 ENT.Type = "point"
 ENT.Base = "base_point"
 
-function ENT:KeyValue(key, value)
+function ENT:KeyValue (key, value)
 	self.wsKv = self.wsKv or {}
-	self.wsKv[string.lower(key)] = value
-	if string.sub(key, 1, 2) == "On" then self:StoreOutput(key, value) end
+	self.wsKv [string.lower (key)] = value
+	if string.sub (key, 1, 2) == "On" then self:StoreOutput (key, value) end
 end
 
-function ENT:Initialize()
-	game_manager.Enable("game_control_points")
-	self.capture = WS.Feature("capture")
-	self.capture:BindMaster(self, self.wsKv or {})
+function ENT:Initialize ()
+	game_manager.Enable ("game_control_points")
+	self.capture = WS.Feature ("capture")
+	self.capture:BindMaster (self, self.wsKv or {})
 end
 
-function ENT:OnRemove()
-	self.capture:UnbindMaster(self)
+function ENT:OnRemove ()
+	self.capture:UnbindMaster (self)
 end
 
-function ENT:UpdateTransmitState()
+function ENT:UpdateTransmitState ()
 	return TRANSMIT_NEVER
 end
 
-function ENT:AcceptInput(name, activator, caller, value)
-	return self.capture:MasterInput(self, string.lower(name), value)
+function ENT:AcceptInput (name, activator, caller, value)
+	return self.capture:MasterInput (self, string.lower (name), value)
 end

@@ -1,7 +1,7 @@
 -- tf_projectile_spellfireball (CTFProjectile_SpellFireball): the fireball
 -- spell's rocket, and each meteor of a meteor shower. Invisible but for its
 -- flame; it bursts on the first thing it touches (features.spells.fireball).
-AddCSLuaFile()
+AddCSLuaFile ()
 
 ENT.Type = "anim"
 ENT.Base = "ws_spell_projectile"
@@ -9,7 +9,8 @@ ENT.Spawnable = false
 ENT.Variant = "games.gameplay.projectile.rocket"
 ENT.Model = "models/weapons/w_models/w_rocket.mdl"
 ENT.ModelScale = 0.01 -- GetFireballScale
-ENT.Trails = {
+ENT.Trails =
+{
 	[TEAM_RED] = "spell_fireball_small_red",
-	[TEAM_BLUE] = "spell_fireball_small_blue",
+	[TEAM_BLUE] = "spell_fireball_small_blue"
 }

@@ -7,52 +7,53 @@
 ENT.Type = "filter"
 ENT.Base = "base_filter"
 
-function ENT:KeyValue(key, value)
-	local k = string.lower(key)
+function ENT:KeyValue (key, value)
+	local k = string.lower (key)
 	if k == "condition" then
-		self.condition = tonumber(value)
+		self.condition = tonumber (value)
 	elseif k == "negated" then
 		-- Hammer sometimes stores the choice's label ("Allow entities that
 		-- match criteria") rather than 0/1; only "1" negates. Kept from the
 		-- engine so the negation applies once, here.
 		self.negated = value == "1"
 		return true
-	elseif string.sub(key, 1, 2) == "On" then
-		self:StoreOutput(key, value)
+	elseif string.sub (key, 1, 2) == "On" then
+		self:StoreOutput (key, value)
 	end
 end
 
-function ENT:Initialize()
+function ENT:Initialize ()
 	self.condition = self.condition or WS.PlayerRules.COND.INVALID
 	self.negated = self.negated or false
 end
 
 -- CBaseFilter::PassesFilter over CFilterTFCondition::PassesFilterImpl.
-function ENT:PassesFilter(trigger, ent)
+function ENT:PassesFilter (trigger, ent)
 	-- TestActivator may come with no activator.
-	local matches = IsValid(ent) and ent:IsPlayer() and WS.InCondition(ent, self.condition)
+	local matches = IsValid (ent) and ent:IsPlayer () and WS.InCondition (ent, self.condition)
 	return matches ~= self.negated
 end
 
 -- CBaseFilter::PassesDamageFilter: every damage matches.
-function ENT:PassesDamageFilter(dmg)
+function ENT:PassesDamageFilter (dmg)
 	return not self.negated
 end
 
-local INPUTS = {
+local INPUTS =
+{
 	-- CBaseFilter::InputTestActivator
-	testactivator = function(self, activator)
-		if self:PassesFilter(self, activator) then
-			self:TriggerOutput("OnPass", activator)
+	testactivator = function (self, activator)
+		if self:PassesFilter (self, activator) then
+			self:TriggerOutput ("OnPass", activator)
 		else
-			self:TriggerOutput("OnFail", activator)
+			self:TriggerOutput ("OnFail", activator)
 		end
-	end,
+	end
 }
 
-function ENT:AcceptInput(name, activator, caller, value)
-	local handler = INPUTS[string.lower(name)]
+function ENT:AcceptInput (name, activator, caller, value)
+	local handler = INPUTS [string.lower (name)]
 	if not handler then return false end
-	handler(self, activator)
+	handler (self, activator)
 	return true
 end

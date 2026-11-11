@@ -10,18 +10,22 @@ local CAPPERS_BITS = 6 -- up to 63 names
 -- CTeamControlPoint::InternalSetOwner: a team took the point (not a reset
 -- to nobody, nor the owner a round starts with). cappers: who stood on it
 -- for the capture (none for one no one made: an input, an admin's).
-E.Define("game_teamplay_point_captured", {
-	cp = E.UInt(CP_BITS),
-	cpname = E.String(),
-	team = E.Team(),
-	cappers = E.List(E.String(), CAPPERS_BITS),
-})
+E.Define ("game_teamplay_point_captured",
+	{
+		cp = E.UInt (CP_BITS),
+		cpname = E.String (),
+		team = E.Team (),
+		cappers = E.List (E.String (), CAPPERS_BITS)
+	}
+)
 
 -- CTeamControlPoint::CaptureBlocked: team defended the point, blocker
 -- first among its defenders on it.
-E.Define("game_teamplay_capture_blocked", {
-	cp = E.UInt(CP_BITS),
-	cpname = E.String(),
-	team = E.Team(),
-	blocker = E.String(),
-})
+E.Define ("game_teamplay_capture_blocked",
+	{
+		cp = E.UInt (CP_BITS),
+		cpname = E.String (),
+		team = E.Team (),
+		blocker = E.String ()
+	}
+)

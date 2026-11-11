@@ -10,11 +10,11 @@
 -- cry, one of them; or nil), gear = { left, right = { path... } } (what
 -- rattles as its wearer runs; or nil) }.
 local format, ipairs, lower, match = string.format, ipairs, string.lower, string.match
-module(...)
+module (...)
 
-local function Numbered(pattern, numbers)
+local function Numbered (pattern, numbers)
 	local list = {}
-	for i, n in ipairs(numbers) do list[i] = format(pattern, n) end
+	for i, n in ipairs (numbers) do list [i] = format (pattern, n) end
 	return list
 end
 
@@ -28,34 +28,37 @@ COMBINE, REBEL = "combine", "rebel"
 -- A human's fall that hurts is the HL2 player's.
 local FALL = { "player/pl_fallpain1.wav", "player/pl_fallpain3.wav" }
 
-local MALE = {
+local MALE =
+{
 	name = "male",
 	affiliation = REBEL,
-	grunt = Numbered("vo/npc/male01/pain0%d.wav", { 1, 2, 3 }),
-	pain = Numbered("vo/npc/male01/pain0%d.wav", { 1, 2, 3, 4, 5, 6 }),
-	death = Numbered("vo/npc/male01/pain0%d.wav", { 7, 8, 9 }),
-	fall = FALL,
+	grunt = Numbered ("vo/npc/male01/pain0%d.wav", { 1, 2, 3 }),
+	pain = Numbered ("vo/npc/male01/pain0%d.wav", { 1, 2, 3, 4, 5, 6 }),
+	death = Numbered ("vo/npc/male01/pain0%d.wav", { 7, 8, 9 }),
+	fall = FALL
 }
-local FEMALE = {
+local FEMALE =
+{
 	name = "female",
 	affiliation = REBEL,
-	grunt = Numbered("vo/npc/female01/pain0%d.wav", { 1, 2, 3 }),
-	pain = Numbered("vo/npc/female01/pain0%d.wav", { 1, 2, 3, 4, 5, 6 }),
-	death = Numbered("vo/npc/female01/pain0%d.wav", { 7, 8, 9 }),
-	fall = FALL,
+	grunt = Numbered ("vo/npc/female01/pain0%d.wav", { 1, 2, 3 }),
+	pain = Numbered ("vo/npc/female01/pain0%d.wav", { 1, 2, 3, 4, 5, 6 }),
+	death = Numbered ("vo/npc/female01/pain0%d.wav", { 7, 8, 9 }),
+	fall = FALL
 }
-local ALYX = {
+local ALYX =
+{
 	name = "alyx",
 	affiliation = REBEL,
-	grunt = Numbered("vo/npc/alyx/hurt0%d.wav", { 4, 5 }),
-	pain = Numbered("vo/npc/alyx/hurt0%d.wav", { 4, 5, 6, 8 }),
+	grunt = Numbered ("vo/npc/alyx/hurt0%d.wav", { 4, 5 }),
+	pain = Numbered ("vo/npc/alyx/hurt0%d.wav", { 4, 5, 6, 8 }),
 	death = { "vo/npc/alyx/uggh01.wav", "vo/npc/alyx/uggh02.wav", "vo/npc/alyx/gasp02.wav", "vo/npc/alyx/gasp03.wav" },
-	fall = FALL,
+	fall = FALL
 }
 -- HL2's Combine radio as its wearer dies: Overwatch's squelch and flatline
 -- beeps, about three seconds (the metrocops' own death sounds, die1-3, are
 -- the same recordings).
-local RADIO = Numbered("npc/overwatch/radiovoice/die%d.wav", { 1, 2, 3 })
+local RADIO = Numbered ("npc/overwatch/radiovoice/die%d.wav", { 1, 2, 3 })
 
 -- The Combine soldiers speak with Half-Life: Alyx's unused soldier voice
 -- (the gamemode's content/sound/npc/combine_soldier, shadowing HL2's files
@@ -63,43 +66,47 @@ local RADIO = Numbered("npc/overwatch/radiovoice/die%d.wav", { 1, 2, 3 })
 -- The Combine's and the metrocops' cries are all short: a grunt is any. A
 -- metrocop's death is the radio's flatline itself (HL2's), so nothing
 -- confirms it.
-local COMBINE_SOLDIER = {
+local COMBINE_SOLDIER =
+{
 	name = "combine",
 	affiliation = COMBINE,
-	grunt = Numbered("npc/combine_soldier/pain%d.wav", { 1, 2, 3, 4 }),
-	pain = Numbered("npc/combine_soldier/pain%d.wav", { 1, 2, 3, 4 }),
-	death = Numbered("npc/combine_soldier/die%d.wav", { 1, 2, 3 }),
-	fall = Numbered("npc/combine_soldier/pain%d.wav", { 1, 2, 3, 4 }),
+	grunt = Numbered ("npc/combine_soldier/pain%d.wav", { 1, 2, 3, 4 }),
+	pain = Numbered ("npc/combine_soldier/pain%d.wav", { 1, 2, 3, 4 }),
+	death = Numbered ("npc/combine_soldier/die%d.wav", { 1, 2, 3 }),
+	fall = Numbered ("npc/combine_soldier/pain%d.wav", { 1, 2, 3, 4 }),
 	confirm = RADIO,
-	gear = { left = Numbered("npc/combine_soldier/gear%d.wav", { 1, 3, 5 }), right = Numbered("npc/combine_soldier/gear%d.wav", { 2, 4, 6 }) },
+	gear = { left = Numbered ("npc/combine_soldier/gear%d.wav", { 1, 3, 5 }), right = Numbered ("npc/combine_soldier/gear%d.wav", { 2, 4, 6 }) }
 }
-local METROCOP = {
+local METROCOP =
+{
 	name = "metrocop",
 	affiliation = COMBINE,
-	grunt = Numbered("npc/metropolice/pain%d.wav", { 1, 2, 3, 4 }),
-	pain = Numbered("npc/metropolice/pain%d.wav", { 1, 2, 3, 4 }),
-	death = Numbered("npc/metropolice/die%d.wav", { 1, 2, 3, 4 }),
-	fall = Numbered("npc/metropolice/pain%d.wav", { 1, 2, 3, 4 }),
-	gear = { left = Numbered("npc/metropolice/gear%d.wav", { 1, 3, 5 }), right = Numbered("npc/metropolice/gear%d.wav", { 2, 4, 6 }) },
+	grunt = Numbered ("npc/metropolice/pain%d.wav", { 1, 2, 3, 4 }),
+	pain = Numbered ("npc/metropolice/pain%d.wav", { 1, 2, 3, 4 }),
+	death = Numbered ("npc/metropolice/die%d.wav", { 1, 2, 3, 4 }),
+	fall = Numbered ("npc/metropolice/pain%d.wav", { 1, 2, 3, 4 }),
+	gear = { left = Numbered ("npc/metropolice/gear%d.wav", { 1, 3, 5 }), right = Numbered ("npc/metropolice/gear%d.wav", { 2, 4, 6 }) }
 }
 -- HL2's vortigaunt has one cry of pain, and no death line.
-local VORTIGAUNT = {
+local VORTIGAUNT =
+{
 	name = "vortigaunt",
 	affiliation = REBEL,
 	grunt = { "npc/vort/vort_pain3.wav" },
 	pain = { "npc/vort/vort_pain3.wav" },
 	death = { "npc/vort/vort_pain3.wav" },
-	fall = { "npc/vort/vort_pain3.wav" },
+	fall = { "npc/vort/vort_pain3.wav" }
 }
 
 -- Model path patterns, in order, to their voice.
-local BY_MODEL = {
+local BY_MODEL =
+{
 	{ "^models/player/group0%d/male_", MALE },
 	{ "^models/player/group0%d/female_", FEMALE },
 	{ "^models/player/alyx%.mdl$", ALYX },
 	{ "^models/player/combine_", COMBINE_SOLDIER },
 	{ "^models/player/police", METROCOP },
-	{ "^models/vortigaunt", VORTIGAUNT },
+	{ "^models/vortigaunt", VORTIGAUNT }
 }
 
 -- A hit of this share of a soldier's most health or more is a cry of pain,
@@ -122,16 +129,16 @@ SCREAM_PITCH = 92
 -- What a death of voice plays: { sound, level, pitch, delay (seconds) }s,
 -- its cry first (random(n): 1..n picks it; a rebel's, layered), then its
 -- confirmation, if it has one.
-function Death(voice, random)
-	local cry = voice.death[random(#voice.death)]
+function Death (voice, random)
+	local cry = voice.death [random (#voice.death)]
 	if voice.affiliation == REBEL then
 		local sounds = {}
-		for i = 1, SCREAM_LAYERS do sounds[i] = { sound = cry, level = SCREAM_LEVEL, pitch = SCREAM_PITCH, delay = 0 } end
+		for i = 1, SCREAM_LAYERS do sounds [i] = { sound = cry, level = SCREAM_LEVEL, pitch = SCREAM_PITCH, delay = 0 } end
 		return sounds
 	end
 	local sounds = { { sound = cry, level = DEATH_LEVEL, pitch = 100, delay = 0 } }
 	if voice.confirm then
-		sounds[2] = { sound = voice.confirm[random(#voice.confirm)], level = DEATH_LEVEL, pitch = 100, delay = DEATH_CONFIRM_DELAY }
+		sounds [2] = { sound = voice.confirm [random (#voice.confirm)], level = DEATH_LEVEL, pitch = 100, delay = DEATH_CONFIRM_DELAY }
 	end
 	return sounds
 end
@@ -147,35 +154,36 @@ local GEAR_PITCH_LOW, GEAR_PITCH_SPREAD = 94, 11
 -- What a running step of foot ("left" or "right") rattles, { sound, volume,
 -- level, pitch } (random(n): 1..n picks the sound, then the pitch), or nil:
 -- a walk, or a voice with no gear.
-function Gear(voice, foot, running, random)
+function Gear (voice, foot, running, random)
 	if not (running and voice.gear) then return nil end
-	local sounds = voice.gear[foot]
-	return { sound = sounds[random(#sounds)], volume = GEAR_VOLUME, level = GEAR_LEVEL, pitch = GEAR_PITCH_LOW + random(GEAR_PITCH_SPREAD) }
+	local sounds = voice.gear [foot]
+	return { sound = sounds [random (#sounds)], volume = GEAR_VOLUME, level = GEAR_LEVEL, pitch = GEAR_PITCH_LOW + random (GEAR_PITCH_SPREAD) }
 end
 
 -- Which of its voice's lists a hit of damage on a soldier of maxHealth
 -- plays: "pain" or "grunt".
-function Feedback(damage, maxHealth)
+function Feedback (damage, maxHealth)
 	return damage >= maxHealth * PAIN_SHARE and "pain" or "grunt"
 end
 
 -- The voice a side speaks with where a model gives none (a player in a
 -- model of no voice): the Combine's soldier, a rebel.
-local BY_AFFILIATION = {
+local BY_AFFILIATION =
+{
 	[COMBINE] = COMBINE_SOLDIER,
-	[REBEL] = MALE,
+	[REBEL] = MALE
 }
 
-function ForAffiliation(affiliation)
-	return BY_AFFILIATION[affiliation]
+function ForAffiliation (affiliation)
+	return BY_AFFILIATION [affiliation]
 end
 
 -- The voice of a soldier wearing model, or nil for a model the war does not
 -- dress its soldiers in.
-function For(model)
-	local path = lower(model)
-	for _, entry in ipairs(BY_MODEL) do
-		if match(path, entry[1]) then return entry[2] end
+function For (model)
+	local path = lower (model)
+	for _, entry in ipairs (BY_MODEL) do
+		if match (path, entry [1]) then return entry [2] end
 	end
 	return nil
 end

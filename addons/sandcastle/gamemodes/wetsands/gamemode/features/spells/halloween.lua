@@ -6,10 +6,10 @@
 -- left out: they hang on the map name.
 local require = require
 local Teams = gameplay.teams
-local Caster = require("features.spells.caster")
+local Caster = require ("features.spells.caster")
 local Players = gameplay.players
 local ipairs, pairs = ipairs, pairs
-module(...)
+module (...)
 
 SPELL_FIREBALL = 0
 SPELL_BATS = 1
@@ -44,9 +44,10 @@ SPREAD = 10
 
 -- CastSpell's cast wheel, 100 above the caster.
 CAST_WHEEL_HEIGHT = 100
-CAST_WHEEL = {
+CAST_WHEEL =
+{
 	[Teams.RED] = "spell_cast_wheel_red",
-	[Teams.BLUE] = "spell_cast_wheel_blue",
+	[Teams.BLUE] = "spell_cast_wheel_blue"
 }
 
 JAR_BLAST_DAMAGE = 10 -- ApplyBlastDamage
@@ -57,35 +58,38 @@ ICON_NONE = "vgui/spellbook_nospell"
 
 local STRATEGY_PREFIX = "features.spells."
 
-local function Spell(name, charges, kind, castSound, speedScale, icon)
-	return {
+local function Spell (name, charges, kind, castSound, speedScale, icon)
+	return
+	{
 		name = name,
 		charges = charges,
 		kind = kind,
 		castSound = castSound,
 		speedScale = speedScale,
-		icon = ICON_PREFIX .. icon,
+		icon = ICON_PREFIX .. icon
 	}
 end
 
-local DEFINITIONS = {
-	[SPELL_FIREBALL] = Spell("fireball", 2, KIND_ROCKET, "Halloween.spell_fireball_cast", 1, "spellbook_fireball"),
-	[SPELL_BATS] = Spell("bats", 2, KIND_JAR, "Halloween.spell_bat_cast", 1, "spellbook_bats"),
-	[SPELL_OVERHEAL] = Spell("overheal", 1, KIND_SELF, "Halloween.spell_overheal", 1, "spellbook_overheal"),
-	[SPELL_MIRV] = Spell("mirv", 1, KIND_JAR, "Halloween.spell_mirv_cast", 1, "spellbook_mirv"),
-	[SPELL_BLASTJUMP] = Spell("blastjump", 2, KIND_SELF, "Halloween.spell_blastjump", 1, "spellbook_blastjump"),
-	[SPELL_STEALTH] = Spell("stealth", 1, KIND_SELF, "Halloween.spell_stealth", 1, "spellbook_stealth"),
-	[SPELL_TELEPORT] = Spell("teleport", 2, KIND_JAR, "Halloween.spell_teleport", 1, "spellbook_teleport"),
-	[SPELL_LIGHTNING] = Spell("lightning", 1, KIND_ROCKET, "Halloween.spell_lightning_cast", 0.4, "spellbook_lightning"),
-	[SPELL_ATHLETIC] = Spell("athletic", 1, KIND_SELF, "Halloween.spell_athletic", 1, "spellbook_athletic"),
-	[SPELL_METEOR] = Spell("meteor", 1, KIND_JAR, "Halloween.spell_meteor_cast", 1, "spellbook_meteor"),
-	[SPELL_SPAWN_BOSS] = Spell("spawn_boss", 1, KIND_JAR, "Halloween.Merasmus_Spell", 1, "spellbook_boss"),
-	[SPELL_SKELETON_HORDE] = Spell("skeleton_horde", 1, KIND_JAR, "Halloween.spell_skeleton_horde_cast", 1,
-		"spellbook_skeleton"),
+local DEFINITIONS =
+{
+	[SPELL_FIREBALL] = Spell ("fireball", 2, KIND_ROCKET, "Halloween.spell_fireball_cast", 1, "spellbook_fireball"),
+	[SPELL_BATS] = Spell ("bats", 2, KIND_JAR, "Halloween.spell_bat_cast", 1, "spellbook_bats"),
+	[SPELL_OVERHEAL] = Spell ("overheal", 1, KIND_SELF, "Halloween.spell_overheal", 1, "spellbook_overheal"),
+	[SPELL_MIRV] = Spell ("mirv", 1, KIND_JAR, "Halloween.spell_mirv_cast", 1, "spellbook_mirv"),
+	[SPELL_BLASTJUMP] = Spell ("blastjump", 2, KIND_SELF, "Halloween.spell_blastjump", 1, "spellbook_blastjump"),
+	[SPELL_STEALTH] = Spell ("stealth", 1, KIND_SELF, "Halloween.spell_stealth", 1, "spellbook_stealth"),
+	[SPELL_TELEPORT] = Spell ("teleport", 2, KIND_JAR, "Halloween.spell_teleport", 1, "spellbook_teleport"),
+	[SPELL_LIGHTNING] = Spell ("lightning", 1, KIND_ROCKET, "Halloween.spell_lightning_cast", 0.4, "spellbook_lightning"),
+	[SPELL_ATHLETIC] = Spell ("athletic", 1, KIND_SELF, "Halloween.spell_athletic", 1, "spellbook_athletic"),
+	[SPELL_METEOR] = Spell ("meteor", 1, KIND_JAR, "Halloween.spell_meteor_cast", 1, "spellbook_meteor"),
+	[SPELL_SPAWN_BOSS] = Spell ("spawn_boss", 1, KIND_JAR, "Halloween.Merasmus_Spell", 1, "spellbook_boss"),
+	[SPELL_SKELETON_HORDE] = Spell ("skeleton_horde", 1, KIND_JAR, "Halloween.spell_skeleton_horde_cast", 1,
+		"spellbook_skeleton")
 }
 
 -- g_generalSpellIndexList: teleport and the summons are never common.
-COMMON_ROLL = {
+COMMON_ROLL =
+{
 	SPELL_FIREBALL,
 	SPELL_FIREBALL,
 	SPELL_FIREBALL,
@@ -112,53 +116,55 @@ COMMON_ROLL = {
 	SPELL_STEALTH,
 	SPELL_LIGHTNING,
 	SPELL_ATHLETIC,
-	SPELL_METEOR,
+	SPELL_METEOR
 }
 
-function Definition(index)
-	return DEFINITIONS[index]
+function Definition (index)
+	return DEFINITIONS [index]
 end
 
-function Strategy(index)
-	return STRATEGY_PREFIX .. DEFINITIONS[index].name
+function Strategy (index)
+	return STRATEGY_PREFIX .. DEFINITIONS [index].name
 end
 
 -- RollNewSpell: a common roll draws from COMMON_ROLL; any other tier is
 -- uniform over the rare list (the nav-mesh reduction TF2 computes is never
 -- applied). random(lo, hi) draws an integer.
-function Roll(tier, random)
-	if tier == TIER_COMMON then return COMMON_ROLL[random(1, #COMMON_ROLL)] end
-	return random(SPELL_LIGHTNING, COUNT - 1)
+function Roll (tier, random)
+	if tier == TIER_COMMON then return COMMON_ROLL [random (1, #COMMON_ROLL)] end
+	return random (SPELL_LIGHTNING, COUNT - 1)
 end
 
 -------------------------------------------------------------------------------
 -- What the spells share
 
 -- CastSpell's one-off effect, played for every spell but stealth.
-function CastWheel(caster)
-	local owner = caster:Owner()
-	caster:Particle(CAST_WHEEL[caster:TeamOf(owner)], caster:Origin(owner) + caster:Vector(0, 0, CAST_WHEEL_HEIGHT))
+function CastWheel (caster)
+	local owner = caster:Owner ()
+	caster:Particle (CAST_WHEEL [caster:TeamOf (owner)], caster:Origin (owner) + caster:Vector (0, 0, CAST_WHEEL_HEIGHT))
 end
 
 -- The sound TossJarThink plays as a spell goes off.
-function CastSound(caster, index)
-	caster:EmitSound(Definition(index).castSound)
+function CastSound (caster, index)
+	caster:EmitSound (Definition (index).castSound)
 end
 
 -- CreateSpellRocket flies along the eye angles at the toss's speed;
 -- CreateSpellJar throws with the toss's velocity.
-local LAUNCH_VELOCITY = {
-	[KIND_ROCKET] = function(forward, velocity) return forward * velocity:Length() end,
-	[KIND_JAR] = function(forward, velocity) return velocity end,
+local LAUNCH_VELOCITY =
+{
+	[KIND_ROCKET] = function (forward, velocity) return forward * velocity:Length () end,
+	[KIND_JAR] = function (forward, velocity) return velocity end
 }
 
 -- The flight a thrown spell adds to its launch config (its FLIGHT). A jar is
 -- a pipebomb-mode grenade: it breaks on the world or an enemy, or when its
 -- TF_WEAPON_GRENADE_DETONATE_TIME fuse runs out, and ignores nothing.
 JAR_FUSE = 2
-JAR_FLIGHT = {
+JAR_FLIGHT =
+{
 	fuse = JAR_FUSE,
-	armDelay = 0,
+	armDelay = 0
 }
 ROCKET_FLIGHT = {}
 
@@ -168,44 +174,46 @@ THROW_RANGE = PROJECTILE_SPEED * JAR_FUSE
 -- TossJarThink for a spell that throws its PROJECTILE: from the hand, if an
 -- 8-unit hull fits between the eyes and the hand; otherwise nothing is
 -- thrown (and the charge is gone). Returns whether it threw.
-function Toss(caster, spell)
-	local definition = Definition(spell.INDEX)
-	local owner = caster:Owner()
-	local forward, right, up = caster:EyeVectors()
-	local hand = caster:ShootPosition() + up * TOSS_UP + right * TOSS_RIGHT + forward * TOSS_FORWARD
-	local spreadRight = caster:RandomFloat(-SPREAD, SPREAD)
-	local spreadUp = caster:RandomFloat(-SPREAD, SPREAD)
+function Toss (caster, spell)
+	local definition = Definition (spell.INDEX)
+	local owner = caster:Owner ()
+	local forward, right, up = caster:EyeVectors ()
+	local hand = caster:ShootPosition () + up * TOSS_UP + right * TOSS_RIGHT + forward * TOSS_FORWARD
+	local spreadRight = caster:RandomFloat (-SPREAD, SPREAD)
+	local spreadUp = caster:RandomFloat (-SPREAD, SPREAD)
 	local velocity = (forward * PROJECTILE_SPEED + up * UP_SPEED + right * spreadRight + up * spreadUp)
 		* definition.speedScale
-	local hull = caster:Vector(TOSS_HULL, TOSS_HULL, TOSS_HULL)
-	local trace = caster:TraceHull(caster:EyePosition(owner), hand, hull * -1, hull)
+	local hull = caster:Vector (TOSS_HULL, TOSS_HULL, TOSS_HULL)
+	local trace = caster:TraceHull (caster:EyePosition (owner), hand, hull * -1, hull)
 	if trace.startSolid then return false end
-	caster:EmitSound(definition.castSound)
-	local config = {
+	caster:EmitSound (definition.castSound)
+	local config =
+	{
 		spell = spell.INDEX,
 		position = trace.endPos,
-		velocity = LAUNCH_VELOCITY[definition.kind](forward, velocity),
-		team = caster:TeamOf(owner),
+		velocity = LAUNCH_VELOCITY [definition.kind] (forward, velocity),
+		team = caster:TeamOf (owner)
 	}
-	for key, value in pairs(spell.FLIGHT) do config[key] = value end
-	caster:LaunchProjectile(spell.PROJECTILE, config)
+	for key, value in pairs (spell.FLIGHT) do config [key] = value end
+	caster:LaunchProjectile (spell.PROJECTILE, config)
 	return true
 end
 
 -- A spell's blast: CTFRadiusDamageInfo with the thrower as the entity it
 -- ignores, so the thrower is both attacker and inflictor.
-function Blast(caster, origin, radius, damage)
-	local owner = caster:Owner()
-	return {
+function Blast (caster, origin, radius, damage)
+	local owner = caster:Owner ()
+	return
+	{
 		origin = origin,
 		radius = radius,
 		damage = damage,
-		attackerTeam = caster:TeamOf(owner),
+		attackerTeam = caster:TeamOf (owner),
 		attacker = owner,
 		inflictor = owner,
 		halfFalloff = false,
 		forceFriendlyFire = false,
-		crit = false,
+		crit = false
 	}
 end
 
@@ -216,29 +224,29 @@ end
 -- happens. Otherwise the effects play, each living player or NPC within the
 -- radius with no world between is a target, and a blast of 10 follows.
 -- Returns whether Initial succeeded.
-function JarImpact(caster, impact, jar)
-	if not jar.Initial(caster, impact) then
-		caster:EmitSound(DENY_SOUND)
+function JarImpact (caster, impact, jar)
+	if not jar.Initial (caster, impact) then
+		caster:EmitSound (DENY_SOUND)
 		return false
 	end
 	local origin = impact.position
-	caster:Particle(jar.particles[impact.team], origin)
-	caster:EmitSound(jar.sound, impact.projectile)
+	caster:Particle (jar.particles [impact.team], origin)
+	caster:EmitSound (jar.sound, impact.projectile)
 	if jar.OnTarget then
-		for _, target in ipairs(caster:EntitiesInSphere(origin, jar.radius)) do
-			if caster:IsAlive(target) and caster:IsVisible(origin, caster:Origin(target)) then
-				jar.OnTarget(caster, impact, target)
+		for _, target in ipairs (caster:EntitiesInSphere (origin, jar.radius)) do
+			if caster:IsAlive (target) and caster:IsVisible (origin, caster:Origin (target)) then
+				jar.OnTarget (caster, impact, target)
 			end
 		end
 	end
-	if jar.blast then caster:Explode(Blast(caster, origin, jar.radius, JAR_BLAST_DAMAGE)) end
+	if jar.blast then caster:Explode (Blast (caster, origin, jar.radius, JAR_BLAST_DAMAGE)) end
 	return true
 end
 
 -- ExplodeEffectOnTarget's guard: an enemy player who is invulnerable or
 -- phased is spared.
-function Spared(caster, target)
-	return caster:IsPlayer(target) and (caster:IsInvulnerable(target) or caster:InCond(target, COND.PHASE))
+function Spared (caster, target)
+	return caster:IsPlayer (target) and (caster:IsInvulnerable (target) or caster:InCond (target, COND.PHASE))
 end
 
 DMG_BURN, DMG_BLAST = Caster.DMG_BURN, Caster.DMG_BLAST

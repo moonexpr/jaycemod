@@ -5,7 +5,7 @@
 -- controller for a book, which goes when the weapon is dropped or removed.
 -- Attacking with it casts, as TF2's action key (+use_action_slot_item) does
 -- from any weapon.
-AddCSLuaFile()
+AddCSLuaFile ()
 
 SWEP.PrintName = "Spellbook"
 SWEP.Spawnable = true
@@ -17,48 +17,50 @@ SWEP.ViewModel = ""
 SWEP.WorldModel = "models/player/items/all_class/hwn_spellbook_complete.mdl"
 SWEP.HoldType = "slam"
 
-SWEP.Primary = {
+SWEP.Primary =
+{
 	ClipSize = -1,
 	DefaultClip = -1,
 	Automatic = false,
-	Ammo = "none",
+	Ammo = "none"
 }
-SWEP.Secondary = {
+SWEP.Secondary =
+{
 	ClipSize = -1,
 	DefaultClip = -1,
 	Automatic = false,
-	Ammo = "none",
+	Ammo = "none"
 }
 
-function SWEP:Initialize()
-	self:SetHoldType(self.HoldType)
+function SWEP:Initialize ()
+	self:SetHoldType (self.HoldType)
 end
 
 -- Server only. The holder is kept, since the owner is gone by OnDrop.
-function SWEP:Equip(owner)
+function SWEP:Equip (owner)
 	self.bookHolder = owner
-	WS.Feature("spells"):Arm(owner)
+	WS.Feature ("spells"):Arm (owner)
 end
 
-function SWEP:LetGoOfBook()
+function SWEP:LetGoOfBook ()
 	if SERVER and self.bookHolder then
-		WS.Feature("spells"):Disarm(self.bookHolder)
+		WS.Feature ("spells"):Disarm (self.bookHolder)
 		self.bookHolder = nil
 	end
 end
 
-function SWEP:OnDrop()
-	self:LetGoOfBook()
+function SWEP:OnDrop ()
+	self:LetGoOfBook ()
 end
 
-function SWEP:OnRemove()
-	self:LetGoOfBook()
+function SWEP:OnRemove ()
+	self:LetGoOfBook ()
 end
 
-function SWEP:PrimaryAttack()
+function SWEP:PrimaryAttack ()
 	if CLIENT then return end
-	WS.Feature("spells"):Cast(self:GetOwner())
+	WS.Feature ("spells"):Cast (self:GetOwner ())
 end
 
-function SWEP:SecondaryAttack()
+function SWEP:SecondaryAttack ()
 end

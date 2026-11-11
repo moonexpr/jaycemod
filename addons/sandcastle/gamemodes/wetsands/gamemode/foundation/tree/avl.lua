@@ -10,123 +10,125 @@
 --   tree:Pairs() -> an iterator in order (key, value), not to be run across
 --   a change to the tree, tree:Height()
 local max, setmetatable = math.max, setmetatable
-module(...)
+module (...)
 
 local Tree = {}
 Tree.__index = Tree
 
-function New()
-	return setmetatable({
-		root = nil,
-		size = 0,
-	}, Tree)
+function New ()
+	return setmetatable (
+		{
+			root = nil,
+			size = 0
+		}, Tree)
 end
 
-setmetatable(_M, { __call = function() return New() end })
+setmetatable (_M, { __call = function () return New () end })
 
-local function HeightOf(node)
+local function HeightOf (node)
 	return node and node.height or 0
 end
 
-local function Update(node)
-	node.height = max(HeightOf(node.left), HeightOf(node.right)) + 1
+local function Update (node)
+	node.height = max (HeightOf (node.left), HeightOf (node.right)) + 1
 end
 
-local function RotateRight(node)
+local function RotateRight (node)
 	local left = node.left
 	node.left, left.right = left.right, node
-	Update(node)
-	Update(left)
+	Update (node)
+	Update (left)
 	return left
 end
 
-local function RotateLeft(node)
+local function RotateLeft (node)
 	local right = node.right
 	node.right, right.left = right.left, node
-	Update(node)
-	Update(right)
+	Update (node)
+	Update (right)
 	return right
 end
 
-local function Balance(node)
-	Update(node)
-	local skew = HeightOf(node.left) - HeightOf(node.right)
+local function Balance (node)
+	Update (node)
+	local skew = HeightOf (node.left) - HeightOf (node.right)
 	if skew > 1 then
-		if HeightOf(node.left.left) < HeightOf(node.left.right) then node.left = RotateLeft(node.left) end
-		return RotateRight(node)
+		if HeightOf (node.left.left) < HeightOf (node.left.right) then node.left = RotateLeft (node.left) end
+		return RotateRight (node)
 	end
 	if skew < -1 then
-		if HeightOf(node.right.right) < HeightOf(node.right.left) then node.right = RotateRight(node.right) end
-		return RotateLeft(node)
+		if HeightOf (node.right.right) < HeightOf (node.right.left) then node.right = RotateRight (node.right) end
+		return RotateLeft (node)
 	end
 	return node
 end
 
 -- Returns the subtree with key set, and whether the key is new.
-local function Insert(node, key, value)
+local function Insert (node, key, value)
 	if not node then
-		return {
+		return
+		{
 			key = key,
 			value = value,
-			height = 1,
+			height = 1
 		}, true
 	end
 	local added
 	if key < node.key then
-		node.left, added = Insert(node.left, key, value)
+		node.left, added = Insert (node.left, key, value)
 	elseif node.key < key then
-		node.right, added = Insert(node.right, key, value)
+		node.right, added = Insert (node.right, key, value)
 	else
 		node.value = value
 		return node, false
 	end
-	return Balance(node), added
+	return Balance (node), added
 end
 
-local function RemoveMin(node)
+local function RemoveMin (node)
 	if not node.left then return node.right end
-	node.left = RemoveMin(node.left)
-	return Balance(node)
+	node.left = RemoveMin (node.left)
+	return Balance (node)
 end
 
-local function MinNode(node)
+local function MinNode (node)
 	while node.left do node = node.left end
 	return node
 end
 
 -- Returns the subtree without key, and whether it was there.
-local function Remove(node, key)
+local function Remove (node, key)
 	if not node then return nil, false end
 	local removed
 	if key < node.key then
-		node.left, removed = Remove(node.left, key)
+		node.left, removed = Remove (node.left, key)
 	elseif node.key < key then
-		node.right, removed = Remove(node.right, key)
+		node.right, removed = Remove (node.right, key)
 	else
 		if not node.left then return node.right, true end
 		if not node.right then return node.left, true end
-		local successor = MinNode(node.right)
-		successor.right = RemoveMin(node.right)
+		local successor = MinNode (node.right)
+		successor.right = RemoveMin (node.right)
 		successor.left = node.left
-		return Balance(successor), true
+		return Balance (successor), true
 	end
-	return Balance(node), removed
+	return Balance (node), removed
 end
 
-function Tree:Insert(key, value)
+function Tree:Insert (key, value)
 	local added
-	self.root, added = Insert(self.root, key, value)
+	self.root, added = Insert (self.root, key, value)
 	if added then self.size = self.size + 1 end
 end
 
-function Tree:Remove(key)
+function Tree:Remove (key)
 	local removed
-	self.root, removed = Remove(self.root, key)
+	self.root, removed = Remove (self.root, key)
 	if removed then self.size = self.size - 1 end
 	return removed
 end
 
-function Tree:Get(key)
+function Tree:Get (key)
 	local node = self.root
 	while node do
 		if key < node.key then
@@ -140,29 +142,29 @@ function Tree:Get(key)
 	return nil
 end
 
-function Tree:Size()
+function Tree:Size ()
 	return self.size
 end
 Tree.__len = Tree.Size
 
-function Tree:Height()
-	return HeightOf(self.root)
+function Tree:Height ()
+	return HeightOf (self.root)
 end
 
-function Tree:Min()
+function Tree:Min ()
 	if not self.root then return nil end
-	local node = MinNode(self.root)
+	local node = MinNode (self.root)
 	return node.key, node.value
 end
 
-function Tree:Max()
+function Tree:Max ()
 	local node = self.root
 	if not node then return nil end
 	while node.right do node = node.right end
 	return node.key, node.value
 end
 
-function Tree:Floor(key)
+function Tree:Floor (key)
 	local node, best = self.root, nil
 	while node do
 		if key < node.key then
@@ -177,7 +179,7 @@ function Tree:Floor(key)
 	return nil
 end
 
-function Tree:Ceiling(key)
+function Tree:Ceiling (key)
 	local node, best = self.root, nil
 	while node do
 		if node.key < key then
@@ -192,16 +194,16 @@ function Tree:Ceiling(key)
 	return nil
 end
 
-function Tree:Pairs()
+function Tree:Pairs ()
 	local stack, node = {}, self.root
-	return function()
+	return function ()
 		while node do
-			stack[#stack + 1] = node
+			stack [#stack + 1] = node
 			node = node.left
 		end
-		local top = stack[#stack]
+		local top = stack [#stack]
 		if not top then return nil end
-		stack[#stack] = nil
+		stack [#stack] = nil
 		node = top.right
 		return top.key, top.value
 	end

@@ -15,39 +15,39 @@ local ipairs = ipairs
 local Geometry = math.geometry
 local Saturate = math.scalar.Saturate
 local Select = list.select
-module(...)
+module (...)
 
 CRITICAL, OK = 0.3, 0.8 -- tf_bot_health_critical_ratio, tf_bot_health_ok_ratio
 NEAR_RANGE, FAR_RANGE = 1000, 2000 -- tf_bot_health_search_near_range, _far_range
 THREAT_NEAR, THREAT_FAR = 500, 1500
 QUIET_TIME = 5
 
-function Urgency(healthShare, burning)
+function Urgency (healthShare, burning)
 	if burning then return 1 end
-	return 1 - Saturate((healthShare - CRITICAL) / (OK - CRITICAL))
+	return 1 - Saturate ((healthShare - CRITICAL) / (OK - CRITICAL))
 end
 
-function SearchRange(urgency)
+function SearchRange (urgency)
 	return NEAR_RANGE + urgency * (FAR_RANGE - NEAR_RANGE)
 end
 
 -- threatDistance: to the nearest known threat, or nil for none; quiet:
 -- seconds since its last enemy.
-function Safety(threatDistance, quiet)
+function Safety (threatDistance, quiet)
 	if threatDistance == nil then return 1 end
-	local away = Saturate((threatDistance - THREAT_NEAR) / (THREAT_FAR - THREAT_NEAR))
-	return max(away, Saturate(quiet / QUIET_TIME))
+	local away = Saturate ((threatDistance - THREAT_NEAR) / (THREAT_FAR - THREAT_NEAR))
+	return max (away, Saturate (quiet / QUIET_TIME))
 end
 
-function Leaves(urgency, safety)
+function Leaves (urgency, safety)
 	return urgency + safety >= 1
 end
 
 -- The nearest of kits ({ pos }) to pos within range, or nil.
-local function KitPos(kit) return kit.pos end
+local function KitPos (kit) return kit.pos end
 
-function PickKit(kits, pos, range)
-	local kit, distance = Select.Nearest(kits, pos, KitPos)
+function PickKit (kits, pos, range)
+	local kit, distance = Select.Nearest (kits, pos, KitPos)
 	if kit and distance <= range then return kit end
 	return nil
 end

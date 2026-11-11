@@ -13,29 +13,31 @@
 local Cache = cache.base
 local Class = core.class
 local error = error
-module(...)
+module (...)
 
-local function Unstamp(memo, slot)
-	Cache.State(memo).stamps[slot] = nil
+local function Unstamp (memo, slot)
+	Cache.State (memo).stamps [slot] = nil
 end
 
-Memo = Class.Extend(Cache.Cache, {
-	kind = "memo",
-	Init = function(self) Cache.State(self).stamps = {} end, -- slot -> the stamp its value was computed for
-	Rewrite = Unstamp,
-	Dropped = Unstamp,
-	Fetch = function(self, key, stamp, compute)
-		if stamp == nil then error("a memo's stamp is anything but nil", 2) end
-		local own = Cache.State(self)
-		local slot = own.slotOf[key]
-		if slot and own.stamps[slot] == stamp then return self:Get(key) end
-		local value = compute(key)
-		self:Put(key, value)
-		own.stamps[own.slotOf[key]] = stamp
-		return value
-	end,
-})
+Memo = Class.Extend (Cache.Cache,
+	{
+		kind = "memo",
+		Init = function (self) Cache.State (self).stamps = {} end, -- slot -> the stamp its value was computed for
+		Rewrite = Unstamp,
+		Dropped = Unstamp,
+		Fetch = function (self, key, stamp, compute)
+			if stamp == nil then error ("a memo's stamp is anything but nil", 2) end
+			local own = Cache.State (self)
+			local slot = own.slotOf [key]
+			if slot and own.stamps [slot] == stamp then return self:Get (key) end
+			local value = compute (key)
+			self:Put (key, value)
+			own.stamps [own.slotOf [key]] = stamp
+			return value
+		end
+	}
+)
 
-function New(options)
-	return Class.Construct(Memo, options)
+function New (options)
+	return Class.Construct (Memo, options)
 end

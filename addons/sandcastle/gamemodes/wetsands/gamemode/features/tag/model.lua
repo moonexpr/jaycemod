@@ -13,9 +13,9 @@
 -- the subjects' names. The warnings play only while Halloween is on and its
 -- mode ANNOUNCES_IT; the chat line that names a tag always plays.
 local require = require
-local Holiday = require("features.holiday.model")
+local Holiday = require ("features.holiday.model")
 local setmetatable = setmetatable
-module(...)
+module (...)
 
 SOUND_TO = "sound_to"
 SOUND_FROM = "sound_from"
@@ -35,59 +35,64 @@ ANNOUNCE_TAG = "%s tagged %s as IT!" -- TF_HALLOWEEN_BOSS_ANNOUNCE_TAG
 local TagModel = {}
 TagModel.__index = TagModel
 
-function New(world)
-	return setmetatable({
-		world = world,
-		it = nil,
-	}, TagModel)
+function New (world)
+	return setmetatable (
+		{
+			world = world,
+			it = nil
+		}, TagModel)
 end
 
-function TagModel:Get() return self.it end
-function TagModel:IsIT(p) return p ~= nil and p == self.it end
+function TagModel:Get () return self.it end
+function TagModel:IsIT (p) return p ~= nil and p == self.it end
 
 -- SetIT's IsHolidayActive( kHoliday_Halloween ), with the mode's say.
-function TagModel:Announces()
+function TagModel:Announces ()
 	local world = self.world
-	if not world:HolidayActive(Holiday.HALLOWEEN) then return false end
-	local mode = world:Mode()
+	if not world:HolidayActive (Holiday.HALLOWEEN) then return false end
+	local mode = world:Mode ()
 	return mode ~= nil and mode.ANNOUNCES_IT == true
 end
 
-local function Add(notices, notice)
-	notices[#notices + 1] = notice
+local function Add (notices, notice)
+	notices [#notices + 1] = notice
 end
 
-local function Say(notices, kind, player, text)
-	Add(notices, {
-		kind = kind,
-		player = player,
-		text = text,
-	})
+local function Say (notices, kind, player, text)
+	Add (notices,
+		{
+			kind = kind,
+			player = player,
+			text = text
+		}
+	)
 end
 
-local function Sound(notices, kind, player, sound)
-	Add(notices, {
-		kind = kind,
-		player = player,
-		sound = sound,
-	})
+local function Sound (notices, kind, player, sound)
+	Add (notices,
+		{
+			kind = kind,
+			player = player,
+			sound = sound
+		}
+	)
 end
 
 -- CTFGameRules::SetIT
-function TagModel:Set(who)
+function TagModel:Set (who)
 	local notices = {}
-	if self:Announces() then
+	if self:Announces () then
 		if who ~= nil and who ~= self.it then
-			Say(notices, PRINT_TALK, who, WARN_VICTIM)
-			Say(notices, PRINT_CENTER, who, WARN_VICTIM)
-			Sound(notices, SOUND_TO, who, YOU_ARE_IT_SOUND)
-			Sound(notices, SOUND_FROM, who, SCREAM_SOUND)
+			Say (notices, PRINT_TALK, who, WARN_VICTIM)
+			Say (notices, PRINT_CENTER, who, WARN_VICTIM)
+			Sound (notices, SOUND_TO, who, YOU_ARE_IT_SOUND)
+			Sound (notices, SOUND_FROM, who, SCREAM_SOUND)
 		end
 		local old = self.it
-		if old ~= nil and old ~= who and self.world:IsAlive(old) then
-			Sound(notices, SOUND_TO, old, TAGGED_OTHER_SOUND)
-			Say(notices, PRINT_TALK, old, LOST_AGGRO)
-			Say(notices, PRINT_CENTER, old, LOST_AGGRO)
+		if old ~= nil and old ~= who and self.world:IsAlive (old) then
+			Sound (notices, SOUND_TO, old, TAGGED_OTHER_SOUND)
+			Say (notices, PRINT_TALK, old, LOST_AGGRO)
+			Say (notices, PRINT_CENTER, old, LOST_AGGRO)
 		end
 	end
 	self.it = who
@@ -95,28 +100,30 @@ function TagModel:Set(who)
 end
 
 -- CHeadlessHatmanAttack::Update's reminder to the player it chases.
-function TagModel:Warn(who)
+function TagModel:Warn (who)
 	local notices = {}
-	if self:Announces() then Say(notices, PRINT_CENTER, who, WARN_VICTIM) end
+	if self:Announces () then Say (notices, PRINT_CENTER, who, WARN_VICTIM) end
 	return notices
 end
 
 -- CTFWeaponBaseMelee::OnSwingHit: IT hitting an enemy tags them.
-function TagModel:OnMeleeHit(attacker, victim)
+function TagModel:OnMeleeHit (attacker, victim)
 	local world = self.world
-	if world:TeamOf(attacker) == world:TeamOf(victim) or not self:IsIT(attacker) then return {} end
-	local notices = self:Set(victim)
-	Add(notices, {
-		kind = PRINT_ALL,
-		text = ANNOUNCE_TAG,
-		subjects = { attacker, victim },
-	})
+	if world:TeamOf (attacker) == world:TeamOf (victim) or not self:IsIT (attacker) then return {} end
+	local notices = self:Set (victim)
+	Add (notices,
+		{
+			kind = PRINT_ALL,
+			text = ANNOUNCE_TAG,
+			subjects = { attacker, victim }
+		}
+	)
 	return notices
 end
 
 -- CTFPlayer::Event_Killed: IT killed by a player makes the killer IT.
 -- killer is nil unless a player dealt the blow.
-function TagModel:OnDeath(victim, killer)
-	if killer == nil or not self:IsIT(victim) then return {} end
-	return self:Set(killer)
+function TagModel:OnDeath (victim, killer)
+	if killer == nil or not self:IsIT (victim) then return {} end
+	return self:Set (killer)
 end

@@ -29,26 +29,28 @@
 -- Check(engine) hands back an engine that has every function, else refuses
 -- it, naming what it lacks.
 local Port = core.port
-module(...)
+module (...)
 
-ENGINE = Port.New("tactics engine", {
-	"Report",
-	"ReportDeath",
-	"Contact",
-	"Element",
-	"Bound",
-	"Arrived",
-	"UpdateBound",
-	"Stand",
-	"Flanks",
-	"FlankSide",
-	"FlankPoint",
-	"ShouldFallBack",
-	"FallBack",
-	"Regroup",
-	"FallbackPoint",
-})
+ENGINE = Port.New ("tactics engine",
+	{
+		"Report",
+		"ReportDeath",
+		"Contact",
+		"Element",
+		"Bound",
+		"Arrived",
+		"UpdateBound",
+		"Stand",
+		"Flanks",
+		"FlankSide",
+		"FlankPoint",
+		"ShouldFallBack",
+		"FallBack",
+		"Regroup",
+		"FallbackPoint"
+	}
+)
 
-function Check(engine)
-	return ENGINE:Check(engine)
+function Check (engine)
+	return ENGINE:Check (engine)
 end

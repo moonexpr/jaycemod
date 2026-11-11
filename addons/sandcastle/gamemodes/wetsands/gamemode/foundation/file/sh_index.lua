@@ -1,4 +1,4 @@
 -- foundation's binary values, in GMod's file table. One line a module,
 -- never a loop: docs/foundation-game-split-plan.md.
-local file = Namespace("file")
-Twin(file, "buffer", require("foundation.file.buffer"))
+local file = Namespace ("file")
+Twin (file, "buffer", require ("foundation.file.buffer"))

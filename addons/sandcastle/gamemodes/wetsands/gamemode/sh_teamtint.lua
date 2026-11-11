@@ -6,11 +6,11 @@
 local REPRESENTATIONS = { [WS.TEAM_RED] = "red", [WS.TEAM_BLUE] = "blu" }
 
 if CLIENT then
-	hook.Add("TeamTintTeamOf", "ws_teamtint", function(ent)
-		return REPRESENTATIONS[ent:GetNW2Int("ws_team", WS.TEAM_UNASSIGNED)]
+	hook.Add ("TeamTintTeamOf", "ws_teamtint", function (ent)
+		return REPRESENTATIONS [ent:GetNW2Int ("ws_team", WS.TEAM_UNASSIGNED)]
 	end)
 else
-	hook.Add("TeamTintCanOverride", "ws_teamtint", function(ply)
-		if WS.Match:IsRunning(system.play_mode.AIWAR) and not ply:IsAdmin() then return false end
+	hook.Add ("TeamTintCanOverride", "ws_teamtint", function (ply)
+		if WS.Match:IsRunning (system.play_mode.AIWAR) and not ply:IsAdmin () then return false end
 	end)
 end

@@ -1,7 +1,7 @@
 -- Player rules of TF2 as pure functions: pickup amounts, resupply, the
 -- player conditions map triggers apply, and stuns.
 local bit, ipairs, math, pairs = bit, ipairs, math, pairs
-module(...)
+module (...)
 
 -- PackRatios (tf_powerup.cpp) and ITEM_RESPAWN_TIME (tf_gamerules.cpp).
 PACK_RATIO = { small = 0.2, medium = 0.5, full = 1.0 }
@@ -12,29 +12,30 @@ ITEM_RESPAWN_TIME = 10
 DROPPED_PACK = { ratio = 0.5, lifetime = 30, ownerDelay = 0.75 }
 
 -- CHealthKit::MyTouch: TakeHealth(ceil(max * ratio)), which stops at max.
-function HealthKitHeal(health, maxHealth, ratio)
-	return math.max(0, math.min(math.ceil(maxHealth * ratio), maxHealth - health))
+function HealthKitHeal (health, maxHealth, ratio)
+	return math.max (0, math.min (math.ceil (maxHealth * ratio), maxHealth - health))
 end
 
 -- The kit is used up when it healed, or when it put out a fire.
-function HealthKitTaken(given, burning)
+function HealthKitTaken (given, burning)
 	return given > 0 or burning
 end
 
 -- CAmmoPack::MyTouch through GiveAmmo: ceil(max * ratio), up to max.
-function AmmoAfterPack(have, max, ratio)
+function AmmoAfterPack (have, max, ratio)
 	if have >= max then return have end
-	return math.min(max, have + math.ceil(max * ratio))
+	return math.min (max, have + math.ceil (max * ratio))
 end
 
 -- CTFPlayer::Regenerate: InitClass refills health; a boost over max is kept.
-function RegenerateHealth(health, maxHealth)
-	return math.max(health, maxHealth)
+function RegenerateHealth (health, maxHealth)
+	return math.max (health, maxHealth)
 end
 
 -- ETFCond values (tf_shareddefs.h) of the conditions payload maps apply,
 -- and those the Halloween NPCs read or give.
-COND = {
+COND =
+{
 	INVALID = -1,
 	DISGUISED = 3,
 	STEALTHED = 4,
@@ -71,7 +72,7 @@ COND = {
 	MELEE_ONLY = 85,
 	PURGATORY = 108,
 	GAS = 123,
-	IMMUNE_TO_PUSHBACK = 130,
+	IMMUNE_TO_PUSHBACK = 130
 }
 local C = COND
 
@@ -79,16 +80,16 @@ local C = COND
 PERMANENT = -1
 
 -- conds maps a condition to the time it ends.
-function AddCond(conds, cond, duration, now)
-	conds[cond] = duration == PERMANENT and math.huge or now + duration
+function AddCond (conds, cond, duration, now)
+	conds [cond] = duration == PERMANENT and math.huge or now + duration
 end
 
 -- A condition a hit inflicts (CTFPlayerShared::MakeBleed, AddCond of a
 -- mark): it lasts the longer of the one held and duration from now.
-function Inflict(conds, cond, duration, now)
+function Inflict (conds, cond, duration, now)
 	local ends = now + duration
-	if InCond(conds, cond, now) and conds[cond] > ends then return end
-	conds[cond] = ends
+	if InCond (conds, cond, now) and conds [cond] > ends then return end
+	conds [cond] = ends
 end
 
 -- TF_BLEEDING_FREQUENCY, TF_BLEEDING_DMG: a bleeding victim's hurt, dealt
@@ -99,62 +100,63 @@ BLEED_INTERVAL, BLEED_DAMAGE = 0.5, 4
 -- Milk heals its attacker MILK_HEAL of the damage, rounded down.
 MILK_HEAL = 0.6
 
-function MilkHeal(victimConds, damage, now)
-	if not InCond(victimConds, COND.MAD_MILK, now) then return 0 end
-	return math.floor(damage * MILK_HEAL)
+function MilkHeal (victimConds, damage, now)
+	if not InCond (victimConds, COND.MAD_MILK, now) then return 0 end
+	return math.floor (damage * MILK_HEAL)
 end
 
 -- Whether a bleed hurts at now, and when it next does (nil: it starts
 -- now): a full interval after it starts, then every interval on its own
 -- clock, however coarsely it is asked; never once it has ended, as
 -- ConditionThink removes an expired bleed before its tick.
-function BleedTick(conds, nextTick, now)
-	if not InCond(conds, COND.BLEEDING, now) then return false, nil end
+function BleedTick (conds, nextTick, now)
+	if not InCond (conds, COND.BLEEDING, now) then return false, nil end
 	if not nextTick then return false, now + BLEED_INTERVAL end
 	if now < nextTick then return false, nextTick end
-	return true, math.max(nextTick + BLEED_INTERVAL, now)
+	return true, math.max (nextTick + BLEED_INTERVAL, now)
 end
 
-function RemoveCond(conds, cond)
-	conds[cond] = nil
+function RemoveCond (conds, cond)
+	conds [cond] = nil
 end
 
-function InCond(conds, cond, now)
-	local ends = conds[cond]
+function InCond (conds, cond, now)
+	local ends = conds [cond]
 	return ends ~= nil and now < ends
 end
 
 -- Drops finished conditions; returns them.
-function ExpireConds(conds, now)
+function ExpireConds (conds, now)
 	local gone = {}
-	for cond, ends in pairs(conds) do
-		if now >= ends then gone[#gone + 1] = cond end
+	for cond, ends in pairs (conds) do
+		if now >= ends then gone [#gone + 1] = cond end
 	end
-	for _, cond in ipairs(gone) do conds[cond] = nil end
+	for _, cond in ipairs (gone) do conds [cond] = nil end
 	return gone
 end
 
 -- The conditions CTFPlayer::Regenerate removes that Sandcastle tracks.
 local REGENERATE_CLEARS = { C.BURNING, C.URINE, C.MAD_MILK, C.GAS, C.BLEEDING, C.PHASE }
 
-function ClearOnRegenerate(conds)
-	for _, cond in ipairs(REGENERATE_CLEARS) do conds[cond] = nil end
+function ClearOnRegenerate (conds)
+	for _, cond in ipairs (REGENERATE_CLEARS) do conds [cond] = nil end
 end
 
 -- TF_STUN_* (tf_shareddefs.h)
-STUN = {
+STUN =
+{
 	MOVEMENT = 1,
 	CONTROLS = 2,
 	NO_EFFECTS = 32,
 	LOSER_STATE = 64,
-	BY_TRIGGER = 128,
+	BY_TRIGGER = 128
 }
 
 -- trigger_stun's stun_type keyvalue.
 STUN_TYPE = { MOVEMENT = 0, CONTROLS = 1, LOSER_STATE = 2 }
 
 -- CTriggerStun::StunEntity: every stun slows; the stronger types take more.
-function StunFlags(stunType)
+function StunFlags (stunType)
 	if stunType == STUN_TYPE.CONTROLS then return STUN.MOVEMENT + STUN.CONTROLS end
 	if stunType == STUN_TYPE.LOSER_STATE then return STUN.MOVEMENT + STUN.LOSER_STATE end
 	return STUN.MOVEMENT
@@ -163,27 +165,28 @@ end
 -- CTFPlayerShared::StunPlayer keeps a list of stuns and applies the
 -- strongest; Sandcastle folds them into one: the later end, the stronger
 -- slow, and every flag.
-function Stun(current, duration, reduction, flags, now)
+function Stun (current, duration, reduction, flags, now)
 	local ends = now + duration
 	if not current or now >= current.ends then
 		return { ends = ends, reduction = reduction, flags = flags }
 	end
-	return {
-		ends = math.max(current.ends, ends),
-		reduction = math.max(current.reduction, reduction),
-		flags = bit.bor(current.flags, flags),
+	return
+	{
+		ends = math.max (current.ends, ends),
+		reduction = math.max (current.reduction, reduction),
+		flags = bit.bor (current.flags, flags)
 	}
 end
 
-function StunHas(stun, flag, now)
-	return stun ~= nil and now < stun.ends and bit.band(stun.flags, flag) ~= 0
+function StunHas (stun, flag, now)
+	return stun ~= nil and now < stun.ends and bit.band (stun.flags, flag) ~= 0
 end
 
 -- CTFPlayerShared::IsLoser: a player whose team lost the round
 -- (games.gameplay.teams' Humiliated), or one stunned (in TF_COND_STUNNED)
 -- with TF_STUN_LOSER_STATE among its stun's flags.
-function IsLoser(humiliated, stunned, stunFlags)
-	return humiliated or (stunned and bit.band(stunFlags, STUN.LOSER_STATE) ~= 0)
+function IsLoser (humiliated, stunned, stunFlags)
+	return humiliated or (stunned and bit.band (stunFlags, STUN.LOSER_STATE) ~= 0)
 end
 
 -- tf_whip_speed_increase: the cap on a speed boost's bonus.
@@ -192,9 +195,9 @@ local SPEED_BOOST_CAP = 105
 -- TeamFortress_CalculateMaxSpeed scales by the move speed attributes
 -- (attributeScale, default 1) and adds the boost; CTFGameMovement then
 -- scales by the stun's slow.
-function MaxSpeed(base, speedBoost, stunReduction, attributeScale)
+function MaxSpeed (base, speedBoost, stunReduction, attributeScale)
 	local speed = base * (attributeScale or 1)
-	if speedBoost and speed > 0 then speed = speed + math.min(speed * 0.4, SPEED_BOOST_CAP) end
+	if speedBoost and speed > 0 then speed = speed + math.min (speed * 0.4, SPEED_BOOST_CAP) end
 	return speed * (1 - stunReduction)
 end
 
@@ -206,9 +209,9 @@ MINICRIT_MULTIPLIER = 1.35
 CRIT_BOOSTS = { C.CRITBOOSTED, C.CRITBOOSTED_PUMPKIN, C.CRITBOOSTED_USER_BUFF, C.CRITBOOSTED_BONUS_TIME,
 	C.CRITBOOSTED_CTF_CAPTURE }
 
-function CritBoosted(conds, now)
-	for _, boost in ipairs(CRIT_BOOSTS) do
-		if InCond(conds, boost, now) then return true end
+function CritBoosted (conds, now)
+	for _, boost in ipairs (CRIT_BOOSTS) do
+		if InCond (conds, boost, now) then return true end
 	end
 	return false
 end
@@ -226,14 +229,14 @@ HIT_NORMAL, HIT_MINICRIT, HIT_CRIT = 0, 1, 2
 -- deals triple, but never to the attacker itself; a jarated victim, or one
 -- marked for death, takes mini-crits from anyone but themselves, as does
 -- anyone hit by an attacker with the offense buff.
-function Hit(victimConds, attackerConds, now, facts)
-	if InCond(victimConds, C.INVULNERABLE, now) then return 0, HIT_NORMAL end
-	if facts.blast and InCond(victimConds, C.BLAST_IMMUNE, now) then return 0, HIT_NORMAL end
+function Hit (victimConds, attackerConds, now, facts)
+	if InCond (victimConds, C.INVULNERABLE, now) then return 0, HIT_NORMAL end
+	if facts.blast and InCond (victimConds, C.BLAST_IMMUNE, now) then return 0, HIT_NORMAL end
 	if facts.critical then return 1, HIT_CRIT end
 	if facts.selfHarm then return 1, HIT_NORMAL end
-	if facts.headshot or facts.rolled or CritBoosted(attackerConds, now) then return CRIT_MULTIPLIER, HIT_CRIT end
-	if InCond(victimConds, C.URINE, now) or InCond(victimConds, C.MARKED_FOR_DEATH, now)
-		or InCond(attackerConds, C.OFFENSEBUFF, now) then
+	if facts.headshot or facts.rolled or CritBoosted (attackerConds, now) then return CRIT_MULTIPLIER, HIT_CRIT end
+	if InCond (victimConds, C.URINE, now) or InCond (victimConds, C.MARKED_FOR_DEATH, now)
+		or InCond (attackerConds, C.OFFENSEBUFF, now) then
 		return MINICRIT_MULTIPLIER, HIT_MINICRIT
 	end
 	return 1, HIT_NORMAL

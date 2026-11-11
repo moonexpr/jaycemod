@@ -1,55 +1,55 @@
 -- What a soldier's behaviours ask of the flags (nextsoldier.behavior.ctfbot), for any
 -- body: Apply(class) gives a class HasTheFlag and the rest, on its FlagCarrier(), the
 -- entity that carries.
-local FlagModel = WS.require("features.flag.model")
-local Game = game_manager.GetClass("game_ctf")
+local FlagModel = WS.require ("features.flag.model")
+local Game = game_manager.GetClass ("game_ctf")
 local WS, ents, ipairs = WS, ents, ipairs
-module(...)
+module (...)
 
 -- The flag it may carry: its entity, and its model.
-local function FlagOf(self)
-	local team = WS.TeamNumber(self:FlagCarrier())
-	for _, ent in ipairs(ents.FindByClass("item_teamflag")) do
-		local model = Game.Model(ent)
-		if model:Enabled() and model:MayCarry(team, Game.Rules().ownersCarry) then return ent, model end
+local function FlagOf (self)
+	local team = WS.TeamNumber (self:FlagCarrier ())
+	for _, ent in ipairs (ents.FindByClass ("item_teamflag")) do
+		local model = Game.Model (ent)
+		if model:Enabled () and model:MayCarry (team, Game.Rules ().ownersCarry) then return ent, model end
 	end
 	return nil
 end
 
-function Apply(class)
-	function class:HasTheFlag()
-		local _, model = FlagOf(self)
-		return model ~= nil and model:Carrier() == self:FlagCarrier()
+function Apply (class)
+	function class:HasTheFlag ()
+		local _, model = FlagOf (self)
+		return model ~= nil and model:Carrier () == self:FlagCarrier ()
 	end
 
-	function class:IsFlagHome()
-		local _, model = FlagOf(self)
-		return model ~= nil and model:State() == FlagModel.HOME
+	function class:IsFlagHome ()
+		local _, model = FlagOf (self)
+		return model ~= nil and model:State () == FlagModel.HOME
 	end
 
 	-- MvM's bomb, its team's own, goes to a robot as it spawns.
-	function class:GetsFlagAsItSpawns()
-		local ent = FlagOf(self)
-		return ent ~= nil and Game.Rules().ownersCarry == true
+	function class:GetsFlagAsItSpawns ()
+		local ent = FlagOf (self)
+		return ent ~= nil and Game.Rules ().ownersCarry == true
 	end
 
-	function class:PickUpFlag()
-		local ent = FlagOf(self)
-		return ent ~= nil and ent:Give(self:FlagCarrier())
+	function class:PickUpFlag ()
+		local ent = FlagOf (self)
+		return ent ~= nil and ent:Give (self:FlagCarrier ())
 	end
 
 	-- Where to walk for it: nowhere when it is carried, or MvM's bomb is home.
-	function class:FlagToFetch()
-		local ent, model = FlagOf(self)
-		if not model or model:State() == FlagModel.CARRIED then return nil end
-		if model:State() == FlagModel.HOME and Game.Rules().ownersCarry then return nil end
-		return ent:GetPos()
+	function class:FlagToFetch ()
+		local ent, model = FlagOf (self)
+		if not model or model:State () == FlagModel.CARRIED then return nil end
+		if model:State () == FlagModel.HOME and Game.Rules ().ownersCarry then return nil end
+		return ent:GetPos ()
 	end
 
-	function class:FlagCaptureZone()
-		local team = WS.TeamNumber(self:FlagCarrier())
-		for _, zone in ipairs(ents.FindByClass("func_capturezone")) do
-			if zone:MayCapture(team) then return zone:LocalToWorld(zone:OBBCenter()) end
+	function class:FlagCaptureZone ()
+		local team = WS.TeamNumber (self:FlagCarrier ())
+		for _, zone in ipairs (ents.FindByClass ("func_capturezone")) do
+			if zone:MayCapture (team) then return zone:LocalToWorld (zone:OBBCenter ()) end
 		end
 		return nil
 	end

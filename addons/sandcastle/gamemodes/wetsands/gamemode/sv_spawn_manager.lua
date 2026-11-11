@@ -11,68 +11,68 @@
 local S = system.spawn_manager
 
 -- Kept across a Lua refresh: the locks and the players held stay.
-WS.SpawnManager = WS.SpawnManager or S.New()
+WS.SpawnManager = WS.SpawnManager or S.New ()
 local manager = WS.SpawnManager
 
-local function Publish()
-	SetGlobal2String("ws_spawn_lock", manager:LockedBy() or "")
+local function Publish ()
+	SetGlobal2String ("ws_spawn_lock", manager:LockedBy () or "")
 end
 
-local function Held(ply)
-	ply:PrintMessage(HUD_PRINTCENTER, S.Message(S.HELD, 0, manager:LockedBy()))
+local function Held (ply)
+	ply:PrintMessage (HUD_PRINTCENTER, S.Message (S.HELD, 0, manager:LockedBy ()))
 end
 
-function WS.LockSpawns(lock)
-	manager:Lock(lock)
-	Publish()
+function WS.LockSpawns (lock)
+	manager:Lock (lock)
+	Publish ()
 end
 
 -- Lifts lock; once none is left, everyone held spawns.
-function WS.UnlockSpawns(lock)
-	local released = manager:Unlock(lock)
-	Publish()
-	for _, ply in ipairs(released) do
-		if IsValid(ply) then
-			ply:UnSpectate()
-			ply:Spawn()
+function WS.UnlockSpawns (lock)
+	local released = manager:Unlock (lock)
+	Publish ()
+	for _, ply in ipairs (released) do
+		if IsValid (ply) then
+			ply:UnSpectate ()
+			ply:Spawn ()
 		end
 	end
 end
 
 -- Spawns players due to (a wave, a round's start): those the gate lets
 -- through.
-function WS.Respawn(players)
-	for _, ply in ipairs(manager:Spawnable(players)) do ply:Spawn() end
+function WS.Respawn (players)
+	for _, ply in ipairs (manager:Spawnable (players)) do ply:Spawn () end
 end
 
 -- Whether ply may pick a team now (the gamemode's own team commands);
 -- if not, they are told why.
-function WS.MayChooseTeam(ply)
-	if manager:MayChooseTeam() then return true end
-	Held(ply)
+function WS.MayChooseTeam (ply)
+	if manager:MayChooseTeam () then return true end
+	Held (ply)
 	return false
 end
 
 -- Why a dead player is not spawning (a games.system.spawn_manager status)
 -- and, for a wave, when it comes.
-function WS.SetSpawnStatus(ply, status, at)
-	ply:SetNW2Int("ws_spawn_status", status)
-	ply:SetNW2Float("ws_respawn_time", at)
+function WS.SetSpawnStatus (ply, status, at)
+	ply:SetNW2Int ("ws_spawn_status", status)
+	ply:SetNW2Float ("ws_respawn_time", at)
 end
 
-hook.Add("PlayerSpawn", "ws_spawn_manager", function(ply)
-	if manager:Admit(ply) then return end
-	WS.Spectator.Enter(ply, ply:Team())
+hook.Add ("PlayerSpawn", "ws_spawn_manager", function (ply)
+	if manager:Admit (ply) then return end
+	WS.Spectator.Enter (ply, ply:Team ())
 	return true
 end)
 
-hook.Add("PlayerDeathThink", "ws_spawn_manager", function(ply)
-	if not manager:MayRespawn(ply) then return false end
+hook.Add ("PlayerDeathThink", "ws_spawn_manager", function (ply)
+	if not manager:MayRespawn (ply) then return false end
 end)
 
-local function RefuseTeam(ply)
-	if not WS.MayChooseTeam(ply) then return true end
+local function RefuseTeam (ply)
+	if not WS.MayChooseTeam (ply) then return true end
 end
 
-hook.Add("PlayerRequestTeam", "ws_spawn_manager", RefuseTeam)
-hook.Add("ShowTeam", "ws_spawn_manager", RefuseTeam)
+hook.Add ("PlayerRequestTeam", "ws_spawn_manager", RefuseTeam)
+hook.Add ("ShowTeam", "ws_spawn_manager", RefuseTeam)

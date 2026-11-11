@@ -10,64 +10,64 @@ local MemoryReport = analysis.memory
 local Permissions = system.permissions
 
 local Clock = {}
-function Clock:Now() return SysTime() end
+function Clock:Now () return SysTime () end
 
 local Memory = {}
-function Memory:Kilobytes() return collectgarbage("count") end
+function Memory:Kilobytes () return collectgarbage ("count") end
 
-WS.Analytics = WS.Analytics or Analytics.New(Clock, Memory)
+WS.Analytics = WS.Analytics or Analytics.New (Clock, Memory)
 
-local ENABLED = CreateConVar("ws_analytics", "0", FCVAR_ARCHIVE,
+local ENABLED = CreateConVar ("ws_analytics", "0", FCVAR_ARCHIVE,
 	"Sample each tick's pressure and Lua memory for ws_analytics_print", 0, 1)
 
 local FRAME_HOOK = "ws_analytics_frame"
 
-local function Apply(on)
+local function Apply (on)
 	if on then
-		hook.Add("Tick", FRAME_HOOK, function() WS.Analytics:Frame(engine.TickInterval()) end)
+		hook.Add ("Tick", FRAME_HOOK, function () WS.Analytics:Frame (engine.TickInterval ()) end)
 	else
-		hook.Remove("Tick", FRAME_HOOK)
+		hook.Remove ("Tick", FRAME_HOOK)
 	end
 end
 
-cvars.AddChangeCallback("ws_analytics", function(_, _, value) Apply(value == "1") end, FRAME_HOOK)
-Apply(ENABLED:GetBool())
+cvars.AddChangeCallback ("ws_analytics", function (_, _, value) Apply (value == "1") end, FRAME_HOOK)
+Apply (ENABLED:GetBool ())
 
-local function Admin(ply)
-	return WS.Can(ply, Permissions.SERVER_OPTIONS) == true
+local function Admin (ply)
+	return WS.Can (ply, Permissions.SERVER_OPTIONS) == true
 end
 
-local function Tell(ply, lines)
-	for _, line in ipairs(lines) do
-		print(line)
-		if IsValid(ply) then ply:PrintMessage(HUD_PRINTCONSOLE, line) end
+local function Tell (ply, lines)
+	for _, line in ipairs (lines) do
+		print (line)
+		if IsValid (ply) then ply:PrintMessage (HUD_PRINTCONSOLE, line) end
 	end
 end
 
-concommand.Add("ws_analytics_print", function(ply)
-	if not Admin(ply) then return end
-	Tell(ply, Analytics.Format(WS.Analytics:Report()))
+concommand.Add ("ws_analytics_print", function (ply)
+	if not Admin (ply) then return end
+	Tell (ply, Analytics.Format (WS.Analytics:Report ()))
 end, nil, "Print the timers, counters, tick pressure and Lua memory measured so far")
 
-concommand.Add("ws_analytics_reset", function(ply)
-	if not Admin(ply) then return end
-	WS.Analytics:Reset()
-	Tell(ply, { "analytics: reset" })
+concommand.Add ("ws_analytics_reset", function (ply)
+	if not Admin (ply) then return end
+	WS.Analytics:Reset ()
+	Tell (ply, { "analytics: reset" })
 end, nil, "Forget every measurement so far")
 
 local MEMORY_ROWS_DEFAULT = 25
 local FOUNDATION_PREFIX = "^foundation%."
 
-concommand.Add("ws_analytics_memory", function(ply, _, args)
-	if not Admin(ply) then return end
+concommand.Add ("ws_analytics_memory", function (ply, _, args)
+	if not Admin (ply) then return end
 	local names = {}
-	for name in pairs(package.loaded) do
-		if string.find(name, FOUNDATION_PREFIX) then names[#names + 1] = name end
+	for name in pairs (package.loaded) do
+		if string.find (name, FOUNDATION_PREFIX) then names [#names + 1] = name end
 	end
-	table.sort(names)
+	table.sort (names)
 	local roots = {}
-	for i, name in ipairs(names) do roots[i] = { name, package.loaded[name] } end
-	Tell(ply, MemoryReport.Format(MemoryReport.Measure(roots), tonumber(args[1]) or MEMORY_ROWS_DEFAULT))
+	for i, name in ipairs (names) do roots [i] = { name, package.loaded [name] } end
+	Tell (ply, MemoryReport.Format (MemoryReport.Measure (roots), tonumber (args [1]) or MEMORY_ROWS_DEFAULT))
 end, nil, "Print the estimated Lua memory each loaded foundation module holds, largest first")
 
 -- LuaJIT's sampling profiler through the server's binary module wsprofile
@@ -81,28 +81,28 @@ local SAMPLE_FORMAT = "F;" -- function names with their modules, outermost first
 local SAMPLE_DEPTH = -12
 local SAMPLE_TIMER = "ws_analytics_sample"
 
-local function Profiler()
+local function Profiler ()
 	if wsprofile then return wsprofile end
-	if not util.IsBinaryModuleInstalled("wsprofile") then return nil end
-	require("wsprofile")
+	if not util.IsBinaryModuleInstalled ("wsprofile") then return nil end
+	require ("wsprofile")
 	return wsprofile
 end
 
-concommand.Add("ws_analytics_sample", function(ply, _, args)
-	if not Admin(ply) then return end
-	local profiler = Profiler()
+concommand.Add ("ws_analytics_sample", function (ply, _, args)
+	if not Admin (ply) then return end
+	local profiler = Profiler ()
 	if not profiler then
-		Tell(ply, { "analytics: the wsprofile module is not installed on this server" })
+		Tell (ply, { "analytics: the wsprofile module is not installed on this server" })
 		return
 	end
-	local seconds = math.Clamp(tonumber(args[1]) or SAMPLE_SECONDS_DEFAULT, 1, SAMPLE_SECONDS_MAX)
-	local started, why = profiler.Start(SAMPLE_MODE, SAMPLE_FORMAT, SAMPLE_DEPTH)
+	local seconds = math.Clamp (tonumber (args [1]) or SAMPLE_SECONDS_DEFAULT, 1, SAMPLE_SECONDS_MAX)
+	local started, why = profiler.Start (SAMPLE_MODE, SAMPLE_FORMAT, SAMPLE_DEPTH)
 	if not started then
-		Tell(ply, { "analytics: " .. why })
+		Tell (ply, { "analytics: " .. why })
 		return
 	end
-	Tell(ply, { string.format("analytics: sampling the Lua VM for %d s", seconds) })
-	timer.Create(SAMPLE_TIMER, seconds, 1, function()
-		Tell(ply, Analytics.FormatSamples(Analytics.SampleReport(profiler.Stop(), SAMPLE_ROWS)))
+	Tell (ply, { string.format ("analytics: sampling the Lua VM for %d s", seconds) })
+	timer.Create (SAMPLE_TIMER, seconds, 1, function ()
+		Tell (ply, Analytics.FormatSamples (Analytics.SampleReport (profiler.Stop (), SAMPLE_ROWS)))
 	end)
 end, nil, "Sample the Lua VM for N seconds (default 30) with LuaJIT's profiler and print where it runs")

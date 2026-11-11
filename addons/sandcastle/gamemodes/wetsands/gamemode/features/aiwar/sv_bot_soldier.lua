@@ -25,7 +25,7 @@ local WALK_MAXS, WALK_LIFT, WALK_MAX_RISE = Map.WALK_MAXS, Map.WALK_LIFT, Map.WA
 local HOP_WISH = 0.5
 -- A hop's way is swept this high (a crouch jump's lift: a player's jump with
 -- its legs tucked), and a bot hops at most once in HOP_RETRY seconds.
-local HOP_CLEAR = Vector(0, 0, 56)
+local HOP_CLEAR = Vector (0, 0, 56)
 local HOP_RETRY = 6
 -- How long it remembers an enemy out of sight, where last seen.
 local MEMORY = 5
@@ -48,7 +48,7 @@ local FIRST_PLAN = 0.3
 local STEP_HEIGHT, SAFE_DROP = 18, 300
 -- A straight walk's floor is looked for from a step above its line to two
 -- below (CanWalkTo): a stair up or down the way is floor, a ledge's edge not.
-local FOOTING_ABOVE, FOOTING_BELOW = Vector(0, 0, STEP_HEIGHT), Vector(0, 0, 2 * STEP_HEIGHT)
+local FOOTING_ABOVE, FOOTING_BELOW = Vector (0, 0, STEP_HEIGHT), Vector (0, 0, 2 * STEP_HEIGHT)
 local JUMP_PENALTY = 2
 
 -- A goal off the mesh is walked to as the nearest point of an area within
@@ -59,78 +59,81 @@ local JUMP_PENALTY = 2
 -- ring round its charge that falls in or behind a wall: else the bot
 -- presses into the wall for as long as it guards), else as itself, which
 -- the route search takes to its nearest area.
-local OFF_MESH_STEP, OFF_MESH_HEIGHT, OFF_MESH_LIFT = 16, 60, Vector(0, 0, 20)
+local OFF_MESH_STEP, OFF_MESH_HEIGHT, OFF_MESH_LIFT = 16, 60, Vector (0, 0, 20)
 local OFF_MESH_NEAR, OFF_MESH_BACK = 64, 256
 
-local function OnMesh(p) return navmesh.GetNavArea(p + OFF_MESH_LIFT, OFF_MESH_HEIGHT) ~= nil end
+local function OnMesh (p) return navmesh.GetNavArea (p + OFF_MESH_LIFT, OFF_MESH_HEIGHT) ~= nil end
 
 -- A trace filter passing whoever walks about: players and NPCs.
-local function Unmoving(ent) return not (ent:IsPlayer() or ent:IsNPC() or ent:IsNextBot()) end
+local function Unmoving (ent) return not (ent:IsPlayer () or ent:IsNPC () or ent:IsNextBot ()) end
 
-local BotSoldier = setmetatable({}, { __index = Soldier })
+local BotSoldier = setmetatable ({}, { __index = Soldier })
 BotSoldier.__index = BotSoldier
-WS.require("features.npc.bot_steering").Apply(BotSoldier, { util = util, Vector = Vector, mask = MASK_PLAYERSOLID })
+WS.require ("features.npc.bot_steering").Apply (BotSoldier, { util = util, Vector = Vector, mask = MASK_PLAYERSOLID })
 
 -- reaction: the difficulty's (features.aiwar.marksmanship), before it
 -- recognizes an enemy it sees.
-function BotSoldier.New(ent, controller, team, reaction)
-	return setmetatable({
-		ent = ent,
-		controller = controller,
-		team = team,
-		ticket = 0,
-		result = nil,
-		moveTarget = nil,
-		relations = {},
-		vision = Vision.New({
-			reaction = reaction,
-			memory = MEMORY,
-		}),
-		body = PlayerBody.New(),
-		look = nil, -- where it faces with no enemy (Watch), a Vector
-		hopUntil = 0,
-		steer = nil, -- the point its body makes for (Steer)
-		walk = nil, -- the route of its own it walks (nextsoldier.locomotion.route_walk)
-		-- its first route waits a moment: a navigator just made knows no nav area yet
-		nextPlan = CurTime() + FIRST_PLAN,
-		mayFire = false, -- its orders let it fire at its contact (sv_bots.lua asks them)
-		loadout = nil, -- features.aiwar.arms' loadout it carries (KitBot)
-		wantWeapon = nil, -- the weapon its contact's distance calls for
-	}, BotSoldier)
+function BotSoldier.New (ent, controller, team, reaction)
+	return setmetatable (
+		{
+			ent = ent,
+			controller = controller,
+			team = team,
+			ticket = 0,
+			result = nil,
+			moveTarget = nil,
+			relations = {},
+			vision = Vision.New (
+				{
+					reaction = reaction,
+					memory = MEMORY
+				}
+			),
+			body = PlayerBody.New (),
+			look = nil, -- where it faces with no enemy (Watch), a Vector
+			hopUntil = 0,
+			steer = nil, -- the point its body makes for (Steer)
+			walk = nil, -- the route of its own it walks (nextsoldier.locomotion.route_walk)
+			-- its first route waits a moment: a navigator just made knows no nav area yet
+			nextPlan = CurTime () + FIRST_PLAN,
+			mayFire = false, -- its orders let it fire at its contact (sv_bots.lua asks them)
+			loadout = nil, -- features.aiwar.arms' loadout it carries (KitBot)
+			wantWeapon = nil -- the weapon its contact's distance calls for
+		}, BotSoldier)
 end
 
-function BotSoldier:IsAlive() return IsValid(self.ent) and self.ent:Alive() end
+function BotSoldier:IsAlive () return IsValid (self.ent) and self.ent:Alive () end
 
 -- The enemy it fights: its vision's contact, while the enemy lives.
-function BotSoldier:Enemy()
-	local enemy = self.vision:Contact()
-	return IsValid(enemy) and enemy or nil
+function BotSoldier:Enemy ()
+	local enemy = self.vision:Contact ()
+	return IsValid (enemy) and enemy or nil
 end
 
-function BotSoldier:HasEnemy()
-	local enemy = self:Enemy()
-	return enemy ~= nil and self.vision:Visible(enemy)
+function BotSoldier:HasEnemy ()
+	local enemy = self:Enemy ()
+	return enemy ~= nil and self.vision:Visible (enemy)
 end
 
-function BotSoldier:DoorToOpen()
+function BotSoldier:DoorToOpen ()
 	local door = self.doorAhead
-	if not DoorOpenable(door) then return nil end
-	return Point(door:WorldSpaceCenter())
+	if not DoorOpenable (door) then return nil end
+	return Point (door:WorldSpaceCenter ())
 end
 
-function BotSoldier:EnemyHealth()
-	local enemy = self:Enemy()
-	if not enemy or enemy:Health() <= 0 then return nil end
-	return enemy:Health() / math.max(enemy:GetMaxHealth(), 1)
+function BotSoldier:EnemyHealth ()
+	local enemy = self:Enemy ()
+	if not enemy or enemy:Health () <= 0 then return nil end
+	return enemy:Health () / math.max (enemy:GetMaxHealth (), 1)
 end
 
 -- Where its enemy is: in sight, where it stands; out of it, where it was
 -- last seen.
-function BotSoldier:EnemyPosition()
-	local enemy = self:Enemy()
+function BotSoldier:EnemyPosition ()
+	local enemy = self:Enemy ()
 	if not enemy then return nil end
-	if self.vision:Visible(enemy) then return Point(enemy:GetPos()) end
-	return (self.vision:LastKnown(enemy))
+	if self.vision:Visible (enemy) then return Point (enemy:GetPos ()) end
+	return (self.vision:LastKnown (enemy))
 end
 
 -- A player's body plans its own way, as DrGBase's does: the orders give it
@@ -142,29 +145,29 @@ end
 -- seconds, which a body waiting on them spends standing still. It is
 -- planned again on a timer (REPATH_LEAST to REPATH_MOST), sooner when its orders ask
 -- (Repath).
-function BotSoldier:PlansRoutes() return true end
+function BotSoldier:PlansRoutes () return true end
 
 -- Its navigator, made with its first route and kept with the bot player
 -- across its lives (it goes when the bot does).
-function BotSoldier:Navigator()
+function BotSoldier:Navigator ()
 	local ply = self.ent
-	if IsValid(ply.NSNavigator) then return ply.NSNavigator end
-	local navigator = ents.Create("ws_bot_navigator")
-	navigator:SetOwner(ply)
-	navigator:SetPos(ply:GetPos())
-	navigator:Spawn()
+	if IsValid (ply.NSNavigator) then return ply.NSNavigator end
+	local navigator = ents.Create ("ws_bot_navigator")
+	navigator:SetOwner (ply)
+	navigator:SetPos (ply:GetPos ())
+	navigator:Spawn ()
 	ply.NSNavigator = navigator
 	return navigator
 end
 
 -- How high ply's crouch jump reaches, from its own jump power, gravity and
 -- hulls (Movement.JumpReach): TF2's body, 72; GMod's, about 69.
-local function JumpReachOf(ply)
-	local _, stand = ply:GetHull()
-	local _, duck = ply:GetHullDuck()
-	local scale = ply:GetGravity()
-	local gravity = GetConVarNumber("sv_gravity") * (scale ~= 0 and scale or 1)
-	return Movement.JumpReach(ply:GetJumpPower(), gravity, stand.z, duck.z)
+local function JumpReachOf (ply)
+	local _, stand = ply:GetHull ()
+	local _, duck = ply:GetHullDuck ()
+	local scale = ply:GetGravity ()
+	local gravity = GetConVarNumber ("sv_gravity") * (scale ~= 0 and scale or 1)
+	return Movement.JumpReach (ply:GetJumpPower (), gravity, stand.z, duck.z)
 end
 
 -- The price of a step from fromArea into area (Path:Compute's generator),
@@ -173,29 +176,29 @@ end
 -- the enemy's spawn rooms (their visualizers stop players), a rise higher
 -- than a crouch jump, a drop farther than a safe fall. A step up past a
 -- stair costs JUMP_PENALTY times its length more (CTFBotPathCost's).
-function BotSoldier:RouteCost()
+function BotSoldier:RouteCost ()
 	local controller, team = self.controller, self.team
-	local npcs = WS.Feature("npc")
-	local enemy = Teams.EnemyOf(team)
-	local reach = JumpReachOf(self.ent)
-	local clearance = WS.NavHullClearance(self.ent, WS.ClipMasks().brushes)
-	return function(area, fromArea, ladder, _, length)
-		if not IsValid(fromArea) then return 0 end
-		if npcs:NavBlocks(area, team) or controller:ShutDoorIn(area, team) or npcs:SpawnRoomTeam(area) == enemy then return -1 end
-		if not clearance:Area(area) then return -1 end
+	local npcs = WS.Feature ("npc")
+	local enemy = Teams.EnemyOf (team)
+	local reach = JumpReachOf (self.ent)
+	local clearance = WS.NavHullClearance (self.ent, WS.ClipMasks ().brushes)
+	return function (area, fromArea, ladder, _, length)
+		if not IsValid (fromArea) then return 0 end
+		if npcs:NavBlocks (area, team) or controller:ShutDoorIn (area, team) or npcs:SpawnRoomTeam (area) == enemy then return -1 end
+		if not clearance:Area (area) then return -1 end
 		-- a link its body does not fit through, or that crosses a clip or a wall's end
-		if not IsValid(ladder) and (not WS.NavLinkCrossable(fromArea, area)
-			or not clearance:Link(fromArea, area)) then return -1 end
+		if not IsValid (ladder) and (not WS.NavLinkCrossable (fromArea, area)
+			or not clearance:Link (fromArea, area)) then return -1 end
 		local distance
-		if IsValid(ladder) then
-			distance = ladder:GetLength()
+		if IsValid (ladder) then
+			distance = ladder:GetLength ()
 		elseif length > 0 then
 			distance = length
 		else
-			distance = area:GetCenter():Distance(fromArea:GetCenter())
+			distance = area:GetCenter ():Distance (fromArea:GetCenter ())
 		end
-		local cost = distance + fromArea:GetCostSoFar()
-		local rise = fromArea:ComputeAdjacentConnectionHeightChange(area)
+		local cost = distance + fromArea:GetCostSoFar ()
+		local rise = fromArea:ComputeAdjacentConnectionHeightChange (area)
 		if rise > STEP_HEIGHT then
 			if rise > reach then return -1 end
 			cost = cost + JUMP_PENALTY * distance
@@ -206,13 +209,13 @@ function BotSoldier:RouteCost()
 	end
 end
 
-function BotSoldier:MoveTo(p, gait)
+function BotSoldier:MoveTo (p, gait)
 	if self.pin then return end
 	self.moveTarget = p
 	self.gait = gait or "run"
 end
 
-function BotSoldier:Release()
+function BotSoldier:Release ()
 	if self.pin then return end
 	self.moveTarget = nil
 	self.steer = nil
@@ -221,35 +224,35 @@ end
 
 -- A bench's pin (ns_bots_goto): sent to p at a run whatever its orders
 -- say, its route planned afresh, until unpinned (ns_bots_release).
-function BotSoldier:Pin(p)
+function BotSoldier:Pin (p)
 	self.pin = p
 	self.moveTarget, self.gait = p, "run"
 	-- the route it was on goes; the new one is planned once it has settled
-	self.walk, self.steer, self.nextPlan = nil, nil, CurTime() + SETTLE_DELAY
+	self.walk, self.steer, self.nextPlan = nil, nil, CurTime () + SETTLE_DELAY
 end
 
-function BotSoldier:Unpin()
+function BotSoldier:Unpin ()
 	self.pin = nil
 end
 
-function BotSoldier:Repath() self.nextPlan = math.min(self.nextPlan, CurTime() + REPATH_LEAST) end
+function BotSoldier:Repath () self.nextPlan = math.min (self.nextPlan, CurTime () + REPATH_LEAST) end
 
 -- Where to walk for goal (a point): itself on the mesh, else the nearest
 -- point of an area close to it, else the first point on the mesh back from
 -- it toward where it stands, not far back, else itself.
-function BotSoldier:MeshGoal(goal)
-	local to = ToVector(goal)
-	if OnMesh(to) then return goal end
-	local area = navmesh.GetNearestNavArea(to, false, OFF_MESH_NEAR, false, true)
-	if IsValid(area) then
-		local near = area:GetClosestPointOnArea(to)
-		if near:Distance(to) <= OFF_MESH_NEAR then return Point(near) end
+function BotSoldier:MeshGoal (goal)
+	local to = ToVector (goal)
+	if OnMesh (to) then return goal end
+	local area = navmesh.GetNearestNavArea (to, false, OFF_MESH_NEAR, false, true)
+	if IsValid (area) then
+		local near = area:GetClosestPointOnArea (to)
+		if near:Distance (to) <= OFF_MESH_NEAR then return Point (near) end
 	end
-	local from = self.ent:GetPos()
-	local length = from:Distance(to)
-	for along = OFF_MESH_STEP, math.min(length, OFF_MESH_BACK), OFF_MESH_STEP do
+	local from = self.ent:GetPos ()
+	local length = from:Distance (to)
+	for along = OFF_MESH_STEP, math.min (length, OFF_MESH_BACK), OFF_MESH_STEP do
 		local p = to + (from - to) * (along / length)
-		if OnMesh(p) then return Point(p) end
+		if OnMesh (p) then return Point (p) end
 	end
 	return goal
 end
@@ -258,69 +261,69 @@ end
 -- its way to its move target. A route is planned from where its navigator
 -- knows it stands (Path:Compute starts at the navigator's last known area),
 -- so not until the navigator has caught up with a body set down elsewhere.
-function BotSoldier:Steer(now)
-	local goal = self.moveTarget and self:MeshGoal(self.moveTarget)
-	local pos = Point(self.ent:GetPos())
-	if self.lookedFrom and Geometry.Distance(pos, self.lookedFrom) > TELEPORTED then
+function BotSoldier:Steer (now)
+	local goal = self.moveTarget and self:MeshGoal (self.moveTarget)
+	local pos = Point (self.ent:GetPos ())
+	if self.lookedFrom and Geometry.Distance (pos, self.lookedFrom) > TELEPORTED then
 		self.walk, self.nextPlan = nil, now + SETTLE_DELAY
 	end
 	self.lookedFrom = pos
 	-- no nearer its waypoint for a while (fallen off beneath its route,
 	-- wedged): planned anew from where it is
-	if self.walk and self.walk:Stalled(pos, now) then self.walk = nil end
+	if self.walk and self.walk:Stalled (pos, now) then self.walk = nil end
 	if not goal then
 		-- nowhere to be: aside from a teammate standing on it, unless it has a fight to see to
-		self.steer = not self:HasEnemy() and self:Spread(self.ent:GetPos()) or nil
+		self.steer = not self:HasEnemy () and self:Spread (self.ent:GetPos ()) or nil
 		return
 	end
-	if now >= self.nextPlan and self:Navigator():Settled() then
-		self.nextPlan = now + REPATH_LEAST + math.random() * (REPATH_MOST - REPATH_LEAST)
-		local route, found = self:Navigator():PlanRoute(ToVector(goal), self:RouteCost())
+	if now >= self.nextPlan and self:Navigator ():Settled () then
+		self.nextPlan = now + REPATH_LEAST + math.random () * (REPATH_MOST - REPATH_LEAST)
+		local route, found = self:Navigator ():PlanRoute (ToVector (goal), self:RouteCost ())
 		local points = {}
-		for i, v in ipairs(route or {}) do points[i] = Point(v) end
+		for i, v in ipairs (route or {}) do points [i] = Point (v) end
 		-- each point where its body fits, then its turns pushed out off the inside walls
 		-- until its body passes them
-		points = self:StandOnRoute(points)
+		points = self:StandOnRoute (points)
 		-- (the map's, not who stands there now)
-		points = Locomotion.RoundCorners(points, function(a, b) return self:WalkClear(ToVector(a), ToVector(b), Unmoving) end)
+		points = Locomotion.RoundCorners (points, function (a, b) return self:WalkClear (ToVector (a), ToVector (b), Unmoving) end)
 		-- the engine's trivial path, straight from its start to the goal, is a route when it
 		-- found one (both in one area); where it found no way it is none
-		if route and not found and RouteWalk.Trivial(points, pos, DIRECT_RANGE) then route = nil end
-		self.walk = route and RouteWalk.New(points) or nil
+		if route and not found and RouteWalk.Trivial (points, pos, DIRECT_RANGE) then route = nil end
+		self.walk = route and RouteWalk.New (points) or nil
 	end
-	if self:RangeTo(goal) <= DIRECT_RANGE and self:CanWalkTo(goal) then
+	if self:RangeTo (goal) <= DIRECT_RANGE and self:CanWalkTo (goal) then
 		self.steer = goal
 		return
 	end
 	-- A failed route does not make a direct walk safe.
 	local walk = self.walk
-	local at = self.ent:GetPos()
-	local point = walk and walk:Next(Point(at), function(q) return self:CanWalkTo(q) end)
-	self.steer = point and self:SteerOn(at, point) or nil
+	local at = self.ent:GetPos ()
+	local point = walk and walk:Next (Point (at), function (q) return self:CanWalkTo (q) end)
+	self.steer = point and self:SteerOn (at, point) or nil
 end
 
-function BotSoldier:Watch(p)
-	self.look = p and ToVector(p) or nil
+function BotSoldier:Watch (p)
+	self.look = p and ToVector (p) or nil
 end
 
 -- Its eyes go to p a while, over where Watch points them (Looking).
-function BotSoldier:LookAt(p, seconds, priority)
-	self.glance, self.glanceUntil = ToVector(p), CurTime() + seconds
+function BotSoldier:LookAt (p, seconds, priority)
+	self.glance, self.glanceUntil = ToVector (p), CurTime () + seconds
 	self.glancePriority = priority == true
 end
 
 -- It stands still for seconds (a taunt played whole): no steering while it
 -- lasts (Still).
-function BotSoldier:HoldStill(seconds)
-	self.stillUntil = math.max(self.stillUntil or 0, CurTime() + seconds)
+function BotSoldier:HoldStill (seconds)
+	self.stillUntil = math.max (self.stillUntil or 0, CurTime () + seconds)
 end
 
-function BotSoldier:Still(now)
+function BotSoldier:Still (now)
 	return now < (self.stillUntil or 0)
 end
 
 -- Where its eyes go with no enemy: a glance still held, else what it watches.
-function BotSoldier:Looking(now)
+function BotSoldier:Looking (now)
 	if self.glance and now < self.glanceUntil then return self.glance end
 	return self.look
 end
@@ -328,36 +331,38 @@ end
 -- The box its walks and hops are swept with: its own player hull's width
 -- (a TF2 player's 48; Map's 26-wide walk sweep passes lines its shoulders
 -- catch on door frames), WALK_MAXS high above WALK_LIFT.
-function BotSoldier:Sweep()
-	local mn, mx = self.ent:GetHull()
-	local mins, maxs = Movement.Sweep(mn, mx, WALK_MAXS.z)
-	return ToVector(mins), ToVector(maxs)
+function BotSoldier:Sweep ()
+	local mn, mx = self.ent:GetHull ()
+	local mins, maxs = Movement.Sweep (mn, mx, WALK_MAXS.z)
+	return ToVector (mins), ToVector (maxs)
 end
 
 -- A clear walk under player movement's mask: what stops a player stops it,
 -- and a floor all along (RouteWalk.Footing), within a step above or two
 -- below the line: a line beside a beam is clear of everything, over air.
-function BotSoldier:CanWalkTo(p)
-	return self:WalkClear(self.ent:GetPos(), ToVector(p))
+function BotSoldier:CanWalkTo (p)
+	return self:WalkClear (self.ent:GetPos (), ToVector (p))
 end
 
 -- The same for a walk from `from` to `to` (Vectors), wherever it stands;
 -- filter, a trace filter, in place of its own (only itself).
-function BotSoldier:WalkClear(from, to, filter)
-	if math.abs(to.z - from.z) > WALK_MAX_RISE then return false end
-	local mins, maxs = self:Sweep()
-	local tr = util.TraceHull({
-		start = from + WALK_LIFT,
-		endpos = to + WALK_LIFT,
-		mins = mins,
-		maxs = maxs,
-		mask = MASK_PLAYERSOLID,
-		filter = filter or self.ent,
-	})
+function BotSoldier:WalkClear (from, to, filter)
+	if math.abs (to.z - from.z) > WALK_MAX_RISE then return false end
+	local mins, maxs = self:Sweep ()
+	local tr = util.TraceHull (
+		{
+			start = from + WALK_LIFT,
+			endpos = to + WALK_LIFT,
+			mins = mins,
+			maxs = maxs,
+			mask = MASK_PLAYERSOLID,
+			filter = filter or self.ent
+		}
+	)
 	if tr.Hit then return false end
-	for _, q in ipairs(RouteWalk.Footing(Point(from), Point(to))) do
-		local at = ToVector(q)
-		local floor = util.TraceLine({ start = at + FOOTING_ABOVE, endpos = at - FOOTING_BELOW, mask = MASK_PLAYERSOLID,
+	for _, q in ipairs (RouteWalk.Footing (Point (from), Point (to))) do
+		local at = ToVector (q)
+		local floor = util.TraceLine ({ start = at + FOOTING_ABOVE, endpos = at - FOOTING_BELOW, mask = MASK_PLAYERSOLID,
 			filter = self.ent })
 		if not floor.Hit then return false end
 	end
@@ -366,40 +371,40 @@ end
 
 -- What stands between me and p for a player's movement; a player passes
 -- nothing that stops it.
-function BotSoldier:Blocker(p)
+function BotSoldier:Blocker (p)
 	local controller = self.controller
-	local from, to = self.ent:GetPos() + WALK_LIFT, ToVector(p) + WALK_LIFT
-	local function NotSoldier(hit) return controller.soldiers[hit] == nil end
-	local mins, maxs = self:Sweep()
-	local hit = util.TraceHull({ start = from, endpos = to, mins = mins, maxs = maxs, mask = MASK_PLAYERSOLID, filter = NotSoldier })
+	local from, to = self.ent:GetPos () + WALK_LIFT, ToVector (p) + WALK_LIFT
+	local function NotSoldier (hit) return controller.soldiers [hit] == nil end
+	local mins, maxs = self:Sweep ()
+	local hit = util.TraceHull ({ start = from, endpos = to, mins = mins, maxs = maxs, mask = MASK_PLAYERSOLID, filter = NotSoldier })
 	if not hit.Hit then return nil, false end
-	return hit.HitWorld and game.GetWorld() or hit.Entity, false
+	return hit.HitWorld and game.GetWorld () or hit.Entity, false
 end
 
 -- Where my movement heads now for p: the point my route makes for, else p.
-function BotSoldier:Heading(p) return ToVector(self.steer or p) end
+function BotSoldier:Heading (p) return ToVector (self.steer or p) end
 
 -- A hop: it jumps (a crouch jump) on its way to p, as a player would, where
 -- a jump clears what stands between (a hull swept at the jump's height,
 -- under player movement's mask), and not again within HOP_RETRY: a hop
 -- that got it nowhere lets the orders step aside and plan again.
-function BotSoldier:Hop(p)
-	local now = CurTime()
+function BotSoldier:Hop (p)
+	local now = CurTime ()
 	if now - (self.hoppedAt or -math.huge) < HOP_RETRY then return false end
-	local from, to = self.ent:GetPos() + HOP_CLEAR, ToVector(p) + HOP_CLEAR
-	local mins, maxs = self:Sweep()
-	local tr = util.TraceHull({ start = from, endpos = to, mins = mins, maxs = maxs, mask = MASK_PLAYERSOLID, filter = self.ent })
+	local from, to = self.ent:GetPos () + HOP_CLEAR, ToVector (p) + HOP_CLEAR
+	local mins, maxs = self:Sweep ()
+	local tr = util.TraceHull ({ start = from, endpos = to, mins = mins, maxs = maxs, mask = MASK_PLAYERSOLID, filter = self.ent })
 	if tr.Hit then return false end
 	self.hoppedAt = now
 	self.hopUntil = now + HOP_WISH
 	return true
 end
 
-function BotSoldier:Hopping(now) return now < self.hopUntil end
+function BotSoldier:Hopping (now) return now < self.hopUntil end
 
 -- A player's body neither sits on the cart nor strikes poses.
-function BotSoldier:Sit() return false end
-function BotSoldier:Pose() return nil end
-function BotSoldier:Unpose() end
+function BotSoldier:Sit () return false end
+function BotSoldier:Pose () return nil end
+function BotSoldier:Unpose () end
 
 return BotSoldier

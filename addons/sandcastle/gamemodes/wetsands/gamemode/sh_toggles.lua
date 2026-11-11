@@ -19,73 +19,73 @@
 -- live with what they switch (ws/sh_permissions.lua, ws/sh_gameplay.lua).
 local Economy = gameplay.economy
 local PlayMode = system.play_mode
-local FixedSpread = WS.require("games.gameplay.combat.fixed_spread")
-local BulletSteps = WS.require("games.gameplay.combat.bullet_steps")
+local FixedSpread = WS.require ("games.gameplay.combat.fixed_spread")
+local BulletSteps = WS.require ("games.gameplay.combat.bullet_steps")
 
 local FLAGS = { FCVAR_ARCHIVE, FCVAR_REPLICATED, FCVAR_NOTIFY }
-local ECONOMY = CreateConVar("mp_economy_enabled", "0", FLAGS, -- off until the economy is done
+local ECONOMY = CreateConVar ("mp_economy_enabled", "0", FLAGS, -- off until the economy is done
 	"0: no money and no store; everyone spawns with the starter loadout", 0, 1)
-local CREDIT = CreateConVar("mp_economy_credit_enabled", "0", FLAGS,
+local CREDIT = CreateConVar ("mp_economy_credit_enabled", "0", FLAGS,
 	"1: purchases may go below $0 in every mode, as they always may in Sandbox mode", 0, 1)
-local SOLDIERS = CreateConVar("ns_soldiers_enabled", "1", FLAGS,
+local SOLDIERS = CreateConVar ("ns_soldiers_enabled", "1", FLAGS,
 	"0: no NextSoldier soldiers; the AI war cannot start, and one running ends", 0, 1)
-local CRITS = CreateConVar("tf_weapon_criticals", "1", FLAGS,
+local CRITS = CreateConVar ("tf_weapon_criticals", "1", FLAGS,
 	"0: no critical hits from any blast or projectile", 0, 1)
-local FRIENDLY_FIRE = CreateConVar("mp_friendlyfire", "0", FLAGS,
+local FRIENDLY_FIRE = CreateConVar ("mp_friendlyfire", "0", FLAGS,
 	"1: players and soldiers can hurt their teammates", 0, 1)
-local FIXED = CreateConVar("tf_use_fixed_weaponspreads", "0", FLAGS,
+local FIXED = CreateConVar ("tf_use_fixed_weaponspreads", "0", FLAGS,
 	"1: a multi-pellet shot's pellets land in a fixed pattern, not at random", 0, 1)
 
-function WS.EconomyEnabled()
-	return ECONOMY:GetBool()
+function WS.EconomyEnabled ()
+	return ECONOMY:GetBool ()
 end
 
-function WS.SoldiersEnabled()
-	return SOLDIERS:GetBool()
+function WS.SoldiersEnabled ()
+	return SOLDIERS:GetBool ()
 end
 
-function WS.FriendlyFire()
-	return FRIENDLY_FIRE:GetBool()
+function WS.FriendlyFire ()
+	return FRIENDLY_FIRE:GetBool ()
 end
 
-function WS.CritsEnabled()
-	return CRITS:GetBool()
+function WS.CritsEnabled ()
+	return CRITS:GetBool ()
 end
 
 -- How far below zero a purchase may take a balance now.
-function WS.CreditFloor()
-	return Economy.Floor(CREDIT:GetBool(), PlayMode.IsSandbox(WS.PlayMode()))
+function WS.CreditFloor ()
+	return Economy.Floor (CREDIT:GetBool (), PlayMode.IsSandbox (WS.PlayMode ()))
 end
 
 -- Whether balance covers price with the credit allowed now.
-function WS.Affords(balance, price)
-	return Economy.Affords(balance, price, WS.CreditFloor())
+function WS.Affords (balance, price)
+	return Economy.Affords (balance, price, WS.CreditFloor ())
 end
 
 -- The pellets of a player's multi-pellet shot, fired one by one along the
 -- fixed pattern, past the bullet steps (ws/sh_bullets.lua); the original
 -- shot is suppressed.
-WS.BulletSteps:Add("ws_fixed_spread", BulletSteps.PELLETS, function(ent, data)
-	if not FIXED:GetBool() or not ent:IsPlayer() or (data.Num or 1) <= 1 then return end
+WS.BulletSteps:Add ("ws_fixed_spread", BulletSteps.PELLETS, function (ent, data)
+	if not FIXED:GetBool () or not ent:IsPlayer () or (data.Num or 1) <= 1 then return end
 	local spread = data.Spread or vector_origin
-	local ang = data.Dir:Angle()
-	local right, up = ang:Right(), ang:Up()
+	local ang = data.Dir:Angle ()
+	local right, up = ang:Right (), ang:Up ()
 	for i = 1, data.Num do
-		local x, y = FixedSpread.Offset(i)
-		local pellet = table.Copy(data)
+		local x, y = FixedSpread.Offset (i)
+		local pellet = table.Copy (data)
 		pellet.Num = 1
 		pellet.Spread = vector_origin
-		pellet.Dir = (data.Dir + right * (x * spread.x) + up * (y * spread.y)):GetNormalized()
-		WS.FireBulletsAgain(ent, pellet)
+		pellet.Dir = (data.Dir + right * (x * spread.x) + up * (y * spread.y)):GetNormalized ()
+		WS.FireBulletsAgain (ent, pellet)
 	end
 	return BulletSteps.SUPPRESSED
 end)
 
 if SERVER then
-	cvars.AddChangeCallback("ns_soldiers_enabled", function(_, _, new)
-		if new == "0" and WS.Match:IsRunning(PlayMode.AIWAR) then
-			local ok, why = WS.Feature("aiwar"):End()
-			if not ok then print("NextSoldier: " .. why) end
+	cvars.AddChangeCallback ("ns_soldiers_enabled", function (_, _, new)
+		if new == "0" and WS.Match:IsRunning (PlayMode.AIWAR) then
+			local ok, why = WS.Feature ("aiwar"):End ()
+			if not ok then print ("NextSoldier: " .. why) end
 		end
 	end, "ws_toggles")
 end

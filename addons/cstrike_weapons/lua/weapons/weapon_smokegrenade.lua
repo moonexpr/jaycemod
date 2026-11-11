@@ -1,4 +1,4 @@
-AddCSLuaFile()
+AddCSLuaFile ()
 
 -- weapon_smokegrenade: a standard CS:S SWEP; its base owns shared behavior.
 
@@ -9,8 +9,8 @@ SWEP.Category = "Counter-Strike: Source"
 SWEP.Spawnable = true
 SWEP.Slot = 3
 SWEP.SlotPos = 3
-SWEP.ViewModel = Model("models/weapons/cstrike/c_eq_smokegrenade.mdl")
-SWEP.WorldModel = Model("models/weapons/w_eq_smokegrenade.mdl")
+SWEP.ViewModel = Model ("models/weapons/cstrike/c_eq_smokegrenade.mdl")
+SWEP.WorldModel = Model ("models/weapons/w_eq_smokegrenade.mdl")
 SWEP.ViewModelFOV = 54
 SWEP.ViewModelFlip = false
 SWEP.UseHands = true

@@ -10,42 +10,43 @@
 -- This is the Lua twin, which clients run; a server with native/foundation
 -- has the native one in its place, which keeps this contract.
 local pairs, setmetatable = pairs, setmetatable
-module(...)
+module (...)
 
 local Leases = {}
 Leases.__index = Leases
 
-function New()
-	return setmetatable({ held = {} }, Leases) -- key -> { holder, expires }
+function New ()
+	return setmetatable ({ held = {} }, Leases) -- key -> { holder, expires }
 end
 
-function Leases:Holder(key, now)
-	local lease = self.held[key]
+function Leases:Holder (key, now)
+	local lease = self.held [key]
 	if lease and now < lease.expires then return lease.holder end
 	return nil
 end
 
-function Leases:FreeFor(key, holder, now)
-	local other = self:Holder(key, now)
+function Leases:FreeFor (key, holder, now)
+	local other = self:Holder (key, now)
 	return other == nil or other == holder
 end
 
-function Leases:Take(key, holder, now, term)
-	if not self:FreeFor(key, holder, now) then return false end
-	self.held[key] = {
+function Leases:Take (key, holder, now, term)
+	if not self:FreeFor (key, holder, now) then return false end
+	self.held [key] =
+	{
 		holder = holder,
-		expires = now + term,
+		expires = now + term
 	}
 	return true
 end
 
-function Leases:Release(key, holder)
-	local lease = self.held[key]
-	if lease and lease.holder == holder then self.held[key] = nil end
+function Leases:Release (key, holder)
+	local lease = self.held [key]
+	if lease and lease.holder == holder then self.held [key] = nil end
 end
 
-function Leases:ReleaseAll(holder)
-	for key, lease in pairs(self.held) do
-		if lease.holder == holder then self.held[key] = nil end
+function Leases:ReleaseAll (holder)
+	for key, lease in pairs (self.held) do
+		if lease.holder == holder then self.held [key] = nil end
 	end
 end

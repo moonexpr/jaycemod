@@ -10,54 +10,55 @@ local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 local GAME_TEAMS = { RED, BLUE }
 local GOAL_KEY, ROLE_KEY = "ws_round_goal_", "ws_round_role_"
 
-function Controller:Snapshot(now, refs)
+function Controller:Snapshot (now, refs)
 	local timers = {}
-	for ent, timer in pairs(self.timers) do
-		if IsValid(ent) then timers[refs:Encode(ent)] = timer:Snapshot(now) end
+	for ent, timer in pairs (self.timers) do
+		if IsValid (ent) then timers [refs:Encode (ent)] = timer:Snapshot (now) end
 	end
-	local snapshot = {
+	local snapshot =
+	{
 		active = self.rounds,
-		round = self.round:Snapshot(now),
+		round = self.round:Snapshot (now),
 		timers = timers,
-		hudTimer = IsValid(self.hudTimer) and refs:Encode(self.hudTimer) or nil,
+		hudTimer = IsValid (self.hudTimer) and refs:Encode (self.hudTimer) or nil,
 		scores = {},
 		goals = {},
-		roles = {},
+		roles = {}
 	}
-	for _, t in ipairs(GAME_TEAMS) do
-		snapshot.scores[t] = team.GetScore(t)
-		snapshot.goals[t] = GetGlobal2String(GOAL_KEY .. t, "")
-		snapshot.roles[t] = GetGlobal2Int(ROLE_KEY .. t, 0)
+	for _, t in ipairs (GAME_TEAMS) do
+		snapshot.scores [t] = team.GetScore (t)
+		snapshot.goals [t] = GetGlobal2String (GOAL_KEY .. t, "")
+		snapshot.roles [t] = GetGlobal2Int (ROLE_KEY .. t, 0)
 	end
 	return snapshot
 end
 
 -- The state put back in place; returns { missing = { keys } }.
-function Controller:Restore(snapshot, now, refs)
+function Controller:Restore (snapshot, now, refs)
 	local missing = {}
 	self.rounds = snapshot.active
-	self.round:Restore(snapshot.round, now)
-	for key, data in pairs(snapshot.timers) do
-		local ent = refs:Decode(key)
-		if IsValid(ent) and self.timers[ent] then
-			self.timers[ent]:Restore(data, now)
+	self.round:Restore (snapshot.round, now)
+	for key, data in pairs (snapshot.timers) do
+		local ent = refs:Decode (key)
+		if IsValid (ent) and self.timers [ent] then
+			self.timers [ent]:Restore (data, now)
 		else
-			missing[#missing + 1] = key
+			missing [#missing + 1] = key
 		end
 	end
-	local hud = snapshot.hudTimer and refs:Decode(snapshot.hudTimer)
-	if IsValid(hud) and self.timers[hud] then
-		self:SetActiveTimer(hud)
+	local hud = snapshot.hudTimer and refs:Decode (snapshot.hudTimer)
+	if IsValid (hud) and self.timers [hud] then
+		self:SetActiveTimer (hud)
 	elseif snapshot.hudTimer then
-		missing[#missing + 1] = snapshot.hudTimer
+		missing [#missing + 1] = snapshot.hudTimer
 	end
-	for _, t in ipairs(GAME_TEAMS) do
-		team.SetScore(t, snapshot.scores[t])
-		SetGlobal2String(GOAL_KEY .. t, snapshot.goals[t])
-		SetGlobal2Int(ROLE_KEY .. t, snapshot.roles[t])
+	for _, t in ipairs (GAME_TEAMS) do
+		team.SetScore (t, snapshot.scores [t])
+		SetGlobal2String (GOAL_KEY .. t, snapshot.goals [t])
+		SetGlobal2Int (ROLE_KEY .. t, snapshot.roles [t])
 	end
-	PublishState()
-	self:PublishRoundLimits()
-	self:PublishHudTimer(now)
+	PublishState ()
+	self:PublishRoundLimits ()
+	self:PublishHudTimer (now)
 	return { missing = missing }
 end

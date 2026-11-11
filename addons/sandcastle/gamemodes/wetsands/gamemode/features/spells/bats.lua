@@ -4,9 +4,9 @@
 -- then a blast of 10.
 local require = require
 local Teams = gameplay.teams
-local Spells = require("features.spells.model")
-local SpellSet = require("features.spells.halloween")
-module(...)
+local Spells = require ("features.spells.model")
+local SpellSet = require ("features.spells.halloween")
+module (...)
 
 INDEX = SpellSet.SPELL_BATS
 PROJECTILE = "tf_projectile_spellbats"
@@ -20,57 +20,61 @@ BLEED_TIME = 3
 DAMAGE = 40
 EXPLOSION = "ExplosionCore_MidAir" -- TE_TFExplosion's pipebomb blast
 SOUND = "Halloween.spell_bat_impact"
-IMPACT_PARTICLES = {
+IMPACT_PARTICLES =
+{
 	[Teams.RED] = "spell_batball_impact_red",
-	[Teams.BLUE] = "spell_batball_impact_blue",
+	[Teams.BLUE] = "spell_batball_impact_blue"
 }
-SWARM = {
+SWARM =
+{
 	[Teams.RED] = "spell_batball_red",
-	[Teams.BLUE] = "spell_batball_blue",
+	[Teams.BLUE] = "spell_batball_blue"
 }
 
-USE = {
+USE =
+{
 	kind = Spells.USE_ATTACK,
 	range = SpellSet.THROW_RANGE,
 	radius = RADIUS,
 	needsLineOfSight = true,
-	selfOnly = false,
+	selfOnly = false
 }
 
-function Cast(caster)
-	SpellSet.CastWheel(caster)
-	return SpellSet.Toss(caster, _M)
+function Cast (caster)
+	SpellSet.CastWheel (caster)
+	return SpellSet.Toss (caster, _M)
 end
 
 -- ExplodeEffectOnTarget
-local function OnTarget(caster, impact, target)
-	if caster:TeamOf(target) == impact.team or SpellSet.Spared(caster, target) then return end
-	local away = (caster:Center(target) - impact.position):GetNormalized()
-	if caster:IsPlayer(target) then
-		caster:Stun(target, STUN_TIME, STUN_SLOW)
-		caster:Push(target, away * PUSH + caster:Vector(0, 0, LIFT))
-		caster:AttachParticle(SWARM[impact.team], target)
-		caster:AddCond(target, SpellSet.COND.BLEEDING, BLEED_TIME)
+local function OnTarget (caster, impact, target)
+	if caster:TeamOf (target) == impact.team or SpellSet.Spared (caster, target) then return end
+	local away = (caster:Center (target) - impact.position):GetNormalized ()
+	if caster:IsPlayer (target) then
+		caster:Stun (target, STUN_TIME, STUN_SLOW)
+		caster:Push (target, away * PUSH + caster:Vector (0, 0, LIFT))
+		caster:AttachParticle (SWARM [impact.team], target)
+		caster:AddCond (target, SpellSet.COND.BLEEDING, BLEED_TIME)
 	else
-		caster:Push(target, away * NPC_PUSH)
+		caster:Push (target, away * NPC_PUSH)
 	end
-	caster:Damage(target, DAMAGE, SpellSet.DMG_BURN, impact.projectile)
+	caster:Damage (target, DAMAGE, SpellSet.DMG_BURN, impact.projectile)
 end
 
-local function Initial(caster, impact)
-	caster:Particle(EXPLOSION, impact.position)
+local function Initial (caster, impact)
+	caster:Particle (EXPLOSION, impact.position)
 	return true
 end
 
-local JAR = {
+local JAR =
+{
 	radius = RADIUS,
 	Initial = Initial,
 	OnTarget = OnTarget,
 	particles = IMPACT_PARTICLES,
 	sound = SOUND,
-	blast = true,
+	blast = true
 }
 
-function Impact(caster, impact)
-	SpellSet.JarImpact(caster, impact, JAR)
+function Impact (caster, impact)
+	SpellSet.JarImpact (caster, impact, JAR)
 end

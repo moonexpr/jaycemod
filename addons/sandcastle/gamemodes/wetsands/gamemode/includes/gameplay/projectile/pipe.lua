@@ -6,14 +6,14 @@
 -- Config: the grenade's { fuse, explodeOnTouch } plus { damage, crit, team,
 -- attacker, radius } and ws_projectile's { model, velocity, spin }.
 local require = require
-local Grenade = require("games.gameplay.projectile.grenade")
-module(...)
+local Grenade = require ("games.gameplay.projectile.grenade")
+module (...)
 
 GRAVITY = Grenade.GRAVITY
 MODEL = "models/weapons/w_models/w_grenade_grenadelauncher.mdl" -- TF_WEAPON_PIPEGRENADE_MODEL
 
-function NewState(config, now)
-	local state = Grenade.NewState(config, now)
+function NewState (config, now)
+	local state = Grenade.NewState (config, now)
 	state.damage = config.damage
 	state.crit = config.crit == true
 	state.team = config.team
@@ -27,8 +27,9 @@ Tick = Grenade.Tick
 
 -- The games.gameplay.combat Explosion config for a blast at origin. The binding
 -- adds the inflictor.
-function Blast(state, origin)
-	return {
+function Blast (state, origin)
+	return
+	{
 		origin = origin,
 		radius = state.radius,
 		damage = state.damage,
@@ -36,6 +37,6 @@ function Blast(state, origin)
 		attacker = state.attacker,
 		halfFalloff = false,
 		forceFriendlyFire = false,
-		crit = state.crit,
+		crit = state.crit
 	}
 end

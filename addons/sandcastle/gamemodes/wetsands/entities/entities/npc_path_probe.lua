@@ -15,17 +15,17 @@ ENT.Factions = {}
 ENT.DefaultRelationship = D_NU
 ENT.RagdollOnDeath = false
 
-if SERVER then AddCSLuaFile() end
+if SERVER then AddCSLuaFile () end
 
-WS.WarSoldier(ENT)
+WS.WarSoldier (ENT)
 
 if SERVER then
 	local SoldierInitialize = ENT.CustomInitialize
 
-	function ENT:CustomInitialize()
-		SoldierInitialize(self)
-		self:SetNoTarget(true)
-		self:SetCollisionGroup(COLLISION_GROUP_DEBRIS_TRIGGER) -- the world alone, yet a spawn door's trigger sees it
+	function ENT:CustomInitialize ()
+		SoldierInitialize (self)
+		self:SetNoTarget (true)
+		self:SetCollisionGroup (COLLISION_GROUP_DEBRIS_TRIGGER) -- the world alone, yet a spawn door's trigger sees it
 		self.NSRun = true
 	end
 end

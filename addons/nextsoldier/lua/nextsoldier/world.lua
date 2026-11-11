@@ -2,7 +2,7 @@
 -- doors, portal and nav_gaps; here, which clips it stands on and where a
 -- solid brush stands in the mesh.
 local abs, ipairs = math.abs, ipairs
-module("nextsoldier.world")
+module ("nextsoldier.world")
 
 -- Which clip brushes the AI war's soldiers stand on. Maps made for players
 -- (TF2's, CS:S's) close gaps and drops with player clips (CONTENTS_PLAYERCLIP)
@@ -13,17 +13,18 @@ module("nextsoldier.world")
 -- a players' map by its entities.
 CLIP_PLAYER, CLIP_NPC = "player", "npc"
 
-local PLAYER_MAP_CLASSES = {
+local PLAYER_MAP_CLASSES =
+{
 	tf_gamerules = true,
 	info_player_teamspawn = true, -- TF2's team spawns
 	info_player_terrorist = true, -- CS:S's
-	info_player_counterterrorist = true,
+	info_player_counterterrorist = true
 }
 
 -- The clips for a map with entities of these classes (a list of names).
-function ClipFor(classes)
-	for _, class in ipairs(classes) do
-		if PLAYER_MAP_CLASSES[class] then return CLIP_PLAYER end
+function ClipFor (classes)
+	for _, class in ipairs (classes) do
+		if PLAYER_MAP_CLASSES [class] then return CLIP_PLAYER end
 	end
 	return CLIP_NPC
 end
@@ -43,12 +44,12 @@ local LEVEL_TOLERANCE = 1 -- corners this close in height are level
 -- Corners are { x, y, z }; nw is the area's lowest x and y (its extent's lo),
 -- ne has the highest x, sw the highest y, se both. Returns the sweep: from, to
 -- (corner points) and the hull's mins, maxs (offsets from the swept point).
-function BrushSweep(nw, ne, se, sw, sizeX, sizeY)
+function BrushSweep (nw, ne, se, sw, sizeX, sizeY)
 	local from, to, maxs
-	if abs(nw.z - ne.z) < LEVEL_TOLERANCE then
+	if abs (nw.z - ne.z) < LEVEL_TOLERANCE then
 		-- level along x, perhaps sloping along y: a hull as wide as the area, swept south
 		from, to, maxs = nw, sw, { x = sizeX, y = 0, z = CROUCH_HEIGHT }
-	elseif abs(nw.z - sw.z) < LEVEL_TOLERANCE then
+	elseif abs (nw.z - sw.z) < LEVEL_TOLERANCE then
 		-- level along y, perhaps sloping along x: swept east
 		from, to, maxs = nw, ne, { x = 0, y = sizeY, z = CROUCH_HEIGHT }
 	else

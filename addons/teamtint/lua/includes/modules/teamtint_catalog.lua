@@ -13,7 +13,7 @@
 -- player model's (models/player/...). Which of them carry a mask is
 -- teamtint_census' to say, not this file's: nothing here assumes it.
 local ipairs, lower = ipairs, string.lower
-module("teamtint_catalog")
+module ("teamtint_catalog")
 
 -- How a material is themed (Strategy).
 PROXY = "proxy" -- the team colour through its tint mask ($color2)
@@ -23,7 +23,8 @@ NONE = "none" -- left as it is
 
 -- tint: whether it takes a team colour; a class that does not still takes
 -- the shading.
-CLASSES = {
+CLASSES =
+{
 	armor = { tint = true },
 	cloth = { tint = true },
 	gear = { tint = true },
@@ -31,23 +32,25 @@ CLASSES = {
 	skin = { tint = false },
 	hair = { tint = false },
 	eyes = { tint = false, untouched = true },
-	teeth = { tint = false, untouched = true },
+	teeth = { tint = false, untouched = true }
 }
 
 -- Whose a material is, by its folder, after models/player/ is read as models/.
-FOLDERS = {
+FOLDERS =
+{
 	{ pattern = "^models/combine_soldier/", class = "armor" },
 	{ pattern = "^models/combine_super_soldier/", class = "armor" },
 	{ pattern = "^models/police/", class = "armor" },
 	{ pattern = "^models/humans/", class = "cloth" },
 	{ pattern = "^models/alyx/", class = "cloth" },
 	{ pattern = "^models/barney/", class = "cloth" },
-	{ pattern = "^models/vortigaunt/", class = "hide" },
+	{ pattern = "^models/vortigaunt/", class = "hide" }
 }
 
 -- What a material covers, by a part of its name; the first that matches
 -- wins over its folder's class.
-PARTS = {
+PARTS =
+{
 	{ pattern = "eyeball", class = "eyes" },
 	{ pattern = "pupil", class = "eyes" },
 	{ pattern = "cornea", class = "eyes" },
@@ -56,31 +59,31 @@ PARTS = {
 	{ pattern = "tongue", class = "teeth" },
 	{ pattern = "face", class = "skin" },
 	{ pattern = "hand", class = "skin" },
-	{ pattern = "hair", class = "hair" },
+	{ pattern = "hair", class = "hair" }
 }
 
 -- A path as the catalog compares it: lower case, forward slashes, without
 -- materials/ or .vmt.
-function Normalize(path)
-	path = lower(path):gsub("\\", "/")
-	return (path:gsub("^materials/", ""):gsub("%.vmt$", ""))
+function Normalize (path)
+	path = lower (path):gsub ("\\", "/")
+	return (path:gsub ("^materials/", ""):gsub ("%.vmt$", ""))
 end
 
 -- The rule a material falls under ({ pattern, class }), or nil for one in
 -- no folder of the catalog's.
-function Classify(path)
-	path = Normalize(path):gsub("^models/player/", "models/")
+function Classify (path)
+	path = Normalize (path):gsub ("^models/player/", "models/")
 	local folder
-	for _, rule in ipairs(FOLDERS) do
-		if path:find(rule.pattern) then
+	for _, rule in ipairs (FOLDERS) do
+		if path:find (rule.pattern) then
 			folder = rule
 			break
 		end
 	end
 	if not folder then return nil end
-	local name = path:match("[^/]*$")
-	for _, rule in ipairs(PARTS) do
-		if name:find(rule.pattern, 1, true) then return rule end
+	local name = path:match ("[^/]*$")
+	for _, rule in ipairs (PARTS) do
+		if name:find (rule.pattern, 1, true) then return rule end
 	end
 	return folder
 end
@@ -88,10 +91,10 @@ end
 -- How a material of class is themed, from its facts: shader (its
 -- IMaterial:GetShader), tintMask (it has $blendtintbybasealpha), baked (a
 -- team texture exists for its base texture).
-function Strategy(class, facts)
-	local kind = CLASSES[class]
+function Strategy (class, facts)
+	local kind = CLASSES [class]
 	if not kind or kind.untouched then return NONE end
-	if not (facts.shader or ""):find("^VertexLitGeneric") then return NONE end
+	if not (facts.shader or ""):find ("^VertexLitGeneric") then return NONE end
 	if not kind.tint then return SHADE end
 	if facts.tintMask then return PROXY end
 	if facts.baked then return BAKED end
@@ -100,7 +103,7 @@ end
 
 -- The texture baked for team ("red", "blu") from a base texture, or nil for
 -- no team.
-function BakedTexture(team, base)
+function BakedTexture (team, base)
 	if team ~= "red" and team ~= "blu" then return nil end
-	return "teamtint/" .. team .. "/" .. Normalize(base)
+	return "teamtint/" .. team .. "/" .. Normalize (base)
 end

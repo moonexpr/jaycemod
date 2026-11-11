@@ -10,7 +10,7 @@
 -- with Configure{ tier, dropped = true, velocity } before Spawn: it is
 -- thrown (CTFPowerup::DropSingleInstance), is taken once, and is gone after
 -- TF_POWERUP_LIFETIME.
-AddCSLuaFile()
+AddCSLuaFile ()
 
 ENT.Type = "anim"
 ENT.Base = "ws_pickup_base"
@@ -19,7 +19,7 @@ ENT.Model = "models/props_halloween/hwn_spellbook_upright.mdl"
 
 if CLIENT then return end
 
-local Base = baseclass.Get("ws_pickup_base")
+local Base = baseclass.Get ("ws_pickup_base")
 
 local MAJOR_MODEL = "models/props_halloween/hwn_spellbook_upright_major.mdl"
 local SOUND = "Halloween.spell_pickup"
@@ -30,15 +30,15 @@ local DROPPED_LIFETIME = 30 -- TF_POWERUP_LIFETIME
 -- FIELD_INTEGER keyvalues read as atoi does: a non-number is 0.
 local ATOI_FALLBACK = 0
 
-function ENT:KeyValue(key, value)
-	if string.lower(key) == "tier" then
-		self.tier = math.floor(tonumber(value) or ATOI_FALLBACK)
+function ENT:KeyValue (key, value)
+	if string.lower (key) == "tier" then
+		self.tier = math.floor (tonumber (value) or ATOI_FALLBACK)
 		return
 	end
-	Base.KeyValue(self, key, value)
+	Base.KeyValue (self, key, value)
 end
 
-function ENT:Configure(config)
+function ENT:Configure (config)
 	self.tier = config.tier
 	self.dropped = config.dropped
 	self.launch = config.velocity
@@ -47,58 +47,58 @@ end
 -- CItem::Spawn takes its bounds from the model, and CTFPowerup::Spawn's
 -- SetSolidFlags drops the trigger bloat; the spellbooks have no physics
 -- model, so the touch box is the model's hull.
-function ENT:TouchBounds()
-	return self:GetModelBounds()
+function ENT:TouchBounds ()
+	return self:GetModelBounds ()
 end
 
 -- CSpellPickup::GetPowerupModel
-function ENT:PowerupModel()
+function ENT:PowerupModel ()
 	if self.tier == self.set.TIER_RARE then return MAJOR_MODEL end
-	return Base.PowerupModel(self)
+	return Base.PowerupModel (self)
 end
 
 -- m_nTier starts at 0. A pickup the map placed turns spells on
 -- (features.holiday.model); a thrown one does not.
-function ENT:Initialize()
-	self.set = WS.require("features.spells.halloween")
-	if not self.dropped then WS.Feature("holiday"):SpellPickupPlaced() end
-	self.spells = WS.Feature("spells")
+function ENT:Initialize ()
+	self.set = WS.require ("features.spells.halloween")
+	if not self.dropped then WS.Feature ("holiday"):SpellPickupPlaced () end
+	self.spells = WS.Feature ("spells")
 	self.tier = self.tier or self.set.TIER_COMMON
-	Base.Initialize(self)
-	self:SetSkin(self.tier)
-	if self.dropped then self:Throw() end
+	Base.Initialize (self)
+	self:SetSkin (self.tier)
+	if self.dropped then self:Throw () end
 end
 
 -- CTFPowerup::DropSingleInstance
-function ENT:Throw()
-	self:SetMoveType(MOVETYPE_FLYGRAVITY)
-	self:SetMoveCollide(MOVECOLLIDE_FLY_BOUNCE)
-	self:SetVelocity(self.launch)
-	SafeRemoveEntityDelayed(self, DROPPED_LIFETIME)
+function ENT:Throw ()
+	self:SetMoveType (MOVETYPE_FLYGRAVITY)
+	self:SetMoveCollide (MOVECOLLIDE_FLY_BOUNCE)
+	self:SetVelocity (self.launch)
+	SafeRemoveEntityDelayed (self, DROPPED_LIFETIME)
 end
 
 -- CTFPowerup::ValidTouch, for any caster: the spells controller judges
 -- whether it is alive and holds a book.
-function ENT:OpenTo(other)
+function ENT:OpenTo (other)
 	if self.disabled or self.respawning then return false end
-	return self.team == TF_TEAM_UNASSIGNED or WS.Feature("combat"):TeamOf(other) == self.team
+	return self.team == TF_TEAM_UNASSIGNED or WS.Feature ("combat"):TeamOf (other) == self.team
 end
 
 -- CSpellPickup::MyTouch: a rare pickup's sound is _rare.
-function ENT:PickupSound()
+function ENT:PickupSound ()
 	if self.tier > self.set.TIER_COMMON then return RARE_SOUND end
 	return SOUND
 end
 
-function ENT:Touch(other)
-	if not self:OpenTo(other) then return end
-	local taken = self.spells:Pickup(other, self.tier)
+function ENT:Touch (other)
+	if not self:OpenTo (other) then return end
+	local taken = self.spells:Pickup (other, self.tier)
 	if not taken then return end
-	if other:IsPlayer() then WS.PlaySoundTo(other, self, self:PickupSound()) end
-	self:TriggerOutput(OUTPUT, other)
+	if other:IsPlayer () then WS.PlaySoundTo (other, self, self:PickupSound ()) end
+	self:TriggerOutput (OUTPUT, other)
 	if self.dropped then
-		self:Remove()
+		self:Remove ()
 	else
-		self:Respawn()
+		self:Respawn ()
 	end
 end

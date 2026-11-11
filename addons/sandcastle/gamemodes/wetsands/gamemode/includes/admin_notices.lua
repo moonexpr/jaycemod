@@ -8,7 +8,7 @@
 -- text, icon, sound, chime }.
 local format, ipairs = string.format, ipairs
 local Teams = gameplay.teams
-module(...)
+module (...)
 
 local EVERYONE = Teams.UNASSIGNED
 
@@ -24,75 +24,77 @@ NEUTRAL_CHIME = "Hud.Hint" -- the UI's hint (ui/hint.wav)
 NEUTRAL_LINE_GAP = 30 * 60 -- the security alert speaks once in this long
 BELL = "Hud.EndRoundScored" -- a point awarded: TF2's chime as a team scores (ui/scored.wav)
 
-local function Notice(audience, team, text, icon, sound, chime)
+local function Notice (audience, team, text, icon, sound, chime)
 	return { audience = audience, team = team, text = text, icon = icon, sound = sound, chime = chime }
 end
 
-local function Neutral(text, icon)
-	return { Notice(EVERYONE, EVERYONE, text, icon, NEUTRAL_LINE, NEUTRAL_CHIME) }
+local function Neutral (text, icon)
+	return { Notice (EVERYONE, EVERYONE, text, icon, NEUTRAL_LINE, NEUTRAL_CHIME) }
 end
 
 -- The Game Rules editor's retract: the attackers lose ground, the
 -- defenders gain it.
-function CartRetracted(attackers, defenders)
-	return {
-		Notice(attackers, attackers, "The Administrator has rolled your cart back!", ICON_ADMIN, BAD),
-		Notice(defenders, defenders, "The Administrator has pushed back your enemy's team progress!", ICON_ADMIN, GOOD),
+function CartRetracted (attackers, defenders)
+	return
+	{
+		Notice (attackers, attackers, "The Administrator has rolled your cart back!", ICON_ADMIN, BAD),
+		Notice (defenders, defenders, "The Administrator has pushed back your enemy's team progress!", ICON_ADMIN, GOOD)
 	}
 end
 
-function CartAdvanced(attackers, defenders)
-	return {
-		Notice(attackers, attackers, "The Administrator has pushed your cart forward!", ICON_ADMIN, GOOD),
-		Notice(defenders, defenders, "The Administrator has pushed your enemy's cart forward!", ICON_ADMIN, BAD),
+function CartAdvanced (attackers, defenders)
+	return
+	{
+		Notice (attackers, attackers, "The Administrator has pushed your cart forward!", ICON_ADMIN, GOOD),
+		Notice (defenders, defenders, "The Administrator has pushed your enemy's cart forward!", ICON_ADMIN, BAD)
 	}
 end
 
 -- Either team's respawn wave, or both, set: one notice, once the admin has
 -- left the fields alone (the editors' controller waits).
-function RespawnTimesModified()
-	return Neutral("The Administrator has modified the respawn times.", ICON_CLOCK)
+function RespawnTimesModified ()
+	return Neutral ("The Administrator has modified the respawn times.", ICON_CLOCK)
 end
 
-function RespawnsDisabled(disabled)
-	if disabled then return Neutral("The Administrator has disabled respawns.", ICON_STOPPED) end
-	return Neutral("The Administrator has enabled respawns again.", ICON_CLOCK)
+function RespawnsDisabled (disabled)
+	if disabled then return Neutral ("The Administrator has disabled respawns.", ICON_STOPPED) end
+	return Neutral ("The Administrator has enabled respawns again.", ICON_CLOCK)
 end
 
-function MapRespawnWaves()
-	return Neutral("The Administrator has restored the map's respawn waves.", ICON_CLOCK)
+function MapRespawnWaves ()
+	return Neutral ("The Administrator has restored the map's respawn waves.", ICON_CLOCK)
 end
 
 -- Points awarded to team from the Game Rules editor (once the score field
 -- has rested): a bell, and the card in the team's colour, to everyone.
 -- names: team -> name.
-function PointsAwarded(team, points, names)
-	local text = points == 1 and format("The Administrator has awarded %s a point!", names[team])
-		or format("The Administrator has awarded %s %d points!", names[team], points)
-	return { Notice(EVERYONE, team, text, ICON_ADMIN, nil, BELL) }
+function PointsAwarded (team, points, names)
+	local text = points == 1 and format ("The Administrator has awarded %s a point!", names [team])
+		or format ("The Administrator has awarded %s %d points!", names [team], points)
+	return { Notice (EVERYONE, team, text, ICON_ADMIN, nil, BELL) }
 end
 
 -- The AI war, told as visitors from another universe arriving and leaving.
-function WarStarted()
-	return Neutral("Visitors from another universe have arrived!", ICON_VISITORS)
+function WarStarted ()
+	return Neutral ("Visitors from another universe have arrived!", ICON_VISITORS)
 end
 
-function WarEnded()
-	return Neutral("The visitors have returned to their own universe.", ICON_VISITORS)
+function WarEnded ()
+	return Neutral ("The visitors have returned to their own universe.", ICON_VISITORS)
 end
 
-function TimerPaused(paused)
-	if paused then return Neutral("The Administrator has paused the round timer.", ICON_STOPPED) end
-	return Neutral("The Administrator has resumed the round timer.", ICON_RESUMED)
+function TimerPaused (paused)
+	if paused then return Neutral ("The Administrator has paused the round timer.", ICON_STOPPED) end
+	return Neutral ("The Administrator has resumed the round timer.", ICON_RESUMED)
 end
 
 -- The notices as played at now: a neutral notice keeps its chime always,
 -- its announcer alert only when none has spoken for NEUTRAL_LINE_GAP since
 -- lastAt (nil: never). Returns them and when the alert last spoke.
-function Spoken(notices, lastAt, now)
+function Spoken (notices, lastAt, now)
 	local played = {}
-	for i, n in ipairs(notices) do
-		local copy = Notice(n.audience, n.team, n.text, n.icon, n.sound, n.chime)
+	for i, n in ipairs (notices) do
+		local copy = Notice (n.audience, n.team, n.text, n.icon, n.sound, n.chime)
 		if copy.sound == NEUTRAL_LINE then
 			if lastAt and now - lastAt < NEUTRAL_LINE_GAP then
 				copy.sound = nil
@@ -100,7 +102,7 @@ function Spoken(notices, lastAt, now)
 				lastAt = now
 			end
 		end
-		played[i] = copy
+		played [i] = copy
 	end
 	return played, lastAt
 end

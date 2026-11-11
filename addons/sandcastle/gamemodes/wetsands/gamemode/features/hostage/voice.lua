@@ -5,7 +5,7 @@
 -- line from, each with how many lines it has (<category>(1..n).wav). Paths
 -- are under sound/, as EmitSound takes them.
 local error, format, ipairs, tostring = error, string.format, ipairs, tostring
-module(...)
+module (...)
 
 -- taken by a rescuer; following one (now and then); left behind (its rescuer
 -- died); held, a rescuer near; led into the rescue zone
@@ -13,12 +13,13 @@ TAKEN, FOLLOWING, LEFT, CALLING, RESCUED = "taken", "following", "left", "callin
 
 local DIR = "vo/civilian_benjamoose/"
 
-local EVENTS = {
+local EVENTS =
+{
 	[TAKEN] = { { "civ_thanks", 19 }, { "civ_go_go_go", 13 } },
 	[FOLLOWING] = { { "civ_go_moveup", 12 }, { "civ_go_proceed", 6 } },
 	[LEFT] = { { "civ_calling_for_help", 22 } },
 	[CALLING] = { { "civ_calling_for_help", 22 } },
-	[RESCUED] = { { "civ_success", 17 } },
+	[RESCUED] = { { "civ_success", 17 } }
 }
 local ORDER = { TAKEN, FOLLOWING, LEFT, CALLING, RESCUED }
 
@@ -28,35 +29,35 @@ SPEAK_GAP = 4
 FOLLOW_CHATTER = 12
 
 local lines = {}
-for _, event in ipairs(ORDER) do
+for _, event in ipairs (ORDER) do
 	local list = {}
-	for _, c in ipairs(EVENTS[event]) do
-		for i = 1, c[2] do list[#list + 1] = format("%s%s(%d).wav", DIR, c[1], i) end
+	for _, c in ipairs (EVENTS [event]) do
+		for i = 1, c [2] do list [#list + 1] = format ("%s%s(%d).wav", DIR, c [1], i) end
 	end
-	lines[event] = list
+	lines [event] = list
 end
 
 -- The event's lines, in order.
-function Lines(event)
-	local list = lines[event]
-	if not list then error("no hostage voice event " .. tostring(event), 2) end
+function Lines (event)
+	local list = lines [event]
+	if not list then error ("no hostage voice event " .. tostring (event), 2) end
 	return list
 end
 
 -- The line for a number the caller draws, wrapping past the last.
-function Pick(event, n)
-	local list = Lines(event)
-	return list[(n - 1) % #list + 1]
+function Pick (event, n)
+	local list = Lines (event)
+	return list [(n - 1) % #list + 1]
 end
 
 -- Every line any event says, once: what clients fetch and the server precaches.
-function All()
+function All ()
 	local all, seen = {}, {}
-	for _, event in ipairs(ORDER) do
-		for _, path in ipairs(lines[event]) do
-			if not seen[path] then
-				seen[path] = true
-				all[#all + 1] = path
+	for _, event in ipairs (ORDER) do
+		for _, path in ipairs (lines [event]) do
+			if not seen [path] then
+				seen [path] = true
+				all [#all + 1] = path
 			end
 		end
 	end
@@ -64,6 +65,6 @@ function All()
 end
 
 -- Whether a hostage that last spoke at `last` (nil: never) may speak at now.
-function MaySpeak(last, now)
+function MaySpeak (last, now)
 	return last == nil or now - last >= SPEAK_GAP
 end

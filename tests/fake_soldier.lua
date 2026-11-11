@@ -5,12 +5,12 @@
 -- foundation.aiwar.soldier.METHODS (features_aiwar_ns_behaviors_test checks that).
 local Fake = {}
 
-function Fake.Point(x, y, z)
+function Fake.Point (x, y, z)
 	return { x = x, y = y, z = z or 0 }
 end
 
-local function Distance(a, b)
-	return math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2 + (a.z - b.z) ^ 2)
+local function Distance (a, b)
+	return math.sqrt ((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2 + (a.z - b.z) ^ 2)
 end
 Fake.Distance = Distance
 
@@ -26,55 +26,56 @@ Soldier.__index = Soldier
 -- list of points WanderSpot hands out in turn (default: none) }. Without
 -- route, a route is the goal alone; without walkable,
 -- nothing past the current waypoint counts as walkable.
-function Fake.Soldier(t)
+function Fake.Soldier (t)
 	t = t or {}
-	return setmetatable({
-		now = t.now or 1,
-		pos = t.pos or Fake.Point(0, 0, 0),
-		doorToOpen = t.doorToOpen,
-		alive = true,
-		enemy = false,
-		route = t.route or function(from, goal) return { goal } end,
-		routeDelay = t.routeDelay or 0,
-		walkable = t.walkable or function() return false end,
-		hoppable = t.hoppable or function() return false end,
-		passable = t.passable or function() return false end,
-		passed = {},
-		detour = t.detour or function() return nil end,
-		detours = {},
-		wanderSpots = t.wanderSpots or {},
-		patrolSpots = t.patrolSpots,
-		plansRoutes = t.plansRoutes,
-		follows = t.follows,
-		enemyPos = t.enemyPos,
-		covers = t.covers,
-		wandered = 0,
-		hops = {},
-		marks = {},
-		requests = {},
-		pending = nil,
-		moves = {},
-		releases = 0,
-		moving = nil,
-	}, Soldier)
+	return setmetatable (
+		{
+			now = t.now or 1,
+			pos = t.pos or Fake.Point (0, 0, 0),
+			doorToOpen = t.doorToOpen,
+			alive = true,
+			enemy = false,
+			route = t.route or function (from, goal) return { goal } end,
+			routeDelay = t.routeDelay or 0,
+			walkable = t.walkable or function () return false end,
+			hoppable = t.hoppable or function () return false end,
+			passable = t.passable or function () return false end,
+			passed = {},
+			detour = t.detour or function () return nil end,
+			detours = {},
+			wanderSpots = t.wanderSpots or {},
+			patrolSpots = t.patrolSpots,
+			plansRoutes = t.plansRoutes,
+			follows = t.follows,
+			enemyPos = t.enemyPos,
+			covers = t.covers,
+			wandered = 0,
+			hops = {},
+			marks = {},
+			requests = {},
+			pending = nil,
+			moves = {},
+			releases = 0,
+			moving = nil
+		}, Soldier)
 end
 
-function Soldier:Advance(dt) self.now = self.now + dt end
+function Soldier:Advance (dt) self.now = self.now + dt end
 
 -- port
-function Soldier:Now() return self.now end
-function Soldier:IsAlive() return self.alive end
-function Soldier:Position() return { x = self.pos.x, y = self.pos.y, z = self.pos.z } end
-function Soldier:RangeTo(p) return Distance(self.pos, p) end
-function Soldier:DoorToOpen() return self.doorToOpen end
-function Soldier:HasEnemy() return self.enemy end
+function Soldier:Now () return self.now end
+function Soldier:IsAlive () return self.alive end
+function Soldier:Position () return { x = self.pos.x, y = self.pos.y, z = self.pos.z } end
+function Soldier:RangeTo (p) return Distance (self.pos, p) end
+function Soldier:DoorToOpen () return self.doorToOpen end
+function Soldier:HasEnemy () return self.enemy end
 
-function Soldier:RequestRoute(goal)
-	self.requests[#self.requests + 1] = goal
-	self.pending = { polls = self.routeDelay, answer = self.route(self.pos, goal) }
+function Soldier:RequestRoute (goal)
+	self.requests [#self.requests + 1] = goal
+	self.pending = { polls = self.routeDelay, answer = self.route (self.pos, goal) }
 end
 
-function Soldier:RouteResult()
+function Soldier:RouteResult ()
 	local pending = self.pending
 	if pending.polls > 0 then
 		pending.polls = pending.polls - 1
@@ -83,58 +84,58 @@ function Soldier:RouteResult()
 	return pending.answer
 end
 
-function Soldier:CanWalkTo(p) return self.walkable(self.pos, p) end
+function Soldier:CanWalkTo (p) return self.walkable (self.pos, p) end
 
-function Soldier:PassBlocker(p)
-	if not self.passable(self.pos, p) then return false end
-	self.passed[#self.passed + 1] = p
+function Soldier:PassBlocker (p)
+	if not self.passable (self.pos, p) then return false end
+	self.passed [#self.passed + 1] = p
 	return true
 end
 
-function Soldier:Detour(p)
-	local point = self.detour(self.pos, p)
-	if point then self.detours[#self.detours + 1] = point end
+function Soldier:Detour (p)
+	local point = self.detour (self.pos, p)
+	if point then self.detours [#self.detours + 1] = point end
 	return point
 end
 
 -- The test sets me.stale for the next poll.
-function Soldier:RouteStale()
+function Soldier:RouteStale ()
 	local stale = self.stale
 	self.stale = false
 	return stale == true
 end
 
 -- patrolSpots: the points PatrolSpot hands out in turn (default: none).
-function Soldier:PatrolSpot(center, radius)
+function Soldier:PatrolSpot (center, radius)
 	self.patrolled = (self.patrolled or 0) + 1
-	return (self.patrolSpots or {})[self.patrolled]
+	return (self.patrolSpots or {}) [self.patrolled]
 end
 
 -- watching: the point Watch was last given (nil: none).
-function Soldier:Watch(p) self.watching = p end
+function Soldier:Watch (p) self.watching = p end
 
 -- plansRoutes: the engine finds its own way (default: no).
-function Soldier:PlansRoutes() return self.plansRoutes == true end
+function Soldier:PlansRoutes () return self.plansRoutes == true end
 
 -- follows: whether FollowCart succeeds (default: no).
-function Soldier:FollowCart()
+function Soldier:FollowCart ()
 	if self.follows then self.following = true end
 	return self.follows == true
 end
 
-function Soldier:Unfollow() self.following = false end
+function Soldier:Unfollow () self.following = false end
 
 -- enemyPos: where the enemy is (default: none); covers: the spots
 -- CoverSpot hands out in turn (default: none); hurtAt: when last hurt.
-function Soldier:EnemyPosition() return self.enemyPos end
+function Soldier:EnemyPosition () return self.enemyPos end
 
 -- Hands out the covers after the last one it gave, skipping those taken.
-function Soldier:CoverSpot(center, radius, threat, exclude, taken)
+function Soldier:CoverSpot (center, radius, threat, exclude, taken)
 	local covers = self.covers or {}
 	for i = (self.covered or 0) + 1, #covers do
-		if not (taken and taken(covers[i])) then
+		if not (taken and taken (covers [i])) then
 			self.covered = i
-			return covers[i]
+			return covers [i]
 		end
 	end
 	self.covered = #covers
@@ -143,110 +144,110 @@ end
 
 -- enemyHandle: the enemy Enemy() gives (default: none); enemyHealth: its
 -- share of health (default: none).
-function Soldier:Enemy() return self.enemyHandle end
-function Soldier:EnemyHealth() return self.enemyHealth end
+function Soldier:Enemy () return self.enemyHandle end
+function Soldier:EnemyHealth () return self.enemyHealth end
 
-function Soldier:HurtSince(t) return self.hurtAt ~= nil and self.hurtAt > (t or 0) end
+function Soldier:HurtSince (t) return self.hurtAt ~= nil and self.hurtAt > (t or 0) end
 
 -- gadget: what UseGadget uses (default none); gadgetsAt: where it was used.
-function Soldier:UseGadget(p)
+function Soldier:UseGadget (p)
 	if not self.gadget then return nil end
 	self.gadgetsAt = self.gadgetsAt or {}
-	self.gadgetsAt[#self.gadgetsAt + 1] = p
+	self.gadgetsAt [#self.gadgetsAt + 1] = p
 	return self.gadget
 end
 
 -- health, maxHealth: default 100 each.
-function Soldier:Health() return self.health or 100 end
-function Soldier:MaxHealth() return self.maxHealth or 100 end
+function Soldier:Health () return self.health or 100 end
+function Soldier:MaxHealth () return self.maxHealth or 100 end
 
 -- seats: whether Sit finds a seat (default true); seated: sitting now.
-function Soldier:Sit()
+function Soldier:Sit ()
 	if self.seats == false then return false end
 	self.seated = true
 	return true
 end
-function Soldier:Stand() self.seated = false end
-function Soldier:IsSeated() return self.seated == true end
+function Soldier:Stand () self.seated = false end
+function Soldier:IsSeated () return self.seated == true end
 
 -- disarmed: my side is humiliated.
-function Soldier:IsDisarmed() return self.disarmed == true end
+function Soldier:IsDisarmed () return self.disarmed == true end
 
 -- healing: the handle Heal was last given (nil: stopped).
-function Soldier:Heal(handle) self.healing = handle end
+function Soldier:Heal (handle) self.healing = handle end
 
 -- kits: the health kits it may take ({ pos, handle }; default none);
 -- burning: on fire; medicCalls: the times it called for a medic.
-function Soldier:HealthKits() return self.kits or {} end
-function Soldier:Burning() return self.burning == true end
-function Soldier:CallMedic()
+function Soldier:HealthKits () return self.kits or {} end
+function Soldier:Burning () return self.burning == true end
+function Soldier:CallMedic ()
 	self.medicCalls = self.medicCalls or {}
-	self.medicCalls[#self.medicCalls + 1] = self.now
+	self.medicCalls [#self.medicCalls + 1] = self.now
 end
 
 -- announced: the concepts it has called out (Announce), in order.
-function Soldier:Announce(concept)
+function Soldier:Announce (concept)
 	self.announced = self.announced or {}
-	self.announced[#self.announced + 1] = concept
+	self.announced [#self.announced + 1] = concept
 end
 
 -- lookedAt: each { p, seconds } LookAt was given, in order.
-function Soldier:LookAt(p, seconds)
+function Soldier:LookAt (p, seconds)
 	self.lookedAt = self.lookedAt or {}
-	self.lookedAt[#self.lookedAt + 1] = { p = p, seconds = seconds }
+	self.lookedAt [#self.lookedAt + 1] = { p = p, seconds = seconds }
 end
 
 -- gestured: the occasions it played (Gesture), in order.
-function Soldier:Gesture(occasion)
+function Soldier:Gesture (occasion)
 	self.gestured = self.gestured or {}
-	self.gestured[#self.gestured + 1] = occasion
+	self.gestured [#self.gestured + 1] = occasion
 end
 
-function Soldier:Hold()
+function Soldier:Hold ()
 	self.holding = true
 	self.moving = self.pos
 end
 
-function Soldier:WanderSpot()
+function Soldier:WanderSpot ()
 	self.wandered = self.wandered + 1
-	return self.wanderSpots[self.wandered]
+	return self.wanderSpots [self.wandered]
 end
 
 -- marks: each Mark, { kind, detail, to }.
-function Soldier:Mark(kind, detail, to)
-	self.marks[#self.marks + 1] = { kind = kind, detail = detail, to = to }
+function Soldier:Mark (kind, detail, to)
+	self.marks [#self.marks + 1] = { kind = kind, detail = detail, to = to }
 end
 
 -- repathed: how many times its path was planned afresh.
-function Soldier:Repath()
+function Soldier:Repath ()
 	self.repathed = (self.repathed or 0) + 1
 end
 
-function Soldier:Hop(p)
-	if not self.hoppable(self.pos, p) then return false end
-	self.hops[#self.hops + 1] = p
+function Soldier:Hop (p)
+	if not self.hoppable (self.pos, p) then return false end
+	self.hops [#self.hops + 1] = p
 	self.pos = { x = p.x, y = p.y, z = p.z }
 	return true
 end
 
-function Soldier:MoveTo(p, gait)
+function Soldier:MoveTo (p, gait)
 	self.moving = p
 	self.gait = gait
 	self.posing = nil
-	self.moves[#self.moves + 1] = p
+	self.moves [#self.moves + 1] = p
 end
 
-function Soldier:Pose()
+function Soldier:Pose ()
 	self.posing = self.posing or "sitting"
 	return self.posing
 end
 
-function Soldier:Unpose()
+function Soldier:Unpose ()
 	self.posing = nil
 	self.unposes = (self.unposes or 0) + 1
 end
 
-function Soldier:Release()
+function Soldier:Release ()
 	self.moving = nil
 	self.releases = self.releases + 1
 end

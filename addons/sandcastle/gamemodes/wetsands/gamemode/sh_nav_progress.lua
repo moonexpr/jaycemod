@@ -10,22 +10,24 @@ local E = WS.Events
 
 local AREA_BITS = 16
 
-E.Define("game_nav_progress", {
-	stage = E.UInt(2),
-	areas = E.UInt(AREA_BITS),
-})
+E.Define ("game_nav_progress",
+	{
+		stage = E.UInt (2),
+		areas = E.UInt (AREA_BITS)
+	}
+)
 
 if SERVER then
-	local P = WS.require("includes.nav_progress")
+	local P = WS.require ("includes.nav_progress")
 	-- The stage last told, for a client that loads while it runs; kept on
 	-- WS so a Lua refresh mid-run keeps it.
-	function WS.NavProgress(stage, areas)
+	function WS.NavProgress (stage, areas)
 		local fields = { stage = stage, areas = areas or 0 }
 		WS.NavProgressRunning = stage ~= P.DONE and fields or nil
-		E.Fire("game_nav_progress", fields)
+		E.Fire ("game_nav_progress", fields)
 	end
 
-	E.Listen("system_client_ready", "ws_nav_progress", function(_, ply)
-		if WS.NavProgressRunning then E.Fire("game_nav_progress", WS.NavProgressRunning, ply) end
+	E.Listen ("system_client_ready", "ws_nav_progress", function (_, ply)
+		if WS.NavProgressRunning then E.Fire ("game_nav_progress", WS.NavProgressRunning, ply) end
 	end)
 end

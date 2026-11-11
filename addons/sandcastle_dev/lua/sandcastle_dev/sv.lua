@@ -12,7 +12,8 @@
 -- (tests/dev_*_test.lua).
 if not DEBUG or not dev or not dev.load then return end
 
-local PARTS = {
+local PARTS =
+{
 	"sv_util",
 	"sv_harness",
 	"sv_state",
@@ -20,17 +21,17 @@ local PARTS = {
 	"sv_run",
 	"sv_reload",
 	"sv_entity",
-	"sv_easylua",
+	"sv_easylua"
 }
 
-for _, part in ipairs(PARTS) do dev.load("sandcastle_dev/" .. part .. ".lua") end
+for _, part in ipairs (PARTS) do dev.load ("sandcastle_dev/" .. part .. ".lua") end
 
 -- Runs this file again, and through it every part: the workbench's own
 -- edits. Its modules load again too.
-function dev.reload_self()
-	for name in pairs(package.loaded) do
-		if string.StartWith(name, "sandcastle_dev_") then package.loaded[name] = nil end
+function dev.reload_self ()
+	for name in pairs (package.loaded) do
+		if string.StartWith (name, "sandcastle_dev_") then package.loaded [name] = nil end
 	end
-	dev.load("sandcastle_dev/sv.lua")
+	dev.load ("sandcastle_dev/sv.lua")
 	return { reloaded = PARTS }
 end

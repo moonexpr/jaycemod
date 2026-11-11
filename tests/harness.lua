@@ -7,24 +7,25 @@ T.ROOT = "addons/sandcastle/gamemodes/wetsands/gamemode/"
 
 -- Sandcastle's, which the game's models read.
 TEAM_RED, TEAM_BLUE, TF_TEAM_UNASSIGNED = 2, 3, 0
-baseclass = baseclass or { Set = function() end }
-dofile("addons/sandcastle/gamemodes/sandcastle/gamemode/includes/modules/game_manager.lua")
-dofile("addons/sandcastle/gamemodes/sandcastle/gamemode/gamerules/game_default.lua")
-dofile("addons/sandcastle/gamemodes/sandcastle/gamemode/gamerules/game_ctf.lua")
+baseclass = baseclass or { Set = function () end }
+dofile ("addons/sandcastle/gamemodes/sandcastle/gamemode/includes/modules/game_manager.lua")
+dofile ("addons/sandcastle/gamemodes/sandcastle/gamemode/gamerules/game_default.lua")
+dofile ("addons/sandcastle/gamemodes/sandcastle/gamemode/gamerules/game_ctf.lua")
 
 -- Lua 5.1's require for a module(...) file under T.ROOT, as WS.require
 -- does in the game: once, calling the chunk with its dotted name. Above its
 -- module(...) call the chunk sees this require, to load its siblings.
-local CHUNK_ENV = setmetatable({}, { __index = _G })
+local CHUNK_ENV = setmetatable ({}, { __index = _G })
 
 -- The repo's own addons' GMod modules (lua/includes/modules/<name>.lua,
 -- which GMod's require loads by a name without dots).
-T.MODULE_DIRS = {
+T.MODULE_DIRS =
+{
 	"addons/nextsoldier/lua/includes/modules/",
 	"addons/teamtint/lua/includes/modules/",
 	"addons/model_viewer/lua/includes/modules/",
 	"addons/sandcastle_dev/lua/includes/modules/",
-	"addons/ulx_luadev/lua/includes/modules/",
+	"addons/ulx_luadev/lua/includes/modules/"
 }
 
 -- The trees an addon ships under its own lua/ that the gamemode's loader
@@ -34,39 +35,39 @@ T.ADDON_TREES = { nextsoldier = "addons/nextsoldier/lua/", wartactics = "addons/
 
 -- A gamemode-relative path, as shared_loader.lua's LoaderFile reads it, as
 -- a repo path.
-function T.File(path)
-	return (T.ADDON_TREES[path:match("^([%w_]+)/")] or T.ROOT) .. path
+function T.File (path)
+	return (T.ADDON_TREES [path:match ("^([%w_]+)/")] or T.ROOT) .. path
 end
 
-local function Path(name)
-	if not name:find(".", 1, true) then
-		for _, dir in ipairs(T.MODULE_DIRS) do
+local function Path (name)
+	if not name:find (".", 1, true) then
+		for _, dir in ipairs (T.MODULE_DIRS) do
 			local path = dir .. name .. ".lua"
-			local f = io.open(path, "r")
+			local f = io.open (path, "r")
 			if f then
-				f:close()
+				f:close ()
 				return path
 			end
 		end
 	end
 	local path = name
-	local namespace = name:match("^games%.([%w_]+)%.")
+	local namespace = name:match ("^games%.([%w_]+)%.")
 	if namespace then
-		path = name:gsub("^games%.", "includes.")
+		path = name:gsub ("^games%.", "includes.")
 		if namespace == "list" or namespace == "world" then
-			path = path:gsub("^includes%.", "includes.extensions.")
+			path = path:gsub ("^includes%.", "includes.extensions.")
 		end
 	end
-	return T.File(path:gsub("%.", "/") .. ".lua")
+	return T.File (path:gsub ("%.", "/") .. ".lua")
 end
 T.Path = Path
 
-function T.require(name)
-	if package.loaded[name] == nil then
-		local chunk = assert(loadfile(Path(name)))
-		setfenv(chunk, CHUNK_ENV)(name)
+function T.require (name)
+	if package.loaded [name] == nil then
+		local chunk = assert (loadfile (Path (name)))
+		setfenv (chunk, CHUNK_ENV) (name)
 	end
-	return package.loaded[name]
+	return package.loaded [name]
 end
 CHUNK_ENV.require = T.require
 
@@ -75,33 +76,33 @@ CHUNK_ENV.require = T.require
 -- foundation.native or foundation.wetsands.native. Unbuilt, the test errors
 -- naming the build.
 local natives = {}
-function T.native(crate)
-	if natives[crate] then return natives[crate] end
+function T.native (crate)
+	if natives [crate] then return natives [crate] end
 	local base = "native/" .. crate .. "/target/release/lib" .. crate
-	for _, extension in ipairs({ ".dylib", ".so" }) do
-		local file = io.open(base .. extension)
+	for _, extension in ipairs ({ ".dylib", ".so" }) do
+		local file = io.open (base .. extension)
 		if file then
-			file:close()
-			natives[crate] = assert(package.loadlib(base .. extension, "luaopen_" .. crate))()
-			return natives[crate]
+			file:close ()
+			natives [crate] = assert (package.loadlib (base .. extension, "luaopen_" .. crate)) ()
+			return natives [crate]
 		end
 	end
-	error("native/" .. crate .. " is not built: cargo build --release in native/" .. crate, 2)
+	error ("native/" .. crate .. " is not built: cargo build --release in native/" .. crate, 2)
 end
 
-local function ReadFile(path)
-	local file = assert(io.open(path))
-	local text = file:read("*a")
-	file:close()
+local function ReadFile (path)
+	local file = assert (io.open (path))
+	local text = file:read ("*a")
+	file:close ()
 	return text
 end
 
 -- The index and init files shared_loader.lua runs, in its order. NextSoldier's
 -- loads itself: T.NEXTSOLDIER_INIT, whose Load lines name its files.
-function T.Indexes()
+function T.Indexes ()
 	local paths = {}
-	for path in ReadFile(T.ROOT .. "shared_loader.lua"):gmatch('Index%(%s*"([%w_/.]+)"%s*%)') do
-		paths[#paths + 1] = path
+	for path in ReadFile (T.ROOT .. "shared_loader.lua"):gmatch ('Index%s*%(%s*"([%w_/.]+)"%s*%)') do
+		paths [#paths + 1] = path
 	end
 	return paths
 end
@@ -111,40 +112,40 @@ T.NEXTSOLDIER_INIT = "nextsoldier/sh_init.lua"
 -- ("math.geometry", or "transaction" at foundation's root), and
 -- T.Published.module[global] -> the module name, read from the indexes.
 T.Published = { global = {}, module = {} }
-for _, path in ipairs(T.Indexes()) do
-	local text = ReadFile(T.File(path))
+for _, path in ipairs (T.Indexes ()) do
+	local text = ReadFile (T.File (path))
 	local namespaces = { _G = "" }
-	for var, name in text:gmatch('local%s+([%w_]+)%s*=%s*Namespace%(%s*"([%w_]+)"%s*%)') do namespaces[var] = name .. "." end
-	local function Publish(var, key, module)
-		local global = assert(namespaces[var], path .. ": no namespace " .. var) .. key
-		T.Published.global[module], T.Published.module[global] = global, module
+	for var, name in text:gmatch ('local%s+([%w_]+)%s*=%s*Namespace%s*%(%s*"([%w_]+)"%s*%)') do namespaces [var] = name .. "." end
+	local function Publish (var, key, module)
+		local global = assert (namespaces [var], path .. ": no namespace " .. var) .. key
+		T.Published.global [module], T.Published.module [global] = global, module
 	end
-	for var, key, module in text:gmatch('Export%(%s*([%w_]+)%s*,%s*"([%w_]+)"%s*,%s*require%(%s*"([%w_.]+)"%s*%)%s*%)') do Publish(var, key, module) end
-	for var, key, module in text:gmatch('Twin%(%s*([%w_]+)%s*,%s*"([%w_]+)"%s*,%s*require%(%s*"([%w_.]+)"%s*%)%s*%)') do Publish(var, key, module) end
-	for var, key, module in text:gmatch('Defer%(%s*([%w_]+)%s*,%s*"([%w_]+)"%s*,%s*"([%w_.]+)"%s*%)') do Publish(var, key, module) end
+	for var, key, module in text:gmatch ('Export%s*%(%s*([%w_]+)%s*,%s*"([%w_]+)"%s*,%s*require%s*%(%s*"([%w_.]+)"%s*%)%s*%)') do Publish (var, key, module) end
+	for var, key, module in text:gmatch ('Twin%s*%(%s*([%w_]+)%s*,%s*"([%w_]+)"%s*,%s*require%s*%(%s*"([%w_.]+)"%s*%)%s*%)') do Publish (var, key, module) end
+	for var, key, module in text:gmatch ('Defer%s*%(%s*([%w_]+)%s*,%s*"([%w_]+)"%s*,%s*"([%w_.]+)"%s*%)') do Publish (var, key, module) end
 end
-for path in ReadFile(T.File(T.NEXTSOLDIER_INIT)):gmatch('Load%(%s*"([%w_/.]+)%.lua"%s*%)') do
-	local module = path:gsub("/", ".")
-	T.Published.global[module], T.Published.module[module] = module, module
+for path in ReadFile (T.File (T.NEXTSOLDIER_INIT)):gmatch ('Load%s*%(%s*"([%w_/.]+)%.lua"%s*%)') do
+	local module = path:gsub ("/", ".")
+	T.Published.global [module], T.Published.module [module] = module, module
 end
 
 -- The modules a source text uses, each once: every require of one, and
 -- every read of a published module's global (math.geometry, transaction),
 -- comments left out.
-function T.Uses(text)
-	local code = text:gsub("%-%-%[%[.-%]%]", ""):gsub("%-%-[^\n]*", "")
+function T.Uses (text)
+	local code = text:gsub ("%-%-%[%[.-%]%]", ""):gsub ("%-%-[^\n]*", "")
 	local uses, seen = {}, {}
-	local function Add(name)
-		if not seen[name] then
-			seen[name] = true
-			uses[#uses + 1] = name
+	local function Add (name)
+		if not seen [name] then
+			seen [name] = true
+			uses [#uses + 1] = name
 		end
 	end
-	for name in code:gmatch("require%(%s*[\"']([%w_.]+)[\"']") do Add(name) end
-	for global, module in pairs(T.Published.module) do
-		if code:find("%f[%w_.]" .. global:gsub("%.", "%%.") .. "%f[^%w_]") then Add(module) end
+	for name in code:gmatch ("require%s*%(%s*[\"']([%w_.]+)[\"']") do Add (name) end
+	for global, module in pairs (T.Published.module) do
+		if code:find ("%f[%w_.]" .. global:gsub ("%.", "%%.") .. "%f[^%w_]") then Add (module) end
 	end
-	table.sort(uses)
+	table.sort (uses)
 	return uses
 end
 
@@ -154,25 +155,25 @@ end
 -- as the server's require does, and the index's Twin keeps it: every test
 -- of the module then runs against the native one (run_lua_tests.sh's
 -- second pass).
-T.NATIVE = os.getenv("WS_NATIVE") == "1"
+T.NATIVE = os.getenv ("WS_NATIVE") == "1"
 if T.NATIVE then
-	for _, crate in ipairs({ "foundation", "wetsands", "nextsoldier" }) do
-		local loaded = T.native(crate)
-		for global in pairs(T.Published.module) do
+	for _, crate in ipairs ({ "foundation", "wetsands", "nextsoldier" }) do
+		local loaded = T.native (crate)
+		for global in pairs (T.Published.module) do
 			local value = loaded
-			for part in global:gmatch("[^.]+") do value = type(value) == "table" and value[part] or nil end
+			for part in global:gmatch ("[^.]+") do value = type (value) == "table" and value [part] or nil end
 			if value ~= nil then
-				local ns, key = global:match("^([%w_]+)%.([%w_]+)$")
+				local ns, key = global:match ("^([%w_]+)%.([%w_]+)$")
 				if ns then
-					_G[ns] = _G[ns] or {}
-					_G[ns][key] = value
+					_G [ns] = _G [ns] or {}
+					_G [ns] [key] = value
 				else
-					_G[global] = value
+					_G [global] = value
 				end
 			end
 		end
 		-- parts loaded by name (WS.require), not globals: preloaded
-		for name, part in pairs(loaded.preload or {}) do package.loaded[name] = part end
+		for name, part in pairs (loaded.preload or {}) do package.loaded [name] = part end
 	end
 end
 
@@ -180,21 +181,22 @@ end
 -- foundation's at once, games' on first read, so a module may read another
 -- by its global (math.geometry) under LuaJIT too.
 do
-	local Namespaces = T.NATIVE and core.namespace or T.require("foundation.core.namespace")
-	local env = Namespaces.Environment(_G, T.require)
-	local function RunIndex(path)
-		local chunk = assert(loadfile(T.File(path)))
-		setfenv(chunk, env)()
+	local Namespaces = T.NATIVE and core.namespace or T.require ("foundation.core.namespace")
+	local env = Namespaces.Environment (_G, T.require)
+	local function RunIndex (path)
+		local chunk = assert (loadfile (T.File (path)))
+		setfenv (chunk, env) ()
 	end
-	for _, path in ipairs(T.Indexes()) do
+	for _, path in ipairs (T.Indexes ()) do
 		-- where shared_loader.lua includes NextSoldier: after games, before the tactics engine
 		if path == "wartactics/sh_init.lua" then
-			local init = assert(loadfile(T.File(T.NEXTSOLDIER_INIT)))
-			setfenv(init, setmetatable({
-				include = function(file) return dofile(T.File(file)) end,
-			}, { __index = _G, __newindex = _G }))()
+			local init = assert (loadfile (T.File (T.NEXTSOLDIER_INIT)))
+			setfenv (init, setmetatable (
+				{
+					include = function (file) return dofile (T.File (file)) end
+				}, { __index = _G, __newindex = _G })) ()
 		end
-		RunIndex(path)
+		RunIndex (path)
 	end
 end
 
@@ -202,16 +204,16 @@ end
 -- native twin to: every key of the Lua twin's, or the harness refuses it.
 if T.NATIVE then
 	local MODULE_KEYS = { _M = true, _NAME = true, _PACKAGE = true }
-	for _, crate in ipairs({ "foundation", "wetsands", "nextsoldier" }) do
-		for name, part in pairs(T.native(crate).preload or {}) do
-			local chunk = assert(loadfile(Path(name)))
-			setfenv(chunk, CHUNK_ENV)("ws_native_check." .. name)
+	for _, crate in ipairs ({ "foundation", "wetsands", "nextsoldier" }) do
+		for name, part in pairs (T.native (crate).preload or {}) do
+			local chunk = assert (loadfile (Path (name)))
+			setfenv (chunk, CHUNK_ENV) ("ws_native_check." .. name)
 			local missing = {}
-			for key in pairs(package.loaded["ws_native_check." .. name]) do
-				if not MODULE_KEYS[key] and part[key] == nil then missing[#missing + 1] = tostring(key) end
+			for key in pairs (package.loaded ["ws_native_check." .. name]) do
+				if not MODULE_KEYS [key] and part [key] == nil then missing [#missing + 1] = tostring (key) end
 			end
-			table.sort(missing)
-			assert(#missing == 0, name .. ": the native part lacks " .. table.concat(missing, ", "))
+			table.sort (missing)
+			assert (#missing == 0, name .. ": the native part lacks " .. table.concat (missing, ", "))
 		end
 	end
 end
@@ -223,43 +225,43 @@ end
 --     a test reading a controller's text reads its parts too.
 --   FeatureParts(env, name): games.system.features Parts over files loaded
 --     from root, as WS.FeatureParts in the game.
-function T.FeatureTree(root)
+function T.FeatureTree (root)
 	local tree = {}
-	local function Read(path)
-		local f = io.open(root .. path, "rb")
+	local function Read (path)
+		local f = io.open (root .. path, "rb")
 		if not f then return nil end
-		local text = f:read("*a")
-		f:close()
+		local text = f:read ("*a")
+		f:close ()
 		return text
 	end
 
-	function tree.RealmSource(name, realm)
-		local Features = T.require("games.system.features")
-		local rootPath = Features.PartPath(name, realm)
-		local texts = { Read(rootPath) or error("no " .. root .. rootPath, 2) }
-		local list = assert(io.popen("ls -1 '" .. root .. Features.ROOT .. name .. "'"))
+	function tree.RealmSource (name, realm)
+		local Features = T.require ("games.system.features")
+		local rootPath = Features.PartPath (name, realm)
+		local texts = { Read (rootPath) or error ("no " .. root .. rootPath, 2) }
+		local list = assert (io.popen ("ls -1 '" .. root .. Features.ROOT .. name .. "'"))
 		local parts = {}
-		for fileName in list:lines() do
-			if fileName:match("^" .. realm .. "_.*%.lua$") then parts[#parts + 1] = fileName end
+		for fileName in list:lines () do
+			if fileName:match ("^" .. realm .. "_.*%.lua$") then parts [#parts + 1] = fileName end
 		end
-		list:close()
-		table.sort(parts)
-		for _, fileName in ipairs(parts) do texts[#texts + 1] = Read(Features.ROOT .. name .. "/" .. fileName) end
-		return table.concat(texts, "\n")
+		list:close ()
+		table.sort (parts)
+		for _, fileName in ipairs (parts) do texts [#texts + 1] = Read (Features.ROOT .. name .. "/" .. fileName) end
+		return table.concat (texts, "\n")
 	end
 
 	local port = {}
-	function port:Compile(path)
-		return (loadfile(root .. path))
+	function port:Compile (path)
+		return (loadfile (root .. path))
 	end
-	function tree.FeatureParts(env, name)
-		return T.require("games.system.features").Parts(port, env, name)
+	function tree.FeatureParts (env, name)
+		return T.require ("games.system.features").Parts (port, env, name)
 	end
 	return tree
 end
 
 do
-	local gamemode = T.FeatureTree(T.ROOT)
+	local gamemode = T.FeatureTree (T.ROOT)
 	T.RealmSource, T.FeatureParts = gamemode.RealmSource, gamemode.FeatureParts
 end
 
@@ -269,72 +271,74 @@ end
 --   wiring:Registered() -> every key recorded, in order, repeats included
 --   wiring:Duplicates() -> the keys recorded more than once, in first order
 -- A convar callback without an id is added, not replaced, so it has no key.
-function T.Wiring()
+function T.Wiring ()
 	local recorded = {}
-	local function Record(...)
-		recorded[#recorded + 1] = table.concat({ ... }, " ")
+	local function Record (...)
+		recorded [#recorded + 1] = table.concat ({ ... }, " ")
 	end
-	local wiring = {
-		hook = { Add = function(event, id) Record("hook", event, tostring(id)) end },
-		concommand = { Add = function(name) Record("concommand", name) end },
-		cvars = {
-			AddChangeCallback = function(name, _, id)
-				if id ~= nil then Record("cvars", name, id) end
-			end,
+	local wiring =
+	{
+		hook = { Add = function (event, id) Record ("hook", event, tostring (id)) end },
+		concommand = { Add = function (name) Record ("concommand", name) end },
+		cvars =
+		{
+			AddChangeCallback = function (name, _, id)
+				if id ~= nil then Record ("cvars", name, id) end
+			end
 		},
-		timer = { Create = function(name) Record("timer", name) end },
-		Events = { Listen = function(event, id) Record("listen", event, id) end },
+		timer = { Create = function (name) Record ("timer", name) end },
+		Events = { Listen = function (event, id) Record ("listen", event, id) end }
 	}
-	function wiring:Registered()
+	function wiring:Registered ()
 		local list = {}
-		for i, key in ipairs(recorded) do list[i] = key end
+		for i, key in ipairs (recorded) do list [i] = key end
 		return list
 	end
-	function wiring:Duplicates()
+	function wiring:Duplicates ()
 		local counts, list = {}, {}
-		for _, key in ipairs(recorded) do
-			counts[key] = (counts[key] or 0) + 1
-			if counts[key] == 2 then list[#list + 1] = key end
+		for _, key in ipairs (recorded) do
+			counts [key] = (counts [key] or 0) + 1
+			if counts [key] == 2 then list [#list + 1] = key end
 		end
 		return list
 	end
 	return wiring
 end
 
-function T.test(name, fn)
-	local ok, err = pcall(fn)
+function T.test (name, fn)
+	local ok, err = pcall (fn)
 	if ok then
 		T.passed = T.passed + 1
 	else
 		T.failed = T.failed + 1
-		print("FAIL " .. (T.NATIVE and "[native] " or "") .. name .. ": " .. tostring(err))
+		print ("FAIL " .. (T.NATIVE and "[native] " or "") .. name .. ": " .. tostring (err))
 	end
 end
 
-function T.eq(actual, expected, what)
+function T.eq (actual, expected, what)
 	if actual ~= expected then
-		error(string.format("%s: expected %s, got %s", what or "value", tostring(expected), tostring(actual)), 2)
+		error (string.format ("%s: expected %s, got %s", what or "value", tostring (expected), tostring (actual)), 2)
 	end
 end
 
 -- A tuning value (a timing, a radius, damage, money) the operator tweaks: a
 -- test checks it is still defined, never its number; behaviour is tested
 -- through the constant.
-function T.defined(value, what)
-	if type(value) ~= "number" then
-		error(string.format("%s: expected a number, got %s", what or "value", tostring(value)), 2)
+function T.defined (value, what)
+	if type (value) ~= "number" then
+		error (string.format ("%s: expected a number, got %s", what or "value", tostring (value)), 2)
 	end
 end
 
-function T.near(actual, expected, epsilon, what)
-	if math.abs(actual - expected) > (epsilon or 1e-6) then
-		error(string.format("%s: expected %s, got %s", what or "value", tostring(expected), tostring(actual)), 2)
+function T.near (actual, expected, epsilon, what)
+	if math.abs (actual - expected) > (epsilon or 1e-6) then
+		error (string.format ("%s: expected %s, got %s", what or "value", tostring (expected), tostring (actual)), 2)
 	end
 end
 
-function T.finish()
-	print(string.format("%d passed, %d failed", T.passed, T.failed))
-	os.exit(T.failed == 0 and 0 or 1)
+function T.finish ()
+	print (string.format ("%d passed, %d failed", T.passed, T.failed))
+	os.exit (T.failed == 0 and 0 or 1)
 end
 
 return T

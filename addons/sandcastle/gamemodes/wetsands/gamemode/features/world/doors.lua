@@ -20,60 +20,61 @@ local Enum = core.enum
 local Names = nextsoldier.world.doors
 local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
 local lower = string.lower
-module(...)
+module (...)
 
-KIND = Enum.New("DoorKind", 1, { "SPAWN", "SETUP", "ROUND" })
+KIND = Enum.New ("DoorKind", 1, { "SPAWN", "SETUP", "ROUND" })
 
 -- The doors held open while the game is stopped; setup gates are the timers'.
 HALTED = { KIND.SPAWN, KIND.ROUND }
 
 -- What opens each kind: an output of a class, by the output's name.
-local OPENERS = {
-	tf_logic_arena = { OnArenaRoundStart = KIND.SPAWN, OnCapEnabled = KIND.ROUND },
+local OPENERS =
+{
+	tf_logic_arena = { OnArenaRoundStart = KIND.SPAWN, OnCapEnabled = KIND.ROUND }
 }
 
 -- The inputs that open a door; a toggle may as well shut one.
 local OPENING = { Open = true, Unlock = true }
 
 -- Source's names are case-free: both looked up lower-cased.
-local function Lowered(set)
+local function Lowered (set)
 	local lowered = {}
-	for name, value in pairs(set) do lowered[lower(name)] = value end
+	for name, value in pairs (set) do lowered [lower (name)] = value end
 	return lowered
 end
 
 local OPENER_OUTPUTS = {}
-for class, outputs in pairs(OPENERS) do OPENER_OUTPUTS[class] = Lowered(outputs) end
-local OPENING_INPUTS = Lowered(OPENING)
+for class, outputs in pairs (OPENERS) do OPENER_OUTPUTS [class] = Lowered (outputs) end
+local OPENING_INPUTS = Lowered (OPENING)
 
 -- The classes whose outputs open doors.
-function OpenerClasses()
+function OpenerClasses ()
 	local classes = {}
-	for class in pairs(OPENERS) do classes[#classes + 1] = class end
+	for class in pairs (OPENERS) do classes [#classes + 1] = class end
 	return classes
 end
 
 -- openers: { class, outputs }s; guarded: { key, name }s, the doors a team's
 -- trigger stands at; kinds: a list of KIND. -> { fire = { kind, output }s,
 -- open = the guarded doors to open by hand }.
-function Plan(openers, guarded, kinds)
+function Plan (openers, guarded, kinds)
 	local wanted = {}
-	for _, kind in ipairs(kinds) do wanted[kind] = true end
+	for _, kind in ipairs (kinds) do wanted [kind] = true end
 	local fire, opened = {}, {}
-	for _, opener in ipairs(openers) do
-		local names = OPENER_OUTPUTS[opener.class]
-		for _, output in ipairs(names and opener.outputs or {}) do
-			local kind = names[lower(output.name)]
-			if kind and OPENING_INPUTS[lower(output.input)] then
-				opened[#opened + 1] = output
-				if wanted[kind] then fire[#fire + 1] = { kind = kind, output = output } end
+	for _, opener in ipairs (openers) do
+		local names = OPENER_OUTPUTS [opener.class]
+		for _, output in ipairs (names and opener.outputs or {}) do
+			local kind = names [lower (output.name)]
+			if kind and OPENING_INPUTS [lower (output.input)] then
+				opened [#opened + 1] = output
+				if wanted [kind] then fire [#fire + 1] = { kind = kind, output = output } end
 			end
 		end
 	end
 	local open = {}
-	if wanted[KIND.SPAWN] then
-		for _, door in ipairs(guarded) do
-			if not Names.Opens(opened, door.name) then open[#open + 1] = door end
+	if wanted [KIND.SPAWN] then
+		for _, door in ipairs (guarded) do
+			if not Names.Opens (opened, door.name) then open [#open + 1] = door end
 		end
 	end
 	return { fire = fire, open = open }
@@ -83,27 +84,28 @@ local HoldModel = {}
 HoldModel.__index = HoldModel
 
 -- on: the triggers that were on, now turned off.
-function Hold(on)
+function Hold (on)
 	local wanted = {}
-	for _, trigger in pairs(on) do wanted[trigger] = true end
-	return setmetatable({ wanted = wanted }, HoldModel)
+	for _, trigger in pairs (on) do wanted [trigger] = true end
+	return setmetatable ({ wanted = wanted }, HoldModel)
 end
 
-local MAP_INPUTS = {
+local MAP_INPUTS =
+{
 	enable = true,
-	disable = false,
+	disable = false
 }
 
 -- The map's own input to a trigger while it is held (name lower-cased).
-function HoldModel:MapInput(trigger, name)
-	local on = MAP_INPUTS[name]
+function HoldModel:MapInput (trigger, name)
+	local on = MAP_INPUTS [name]
 	if on == nil then return end
-	self.wanted[trigger] = on or nil
+	self.wanted [trigger] = on or nil
 end
 
 -- The triggers to turn back on.
-function HoldModel:ToEnable()
+function HoldModel:ToEnable ()
 	local list = {}
-	for trigger in pairs(self.wanted) do list[#list + 1] = trigger end
+	for trigger in pairs (self.wanted) do list [#list + 1] = trigger end
 	return list
 end

@@ -6,18 +6,19 @@
 -- lines (its posts and its front); the map's rooms and what each team knows
 -- of them. The boxes' layout is still
 -- features.nbdebug.aiwar_overlay's (docs/ns-split.md).
-module(...)
+module (...)
 
 SOLDIERS, SQUADS, CONTACTS, LANES, BATTLELINES, ROOMS = "soldiers", "squads", "contacts", "lanes", "battlelines", "rooms"
 PARTS = { SOLDIERS, SQUADS, CONTACTS, LANES, BATTLELINES, ROOMS }
 
-LABELS = {
+LABELS =
+{
 	[SOLDIERS] = "Soldiers: boxes, routes and goals",
 	[SQUADS] = "Squads: leaders, formation links and orders",
 	[CONTACTS] = "Contacts: enemy last seen, flanks and cover",
 	[LANES] = "Lanes: each team's ways in, and who holds them",
 	[BATTLELINES] = "Battle lines: posts, fronts and cart spheres",
-	[ROOMS] = "Rooms: their doors, and what each team knows of them",
+	[ROOMS] = "Rooms: their doors, and what each team knows of them"
 }
 
 -- The parts by whose thinking they show, each a section of the Debug
@@ -26,18 +27,19 @@ LABELS = {
 -- planning (wartactics.fireteam: each fire team's contact, flank point
 -- and cover; wartactics.rooms and wartactics.intel: the map's rooms and
 -- what each team knows of them).
-GROUPS = {
+GROUPS =
+{
 	{
 		name = "NextSoldier AI",
-		parts = { SOLDIERS, SQUADS, LANES, BATTLELINES },
+		parts = { SOLDIERS, SQUADS, LANES, BATTLELINES }
 	},
 	{
 		name = "Tactics engine planning",
-		parts = { CONTACTS, ROOMS },
-	},
+		parts = { CONTACTS, ROOMS }
+	}
 }
 
 -- "ns_lanes_debug"
-function ConVar(part)
+function ConVar (part)
 	return "ns_" .. part .. "_debug"
 end

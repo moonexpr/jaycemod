@@ -11,94 +11,96 @@ local Transaction = transaction
 local Sets = world.sets
 local E = WS.Events
 
-local book = Reports.New()
+local book = Reports.New ()
 
-local REFUSED = Sets.Union(Reports.PLAYER, Economy.PLAYER)
+local REFUSED = Sets.Union (Reports.PLAYER, Economy.PLAYER)
 
-local function Say(ply, text, refused)
-	E.Fire("game_players_menu_said", {
-		text = text,
-		refused = refused,
-	}, ply)
+local function Say (ply, text, refused)
+	E.Fire ("game_players_menu_said",
+		{
+			text = text,
+			refused = refused
+		}, ply)
 end
 
-local function Money(amount)
-	return Economy.Format(amount)
+local function Money (amount)
+	return Economy.Format (amount)
 end
 
 -- The target a request names, or nil after telling the sender they are gone.
-local function Target(ply, target)
-	if IsValid(target) and target:IsPlayer() then return target end
-	Say(ply, "That player has left.", true)
+local function Target (ply, target)
+	if IsValid (target) and target:IsPlayer () then return target end
+	Say (ply, "That player has left.", true)
 end
 
 -- Runs fn; a refusal that is the player's mistake is told to them, anything
 -- else, our bug, is rethrown. Whether fn ran through.
-local function Try(ply, fn)
-	local ok, err = pcall(fn)
-	if not ok then Say(ply, Transaction.Detail(err, REFUSED), true) end
+local function Try (ply, fn)
+	local ok, err = pcall (fn)
+	if not ok then Say (ply, Transaction.Detail (err, REFUSED), true) end
 	return ok
 end
 
-E.Listen("game_player_report", "ws_players_menu", function(fields, ply)
-	local target = Target(ply, fields.target)
+E.Listen ("game_player_report", "ws_players_menu", function (fields, ply)
+	local target = Target (ply, fields.target)
 	if not target then return end
-	local reason = Reports.REASONS[fields.reason + 1]
-	local players, configured = player.GetCount(), GetConVar("mp_reports_kick_count"):GetInt()
+	local reason = Reports.REASONS [fields.reason + 1]
+	local players, configured = player.GetCount (), GetConVar ("mp_reports_kick_count"):GetInt ()
 	local reached
-	if not Try(ply, function() reached = Reports.File(book, ply, target, reason, players, configured) end) then return end
+	if not Try (ply, function () reached = Reports.File (book, ply, target, reason, players, configured) end) then return end
 	if reached then
-		Say(ply, "Report sent. Enough players reported " .. target:Nick() .. ": a vote to kick them starts.", false)
-		hook.Run("WSReportsReached", target, reached)
+		Say (ply, "Report sent. Enough players reported " .. target:Nick () .. ": a vote to kick them starts.", false)
+		hook.Run ("WSReportsReached", target, reached)
 		return
 	end
-	Say(ply, "Report sent. A vote to kick " .. target:Nick() .. " starts if "
-		.. Reports.Needed(players, configured) .. " players report them.", false)
+	Say (ply, "Report sent. A vote to kick " .. target:Nick () .. " starts if "
+		.. Reports.Needed (players, configured) .. " players report them.", false)
 end)
 
-hook.Add("PlayerDisconnected", "ws_players_menu", function(ply) Reports.Forget(book, ply) end)
+hook.Add ("PlayerDisconnected", "ws_players_menu", function (ply) Reports.Forget (book, ply) end)
 
-E.Listen("game_money_transfer", "ws_players_menu", function(fields, ply)
-	local target = Target(ply, fields.target)
+E.Listen ("game_money_transfer", "ws_players_menu", function (fields, ply)
+	local target = Target (ply, fields.target)
 	if not target then return end
-	if not Try(ply, function() WS.TransferMoney(ply, target, fields.amount) end) then return end
-	Say(ply, "You gave " .. target:Nick() .. " " .. Money(fields.amount) .. ".", false)
-	Say(target, ply:Nick() .. " gave you " .. Money(fields.amount) .. ".", false)
+	if not Try (ply, function () WS.TransferMoney (ply, target, fields.amount) end) then return end
+	Say (ply, "You gave " .. target:Nick () .. " " .. Money (fields.amount) .. ".", false)
+	Say (target, ply:Nick () .. " gave you " .. Money (fields.amount) .. ".", false)
 end)
 
-local ADMIN = {
-	[WS.ADMIN_KICK] = function(ply, target)
-		print("[Sandcastle] " .. ply:Nick() .. " kicked " .. target:Nick())
-		target:Kick("Kicked by " .. ply:Nick())
-		return "Kicked " .. target:Nick() .. "."
+local ADMIN =
+{
+	[WS.ADMIN_KICK] = function (ply, target)
+		print ("[Sandcastle] " .. ply:Nick () .. " kicked " .. target:Nick ())
+		target:Kick ("Kicked by " .. ply:Nick ())
+		return "Kicked " .. target:Nick () .. "."
 	end,
-	[WS.ADMIN_BAN] = function(ply, target, value)
-		local ban = WS.PLAYERS_MENU_BANS[value + 1]
+	[WS.ADMIN_BAN] = function (ply, target, value)
+		local ban = WS.PLAYERS_MENU_BANS [value + 1]
 		if not ban then return nil, "That ban length is not offered." end
-		print("[Sandcastle] " .. ply:Nick() .. " banned " .. target:Nick() .. " (" .. ban.label .. ")")
-		target:Ban(ban.minutes, true)
-		return "Banned " .. target:Nick() .. " (" .. ban.label .. ")."
+		print ("[Sandcastle] " .. ply:Nick () .. " banned " .. target:Nick () .. " (" .. ban.label .. ")")
+		target:Ban (ban.minutes, true)
+		return "Banned " .. target:Nick () .. " (" .. ban.label .. ")."
 	end,
-	[WS.ADMIN_GRANT] = function(ply, target, value)
-		print("[Sandcastle] " .. ply:Nick() .. " gave " .. target:Nick() .. " " .. Money(value))
-		WS.GrantMoney(target, value)
-		Say(target, "An admin gave you " .. Money(value) .. ".", false)
-		return "Gave " .. target:Nick() .. " " .. Money(value) .. "."
-	end,
+	[WS.ADMIN_GRANT] = function (ply, target, value)
+		print ("[Sandcastle] " .. ply:Nick () .. " gave " .. target:Nick () .. " " .. Money (value))
+		WS.GrantMoney (target, value)
+		Say (target, "An admin gave you " .. Money (value) .. ".", false)
+		return "Gave " .. target:Nick () .. " " .. Money (value) .. "."
+	end
 }
 
 -- An admin's kick, ban or grant, from the scoreboard or a C-click (ws/sh_admin_properties.lua).
-function WS.AdminPlayerAction(ply, target, action, value)
-	if not WS.Can(ply, Permissions.PLAYERS) then return Say(ply, "You may not do that.", true) end
-	target = Target(ply, target)
+function WS.AdminPlayerAction (ply, target, action, value)
+	if not WS.Can (ply, Permissions.PLAYERS) then return Say (ply, "You may not do that.", true) end
+	target = Target (ply, target)
 	if not target then return end
-	local act = ADMIN[action]
-	if not act then return Say(ply, "That is not something the menu does.", true) end
-	if target == ply and action ~= WS.ADMIN_GRANT then return Say(ply, "You cannot do that to yourself.", true) end
-	local done, why = act(ply, target, value)
-	Say(ply, done or why, done == nil)
+	local act = ADMIN [action]
+	if not act then return Say (ply, "That is not something the menu does.", true) end
+	if target == ply and action ~= WS.ADMIN_GRANT then return Say (ply, "You cannot do that to yourself.", true) end
+	local done, why = act (ply, target, value)
+	Say (ply, done or why, done == nil)
 end
 
-E.Listen("game_admin_player", "ws_players_menu", function(fields, ply)
-	WS.AdminPlayerAction(ply, fields.target, fields.action, fields.value)
+E.Listen ("game_admin_player", "ws_players_menu", function (fields, ply)
+	WS.AdminPlayerAction (ply, fields.target, fields.action, fields.value)
 end)

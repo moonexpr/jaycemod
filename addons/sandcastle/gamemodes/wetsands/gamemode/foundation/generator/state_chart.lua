@@ -30,9 +30,9 @@ local Port = core.port
 local Countdown = timer.countdown
 local Interval = timer.interval
 local error, ipairs, setmetatable, tostring, type =
-	error, ipairs, setmetatable, tostring, type
+error, ipairs, setmetatable, tostring, type
 local concat, find = table.concat, string.find
-module(...)
+module (...)
 
 -- ActionResultType, in NextBot's numbers.
 CONTINUE, CHANGE_TO, SUSPEND_FOR, DONE, SUSTAIN = 0, 1, 2, 3, 4
@@ -46,17 +46,18 @@ RESULT_NONE, RESULT_TRY, RESULT_IMPORTANT, RESULT_CRITICAL = 0, 1, 2, 3
 -- ANSWER_UNDEFINED.
 ANSWER_NO, ANSWER_YES, ANSWER_UNDEFINED = 0, 1, 2
 
-function Result(kind, state, reason, priority)
-	return {
+function Result (kind, state, reason, priority)
+	return
+	{
 		type = kind,
 		action = state,
 		reason = reason,
-		priority = priority,
+		priority = priority
 	}
 end
 
-CONTINUE_RESULT = Result(CONTINUE, nil, nil, RESULT_TRY)
-NO_EVENT_RESULT = Result(CONTINUE, nil, nil, RESULT_NONE)
+CONTINUE_RESULT = Result (CONTINUE, nil, nil, RESULT_TRY)
+NO_EVENT_RESULT = Result (CONTINUE, nil, nil, RESULT_NONE)
 
 -------------------------------------------------------------------------------
 -- State
@@ -66,75 +67,76 @@ State.__index = State
 State.name = "State"
 
 -- A subclass named for Describe(); its instances come from :New(...).
-function State:Extend(name)
-	return Class.Extend(self, { name = name })
+function State:Extend (name)
+	return Class.Extend (self, { name = name })
 end
 
-function State:New(...)
-	local state = Class.New(self, self:_Fields())
-	state:Init(...)
+function State:New (...)
+	local state = Class.New (self, self:_Fields ())
+	state:Init (...)
 	return state
 end
 
 -- A new state's own fields; an engine with more extends them.
-function State:_Fields()
-	return {
+function State:_Fields ()
+	return
+	{
 		_started = false,
-		_eventResult = NO_EVENT_RESULT,
+		_eventResult = NO_EVENT_RESULT
 	}
 end
 
 -- Overridable. Every result-returning hook must return one of the results
 -- below.
-function State:Init() end
-function State:InitialContainedAction(me) return nil end
-function State:OnStart(me, priorState) return CONTINUE_RESULT end
-function State:Update(me, interval) return CONTINUE_RESULT end
-function State:OnEnd(me, nextState) end
+function State:Init () end
+function State:InitialContainedAction (me) return nil end
+function State:OnStart (me, priorState) return CONTINUE_RESULT end
+function State:Update (me, interval) return CONTINUE_RESULT end
+function State:OnEnd (me, nextState) end
 
 -- Results of OnStart and Update.
-function State:Continue() return CONTINUE_RESULT end
-function State:ChangeTo(state, reason) return Result(CHANGE_TO, state, reason, RESULT_TRY) end
-function State:Done(reason) return Result(DONE, nil, reason, RESULT_TRY) end
+function State:Continue () return CONTINUE_RESULT end
+function State:ChangeTo (state, reason) return Result (CHANGE_TO, state, reason, RESULT_TRY) end
+function State:Done (reason) return Result (DONE, nil, reason, RESULT_TRY) end
 
 -- Results of event handlers (On<Event>).
-function State:TryContinue(priority) return Result(CONTINUE, nil, nil, priority or RESULT_TRY) end
-function State:TryChangeTo(state, priority, reason) return Result(CHANGE_TO, state, reason, priority or RESULT_TRY) end
-function State:TryDone(priority, reason) return Result(DONE, nil, reason, priority or RESULT_TRY) end
-function State:TryToSustain(priority, reason) return Result(SUSTAIN, nil, reason, priority or RESULT_TRY) end
+function State:TryContinue (priority) return Result (CONTINUE, nil, nil, priority or RESULT_TRY) end
+function State:TryChangeTo (state, priority, reason) return Result (CHANGE_TO, state, reason, priority or RESULT_TRY) end
+function State:TryDone (priority, reason) return Result (DONE, nil, reason, priority or RESULT_TRY) end
+function State:TryToSustain (priority, reason) return Result (SUSTAIN, nil, reason, priority or RESULT_TRY) end
 
-function State:GetName() return self.name end
-function State:GetActor() return self._actor end
-function State:GetActiveChildAction() return self._child end
-function State:GetParentAction() return self._parent end
+function State:GetName () return self.name end
+function State:GetActor () return self._actor end
+function State:GetActiveChildAction () return self._child end
+function State:GetParentAction () return self._parent end
 
 -- My lineage, outermost first.
-function State:GetFullName()
+function State:GetFullName ()
 	local names = {}
 	local state = self
 	while state do
-		names[#names + 1] = state.name
+		names [#names + 1] = state.name
 		state = state._parent
 	end
 	local ordered = {}
-	for i = #names, 1, -1 do ordered[#ordered + 1] = names[i] end
-	return concat(ordered, "/")
+	for i = #names, 1, -1 do ordered [#ordered + 1] = names [i] end
+	return concat (ordered, "/")
 end
 
 -- Whether a result changes the state that gave it.
-function State:_RequestsChange(result)
+function State:_RequestsChange (result)
 	local kind = result.type
 	return kind == CHANGE_TO or kind == DONE
 end
 
 -- Whether I am stale before I update; never, without a stack.
-function State:_IsOutOfScope()
+function State:_IsOutOfScope ()
 	return false
 end
 
 -- The change an event left on me, once.
-function State:_ProcessPendingEvents()
-	if self:_RequestsChange(self._eventResult) then
+function State:_ProcessPendingEvents ()
+	if self:_RequestsChange (self._eventResult) then
 		local result = self._eventResult
 		self._eventResult = NO_EVENT_RESULT
 		return result
@@ -144,7 +146,7 @@ end
 
 -- A result of equal or greater priority replaces the stored one; the latest
 -- wins a tie.
-function State:_StorePendingEventResult(result)
+function State:_StorePendingEventResult (result)
 	if result.type == CONTINUE then return end
 	if result.priority >= self._eventResult.priority then
 		self._eventResult = result
@@ -152,38 +154,38 @@ function State:_StorePendingEventResult(result)
 end
 
 -- The child starts before my own OnStart.
-function State:_InvokeOnStart(me, root, priorState)
+function State:_InvokeOnStart (me, root, priorState)
 	self._started = true
 	self._actor = me
 	if priorState then self._parent = priorState._parent end
 	if self._parent then self._parent._child = self end
-	local child = self:InitialContainedAction(me)
+	local child = self:InitialContainedAction (me)
 	self._child = child
 	if child then
 		child._parent = self
-		self._child = child:_ApplyResult(me, root, self:ChangeTo(child, "Starting child Action"))
+		self._child = child:_ApplyResult (me, root, self:ChangeTo (child, "Starting child Action"))
 	end
-	return self:OnStart(me, priorState)
+	return self:OnStart (me, priorState)
 end
 
 -- Scope, pending events, the child, then myself.
-function State:_InvokeUpdate(me, root, interval)
-	if self:_IsOutOfScope() then return self:Done("Out of scope") end
-	if not self._started then return self:ChangeTo(self, "Starting Action") end
-	local eventResult = self:_ProcessPendingEvents()
+function State:_InvokeUpdate (me, root, interval)
+	if self:_IsOutOfScope () then return self:Done ("Out of scope") end
+	if not self._started then return self:ChangeTo (self, "Starting Action") end
+	local eventResult = self:_ProcessPendingEvents ()
 	if eventResult.type ~= CONTINUE then return eventResult end
 	if self._child then
-		self._child = self._child:_ApplyResult(me, root, self._child:_InvokeUpdate(me, root, interval))
+		self._child = self._child:_ApplyResult (me, root, self._child:_InvokeUpdate (me, root, interval))
 	end
-	return self:Update(me, interval)
+	return self:Update (me, interval)
 end
 
 -- My child, then me.
-function State:_InvokeOnEnd(me, root, nextState)
+function State:_InvokeOnEnd (me, root, nextState)
 	if not self._started then return end
 	self._started = false
-	if self._child then self._child:_InvokeOnEnd(me, root, nextState) end
-	self:OnEnd(me, nextState)
+	if self._child then self._child:_InvokeOnEnd (me, root, nextState) end
+	self:OnEnd (me, nextState)
 end
 
 -- result type -> function(state, me, root, result) -> the state now in its
@@ -191,21 +193,21 @@ end
 local TRANSITIONS = {}
 
 -- CHANGE_TO: the new state takes my parent.
-TRANSITIONS[CHANGE_TO] = function(self, me, root, result)
+TRANSITIONS [CHANGE_TO] = function (self, me, root, result)
 	local newState = result.action
 	if newState == nil then
-		error(self.name .. ": ChangeTo needs a state (" .. (result.reason or "no reason") .. ")", 0)
+		error (self.name .. ": ChangeTo needs a state (" .. (result.reason or "no reason") .. ")", 0)
 	end
-	self:_InvokeOnEnd(me, root, newState)
-	local startResult = newState:_InvokeOnStart(me, root, self)
-	if self ~= newState then root:_DestroyAction(self) end
-	return newState:_ApplyResult(me, root, startResult)
+	self:_InvokeOnEnd (me, root, newState)
+	local startResult = newState:_InvokeOnStart (me, root, self)
+	if self ~= newState then root:_DestroyAction (self) end
+	return newState:_ApplyResult (me, root, startResult)
 end
 
 -- DONE: nothing takes my place.
-TRANSITIONS[DONE] = function(self, me, root, result)
-	self:_InvokeOnEnd(me, root, nil)
-	root:_DestroyAction(self)
+TRANSITIONS [DONE] = function (self, me, root, result)
+	self:_InvokeOnEnd (me, root, nil)
+	root:_DestroyAction (self)
 	return nil
 end
 
@@ -213,45 +215,45 @@ State.transitions = TRANSITIONS
 
 -- The state now active in my place. A root's watcher (Root:Watch) hears of
 -- each change first.
-function State:_ApplyResult(me, root, result)
-	local apply = self.transitions[result.type]
+function State:_ApplyResult (me, root, result)
+	local apply = self.transitions [result.type]
 	if apply == nil then return self end
 	local watcher = root.watcher
 	if watcher then
 		local nextState = result.action
-		watcher:Transition(result.type, self.name, nextState and nextState.name, result.reason, nextState == self)
+		watcher:Transition (result.type, self.name, nextState and nextState.name, result.reason, nextState == self)
 	end
-	return apply(self, me, root, result)
+	return apply (self, me, root, result)
 end
 
 -- An event's handler on me, its result stored as my pending change.
-function State:_HandleEvent(name, ...)
-	local handler = self[name]
-	if handler then self:_StorePendingEventResult(handler(self, self._actor, ...)) end
+function State:_HandleEvent (name, ...)
+	local handler = self [name]
+	if handler then self:_StorePendingEventResult (handler (self, self._actor, ...)) end
 end
 
 -- An unstarted state ignores events. I handle it, then my active child.
-function State:_ProcessEvent(name, ...)
+function State:_ProcessEvent (name, ...)
 	if not self._started then return end
-	self:_HandleEvent(name, ...)
-	if self._child then self._child:_ProcessEvent(name, ...) end
+	self:_HandleEvent (name, ...)
+	if self._child then self._child:_ProcessEvent (name, ...) end
 end
 
 -- My answer to a query, or nil.
-function State:_AskHere(me, name, ...)
-	local handler = self[name]
+function State:_AskHere (me, name, ...)
+	local handler = self [name]
 	if handler then
-		local answer = handler(self, me, ...)
+		local answer = handler (self, me, ...)
 		if answer ~= nil and answer ~= ANSWER_UNDEFINED then return answer end
 	end
 	return nil
 end
 
 -- From the innermost state out to stop (exclusive), the first answer.
-local function AskOutward(state, stop, me, name, ...)
+local function AskOutward (state, stop, me, name, ...)
 	while state._child do state = state._child end
 	while state and state ~= stop do
-		local answer = state:_AskHere(me, name, ...)
+		local answer = state:_AskHere (me, name, ...)
 		if answer ~= nil then return answer end
 		state = state._parent
 	end
@@ -260,9 +262,9 @@ end
 
 -- The same query, asked only of the states this one contains (a monitor
 -- asking what it runs, as CTFBotTacticalMonitor asks ShouldRetreat).
-function State:QueryBelow(me, name, ...)
+function State:QueryBelow (me, name, ...)
 	if self._child == nil then return ANSWER_UNDEFINED end
-	return AskOutward(self._child, self, me, name, ...)
+	return AskOutward (self._child, self, me, name, ...)
 end
 
 -------------------------------------------------------------------------------
@@ -271,88 +273,91 @@ end
 Root = {}
 Root.__index = Root
 
-function Root:New(state, name)
-	return Class.New(self, {
-		action = state,
-		name = name,
-		me = nil,
-		dead = {},
-		watcher = nil,
-	})
+function Root:New (state, name)
+	return Class.New (self,
+		{
+			action = state,
+			name = name,
+			me = nil,
+			dead = {},
+			watcher = nil
+		}
+	)
 end
 
 -- A debugger's watcher, or nil to stop: watcher:Transition(resultType,
 -- fromName, toName, reason, starting) before each change of state
 -- (starting: a state starting itself), and watcher:Event(name) for each
 -- event.
-function Root:Watch(watcher)
+function Root:Watch (watcher)
 	self.watcher = watcher
 end
 
-local function StackFrames(state, depth, frames)
-	frames[#frames + 1] = {
+local function StackFrames (state, depth, frames)
+	frames [#frames + 1] =
+	{
 		name = state.name,
-		depth = depth,
+		depth = depth
 	}
-	if state._child then StackFrames(state._child, depth + 1, frames) end
+	if state._child then StackFrames (state._child, depth + 1, frames) end
 	return frames
 end
 
 -- The states, outermost first: a list of { name, depth (1 outermost) }.
-function Root:Stack()
+function Root:Stack ()
 	if self.action == nil then return {} end
-	return StackFrames(self.action, 1, {})
+	return StackFrames (self.action, 1, {})
 end
 
-function Root:IsEmpty()
+function Root:IsEmpty ()
 	return self.action == nil
 end
 
-function Root:Update(me, interval)
+function Root:Update (me, interval)
 	if self.action == nil then return end
 	self.me = me
-	self.action = self.action:_ApplyResult(me, self, self.action:_InvokeUpdate(me, self, interval))
-	self:_PurgeDeadActions()
+	self.action = self.action:_ApplyResult (me, self, self.action:_InvokeUpdate (me, self, interval))
+	self:_PurgeDeadActions ()
 end
 
 -- The outermost state takes an event, and hands it in.
-function Root:Event(me, name, ...)
+function Root:Event (me, name, ...)
 	if self.action == nil then return end
-	if self.watcher then self.watcher:Event(name) end
-	self.action:_ProcessEvent(name, ...)
+	if self.watcher then self.watcher:Event (name) end
+	self.action:_ProcessEvent (name, ...)
 end
 
 -- A contextual query (NextBotBehavior.h): from the innermost active state
 -- out, the first answer that is not undefined.
-function Root:Query(me, name, ...)
+function Root:Query (me, name, ...)
 	if self.action == nil then return ANSWER_UNDEFINED end
-	return AskOutward(self.action, nil, me, name, ...)
+	return AskOutward (self.action, nil, me, name, ...)
 end
 
 -- The states end, if the machine ever ran.
-function Root:Destroy()
+function Root:Destroy ()
 	if self.me and self.action then
-		self.action:_InvokeOnEnd(self.me, self, nil)
+		self.action:_InvokeOnEnd (self.me, self, nil)
 	end
 	self.action = nil
 end
 
 -- The full name of the innermost active state, e.g. "Watch/Look".
-function Root:Describe()
+function Root:Describe ()
 	local state = self.action
 	if state == nil then return "" end
 	while state._child do state = state._child end
-	return state:GetFullName()
+	return state:GetFullName ()
 end
 
 -- A state's deletion waits for the end of Update; then a dead state is no
 -- longer its parent's active child.
-function Root:_DestroyAction(state)
-	self.dead[#self.dead + 1] = state
+function Root:_DestroyAction (state)
+	self.dead [#self.dead + 1] = state
 end
 
-function Root:_PurgeDeadActions()
-	for _, dead in ipairs(self.dead) do
+function Root:_PurgeDeadActions ()
+	for _, dead in ipairs (self.dead) do
 		if dead._parent and dead._parent._child == dead then
 			dead._parent._child = nil
 		end
@@ -363,22 +368,22 @@ end
 -------------------------------------------------------------------------------
 -- Names a chart declares
 
-local function NameList(names, what)
-	if type(names) ~= "table" then error(what .. " must be a list of names", 3) end
-	for _, name in ipairs(names) do
-		if type(name) ~= "string" then error(what .. " has a non-name: " .. tostring(name), 3) end
+local function NameList (names, what)
+	if type (names) ~= "table" then error (what .. " must be a list of names", 3) end
+	for _, name in ipairs (names) do
+		if type (name) ~= "string" then error (what .. " has a non-name: " .. tostring (name), 3) end
 	end
 	return names
 end
 
-local function NameSet(names)
+local function NameSet (names)
 	local set = {}
-	for _, name in ipairs(names) do set[name] = true end
+	for _, name in ipairs (names) do set [name] = true end
 	return set
 end
 
-local function Name(value, what)
-	if type(value) ~= "string" or value == "" then error(what .. " needs a name", 3) end
+local function Name (value, what)
+	if type (value) ~= "string" or value == "" then error (what .. " needs a name", 3) end
 	return value
 end
 
@@ -393,9 +398,9 @@ local EVENT_NAME = "^On%u"
 
 -- The guard on a chart's state classes: an On* name must be a lifecycle
 -- hook or one of the chart's events.
-local function StateGuard(chart)
-	return function(key)
-		if type(key) == "string" and find(key, EVENT_NAME) and not chart.lifecycle[key] and not chart.events[key] then
+local function StateGuard (chart)
+	return function (key)
+		if type (key) == "string" and find (key, EVENT_NAME) and not chart.lifecycle [key] and not chart.events [key] then
 			return chart.name .. ": " .. key .. " is not a lifecycle hook or an event of the chart"
 		end
 	end
@@ -403,73 +408,75 @@ end
 
 -- The Chart function of an engine: its state class, its root class, and the
 -- On* hooks its states may define.
-function ChartsOf(engine)
-	local lifecycle = NameSet(engine.lifecycle)
-	return function(spec)
-		local name = Name(spec.name, "a chart")
-		if not Port.Is(spec.port) then error("chart " .. name .. " needs a Port", 2) end
-		if type(spec.initial) ~= "function" then error("chart " .. name .. " needs initial(states)", 2) end
-		local events = NameList(spec.events or {}, "chart " .. name .. "'s events")
-		for _, event in ipairs(events) do
-			if not find(event, EVENT_NAME) then error("chart " .. name .. ": event " .. event .. " must start On", 2) end
+function ChartsOf (engine)
+	local lifecycle = NameSet (engine.lifecycle)
+	return function (spec)
+		local name = Name (spec.name, "a chart")
+		if not Port.Is (spec.port) then error ("chart " .. name .. " needs a Port", 2) end
+		if type (spec.initial) ~= "function" then error ("chart " .. name .. " needs initial(states)", 2) end
+		local events = NameList (spec.events or {}, "chart " .. name .. "'s events")
+		for _, event in ipairs (events) do
+			if not find (event, EVENT_NAME) then error ("chart " .. name .. ": event " .. event .. " must start On", 2) end
 		end
-		local chart = setmetatable({
-			name = name,
-			port = spec.port,
-			events = NameSet(events),
-			queries = NameSet(NameList(spec.queries or {}, "chart " .. name .. "'s queries")),
-			initial = spec.initial,
-			lifecycle = lifecycle,
-			root = engine.root,
-		}, ChartClass)
-		chart.base = Class.Guard(engine.state:Extend(name), StateGuard(chart))
+		local chart = setmetatable (
+			{
+				name = name,
+				port = spec.port,
+				events = NameSet (events),
+				queries = NameSet (NameList (spec.queries or {}, "chart " .. name .. "'s queries")),
+				initial = spec.initial,
+				lifecycle = lifecycle,
+				root = engine.root
+			}, ChartClass)
+		chart.base = Class.Guard (engine.state:Extend (name), StateGuard (chart))
 		return chart
 	end
 end
 
 -- A new state class of this chart; extend it further with :Extend(name).
-function ChartClass:State(name)
-	return self.base:Extend(Name(name, "a state"))
+function ChartClass:State (name)
+	return self.base:Extend (Name (name, "a state"))
 end
 
-function ChartClass:Owns(state)
-	return Class.IsA(state, self.base)
+function ChartClass:Owns (state)
+	return Class.IsA (state, self.base)
 end
 
 -- A machine running this chart over the actor; states is what initial reads.
-function ChartClass:New(actor, states)
-	local me = self.port:Facade(self.port:Check(actor))
-	local first = self.initial(states)
-	if not self:Owns(first) then
-		error("chart " .. self.name .. ": initial gave a state of another chart", 2)
+function ChartClass:New (actor, states)
+	local me = self.port:Facade (self.port:Check (actor))
+	local first = self.initial (states)
+	if not self:Owns (first) then
+		error ("chart " .. self.name .. ": initial gave a state of another chart", 2)
 	end
-	return setmetatable({
-		chart = self,
-		me = me,
-		root = self.root:New(first, self.name),
-	}, MachineClass)
+	return setmetatable (
+		{
+			chart = self,
+			me = me,
+			root = self.root:New (first, self.name)
+		}, MachineClass)
 end
 
 -------------------------------------------------------------------------------
 -- Machine: one actor's running chart
 
-function MachineClass:Update(interval) self.root:Update(self.me, interval) end
+function MachineClass:Update (interval) self.root:Update (self.me, interval) end
 
-function MachineClass:Event(name, ...)
-	if not self.chart.events[name] then error("chart " .. self.chart.name .. " has no event " .. tostring(name), 2) end
-	self.root:Event(self.me, name, ...)
+function MachineClass:Event (name, ...)
+	if not self.chart.events [name] then error ("chart " .. self.chart.name .. " has no event " .. tostring (name), 2) end
+	self.root:Event (self.me, name, ...)
 end
 
-function MachineClass:Query(name, ...)
-	if not self.chart.queries[name] then error("chart " .. self.chart.name .. " has no query " .. tostring(name), 2) end
-	return self.root:Query(self.me, name, ...)
+function MachineClass:Query (name, ...)
+	if not self.chart.queries [name] then error ("chart " .. self.chart.name .. " has no query " .. tostring (name), 2) end
+	return self.root:Query (self.me, name, ...)
 end
 
-function MachineClass:Describe() return self.root:Describe() end
-function MachineClass:IsEmpty() return self.root:IsEmpty() end
-function MachineClass:Stack() return self.root:Stack() end
-function MachineClass:Watch(watcher) self.root:Watch(watcher) end
-function MachineClass:Destroy() self.root:Destroy() end
+function MachineClass:Describe () return self.root:Describe () end
+function MachineClass:IsEmpty () return self.root:IsEmpty () end
+function MachineClass:Stack () return self.root:Stack () end
+function MachineClass:Watch (watcher) self.root:Watch (watcher) end
+function MachineClass:Destroy () self.root:Destroy () end
 
 -------------------------------------------------------------------------------
 -- Action: a state that can be buried under the one it suspends for
@@ -477,41 +484,43 @@ function MachineClass:Destroy() self.root:Destroy() end
 -- What the debug layer's notations need of a class (features.nbdebug.model's
 -- Tdbn): a passthrough only contains the action that does the work, as a
 -- monitor does, and a short name, when set, stands for the name there.
-Action = Class.Extend(State, {
-	name = "Action",
-	passthrough = false,
-	shortName = nil,
-})
+Action = Class.Extend (State,
+	{
+		name = "Action",
+		passthrough = false,
+		shortName = nil
+	}
+)
 
-function Action:_Fields()
-	local fields = State._Fields(self)
+function Action:_Fields ()
+	local fields = State._Fields (self)
 	fields._suspended = false
 	return fields
 end
 
 -- Overridable, as state_chart's hooks are.
-function Action:OnSuspend(me, interruptingAction) return CONTINUE_RESULT end
-function Action:OnResume(me, interruptingAction) return CONTINUE_RESULT end
+function Action:OnSuspend (me, interruptingAction) return CONTINUE_RESULT end
+function Action:OnResume (me, interruptingAction) return CONTINUE_RESULT end
 
 -- Action::SuspendFor clears any pending event transition, or the new action
 -- would at once be out of scope.
-function Action:SuspendFor(action, reason)
+function Action:SuspendFor (action, reason)
 	self._eventResult = NO_EVENT_RESULT
-	return Result(SUSPEND_FOR, action, reason, RESULT_TRY)
+	return Result (SUSPEND_FOR, action, reason, RESULT_TRY)
 end
 
-function Action:TrySuspendFor(action, priority, reason) return Result(SUSPEND_FOR, action, reason, priority or RESULT_TRY) end
+function Action:TrySuspendFor (action, priority, reason) return Result (SUSPEND_FOR, action, reason, priority or RESULT_TRY) end
 
-function Action:GetActionBuriedUnderMe() return self._buried end
-function Action:IsSuspended() return self._suspended end
+function Action:GetActionBuriedUnderMe () return self._buried end
+function Action:IsSuspended () return self._suspended end
 
-function Action:_RequestsChange(result)
+function Action:_RequestsChange (result)
 	local kind = result.type
 	return kind == CHANGE_TO or kind == SUSPEND_FOR or kind == DONE
 end
 
 -- Action::IsOutOfScope: a buried action leaving or changing makes me stale.
-function Action:_IsOutOfScope()
+function Action:_IsOutOfScope ()
 	local under = self._buried
 	while under do
 		local kind = under._eventResult.type
@@ -523,8 +532,8 @@ end
 
 -- Action::ProcessPendingEvents: my own requested change first, then a
 -- SUSPEND_FOR left on an action buried under me.
-function Action:_ProcessPendingEvents()
-	local own = State._ProcessPendingEvents(self)
+function Action:_ProcessPendingEvents ()
+	local own = State._ProcessPendingEvents (self)
 	if own ~= CONTINUE_RESULT then return own end
 	local under = self._buried
 	while under do
@@ -539,89 +548,89 @@ function Action:_ProcessPendingEvents()
 end
 
 -- Action::InvokeOnStart: I cover the action buried under me.
-function Action:_InvokeOnStart(me, behavior, priorAction, buriedUnderMe)
+function Action:_InvokeOnStart (me, behavior, priorAction, buriedUnderMe)
 	self._buried = buriedUnderMe
 	if buriedUnderMe then buriedUnderMe._covering = self end
 	self._covering = nil
-	return State._InvokeOnStart(self, me, behavior, priorAction)
+	return State._InvokeOnStart (self, me, behavior, priorAction)
 end
 
 -- Action::InvokeOnEnd: my children, top down, then me, then whatever covers me.
-function Action:_InvokeOnEnd(me, behavior, nextAction)
+function Action:_InvokeOnEnd (me, behavior, nextAction)
 	if not self._started then return end
 	self._started = false
 	local child = self._child
 	while child do
 		local nextChild = child._buried
-		child:_InvokeOnEnd(me, behavior, nextAction)
+		child:_InvokeOnEnd (me, behavior, nextAction)
 		child = nextChild
 	end
-	self:OnEnd(me, nextAction)
-	if self._covering then self._covering:_InvokeOnEnd(me, behavior, nextAction) end
+	self:OnEnd (me, nextAction)
+	if self._covering then self._covering:_InvokeOnEnd (me, behavior, nextAction) end
 end
 
 -- Action::InvokeOnSuspend: returns the action now on top, which is my buried
 -- one when OnSuspend asks to be Done instead.
-function Action:_InvokeOnSuspend(me, behavior, interruptingAction)
+function Action:_InvokeOnSuspend (me, behavior, interruptingAction)
 	if self._child then
-		self._child = self._child:_InvokeOnSuspend(me, behavior, interruptingAction)
+		self._child = self._child:_InvokeOnSuspend (me, behavior, interruptingAction)
 	end
 	self._suspended = true
-	local result = self:OnSuspend(me, interruptingAction)
+	local result = self:OnSuspend (me, interruptingAction)
 	if result.type == DONE then
-		self:_InvokeOnEnd(me, behavior, nil)
+		self:_InvokeOnEnd (me, behavior, nil)
 		local buried = self._buried
-		behavior:_DestroyAction(self)
+		behavior:_DestroyAction (self)
 		return buried
 	end
 	return self
 end
 
 -- Action::InvokeOnResume: skipped while a change from an event is pending.
-function Action:_InvokeOnResume(me, behavior, interruptingAction)
+function Action:_InvokeOnResume (me, behavior, interruptingAction)
 	if not self._suspended then return CONTINUE_RESULT end
-	if self:_RequestsChange(self._eventResult) then return CONTINUE_RESULT end
+	if self:_RequestsChange (self._eventResult) then return CONTINUE_RESULT end
 	self._suspended = false
 	self._covering = nil
 	if self._parent then self._parent._child = self end
 	if self._child then
-		self._child = self._child:_ApplyResult(me, behavior, self._child:_InvokeOnResume(me, behavior, interruptingAction))
+		self._child = self._child:_ApplyResult (me, behavior, self._child:_InvokeOnResume (me, behavior, interruptingAction))
 	end
-	return self:OnResume(me, interruptingAction)
+	return self:OnResume (me, interruptingAction)
 end
 
 local TRANSITIONS = {}
 
 -- CHANGE_TO: the new action takes my parent and my buried action.
-TRANSITIONS[CHANGE_TO] = function(self, me, behavior, result)
+TRANSITIONS [CHANGE_TO] = function (self, me, behavior, result)
 	local newAction = result.action
 	if newAction == nil then
-		error(self.name .. ": ChangeTo needs an action (" .. (result.reason or "no reason") .. ")", 0)
+		error (self.name .. ": ChangeTo needs an action (" .. (result.reason or "no reason") .. ")", 0)
 	end
-	self:_InvokeOnEnd(me, behavior, newAction)
-	local startResult = newAction:_InvokeOnStart(me, behavior, self, self._buried)
-	if self ~= newAction then behavior:_DestroyAction(self) end
-	return newAction:_ApplyResult(me, behavior, startResult)
+	self:_InvokeOnEnd (me, behavior, newAction)
+	local startResult = newAction:_InvokeOnStart (me, behavior, self, self._buried)
+	if self ~= newAction then behavior:_DestroyAction (self) end
+	return newAction:_ApplyResult (me, behavior, startResult)
 end
 
 -- SUSPEND_FOR: the new action always goes on top of the stack.
-TRANSITIONS[SUSPEND_FOR] = function(self, me, behavior, result)
+TRANSITIONS [SUSPEND_FOR] = function (self, me, behavior, result)
 	local newAction = result.action
 	local top = self
 	while top._covering do top = top._covering end
-	top = top:_InvokeOnSuspend(me, behavior, newAction)
-	local startResult = newAction:_InvokeOnStart(me, behavior, top, top)
-	return newAction:_ApplyResult(me, behavior, startResult)
+	top = top:_InvokeOnSuspend (me, behavior, newAction)
+	local startResult = newAction:_InvokeOnStart (me, behavior, top, top)
+	return newAction:_ApplyResult (me, behavior, startResult)
 end
 
 -- DONE: resume the buried action, or leave the stack empty.
-TRANSITIONS[DONE] = function(self, me, behavior, result)
+TRANSITIONS [DONE] = function (self, me, behavior, result)
 	local resumed = self._buried
-	self:_InvokeOnEnd(me, behavior, resumed)
-	behavior:_DestroyAction(self)
+	self:_InvokeOnEnd (me, behavior, resumed)
+	behavior:_DestroyAction (self)
 	if resumed == nil then return nil end
-	local resumeResult = resumed:_InvokeOnResume(me, behavior, self)
-	return resumed:_ApplyResult(me, behavior, resumeResult)
+	local resumeResult = resumed:_InvokeOnResume (me, behavior, self)
+	return resumed:_ApplyResult (me, behavior, resumeResult)
 end
 
 Action.transitions = TRANSITIONS
@@ -629,26 +638,26 @@ Action.transitions = TRANSITIONS
 -- PROCESS_EVENT: the event walks me and the actions buried under me while
 -- each continues; the first other result is stored on the action that gave
 -- it.
-function Action:_HandleEvent(name, ...)
+function Action:_HandleEvent (name, ...)
 	local action, result = self, nil
 	while action do
-		local handler = action[name]
+		local handler = action [name]
 		if handler then
-			result = handler(action, self._actor, ...)
+			result = handler (action, self._actor, ...)
 		else
 			result = CONTINUE_RESULT
 		end
 		if result.type ~= CONTINUE then break end
 		action = action._buried
 	end
-	if action then action:_StorePendingEventResult(result) end
+	if action then action:_StorePendingEventResult (result) end
 end
 
 -- A query asks me, then the actions buried under me.
-function Action:_AskHere(me, name, ...)
+function Action:_AskHere (me, name, ...)
 	local current = self
 	while current do
-		local answer = State._AskHere(current, me, name, ...)
+		local answer = State._AskHere (current, me, name, ...)
 		if answer ~= nil then return answer end
 		current = current._buried
 	end
@@ -658,18 +667,19 @@ end
 -------------------------------------------------------------------------------
 -- Behavior: the root of an action stack
 
-Behavior = Class.Extend(Root)
+Behavior = Class.Extend (Root)
 
-local function StackFrames(action, depth, frames)
+local function StackFrames (action, depth, frames)
 	while action do
-		frames[#frames + 1] = {
+		frames [#frames + 1] =
+		{
 			name = action.name,
 			short = action.shortName or action.name,
 			depth = depth,
 			suspended = action._suspended,
-			passthrough = action.passthrough,
+			passthrough = action.passthrough
 		}
-		if action._child then StackFrames(action._child, depth + 1, frames) end
+		if action._child then StackFrames (action._child, depth + 1, frames) end
 		action = action._buried
 	end
 	return frames
@@ -678,14 +688,14 @@ end
 -- The whole action stack in Action::DebugString's order: each action, then
 -- the actions it contains a level deeper, then the actions buried under it.
 -- A list of { name, short, depth (1 outermost), suspended, passthrough }.
-function Behavior:Stack()
-	return StackFrames(self.action, 1, {})
+function Behavior:Stack ()
+	return StackFrames (self.action, 1, {})
 end
 
 -- ~Action unlinks a dead action: its parent's active child falls back to
 -- its buried action, and its buried action is no longer covered.
-function Behavior:_PurgeDeadActions()
-	for _, dead in ipairs(self.dead) do
+function Behavior:_PurgeDeadActions ()
+	for _, dead in ipairs (self.dead) do
 		if dead._parent and dead._parent._child == dead then
 			dead._parent._child = dead._buried
 		end
@@ -705,8 +715,10 @@ CountdownTimer, IntervalTimer = Countdown.New, Interval.New
 -------------------------------------------------------------------------------
 -- Chart{ name, port, events?, queries?, initial }, its states Actions
 
-Chart = ChartsOf({
-	state = Action,
-	root = Behavior,
-	lifecycle = { "OnStart", "OnEnd", "OnSuspend", "OnResume" },
-})
+Chart = ChartsOf (
+	{
+		state = Action,
+		root = Behavior,
+		lifecycle = { "OnStart", "OnEnd", "OnSuspend", "OnResume" }
+	}
+)

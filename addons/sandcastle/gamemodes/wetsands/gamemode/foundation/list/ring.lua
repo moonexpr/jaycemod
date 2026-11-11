@@ -9,41 +9,42 @@
 -- has the native one in its place, which keeps this contract.
 local error, floor, setmetatable, tostring, type = error, math.floor, setmetatable, tostring, type
 local min = math.min
-module(...)
+module (...)
 
 local Ring = {}
 Ring.__index = Ring
 
-function New(capacity)
-	if type(capacity) ~= "number" or capacity < 1 or floor(capacity) ~= capacity then
-		error("a ring's capacity is a whole number of at least 1, not " .. tostring(capacity), 2)
+function New (capacity)
+	if type (capacity) ~= "number" or capacity < 1 or floor (capacity) ~= capacity then
+		error ("a ring's capacity is a whole number of at least 1, not " .. tostring (capacity), 2)
 	end
-	return setmetatable({
-		capacity = capacity,
-		values = {},
-		next = 1,
-		size = 0,
-	}, Ring)
+	return setmetatable (
+		{
+			capacity = capacity,
+			values = {},
+			next = 1,
+			size = 0
+		}, Ring)
 end
 
-function Ring:Push(value)
-	self.values[self.next] = value
+function Ring:Push (value)
+	self.values [self.next] = value
 	self.next = self.next % self.capacity + 1
-	self.size = min(self.size + 1, self.capacity)
+	self.size = min (self.size + 1, self.capacity)
 end
 
-function Ring:Size()
+function Ring:Size ()
 	return self.size
 end
 
-function Ring:Ordered()
+function Ring:Ordered ()
 	local list, capacity = {}, self.capacity
 	local start = self.size < capacity and 1 or self.next
-	for i = 0, self.size - 1 do list[#list + 1] = self.values[(start + i - 1) % capacity + 1] end
+	for i = 0, self.size - 1 do list [#list + 1] = self.values [(start + i - 1) % capacity + 1] end
 	return list
 end
 
-function Ring:Newest()
+function Ring:Newest ()
 	if self.size == 0 then return nil end
-	return self.values[(self.next - 2) % self.capacity + 1]
+	return self.values [(self.next - 2) % self.capacity + 1]
 end

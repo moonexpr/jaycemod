@@ -9,27 +9,27 @@
 local require = require
 local Actor = npc.actor
 local bor, band = bit.bor, bit.band
-module(...)
+module (...)
 
 -- CTFWeaponBase::GetSlot
 SLOT_PRIMARY = 0
 SLOT_SECONDARY = 1
 SLOT_MELEE = 2
 
-MELEE_DAMAGE = bor(Actor.DMG_CLUB, Actor.DMG_SLASH)
+MELEE_DAMAGE = bor (Actor.DMG_CLUB, Actor.DMG_SLASH)
 
-function Supported(slot)
+function Supported (slot)
 	return slot == SLOT_MELEE
 end
 
 -- CBaseFilter::PassesDamageFilter over PassesDamageFilterImpl.
-function PassesDamage(slot, negated, damage)
-	local passes = Supported(slot) and damage.byPlayer and band(damage.dmgType, MELEE_DAMAGE) ~= 0
+function PassesDamage (slot, negated, damage)
+	local passes = Supported (slot) and damage.byPlayer and band (damage.dmgType, MELEE_DAMAGE) ~= 0
 	return passes ~= negated
 end
 
 -- CBaseFilter::PassesFilter over PassesFilterImpl, which asserts (the filter
 -- is for damage) and passes.
-function PassesEntity(negated)
+function PassesEntity (negated)
 	return not negated
 end

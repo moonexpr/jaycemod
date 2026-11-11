@@ -10,17 +10,17 @@ ENT.Base = "base_brush2"
 local NEXT_USE_TIME = 3.0
 local SOUND = "Regenerate.Touch"
 
-function ENT:VolumeInit()
-	self.associatedModel = self:Key("associatedmodel")
+function ENT:VolumeInit ()
+	self.associatedModel = self:Key ("associatedmodel")
 end
 
-function ENT:Think()
-	self:NextThink(CurTime() + 0.1)
+function ENT:Think ()
+	self:NextThink (CurTime () + 0.1)
 	if not self.enabled then return true end
-	local now, state, winner = CurTime(), WS.State(), GetGlobal2Int("ws_round_winner", TF_TEAM_UNASSIGNED)
-	for _, ply in ipairs(WS.PlayersInside(self)) do
-		if now >= (ply.wsNextRegen or 0) and WS.TeamRules.RegenerateAllowed(self.team, ply:Team(), state, winner) then
-			self:Regenerate(ply)
+	local now, state, winner = CurTime (), WS.State (), GetGlobal2Int ("ws_round_winner", TF_TEAM_UNASSIGNED)
+	for _, ply in ipairs (WS.PlayersInside (self)) do
+		if now >= (ply.wsNextRegen or 0) and WS.TeamRules.RegenerateAllowed (self.team, ply:Team (), state, winner) then
+			self:Regenerate (ply)
 		end
 	end
 	return true
@@ -28,14 +28,14 @@ end
 
 -- CRegenerateZone::Regenerate: the loadout equipped now (TF2's locker
 -- applies a loadout changed since spawning), then everything refilled.
-function ENT:Regenerate(ply)
-	WS.RestockLoadout(ply)
-	WS.RegeneratePlayer(ply)
-	ply.wsNextRegen = CurTime() + NEXT_USE_TIME
-	WS.PlaySoundTo(ply, ply, SOUND)
-	local prop = WS.FindByName(self.associatedModel)
-	if IsValid(prop) then
-		prop:Fire("SetAnimation", "open")
-		prop:Fire("SetAnimation", "close", NEXT_USE_TIME - 1.0)
+function ENT:Regenerate (ply)
+	WS.RestockLoadout (ply)
+	WS.RegeneratePlayer (ply)
+	ply.wsNextRegen = CurTime () + NEXT_USE_TIME
+	WS.PlaySoundTo (ply, ply, SOUND)
+	local prop = WS.FindByName (self.associatedModel)
+	if IsValid (prop) then
+		prop:Fire ("SetAnimation", "open")
+		prop:Fire ("SetAnimation", "close", NEXT_USE_TIME - 1.0)
 	end
 end

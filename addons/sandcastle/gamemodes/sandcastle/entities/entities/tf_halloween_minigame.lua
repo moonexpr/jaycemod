@@ -11,7 +11,8 @@ ENT.Type = "point"
 ENT.Base = "ws_stub_point"
 
 ENT.StubReason = "kart minigames are not supported; inputs accepted and ignored"
-ENT.StubInputs = {
+ENT.StubInputs =
+{
 	scoreteamred = true,
 	scoreteamblue = true,
 	changehudresfile = true,
@@ -21,5 +22,5 @@ ENT.StubInputs = {
 	kartloseanimationred = true,
 	kartloseanimationblue = true,
 	enablespawnboss = true,
-	disablespawnboss = true,
+	disablespawnboss = true
 }

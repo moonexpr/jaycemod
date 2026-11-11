@@ -20,7 +20,7 @@
 --   turning body does not drag the head past its goal, held to YAW_LIMIT
 --   (C_HL2MP_Player::UpdateLookAt)
 local atan2, deg, sqrt, huge, ipairs = math.atan2, math.deg, math.sqrt, math.huge, ipairs
-module("nextsoldier.body.gaze")
+module ("nextsoldier.body.gaze")
 
 YAW_LIMIT, PITCH_LIMIT = 75, 45
 -- People within LOOK_RANGE are looked at as they pass; a hint holds the
@@ -28,48 +28,48 @@ YAW_LIMIT, PITCH_LIMIT = 75, 45
 -- HL2MP player's.
 LOOK_RANGE, HINT_SECONDS, TURN_RATE = 300, 3, 130
 
-local function Wrap(angle)
+local function Wrap (angle)
 	return (angle + 180) % 360 - 180
 end
 
-function Toward(eye, facing, target)
+function Toward (eye, facing, target)
 	local dx, dy, dz = target.x - eye.x, target.y - eye.y, (target.z or 0) - (eye.z or 0)
-	local yaw = Wrap(deg(atan2(dy, dx)) - facing)
+	local yaw = Wrap (deg (atan2 (dy, dx)) - facing)
 	if yaw > YAW_LIMIT or yaw < -YAW_LIMIT then return nil end
-	local pitch = -deg(atan2(dz, sqrt(dx * dx + dy * dy)))
+	local pitch = -deg (atan2 (dz, sqrt (dx * dx + dy * dy)))
 	if pitch > PITCH_LIMIT then pitch = PITCH_LIMIT elseif pitch < -PITCH_LIMIT then pitch = -PITCH_LIMIT end
 	return yaw, pitch
 end
 
-local function DistanceSquared(a, b)
+local function DistanceSquared (a, b)
 	local dx, dy, dz = b.x - a.x, b.y - a.y, (b.z or 0) - (a.z or 0)
 	return dx * dx + dy * dy + dz * dz
 end
 
-function Goal(view)
+function Goal (view)
 	if view.fighting then return 0, 0 end
 	local eye, facing = view.eye, view.facing
 	if view.hint then
-		local yaw, pitch = Toward(eye, facing, view.hint)
+		local yaw, pitch = Toward (eye, facing, view.hint)
 		if yaw then return yaw, pitch end
 	end
 	local bestYaw, bestPitch, nearest = 0, 0, LOOK_RANGE * LOOK_RANGE
-	for _, person in ipairs(view.people) do
-		local d = DistanceSquared(eye, person)
+	for _, person in ipairs (view.people) do
+		local d = DistanceSquared (eye, person)
 		if d <= nearest then
-			local yaw, pitch = Toward(eye, facing, person)
+			local yaw, pitch = Toward (eye, facing, person)
 			if yaw then bestYaw, bestPitch, nearest = yaw, pitch, d end
 		end
 	end
 	return bestYaw, bestPitch
 end
 
-function Step(seconds, urgent)
+function Step (seconds, urgent)
 	if urgent then return huge end
 	return TURN_RATE * seconds
 end
 
-function Approach(current, goal, step)
+function Approach (current, goal, step)
 	if goal > current then
 		current = current + step
 		return current > goal and goal or current
@@ -78,8 +78,8 @@ function Approach(current, goal, step)
 	return current < goal and goal or current
 end
 
-function Turn(current, goal, step, bodyTurned)
-	local yaw = Approach(current, goal, step) - bodyTurned
+function Turn (current, goal, step, bodyTurned)
+	local yaw = Approach (current, goal, step) - bodyTurned
 	if yaw > YAW_LIMIT then return YAW_LIMIT end
 	if yaw < -YAW_LIMIT then return -YAW_LIMIT end
 	return yaw

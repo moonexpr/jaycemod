@@ -11,7 +11,7 @@
 -- when `to` has no neighbour on that side (CNavArea::IsEdge).
 local Scalar = math.scalar
 local Interval = math.interval
-module("nextsoldier.world.portal")
+module ("nextsoldier.world.portal")
 
 -- NavDirType: north is -y, east is +x.
 NORTH, EAST, SOUTH, WEST = 0, 1, 2, 3
@@ -21,7 +21,7 @@ MARGIN = 25 -- GenerationStepSize
 local Limit = Scalar.Clamp
 
 -- The opening's usable span [low, high] on one axis.
-local function Span(low, high, lowEdge, highEdge)
+local function Span (low, high, lowEdge, highEdge)
 	local lowMargin = lowEdge and low + MARGIN or low
 	local highMargin = highEdge and high - MARGIN or high
 	if lowMargin > highMargin then
@@ -33,37 +33,37 @@ end
 
 -- The usable span of the opening on one axis: what the two rooms share (their
 -- lows and highs on it), less the margin at an edge.
-local function Opening(fromLo, fromHi, toLo, toHi, lowEdge, highEdge)
-	local low, high = Interval.Intersect(fromLo, fromHi, toLo, toHi)
-	return Span(low, high, lowEdge, highEdge)
+local function Opening (fromLo, fromHi, toLo, toHi, lowEdge, highEdge)
+	local low, high = Interval.Intersect (fromLo, fromHi, toLo, toHi)
+	return Span (low, high, lowEdge, highEdge)
 end
 
 -- The crossing from `from` into `to`, which lies in direction dir of it,
 -- for a path coming from fromPos: returns x, y.
-function ClosestPointInPortal(from, to, dir, fromPos)
+function ClosestPointInPortal (from, to, dir, fromPos)
 	local edges = to.edges
 	if dir == NORTH or dir == SOUTH then
 		local y = dir == NORTH and from.lo.y or from.hi.y
-		local low, high = Opening(from.lo.x, from.hi.x, to.lo.x, to.hi.x, edges[WEST], edges[EAST])
-		return Limit(fromPos.x, low, high), y
+		local low, high = Opening (from.lo.x, from.hi.x, to.lo.x, to.hi.x, edges [WEST], edges [EAST])
+		return Limit (fromPos.x, low, high), y
 	end
 	local x = dir == WEST and from.lo.x or from.hi.x
-	local low, high = Opening(from.lo.y, from.hi.y, to.lo.y, to.hi.y, edges[NORTH], edges[SOUTH])
-	return x, Limit(fromPos.y, low, high)
+	local low, high = Opening (from.lo.y, from.hi.y, to.lo.y, to.hi.y, edges [NORTH], edges [SOUTH])
+	return x, Limit (fromPos.y, low, high)
 end
 
 -- The middle of the opening from `from` into `to` (in direction dir of it):
 -- its usable span's centre on the shared edge, wherever a path came from.
 -- A lane's waypoints stand there (a doorway's centre), so the many who walk
 -- it keep off the jambs. Returns x, y.
-function MiddleOfPortal(from, to, dir)
-	local x, y = ClosestPointInPortal(from, to, dir, from.lo)
+function MiddleOfPortal (from, to, dir)
+	local x, y = ClosestPointInPortal (from, to, dir, from.lo)
 	local edges = to.edges
 	if dir == NORTH or dir == SOUTH then
-		local low, high = Opening(from.lo.x, from.hi.x, to.lo.x, to.hi.x, edges[WEST], edges[EAST])
+		local low, high = Opening (from.lo.x, from.hi.x, to.lo.x, to.hi.x, edges [WEST], edges [EAST])
 		return (low + high) / 2, y
 	end
-	local low, high = Opening(from.lo.y, from.hi.y, to.lo.y, to.hi.y, edges[NORTH], edges[SOUTH])
+	local low, high = Opening (from.lo.y, from.hi.y, to.lo.y, to.hi.y, edges [NORTH], edges [SOUTH])
 	return x, (low + high) / 2
 end
 
@@ -71,9 +71,9 @@ end
 -- the crossing (x, y) the way the opening dir faces. Returns x, y.
 local PAST = { [NORTH] = { 0, -1 }, [EAST] = { 1, 0 }, [SOUTH] = { 0, 1 }, [WEST] = { -1, 0 } }
 
-function Past(x, y, dir, out)
-	local d = PAST[dir]
-	return x + d[1] * out, y + d[2] * out
+function Past (x, y, dir, out)
+	local d = PAST [dir]
+	return x + d [1] * out, y + d [2] * out
 end
 
 -- A lane walks through each opening square to it, from a point inside the
@@ -85,35 +85,35 @@ INSET = 16
 
 -- From edge, INSET toward middle (step 1: up the axis, -1: down), no
 -- farther than middle.
-local function Inward(edge, middle, step)
-	if step > 0 then return Limit(edge + INSET, edge, middle) end
-	return Limit(edge - INSET, middle, edge)
+local function Inward (edge, middle, step)
+	if step > 0 then return Limit (edge + INSET, edge, middle) end
+	return Limit (edge - INSET, middle, edge)
 end
 
 -- (x, y) held INSET inside `area` (a lane's end at the area its route
 -- reached). Returns x, y.
-function Inside(area, x, y)
-	local function Axis(v, lo, hi)
-		local low, high = Inward(lo, (lo + hi) / 2, 1), Inward(hi, (lo + hi) / 2, -1)
-		return Limit(v, low, high)
+function Inside (area, x, y)
+	local function Axis (v, lo, hi)
+		local low, high = Inward (lo, (lo + hi) / 2, 1), Inward (hi, (lo + hi) / 2, -1)
+		return Limit (v, low, high)
 	end
-	return Axis(x, area.lo.x, area.hi.x), Axis(y, area.lo.y, area.hi.y)
+	return Axis (x, area.lo.x, area.hi.x), Axis (y, area.lo.y, area.hi.y)
 end
 
 -- The crossing (x, y) on `from`'s side dir, left from inside `from`.
 -- Returns x, y.
-function Exit(from, x, y, dir)
-	if dir == NORTH then return x, Inward(from.lo.y, (from.lo.y + from.hi.y) / 2, 1) end
-	if dir == SOUTH then return x, Inward(from.hi.y, (from.lo.y + from.hi.y) / 2, -1) end
-	if dir == WEST then return Inward(from.lo.x, (from.lo.x + from.hi.x) / 2, 1), y end
-	return Inward(from.hi.x, (from.lo.x + from.hi.x) / 2, -1), y
+function Exit (from, x, y, dir)
+	if dir == NORTH then return x, Inward (from.lo.y, (from.lo.y + from.hi.y) / 2, 1) end
+	if dir == SOUTH then return x, Inward (from.hi.y, (from.lo.y + from.hi.y) / 2, -1) end
+	if dir == WEST then return Inward (from.lo.x, (from.lo.x + from.hi.x) / 2, 1), y end
+	return Inward (from.hi.x, (from.lo.x + from.hi.x) / 2, -1), y
 end
 
 -- The crossing (x, y) into `to`, which lies in direction dir, entered at
 -- `to`'s near edge. Returns x, y.
-function Entry(to, x, y, dir)
-	if dir == NORTH then return x, Inward(to.hi.y, (to.lo.y + to.hi.y) / 2, -1) end
-	if dir == SOUTH then return x, Inward(to.lo.y, (to.lo.y + to.hi.y) / 2, 1) end
-	if dir == WEST then return Inward(to.hi.x, (to.lo.x + to.hi.x) / 2, -1), y end
-	return Inward(to.lo.x, (to.lo.x + to.hi.x) / 2, 1), y
+function Entry (to, x, y, dir)
+	if dir == NORTH then return x, Inward (to.hi.y, (to.lo.y + to.hi.y) / 2, -1) end
+	if dir == SOUTH then return x, Inward (to.lo.y, (to.lo.y + to.hi.y) / 2, 1) end
+	if dir == WEST then return Inward (to.hi.x, (to.lo.x + to.hi.x) / 2, -1), y end
+	return Inward (to.lo.x, (to.lo.x + to.hi.x) / 2, 1), y
 end

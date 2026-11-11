@@ -1,130 +1,131 @@
-
-surface.CreateFont( "ContentHeader", {
-	font	= "Helvetica",
-	size	= 50,
-	weight	= 1000
-} )
+surface.CreateFont ("ContentHeader",
+	{
+		font   = "Helvetica",
+		size   = 50,
+		weight = 1000
+	}
+)
 
 local PANEL = {}
 
-function PANEL:Init()
+function PANEL:Init ()
 
-	self:SetFont( "ContentHeader" )
-	self:SetBright( true )
-	self:SetExpensiveShadow( 2, Color( 0, 0, 0, 130 ) )
+	self:SetFont ("ContentHeader")
+	self:SetBright (true)
+	self:SetExpensiveShadow (2, Color (0, 0, 0, 130))
 
-	self:SetSize( 64, 64 )
+	self:SetSize (64, 64)
 
 	self.OwnLine = true
-	self:SetAutoStretch( true )
+	self:SetAutoStretch (true)
 
 end
 
-function PANEL:PerformLayout()
+function PANEL:PerformLayout ()
 
-	self:SizeToContents()
+	self:SizeToContents ()
 
 end
 
-function PANEL:SizeToContents()
+function PANEL:SizeToContents ()
 
-	local w = self:GetContentSize()
+	local w = self:GetContentSize ()
 
 	-- Don't let the text overflow the parent's width
-	if ( IsValid( self:GetParent() ) ) then
-		w = math.min( w, self:GetParent():GetWide() - 32 )
+	if IsValid (self:GetParent ()) then
+		w = math.min (w, self:GetParent ():GetWide () - 32)
 	end
 
 	-- Add a bit more room so it looks nice as a textbox :)
 	-- And make sure it has at least some width
-	self:SetSize( math.max( w, 64 ) + 16, 64 )
+	self:SetSize (math.max (w, 64) + 16, 64)
 
 end
 
-function PANEL:ToTable( bigtable )
+function PANEL:ToTable (bigtable)
 
 	local tab = {}
 
 	tab.type = "header"
-	tab.text = self:GetText()
+	tab.text = self:GetText ()
 
-	table.insert( bigtable, tab )
+	table.insert (bigtable, tab)
 
 end
 
-function PANEL:Copy()
+function PANEL:Copy ()
 
-	local copy = vgui.Create( "ContentHeader", self:GetParent() )
-	copy:SetText( self:GetText() )
-	copy:CopyBounds( self )
+	local copy = vgui.Create ("ContentHeader", self:GetParent ())
+	copy:SetText (self:GetText ())
+	copy:CopyBounds (self)
 
 	return copy
 
 end
 
-function PANEL:PaintOver( w, h )
+function PANEL:PaintOver (w, h)
 
-	self:DrawSelections()
+	self:DrawSelections ()
 
 end
 
-function PANEL:OnLabelTextChanged( txt )
+function PANEL:OnLabelTextChanged (txt)
 
-	hook.Run( "SpawnlistContentChanged" )
+	hook.Run ("SpawnlistContentChanged")
 	return txt
 
 end
 
-function PANEL:IsEnabled()
+function PANEL:IsEnabled ()
 
 	-- This is a hack!
-	return !IsValid( self:GetParent() ) || !self:GetParent().GetReadOnly || !self:GetParent():GetReadOnly()
+	return not IsValid (self:GetParent ()) or not self:GetParent ().GetReadOnly or not self:GetParent ():GetReadOnly ()
 
 end
 
-function PANEL:DoRightClick()
+function PANEL:DoRightClick ()
 
-	local pCanvas = self:GetSelectionCanvas()
-	if ( IsValid( pCanvas ) && pCanvas:NumSelectedChildren() > 0 && self:IsSelected() ) then
-		return hook.Run( "SpawnlistOpenGenericMenu", pCanvas )
+	local pCanvas = self:GetSelectionCanvas ()
+	if IsValid (pCanvas) and pCanvas:NumSelectedChildren () > 0 and self:IsSelected () then
+		return hook.Run ("SpawnlistOpenGenericMenu", pCanvas)
 	end
 
-	self:OpenMenu()
+	self:OpenMenu ()
 
 end
 
-function PANEL:UpdateColours( skin )
+function PANEL:UpdateColours (skin)
 
-	if ( self:GetHighlight() ) then return self:SetTextStyleColor( skin.Colours.Label.Highlight ) end
-	if ( self:GetBright() ) then return self:SetTextStyleColor( skin.Colours.Label.Bright ) end
-	if ( self:GetDark() ) then return self:SetTextStyleColor( skin.Colours.Label.Dark ) end
+	if self:GetHighlight () then return self:SetTextStyleColor (skin.Colours.Label.Highlight) end
+	if self:GetBright () then return self:SetTextStyleColor (skin.Colours.Label.Bright) end
+	if self:GetDark () then return self:SetTextStyleColor (skin.Colours.Label.Dark) end
 
-	return self:SetTextStyleColor( skin.Colours.Label.Default )
+	return self:SetTextStyleColor (skin.Colours.Label.Default)
 
 end
 
-function PANEL:OpenMenu()
+function PANEL:OpenMenu ()
 
 	-- Do not allow removal from read only panels
-	if ( IsValid( self:GetParent() ) && self:GetParent().GetReadOnly && self:GetParent():GetReadOnly() ) then return end
+	if IsValid (self:GetParent ()) and self:GetParent ().GetReadOnly and self:GetParent ():GetReadOnly () then return end
 
-	local menu = DermaMenu()
-	menu:AddOption( "#spawnmenu.menu.delete", function() self:Remove() hook.Run( "SpawnlistContentChanged" ) end ):SetIcon( "icon16/bin_closed.png" )
-	menu:Open()
+	local menu = DermaMenu ()
+	menu:AddOption ("#spawnmenu.menu.delete", function () self:Remove () hook.Run ("SpawnlistContentChanged") end):SetIcon ("icon16/bin_closed.png")
+	menu:Open ()
 
 end
 
-vgui.Register( "ContentHeader", PANEL, "DLabelEditable" )
+vgui.Register ("ContentHeader", PANEL, "DLabelEditable")
 
-spawnmenu.AddContentType( "header", function( container, obj )
+spawnmenu.AddContentType ("header", function (container, obj)
 
-	if ( !obj.text || !isstring( obj.text ) ) then return end
+	if not obj.text or not isstring (obj.text) then return end
 
-	local label = vgui.Create( "ContentHeader", container )
-	label:SetText( obj.text )
+	local label = vgui.Create ("ContentHeader", container)
+	label:SetText (obj.text)
 
-	container:Add( label )
+	container:Add (label)
 
 	return label
 
-end )
+end)

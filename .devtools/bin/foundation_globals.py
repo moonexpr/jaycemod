@@ -28,11 +28,11 @@ REPO = Path(__file__).resolve().parents[2]
 GAMEMODE = REPO / "addons/sandcastle/gamemodes/sandcastle/gamemode"
 LOADER = GAMEMODE / "shared_loader.lua"
 
-INDEX_CALL = re.compile(r'Index\(\s*"([\w/.]+)"\s*\)')
-NAMESPACE = re.compile(r'local\s+(\w+)\s*=\s*Namespace\(\s*"(\w+)"\s*\)')
-EXPORT = re.compile(r'Export\(\s*(\w+)\s*,\s*"(\w+)"\s*,\s*require\(\s*"([\w.]+)"\s*\)\s*\)')
-DEFER = re.compile(r'Defer\(\s*(\w+)\s*,\s*"(\w+)"\s*,\s*"([\w.]+)"\s*\)')
-SITE = re.compile(r'(?<![\w.])(?:[A-Za-z_]\w*\.)?require\(\s*["\']([\w.]+)["\']\s*\)')
+INDEX_CALL = re.compile(r'Index\s*\(\s*"([\w/.]+)"\s*\)')
+NAMESPACE = re.compile(r'local\s+(\w+)\s*=\s*Namespace\s*\(\s*"(\w+)"\s*\)')
+EXPORT = re.compile(r'Export\s*\(\s*(\w+)\s*,\s*"(\w+)"\s*,\s*require\s*\(\s*"([\w.]+)"\s*\)\s*\)')
+DEFER = re.compile(r'Defer\s*\(\s*(\w+)\s*,\s*"(\w+)"\s*,\s*"([\w.]+)"\s*\)')
+SITE = re.compile(r'(?<![\w.])(?:[A-Za-z_]\w*\.)?require\s*\(\s*["\']([\w.]+)["\']\s*\)')
 SEARCHED = ("addons", "tests", ".devtools/bin")
 HARNESS = REPO / "tests/harness.lua"
 DECLARED = re.compile(

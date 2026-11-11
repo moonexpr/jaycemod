@@ -18,7 +18,7 @@
 local Sets = world.sets
 local error, getmetatable, ipairs, setmetatable, tostring, type = error, getmetatable, ipairs, setmetatable, tostring, type
 local concat = table.concat
-module(...)
+module (...)
 
 -- Check blames the function that called the one checking.
 local CALLER_OF_CHECKER = 3
@@ -26,46 +26,47 @@ local CALLER_OF_CHECKER = 3
 local Port = {}
 Port.__index = Port
 
-function New(name, methods)
-	if type(name) ~= "string" or name == "" then error("a port needs a name, not " .. tostring(name), 2) end
-	if type(methods) ~= "table" then error("port " .. name .. " needs a list of methods", 2) end
-	for _, method in ipairs(methods) do
-		if type(method) ~= "string" then error("port " .. name .. " has a non-name: " .. tostring(method), 2) end
+function New (name, methods)
+	if type (name) ~= "string" or name == "" then error ("a port needs a name, not " .. tostring (name), 2) end
+	if type (methods) ~= "table" then error ("port " .. name .. " needs a list of methods", 2) end
+	for _, method in ipairs (methods) do
+		if type (method) ~= "string" then error ("port " .. name .. " has a non-name: " .. tostring (method), 2) end
 	end
-	if #methods == 0 then error("port " .. name .. " declares no methods", 2) end
-	return setmetatable({
-		name = name,
-		methods = Sets.Named("port " .. name, methods),
-	}, Port)
+	if #methods == 0 then error ("port " .. name .. " declares no methods", 2) end
+	return setmetatable (
+		{
+			name = name,
+			methods = Sets.Named ("port " .. name, methods)
+		}, Port)
 end
 
-function Is(value)
-	return getmetatable(value) == Port
+function Is (value)
+	return getmetatable (value) == Port
 end
 
-function Port:Check(value)
+function Port:Check (value)
 	local missing = {}
-	for _, method in ipairs(self.methods:Members()) do
-		if type(value[method]) ~= "function" then missing[#missing + 1] = method end
+	for _, method in ipairs (self.methods:Members ()) do
+		if type (value [method]) ~= "function" then missing [#missing + 1] = method end
 	end
 	if #missing > 0 then
-		error("value is not a " .. self.name .. ": no " .. concat(missing, ", "), CALLER_OF_CHECKER)
+		error ("value is not a " .. self.name .. ": no " .. concat (missing, ", "), CALLER_OF_CHECKER)
 	end
 	return value
 end
 
-function Port:Facade(value)
+function Port:Facade (value)
 	local facade = {}
-	for _, method in ipairs(self.methods:Members()) do
-		facade[method] = function(_, ...) return value[method](value, ...) end
+	for _, method in ipairs (self.methods:Members ()) do
+		facade [method] = function (_, ...) return value [method] (value, ...) end
 	end
 	return facade
 end
 
-function Port:Methods()
-	return self.methods:Members()
+function Port:Methods ()
+	return self.methods:Members ()
 end
 
-function Port:Name()
+function Port:Name ()
 	return self.name
 end

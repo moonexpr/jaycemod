@@ -9,13 +9,14 @@
 -- ws/cl_kill_feed.lua draws them.
 local Keyvalues = encoding.keyvalues
 local lower, pairs, select, tonumber = string.lower, pairs, select, tonumber
-module(...)
+module (...)
 
 SKULL = "skull_tf"
 
 -- What HL2's weapons throw as their weapon, and what has no icon of its
 -- own as TF2's like one.
-HL2 = {
+HL2 =
+{
 	crossbow_bolt = "weapon_crossbow",
 	rpg_missile = "weapon_rpg",
 	npc_grenade_frag = "weapon_frag",
@@ -33,48 +34,49 @@ HL2 = {
 	prop_ragdoll = "prop_physics",
 	tf_projectile_spellpumpkin = "tf_pumpkin_bomb", -- it bursts into pumpkins
 	ent_projectile_rocket = "tf_projectile_rocket", -- TF2's icons, by TF2's names
-	ent_projectile_pipe = "tf_projectile_pipe",
+	ent_projectile_pipe = "tf_projectile_pipe"
 }
 
 -- Killers whose every kill shows themselves: MONOCULUS fires TF2's own rockets.
-BOSSES = {
+BOSSES =
+{
 	eyeball_boss = true,
-	headless_hatman = true,
+	headless_hatman = true
 }
 
 local FIELDS = { x = "x", y = "y", width = "w", height = "h" }
 
 -- name -> { file, negative, x, y, w, h } (pixels on the sheet).
-function Parse(text)
+function Parse (text)
 	local entries, icons = {}, {}
-	Keyvalues.Read(text, function(path, key, value)
-		local name = path[#path]
+	Keyvalues.Read (text, function (path, key, value)
+		local name = path [#path]
 		if not name then return end
-		local entry = entries[name] or {}
-		entries[name] = entry
-		key = lower(key)
+		local entry = entries [name] or {}
+		entries [name] = entry
+		key = lower (key)
 		if key == "dfile" then entry.file = value
 		elseif key == "dnegfile" then entry.negative = value
-		elseif FIELDS[key] then entry[FIELDS[key]] = tonumber(value) end
+		elseif FIELDS [key] then entry [FIELDS [key]] = tonumber (value) end
 	end)
-	for name, entry in pairs(entries) do
-		if entry.file then icons[name] = entry end
+	for name, entry in pairs (entries) do
+		if entry.file then icons [name] = entry end
 	end
 	return icons
 end
 
 -- Parsed sheets as one, a later sheet's icon over an earlier one's.
-function Over(...)
+function Over (...)
 	local icons = {}
-	for i = 1, select("#", ...) do
-		for name, icon in pairs((select(i, ...))) do icons[name] = icon end
+	for i = 1, select ("#", ...) do
+		for name, icon in pairs ((select (i, ...))) do icons [name] = icon end
 	end
 	return icons
 end
 
 -- The icon a kill shows: by the class of what struck, or of its killer
 -- (nil if not known) when that is a boss.
-function For(icons, class, killer)
-	if BOSSES[killer or ""] and icons[killer] then return icons[killer] end
-	return icons[class] or icons[HL2[class] or ""] or icons[SKULL]
+function For (icons, class, killer)
+	if BOSSES [killer or ""] and icons [killer] then return icons [killer] end
+	return icons [class] or icons [HL2 [class] or ""] or icons [SKULL]
 end

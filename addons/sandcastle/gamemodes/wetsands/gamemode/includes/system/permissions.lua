@@ -11,7 +11,7 @@
 local PlayMode = system.play_mode
 local Sets = world.sets
 local ipairs = ipairs
-module(...)
+module (...)
 
 -- CAMI's MinAccess names for the three ranks it knows.
 RANK_PLAYER, RANK_ADMIN, RANK_SUPERADMIN = "user", "admin", "superadmin"
@@ -34,79 +34,80 @@ REASON_RANK = "rank"
 REASON_TAMPERING_OFF = "tampering_off"
 
 -- In registration order, as an admin mod lists them.
-PRIVILEGES = {
+PRIVILEGES =
+{
 	{
 		name = ROUND,
 		rank = RANK_ADMIN,
-		description = "Sandcastle: control the round (sudden death, restart, round rewards).",
+		description = "Sandcastle: control the round (sudden death, restart, round rewards)."
 	},
 	{
 		name = MATCH,
 		rank = RANK_ADMIN,
-		description = "Sandcastle: control the match (begin, stop, force a winner, editor actions).",
+		description = "Sandcastle: control the match (begin, stop, force a winner, editor actions)."
 	},
 	{
 		name = TAMPER,
 		rank = RANK_ADMIN,
-		description = "Sandcastle: tamper with live gameplay (move the payload, change the clock, respawns).",
+		description = "Sandcastle: tamper with live gameplay (move the payload, change the clock, respawns)."
 	},
 	{
 		name = NEXTSOLDIER,
 		rank = RANK_ADMIN,
-		description = "Sandcastle: run the AI war and its NextSoldier soldiers.",
+		description = "Sandcastle: run the AI war and its NextSoldier soldiers."
 	},
 	{
 		name = RULES,
 		rank = RANK_ADMIN,
-		description = "Sandcastle: change the gameplay rules and server settings.",
+		description = "Sandcastle: change the gameplay rules and server settings."
 	},
 	{
 		name = PLAYERS,
 		rank = RANK_ADMIN,
-		description = "Sandcastle: kick, ban, spectate and give money to players.",
+		description = "Sandcastle: kick, ban, spectate and give money to players."
 	},
 	{
 		name = SERVER_OPTIONS,
 		rank = RANK_ADMIN,
-		description = "Sandcastle: GMod's NPCs and Server menu options, on a dedicated server.",
+		description = "Sandcastle: GMod's NPCs and Server menu options, on a dedicated server."
 	},
 	{
 		name = ECONOMY,
 		rank = RANK_SUPERADMIN,
-		description = "Sandcastle: switch deficit spending or the whole economy on and off.",
+		description = "Sandcastle: switch deficit spending or the whole economy on and off."
 	},
 	{
 		name = GAMEPLAY,
 		rank = RANK_SUPERADMIN,
-		description = "Sandcastle: switch tampering, NextSoldier, criticals, spread and the modes on and off.",
+		description = "Sandcastle: switch tampering, NextSoldier, criticals, spread and the modes on and off."
 	},
 	{
 		name = NPC_DEBUG,
 		rank = RANK_SUPERADMIN,
-		description = "Sandcastle: debug NextSoldier soldiers and NPCs.",
+		description = "Sandcastle: debug NextSoldier soldiers and NPCs."
 	},
 	{
 		name = SPAWN,
 		rank = RANK_ADMIN,
-		description = "Sandcastle: spawn things in Gameplay mode (everyone may in Sandbox mode).",
+		description = "Sandcastle: spawn things in Gameplay mode (everyone may in Sandbox mode)."
 	},
 	{
 		name = BUILD,
 		rank = RANK_ADMIN,
-		description = "Sandcastle: place a game on any map with the game builder.",
-	},
+		description = "Sandcastle: place a game on any map with the game builder."
+	}
 }
 
 local NAMES = {}
-for i, privilege in ipairs(PRIVILEGES) do NAMES[i] = privilege.name end
-local PRIVILEGE = Sets.Named("permissions privilege", NAMES)
+for i, privilege in ipairs (PRIVILEGES) do NAMES [i] = privilege.name end
+local PRIVILEGE = Sets.Named ("permissions privilege", NAMES)
 
 -- Whether the privilege name is allowed: true, or false and a REASON_.
 -- holds(name) is the admin mod's answer; facts = { mode, tamperingEnabled }.
-function Allows(name, holds, facts)
-	PRIVILEGE:Check(name)
-	if name == SPAWN and PlayMode.IsSandbox(facts.mode) then return true end
-	if not holds(name) then return false, REASON_RANK end
+function Allows (name, holds, facts)
+	PRIVILEGE:Check (name)
+	if name == SPAWN and PlayMode.IsSandbox (facts.mode) then return true end
+	if not holds (name) then return false, REASON_RANK end
 	if name == TAMPER and not facts.tamperingEnabled then return false, REASON_TAMPERING_OFF end
 	return true
 end

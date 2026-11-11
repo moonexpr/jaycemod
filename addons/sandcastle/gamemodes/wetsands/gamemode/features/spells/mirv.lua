@@ -4,10 +4,10 @@
 -- second. A bomblet leaves a spell pumpkin bomb of its team.
 local require = require
 local Teams = gameplay.teams
-local Spells = require("features.spells.model")
-local SpellSet = require("features.spells.halloween")
+local Spells = require ("features.spells.model")
+local SpellSet = require ("features.spells.halloween")
 local ipairs = ipairs
-module(...)
+module (...)
 
 INDEX = SpellSet.SPELL_MIRV
 PROJECTILE = "tf_projectile_spellmirv"
@@ -15,13 +15,14 @@ FLIGHT = SpellSet.JAR_FLIGHT
 BOMBLET = "tf_projectile_spellpumpkin"
 
 RADIUS = 1 -- GetDamageRadius, for the blast of 10
-BOMBLET_OFFSETS = {
+BOMBLET_OFFSETS =
+{
 	{ 75, 110, 400 },
 	{ 75, -110, 400 },
 	{ -75, 110, 400 },
 	{ -75, -110, 400 },
 	{ 135, 0, 400 },
-	{ -135, 0, 400 },
+	{ -135, 0, 400 }
 }
 BOMBLET_FUSE = 2
 BOMBLET_FUSE_STEP = 0.05
@@ -35,68 +36,76 @@ PUMPKIN_RADIUS = 200
 PUMPKIN_LIFETIME = 40
 PUMPKIN_LIFETIME_SPREAD = 1
 
-GOOP = {
+GOOP =
+{
 	[Teams.RED] = "spell_pumpkin_mirv_goop_red",
-	[Teams.BLUE] = "spell_pumpkin_mirv_goop_blue",
+	[Teams.BLUE] = "spell_pumpkin_mirv_goop_blue"
 }
 
-USE = {
+USE =
+{
 	kind = Spells.USE_ATTACK,
 	range = SpellSet.THROW_RANGE,
 	radius = PUMPKIN_RADIUS,
 	needsLineOfSight = true,
-	selfOnly = false,
+	selfOnly = false
 }
 
-function Cast(caster)
-	SpellSet.CastWheel(caster)
-	return SpellSet.Toss(caster, _M)
+function Cast (caster)
+	SpellSet.CastWheel (caster)
+	return SpellSet.Toss (caster, _M)
 end
 
-local function Scatter(caster, impact)
-	for i, offset in ipairs(BOMBLET_OFFSETS) do
-		caster:LaunchProjectile(BOMBLET, {
-			spell = INDEX,
-			position = impact.position,
-			velocity = caster:Vector(offset[1], offset[2], offset[3]),
-			team = impact.team,
-			fuse = BOMBLET_FUSE + BOMBLET_FUSE_STEP * (i - 1),
-			armDelay = BOMBLET_ARM_DELAY,
-		})
+local function Scatter (caster, impact)
+	for i, offset in ipairs (BOMBLET_OFFSETS) do
+		caster:LaunchProjectile (BOMBLET,
+			{
+				spell = INDEX,
+				position = impact.position,
+				velocity = caster:Vector (offset [1], offset [2], offset [3]),
+				team = impact.team,
+				fuse = BOMBLET_FUSE + BOMBLET_FUSE_STEP * (i - 1),
+				armDelay = BOMBLET_ARM_DELAY
+			}
+		)
 	end
 	return true
 end
 
-local function Plant(caster, impact)
-	caster:Spawn(PUMPKIN, {
-		scale = PUMPKIN_SCALE,
-		damage = PUMPKIN_DAMAGE,
-		radius = PUMPKIN_RADIUS,
-		team = impact.team,
-		lifetime = PUMPKIN_LIFETIME + caster:RandomFloat(0, PUMPKIN_LIFETIME_SPREAD),
-		isSpell = true,
-	}, impact.position)
+local function Plant (caster, impact)
+	caster:Spawn (PUMPKIN,
+		{
+			scale = PUMPKIN_SCALE,
+			damage = PUMPKIN_DAMAGE,
+			radius = PUMPKIN_RADIUS,
+			team = impact.team,
+			lifetime = PUMPKIN_LIFETIME + caster:RandomFloat (0, PUMPKIN_LIFETIME_SPREAD),
+			isSpell = true
+		}, impact.position)
 	return true
 end
 
 -- The pumpkin's ApplyBlastDamage does nothing.
-local JARS = {
-	[PROJECTILE] = {
+local JARS =
+{
+	[PROJECTILE] =
+	{
 		radius = RADIUS,
 		Initial = Scatter,
 		particles = GOOP,
 		sound = "Halloween.spell_mirv_explode_primary",
-		blast = true,
+		blast = true
 	},
-	[BOMBLET] = {
+	[BOMBLET] =
+	{
 		radius = RADIUS,
 		Initial = Plant,
 		particles = GOOP,
 		sound = "Halloween.spell_mirv_explode_secondary",
-		blast = false,
-	},
+		blast = false
+	}
 }
 
-function Impact(caster, impact)
-	SpellSet.JarImpact(caster, impact, JARS[impact.class])
+function Impact (caster, impact)
+	SpellSet.JarImpact (caster, impact, JARS [impact.class])
 end

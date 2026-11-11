@@ -1,4 +1,4 @@
-AddCSLuaFile()
+AddCSLuaFile ()
 
 -- weapon_deagle: a standard CS:S SWEP; its base owns shared behavior.
 
@@ -9,8 +9,8 @@ SWEP.Category = "Counter-Strike: Source"
 SWEP.Spawnable = true
 SWEP.Slot = 1
 SWEP.SlotPos = 1
-SWEP.ViewModel = Model("models/weapons/cstrike/c_pist_deagle.mdl")
-SWEP.WorldModel = Model("models/weapons/w_pist_deagle.mdl")
+SWEP.ViewModel = Model ("models/weapons/cstrike/c_pist_deagle.mdl")
+SWEP.WorldModel = Model ("models/weapons/w_pist_deagle.mdl")
 SWEP.ViewModelFOV = 54
 SWEP.ViewModelFlip = false
 SWEP.UseHands = true
@@ -24,17 +24,20 @@ SWEP.ReloadTime = 2.2
 SWEP.SingleShotSound = "Weapon_DEagle.Single"
 SWEP.Primary = { ClipSize = 7, DefaultClip = 7, Automatic = false, Ammo = "BULLET_PLAYER_50AE" }
 SWEP.Secondary = { ClipSize = -1, DefaultClip = -1, Automatic = false, Ammo = "none" }
-SWEP.Stats = {
-	Ballistics = {
+SWEP.Stats =
+{
+	Ballistics =
+	{
 		Damage = 54,
 		BulletCount = 1,
 		CycleTime = 0.225,
 		Penetration = 2,
 		Range = 4096,
 		RangeModifier = 0.81,
-		FullAuto = false,
+		FullAuto = false
 	},
-	Accuracy = {
+	Accuracy =
+	{
 		Crouch = 0.00975,
 		Fire = 0.055,
 		Jump = 0.345,
@@ -44,12 +47,13 @@ SWEP.Stats = {
 		RecoveryCrouch = 0.32236,
 		RecoveryStand = 0.38683,
 		Spread = 0.004,
-		Stand = 0.013,
+		Stand = 0.013
 	},
-	Kick = {
+	Kick =
+	{
 		PunchMin = 2,
-		PunchMax = 2,
-	},
+		PunchMax = 2
+	}
 }
 SWEP.SoldierClip = 7
 SWEP.SoldierInterval = 0.225

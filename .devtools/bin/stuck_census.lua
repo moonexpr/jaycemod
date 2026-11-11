@@ -6,37 +6,37 @@
 -- .devtools/bin/stuck_report.lua.
 local SAMPLE, WINDOW, MOVED, FOLLOW_FAR = 2, 8, 32, 150
 
-StuckCensus = { started = CurTime(), events = {}, rounds = 0, map = game.GetMap() }
+StuckCensus = { started = CurTime (), events = {}, rounds = 0, map = game.GetMap () }
 local census = StuckCensus
 local history = {} -- ent -> { { t, pos }, ... } over the last WINDOW
 local stuck = {} -- ent -> the event it is in, while it stays stuck
 
-local function Track(ent, kind, name, busy)
-	local now, pos = CurTime(), ent:GetPos()
-	local h = history[ent] or {}
-	history[ent] = h
+local function Track (ent, kind, name, busy)
+	local now, pos = CurTime (), ent:GetPos ()
+	local h = history [ent] or {}
+	history [ent] = h
 	if not busy then
-		for i = #h, 1, -1 do h[i] = nil end
-		stuck[ent] = nil
+		for i = #h, 1, -1 do h [i] = nil end
+		stuck [ent] = nil
 		return
 	end
-	h[#h + 1] = { t = now, pos = pos }
-	while #h > 1 and now - h[1].t > WINDOW do table.remove(h, 1) end
-	local first = h[1]
+	h [#h + 1] = { t = now, pos = pos }
+	while #h > 1 and now - h [1].t > WINDOW do table.remove (h, 1) end
+	local first = h [1]
 	if now - first.t < WINDOW - SAMPLE then return end
-	if first.pos:Distance(pos) < MOVED then
-		local event = stuck[ent]
+	if first.pos:Distance (pos) < MOVED then
+		local event = stuck [ent]
 		if event then
 			event.until_ = now
 		else
 			event = { kind = kind, name = name, from = now - WINDOW, until_ = now,
-				pos = { math.Round(pos.x), math.Round(pos.y), math.Round(pos.z) },
-				area = (function() local a = navmesh.GetNearestNavArea(pos, false, 64) return a and a:GetID() end)() }
-			stuck[ent] = event
-			census.events[#census.events + 1] = event
+				pos = { math.Round (pos.x), math.Round (pos.y), math.Round (pos.z) },
+				area = (function () local a = navmesh.GetNearestNavArea (pos, false, 64) return a and a:GetID () end) () }
+			stuck [ent] = event
+			census.events [#census.events + 1] = event
 		end
 	else
-		stuck[ent] = nil
+		stuck [ent] = nil
 	end
 end
 
@@ -44,35 +44,35 @@ end
 -- players frozen (ply:Freeze), no one is stuck.
 local RUNNING = { [7] = true, [4] = true } -- STALEMATE (arena, hostage), RND_RUNNING
 
-timer.Create("stuck_census", SAMPLE, 0, function()
-	local running = RUNNING[WS.Feature("rounds"):State()] == true
-	for ent, entry in pairs(WS.Feature("aiwar").soldiers or {}) do
-		if IsValid(ent) and ent:IsPlayer() and ent:Alive() then
+timer.Create ("stuck_census", SAMPLE, 0, function ()
+	local running = RUNNING [WS.Feature ("rounds"):State ()] == true
+	for ent, entry in pairs (WS.Feature ("aiwar").soldiers or {}) do
+		if IsValid (ent) and ent:IsPlayer () and ent:Alive () then
 			local soldier = entry.soldier
 			local walk = soldier.walk
-			local busy = running and not ent:IsFrozen() and walk ~= nil and not walk:Done() and soldier.moveTarget ~= nil
+			local busy = running and not ent:IsFrozen () and walk ~= nil and not walk:Done () and soldier.moveTarget ~= nil
 				and soldier.pin == nil
-			Track(ent, "bot", ent:Nick(), busy)
+			Track (ent, "bot", ent:Nick (), busy)
 		end
 	end
-	for _, observer in pairs(WS.Feature("hostage").bound) do
-		local h = IsValid(observer) and observer:Body()
+	for _, observer in pairs (WS.Feature ("hostage").bound) do
+		local h = IsValid (observer) and observer:Body ()
 		if h then
 			local leader = h.leader
-			local busy = running and not h.rescued and IsValid(leader) and h:GetPos():Distance(leader:GetPos()) > FOLLOW_FAR
-			Track(h, "hostage", "hostage " .. observer.wsHostageId, busy)
+			local busy = running and not h.rescued and IsValid (leader) and h:GetPos ():Distance (leader:GetPos ()) > FOLLOW_FAR
+			Track (h, "hostage", "hostage " .. observer.wsHostageId, busy)
 		end
 	end
 end)
 
-hook.Add("WSRoundActivate", "stuck_census", function() census.rounds = census.rounds + 1 end)
+hook.Add ("WSRoundActivate", "stuck_census", function () census.rounds = census.rounds + 1 end)
 
 -- How many hostages were rescued, in every round it has seen.
 census.rescued = 0
 local lastRescued = 0
-timer.Create("stuck_census_rescued", 1, 0, function()
-	local round = WS.Feature("hostage").round
-	local now = round and round:Rescued() or 0
+timer.Create ("stuck_census_rescued", 1, 0, function ()
+	local round = WS.Feature ("hostage").round
+	local now = round and round:Rescued () or 0
 	if now > lastRescued then census.rescued = census.rescued + (now - lastRescued) end
 	lastRescued = now
 end)
@@ -80,12 +80,12 @@ end)
 -- What became of the armed hostage's pistol: each change of hands, in order.
 census.pistols = {}
 local lastPistol
-timer.Create("stuck_census_pistol", 0.5, 0, function()
-	local pistol = WS.Feature("hostage").pistol
-	local now = pistol and (pistol:Holder() and ("held by " .. pistol:Holder()) or "lying") or "none"
+timer.Create ("stuck_census_pistol", 0.5, 0, function ()
+	local pistol = WS.Feature ("hostage").pistol
+	local now = pistol and (pistol:Holder () and ("held by " .. pistol:Holder ()) or "lying") or "none"
 	if now ~= lastPistol then
 		lastPistol = now
-		census.pistols[#census.pistols + 1] = string.format("%.0f s: %s", CurTime() - census.started, now)
+		census.pistols [#census.pistols + 1] = string.format ("%.0f s: %s", CurTime () - census.started, now)
 	end
 end)
 

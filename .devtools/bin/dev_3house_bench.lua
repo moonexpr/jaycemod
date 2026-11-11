@@ -37,9 +37,9 @@ local SIZE = 5
 -- has gathered.
 local ARRIVED, GATHERED = 96, 320
 -- The staging point and the rally point: the grass west of the bench, beyond its west door.
-local STAGING_OFFSET = Vector(-640, 0, 0)
+local STAGING_OFFSET = Vector (-640, 0, 0)
 -- Where members stand outside the bench's west door, evacuated, before they muster again.
-local OUTSIDE_WEST = Vector(-520, 0, 0)
+local OUTSIDE_WEST = Vector (-520, 0, 0)
 -- How much nearer than the squad's spacing two places may be: rounding.
 local PLACE_SLACK = 1
 -- How near the danger's spot its mark is taken after, and how many of the squad the rout kills.
@@ -49,169 +49,169 @@ local ROUT_KILLS = 3
 NSRoomBench = NSRoomBench or { results = {} }
 local B = NSRoomBench
 
-local function Named(name)
-	local found = ents.FindByName(name)[1]
-	if not IsValid(found) then error("dev_3house has no " .. name .. ": is this the map?", 2) end
-	return found:GetPos()
+local function Named (name)
+	local found = ents.FindByName (name) [1]
+	if not IsValid (found) then error ("dev_3house has no " .. name .. ": is this the map?", 2) end
+	return found:GetPos ()
 end
 
-local function Point(v) return { x = v.x, y = v.y, z = v.z } end
+local function Point (v) return { x = v.x, y = v.y, z = v.z } end
 
 -- The ground under a spot, raised a hair so a body spawns on it.
-local function Ground(v)
-	local tr = util.TraceLine({ start = v + Vector(0, 0, 64), endpos = v - Vector(0, 0, 256), mask = MASK_NPCSOLID_BRUSHONLY })
-	return tr.HitPos + Vector(0, 0, 1)
+local function Ground (v)
+	local tr = util.TraceLine ({ start = v + Vector (0, 0, 64), endpos = v - Vector (0, 0, 256), mask = MASK_NPCSOLID_BRUSHONLY })
+	return tr.HitPos + Vector (0, 0, 1)
 end
 
 -- count spots spread round center, spacing apart, on the ground.
-local function Around(center, count, spacing)
+local function Around (center, count, spacing)
 	local spots = {}
 	for i = 1, count do
 		local angle = (i - 1) / count * 2 * math.pi
-		spots[i] = Ground(center + (i == 1 and vector_origin or Vector(math.cos(angle), math.sin(angle), 0) * spacing))
+		spots [i] = Ground (center + (i == 1 and vector_origin or Vector (math.cos (angle), math.sin (angle), 0) * spacing))
 	end
 	return spots
 end
 
-local function Clear()
-	for _, member in ipairs(B.members or {}) do
-		if IsValid(member) then member:Remove() end
+local function Clear ()
+	for _, member in ipairs (B.members or {}) do
+		if IsValid (member) then member:Remove () end
 	end
 	B.members, B.order = {}, nil
 end
 
-local function Spawn(spots)
-	Clear()
-	for i, spot in ipairs(spots) do
-		local member = ents.Create("npc_pathfollower")
+local function Spawn (spots)
+	Clear ()
+	for i, spot in ipairs (spots) do
+		local member = ents.Create ("npc_pathfollower")
 		member.NSToolManaged = true
-		member:SetPos(spot)
-		member:Spawn()
-		member:Activate()
-		member:NSSetTeam(WS.TEAM_RED)
-		member:NSSetDriver("legs")
-		member:NSHoldFeet(false)
-		B.members[i] = member
+		member:SetPos (spot)
+		member:Spawn ()
+		member:Activate ()
+		member:NSSetTeam (WS.TEAM_RED)
+		member:NSSetDriver ("legs")
+		member:NSHoldFeet (false)
+		B.members [i] = member
 	end
 end
 
-local function Living()
+local function Living ()
 	local living = {}
-	for _, member in ipairs(B.members) do
-		if IsValid(member) and member:Health() > 0 then living[#living + 1] = member end
+	for _, member in ipairs (B.members) do
+		if IsValid (member) and member:Health () > 0 then living [#living + 1] = member end
 	end
 	return living
 end
 
 -- The squad given order, its places from where each stands, led by the first.
-local function Give(order)
-	local members = Living()
+local function Give (order)
+	local members = Living ()
 	local positions = {}
-	for i, member in ipairs(members) do positions[i] = Point(member:GetPos()) end
-	local at = Vector(order.point.x, order.point.y, order.point.z)
-	local places = order:Places(positions, nextsoldier.engine.GroupSpacing(), members[1]:NSLegsAdmit(at),
-		function(around) return members[1]:NSLegsAdmit(around) end)
-	for i, member in ipairs(members) do member:NSLegsGive(order, places[i]) end
-	order:Lead(members[1])
+	for i, member in ipairs (members) do positions [i] = Point (member:GetPos ()) end
+	local at = Vector (order.point.x, order.point.y, order.point.z)
+	local places = order:Places (positions, nextsoldier.engine.GroupSpacing (), members [1]:NSLegsAdmit (at),
+		function (around) return members [1]:NSLegsAdmit (around) end)
+	for i, member in ipairs (members) do member:NSLegsGive (order, places [i]) end
+	order:Lead (members [1])
 	B.order, B.starts, B.places = order, positions, places
 	return order
 end
 
 -- The war's rooms on this map, found once.
-local function RoomAt(pos)
-	local controller = WS.Feature("aiwar")
-	if not controller.rooms then controller:FindRoomsNow() end
-	local area = navmesh.GetNearestNavArea(pos)
-	return IsValid(area) and Rooms.RoomOf(controller.rooms, area:GetID()) or nil
+local function RoomAt (pos)
+	local controller = WS.Feature ("aiwar")
+	if not controller.rooms then controller:FindRoomsNow () end
+	local area = navmesh.GetNearestNavArea (pos)
+	return IsValid (area) and Rooms.RoomOf (controller.rooms, area:GetID ()) or nil
 end
 
-local function InBench(member) return RoomAt(member:GetPos()) == RoomAt(Named("bench_room")) end
+local function InBench (member) return RoomAt (member:GetPos ()) == RoomAt (Named ("bench_room")) end
 
-local function InStronghold(member) return RoomAt(member:GetPos()) == RoomAt(Named("red_stronghold")) end
+local function InStronghold (member) return RoomAt (member:GetPos ()) == RoomAt (Named ("red_stronghold")) end
 
-local function InSpawnRoom(member)
-	local room = ents.FindByName("red_spawnroom")[1]
-	local lo, hi = room:WorldSpaceAABB()
-	return member:GetPos():WithinAABox(lo, hi + Vector(0, 0, 1))
+local function InSpawnRoom (member)
+	local room = ents.FindByName ("red_spawnroom") [1]
+	local lo, hi = room:WorldSpaceAABB ()
+	return member:GetPos ():WithinAABox (lo, hi + Vector (0, 0, 1))
 end
 
-local function Stack(member)
+local function Stack (member)
 	local names = {}
 	-- its leggings' stack: its main one is its squad member's (nextsoldier.squad.behaviors.member)
-	for i, frame in ipairs(nextsoldier.engine.GroupStack(member)) do names[i] = frame.name end
-	return table.concat(names, " > ")
+	for i, frame in ipairs (nextsoldier.engine.GroupStack (member)) do names [i] = frame.name end
+	return table.concat (names, " > ")
 end
 
-local function SpotOf(member) return member:GetNW2Vector("NSLegsSpot", member:GetPos()) end
+local function SpotOf (member) return member:GetNW2Vector ("NSLegsSpot", member:GetPos ()) end
 
 -- What a check found: whether every condition held, and a line for each member.
-local function Verdict(lines, failures)
+local function Verdict (lines, failures)
 	return { passed = #failures == 0, failures = failures, members = lines }
 end
 
 -- Each member's line, and a failure for each condition it fails (cond(member) -> ok, what).
-local function Each(conditions)
+local function Each (conditions)
 	local lines, failures = {}, {}
-	local members = Living()
-	for i, member in ipairs(members) do
-		local pos = member:GetPos()
-		lines[i] = string.format("%d at %.0f,%.0f,%.0f, %.0f from its spot | %s", i, pos.x, pos.y, pos.z,
-			pos:Distance2D(SpotOf(member)), Stack(member))
-		for _, condition in ipairs(conditions) do
-			local ok, what = condition(member)
-			if not ok then failures[#failures + 1] = string.format("member %d: %s", i, what) end
+	local members = Living ()
+	for i, member in ipairs (members) do
+		local pos = member:GetPos ()
+		lines [i] = string.format ("%d at %.0f,%.0f,%.0f, %.0f from its spot | %s", i, pos.x, pos.y, pos.z,
+			pos:Distance2D (SpotOf (member)), Stack (member))
+		for _, condition in ipairs (conditions) do
+			local ok, what = condition (member)
+			if not ok then failures [#failures + 1] = string.format ("member %d: %s", i, what) end
 		end
 	end
 	return lines, failures, members
 end
 
-local function Arrived(member) return member:GetPos():Distance2D(SpotOf(member)) <= ARRIVED, "not at its spot" end
+local function Arrived (member) return member:GetPos ():Distance2D (SpotOf (member)) <= ARRIVED, "not at its spot" end
 
-local function Runs(action)
-	return function(member) return Stack(member):find(action, 1, true) ~= nil, "not running " .. action end
+local function Runs (action)
+	return function (member) return Stack (member):find (action, 1, true) ~= nil, "not running " .. action end
 end
 
-local function Staging() return Named("bench_room") + STAGING_OFFSET end
+local function Staging () return Named ("bench_room") + STAGING_OFFSET end
 
 -- The squad's order told the bench is the room it is in, and B.room that room.
-local function InTheBench(order)
-	B.room = WS.Feature("aiwar"):RoomForSquad(Point(Named("bench_room")), Point(Staging()), WS.TEAM_RED)
-	order:SetRoom(B.room)
+local function InTheBench (order)
+	B.room = WS.Feature ("aiwar"):RoomForSquad (Point (Named ("bench_room")), Point (Staging ()), WS.TEAM_RED)
+	order:SetRoom (B.room)
 end
 
 -- Out of the bench's sight, where an evacuating member hides.
-local function Hidden(member) return not B.room.seen(Point(member:GetPos())), "in the room's sight" end
+local function Hidden (member) return not B.room.seen (Point (member:GetPos ())), "in the room's sight" end
 
 -- Whether segments ab and cd cross, apart from touching or running along each other (a point
 -- within ON_LINE of a line is on it: rounding).
 local ON_LINE = 1e-6
 
-local function Cross(a, b, c, d)
-	local function Side(p, q, r)
+local function Cross (a, b, c, d)
+	local function Side (p, q, r)
 		local side = (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x)
 		return (side > ON_LINE and 1) or (side < -ON_LINE and -1) or 0
 	end
-	return Side(a, b, c) * Side(a, b, d) < 0 and Side(c, d, a) * Side(c, d, b) < 0
+	return Side (a, b, c) * Side (a, b, d) < 0 and Side (c, d, a) * Side (c, d, b) < 0
 end
 
 -- The places the squad was given, as failures: one left without, two nearer than its spacing,
 -- two members' walks there crossing (not where they file through a doorway).
-local function Placement(throughDoor)
+local function Placement (throughDoor)
 	local failures, starts, places = {}, B.starts, B.places
-	local spacing = nextsoldier.engine.GroupSpacing()
+	local spacing = nextsoldier.engine.GroupSpacing ()
 	for i = 1, #starts do
-		if not places[i] then failures[#failures + 1] = string.format("member %d: no place", i) end
+		if not places [i] then failures [#failures + 1] = string.format ("member %d: no place", i) end
 	end
 	for i = 1, #starts do
 		for j = i + 1, #starts do
-			local a, b = places[i], places[j]
+			local a, b = places [i], places [j]
 			if a and b then
-				local apart = math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2)
+				local apart = math.sqrt ((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2)
 				if apart < spacing - PLACE_SLACK then
-					failures[#failures + 1] = string.format("members %d and %d: places %.0f apart, under %.0f", i, j, apart, spacing)
+					failures [#failures + 1] = string.format ("members %d and %d: places %.0f apart, under %.0f", i, j, apart, spacing)
 				end
-				if not throughDoor and Cross(starts[i], a, starts[j], b) then
-					failures[#failures + 1] = string.format("members %d and %d: their walks cross", i, j)
+				if not throughDoor and Cross (starts [i], a, starts [j], b) then
+					failures [#failures + 1] = string.format ("members %d and %d: their walks cross", i, j)
 				end
 			end
 		end
@@ -219,32 +219,32 @@ local function Placement(throughDoor)
 	return failures
 end
 
-local function Resting(member) return member.NSStance ~= nil, "not resting at its place" end
+local function Resting (member) return member.NSStance ~= nil, "not resting at its place" end
 
 -- The assault points planned, as failures: one without, one on the line in through the doorway,
 -- two in turn on the same side of it.
-local function AssaultPoints()
+local function AssaultPoints ()
 	local failures, order, room = {}, B.order, B.room
-	local into = math.geometry.Normalize2D(math.geometry.Sub(room.center, room.entry))
-	local left = math.geometry.Left2D(into)
+	local into = math.geometry.Normalize2D (math.geometry.Sub (room.center, room.entry))
+	local left = math.geometry.Left2D (into)
 	local turn = {}
-	for i in ipairs(B.places) do turn[i] = i end
-	local function Stage(i) return order:StagingOf(B.places[i]) or B.starts[i] end
-	local Depth = function(i) return math.geometry.Distance2D(Stage(i), room.entry) end
-	table.sort(turn, function(a, b) return Depth(a) < Depth(b) end)
+	for i in ipairs (B.places) do turn [i] = i end
+	local function Stage (i) return order:StagingOf (B.places [i]) or B.starts [i] end
+	local Depth = function (i) return math.geometry.Distance2D (Stage (i), room.entry) end
+	table.sort (turn, function (a, b) return Depth (a) < Depth (b) end)
 	local last
-	for k, i in ipairs(turn) do
-		local point = order:BreachOf(B.places[i])
+	for k, i in ipairs (turn) do
+		local point = order:BreachOf (B.places [i])
 		if not point then
-			failures[#failures + 1] = string.format("member %d: no assault point", i)
+			failures [#failures + 1] = string.format ("member %d: no assault point", i)
 		else
 			local across = (point.x - room.entry.x) * left.x + (point.y - room.entry.y) * left.y
-			if math.abs(across) < Legs.BREACH_FUNNEL - PLACE_SLACK then
-				failures[#failures + 1] = string.format("member %d: its point on the line in through the door", i)
+			if math.abs (across) < Legs.BREACH_FUNNEL - PLACE_SLACK then
+				failures [#failures + 1] = string.format ("member %d: its point on the line in through the door", i)
 			end
 			local side = across > 0 and 1 or -1
 			if last and side == last then
-				failures[#failures + 1] = string.format("member %d, %d in turn: on the same side as the one before", i, k)
+				failures [#failures + 1] = string.format ("member %d, %d in turn: on the same side as the one before", i, k)
 			end
 			last = side
 		end
@@ -258,9 +258,9 @@ local WATCH_EVERY = 0.25
 
 -- Watches the assault on room from now until its check: B.watch holds what it found.
 -- The member who is the assault's decoy, by index, or nil.
-local function DecoyIndex()
-	for i, place in ipairs(B.places or {}) do
-		if B.order:DecoyOf(place) then return i end
+local function DecoyIndex ()
+	for i, place in ipairs (B.places or {}) do
+		if B.order:DecoyOf (place) then return i end
 	end
 end
 
@@ -268,37 +268,37 @@ end
 -- the room before the signal, who the room sees while staged (the decoy apart), whether the decoy
 -- showed itself, and whether it was hidden again when the rest went in; signalled(watch) is told
 -- once, as the rest go in.
-local function WatchAssault(room, run, signalled)
+local function WatchAssault (room, run, signalled)
 	local watch = { early = {}, seen = {}, held = {} }
 	B.watch = watch
-	local decoy = DecoyIndex()
+	local decoy = DecoyIndex ()
 	local name = "dev_3house_bench_assault"
-	timer.Create(name, WATCH_EVERY, 0, function()
-		if run ~= B.runs or not B.order then timer.Remove(name) return end
+	timer.Create (name, WATCH_EVERY, 0, function ()
+		if run ~= B.runs or not B.order then timer.Remove (name) return end
 		local order = B.order
-		if order:Signalled() then
+		if order:Signalled () then
 			if not watch.signalledAt then
-				watch.signalledAt = CurTime()
-				if signalled then signalled(watch) end
+				watch.signalledAt = CurTime ()
+				if signalled then signalled (watch) end
 			end
 			-- the decoy backs off as the rest go in: hidden again at some time after
-			local d = decoy and B.members[decoy]
-			if not d or not IsValid(d) or not room.seen(Point(d:GetPos())) then watch.hidAgain = true end
-			for i, member in ipairs(B.members) do
-				if IsValid(member) and Stack(member):find("LegsClear", 1, true) then watch.held[i] = true end
+			local d = decoy and B.members [decoy]
+			if not d or not IsValid (d) or not room.seen (Point (d:GetPos ())) then watch.hidAgain = true end
+			for i, member in ipairs (B.members) do
+				if IsValid (member) and Stack (member):find ("LegsClear", 1, true) then watch.held [i] = true end
 			end
 			return
 		end
-		for i, member in ipairs(B.members) do
-			if IsValid(member) then
-				if InBench(member) then watch.early[i] = true end
+		for i, member in ipairs (B.members) do
+			if IsValid (member) then
+				if InBench (member) then watch.early [i] = true end
 				if i == decoy then
-					local part = order:DecoyOf(B.places[i])
-					if part.show and member:GetPos():Distance2D(Vector(part.show.x, part.show.y, 0)) <= Legs.STACK_COVER then
+					local part = order:DecoyOf (B.places [i])
+					if part.show and member:GetPos ():Distance2D (Vector (part.show.x, part.show.y, 0)) <= Legs.STACK_COVER then
 						watch.shown = true
 					end
-				elseif order:StagedAt(member) and room.seen(Point(member:GetPos())) then
-					watch.seen[i] = true
+				elseif order:StagedAt (member) and room.seen (Point (member:GetPos ())) then
+					watch.seen [i] = true
 				end
 			end
 		end
@@ -306,20 +306,20 @@ local function WatchAssault(room, run, signalled)
 end
 
 -- The stacks, as failures, where there is a decoy: a member other than it staged at the front.
-local function Flanks()
+local function Flanks ()
 	local failures, room = {}, B.room
 	local front
-	for _, e in ipairs(room.entrances) do
+	for _, e in ipairs (room.entrances) do
 		if not front or e.flow > front.flow then front = e end
 	end
-	for i, place in ipairs(B.places) do
-		local stage = not B.order:DecoyOf(place) and B.order:StagingOf(place)
+	for i, place in ipairs (B.places) do
+		local stage = not B.order:DecoyOf (place) and B.order:StagingOf (place)
 		if stage then
 			local nearest
-			for _, e in ipairs(room.entrances) do
-				if not nearest or math.geometry.Distance2D(e.pos, stage) < math.geometry.Distance2D(nearest.pos, stage) then nearest = e end
+			for _, e in ipairs (room.entrances) do
+				if not nearest or math.geometry.Distance2D (e.pos, stage) < math.geometry.Distance2D (nearest.pos, stage) then nearest = e end
 			end
-			if nearest == front then failures[#failures + 1] = string.format("member %d: staged at the front", i) end
+			if nearest == front then failures [#failures + 1] = string.format ("member %d: staged at the front", i) end
 		end
 	end
 	return failures
@@ -327,193 +327,194 @@ end
 
 -- The squad's assault on the bench, from the staging point: the war's classes asked for first,
 -- so the entrances carry RED's flow.
-local function AssaultTheBench()
-	local controller = WS.Feature("aiwar")
-	controller:Classes()
-	local room = controller:RoomForSquad(Point(Named("bench_room")), Point(Staging()), WS.TEAM_RED)
+local function AssaultTheBench ()
+	local controller = WS.Feature ("aiwar")
+	controller:Classes ()
+	local room = controller:RoomForSquad (Point (Named ("bench_room")), Point (Staging ()), WS.TEAM_RED)
 	B.room = room
-	Give(Legs.Assault(room))
+	Give (Legs.Assault (room))
 	return room
 end
 
-B.STAGES = {
+B.STAGES =
+{
 	{
 		name = "spawn",
 		seconds = 2,
-		setup = function()
+		setup = function ()
 			local spots = {}
-			for i, spawn in ipairs(ents.FindByName("red_spawn")) do
+			for i, spawn in ipairs (ents.FindByName ("red_spawn")) do
 				if i > SIZE then break end
-				spots[i] = spawn:GetPos()
+				spots [i] = spawn:GetPos ()
 			end
-			Spawn(spots)
+			Spawn (spots)
 		end,
-		check = function()
-			local lines, failures, members = Each({ function(m) return InSpawnRoom(m), "outside the spawn room" end,
-				Runs("LegsAtEase") })
-			if #members ~= SIZE then failures[#failures + 1] = #members .. " of " .. SIZE .. " spawned" end
-			return Verdict(lines, failures)
-		end,
+		check = function ()
+			local lines, failures, members = Each ({ function (m) return InSpawnRoom (m), "outside the spawn room" end,
+				Runs ("LegsAtEase") })
+			if #members ~= SIZE then failures [#failures + 1] = #members .. " of " .. SIZE .. " spawned" end
+			return Verdict (lines, failures)
+		end
 	},
 	{
 		name = "muster",
 		seconds = 10,
-		setup = function()
+		setup = function ()
 			local spots = {}
-			for i, spawn in ipairs(ents.FindByName("red_spawn")) do
+			for i, spawn in ipairs (ents.FindByName ("red_spawn")) do
 				if i > SIZE then break end
-				spots[i] = spawn:GetPos()
+				spots [i] = spawn:GetPos ()
 			end
-			Spawn(spots)
+			Spawn (spots)
 		end,
-		act = function() Give(Legs.Muster(Point(Named("red_muster")))) end,
-		check = function()
-			local lines, failures = Each({ Arrived, Runs("LegsStationary"), Resting,
-				function(m) return InStronghold(m), "not in the stronghold" end })
-			for _, failure in ipairs(Placement()) do failures[#failures + 1] = failure end
-			for i, place in ipairs(B.places) do
-				local start = B.starts[i]
-				lines[i] = lines[i] .. string.format(" | from %.0f,%.0f placed %.0f,%.0f", start.x, start.y, place.x, place.y)
+		act = function () Give (Legs.Muster (Point (Named ("red_muster")))) end,
+		check = function ()
+			local lines, failures = Each ({ Arrived, Runs ("LegsStationary"), Resting,
+				function (m) return InStronghold (m), "not in the stronghold" end })
+			for _, failure in ipairs (Placement ()) do failures [#failures + 1] = failure end
+			for i, place in ipairs (B.places) do
+				local start = B.starts [i]
+				lines [i] = lines [i] .. string.format (" | from %.0f,%.0f placed %.0f,%.0f", start.x, start.y, place.x, place.y)
 			end
-			return Verdict(lines, failures)
-		end,
+			return Verdict (lines, failures)
+		end
 	},
 	{
 		name = "mobilize",
 		seconds = 25,
-		setup = function() Spawn(Around(Named("red_muster"), SIZE, 72)) end,
-		act = function() Give(Legs.Muster(Point(Ground(Staging())))) end,
-		check = function()
-			local staging = Staging()
-			return Verdict(Each({ Arrived,
-				function(m) return not InStronghold(m), "still in the stronghold" end,
-				function(m) return m:GetPos():Distance2D(staging) <= GATHERED, "not at the staging point" end }))
-		end,
+		setup = function () Spawn (Around (Named ("red_muster"), SIZE, 72)) end,
+		act = function () Give (Legs.Muster (Point (Ground (Staging ())))) end,
+		check = function ()
+			local staging = Staging ()
+			return Verdict (Each ({ Arrived,
+				function (m) return not InStronghold (m), "still in the stronghold" end,
+				function (m) return m:GetPos ():Distance2D (staging) <= GATHERED, "not at the staging point" end }))
+		end
 	},
 	{
 		name = "assault",
 		seconds = 60,
-		setup = function() Spawn(Around(Staging(), SIZE, 72)) end,
-		act = function(run) WatchAssault(AssaultTheBench(), run) end,
-		check = function()
-			timer.Remove("dev_3house_bench_assault")
-			local lines, failures = Each({ Arrived, Runs("LegsStationary"), Resting,
-				function(m) return InBench(m), "not in the bench" end })
-			local watch, decoy = B.watch, DecoyIndex()
-			if not B.order:Signalled() then failures[#failures + 1] = "the leader never signalled" end
-			for i in pairs(watch.early) do failures[#failures + 1] = string.format("member %d: in before the signal", i) end
-			for i in pairs(watch.seen) do failures[#failures + 1] = string.format("member %d: staged in the room's sight", i) end
-			for _, failure in ipairs(Placement(true)) do failures[#failures + 1] = failure end
+		setup = function () Spawn (Around (Staging (), SIZE, 72)) end,
+		act = function (run) WatchAssault (AssaultTheBench (), run) end,
+		check = function ()
+			timer.Remove ("dev_3house_bench_assault")
+			local lines, failures = Each ({ Arrived, Runs ("LegsStationary"), Resting,
+				function (m) return InBench (m), "not in the bench" end })
+			local watch, decoy = B.watch, DecoyIndex ()
+			if not B.order:Signalled () then failures [#failures + 1] = "the leader never signalled" end
+			for i in pairs (watch.early) do failures [#failures + 1] = string.format ("member %d: in before the signal", i) end
+			for i in pairs (watch.seen) do failures [#failures + 1] = string.format ("member %d: staged in the room's sight", i) end
+			for _, failure in ipairs (Placement (true)) do failures [#failures + 1] = failure end
 			if decoy then
-				if not watch.shown then failures[#failures + 1] = string.format("member %d, the decoy: never showed itself", decoy) end
-				if not watch.hidAgain then failures[#failures + 1] = string.format("member %d, the decoy: never hid again", decoy) end
-				for _, failure in ipairs(Flanks()) do failures[#failures + 1] = failure end
+				if not watch.shown then failures [#failures + 1] = string.format ("member %d, the decoy: never showed itself", decoy) end
+				if not watch.hidAgain then failures [#failures + 1] = string.format ("member %d, the decoy: never hid again", decoy) end
+				for _, failure in ipairs (Flanks ()) do failures [#failures + 1] = failure end
 			else
-				for _, failure in ipairs(AssaultPoints()) do failures[#failures + 1] = failure end
+				for _, failure in ipairs (AssaultPoints ()) do failures [#failures + 1] = failure end
 			end
-			for i in ipairs(B.places) do
-				if i ~= decoy and not watch.held[i] then
-					failures[#failures + 1] = string.format("member %d: never held its assault point", i)
+			for i in ipairs (B.places) do
+				if i ~= decoy and not watch.held [i] then
+					failures [#failures + 1] = string.format ("member %d: never held its assault point", i)
 				end
 			end
-			if not B.order.cleared then failures[#failures + 1] = "the leader never called the room clear" end
-			for i, place in ipairs(B.places) do
-				local stage, point = B.order:StagingOf(place), B.order:BreachOf(place)
-				lines[i] = lines[i] .. string.format(" | %sstaged %s point %s placed %.0f,%.0f", i == decoy and "decoy, " or "",
-					stage and string.format("%.0f,%.0f", stage.x, stage.y) or "none",
-					point and string.format("%.0f,%.0f", point.x, point.y) or "none", place.x, place.y)
+			if not B.order.cleared then failures [#failures + 1] = "the leader never called the room clear" end
+			for i, place in ipairs (B.places) do
+				local stage, point = B.order:StagingOf (place), B.order:BreachOf (place)
+				lines [i] = lines [i] .. string.format (" | %sstaged %s point %s placed %.0f,%.0f", i == decoy and "decoy, " or "",
+					stage and string.format ("%.0f,%.0f", stage.x, stage.y) or "none",
+					point and string.format ("%.0f,%.0f", point.x, point.y) or "none", place.x, place.y)
 			end
-			return Verdict(lines, failures)
-		end,
+			return Verdict (lines, failures)
+		end
 	},
 	{
 		name = "assault_rout",
 		seconds = 45,
-		setup = function() Spawn(Around(Staging(), SIZE, 72)) end,
-		act = function(run)
-			local room = AssaultTheBench()
+		setup = function () Spawn (Around (Staging (), SIZE, 72)) end,
+		act = function (run)
+			local room = AssaultTheBench ()
 			-- as the rest go in, the leader and two more fall: half the squad and more
-			WatchAssault(room, run, function()
+			WatchAssault (room, run, function ()
 				for i = 1, ROUT_KILLS do
-					if IsValid(B.members[i]) then B.members[i]:TakeDamage(10000) end
+					if IsValid (B.members [i]) then B.members [i]:TakeDamage (10000) end
 				end
 			end)
 		end,
-		check = function()
-			timer.Remove("dev_3house_bench_assault")
-			local lines, failures = Each({ Runs("LegsEvacuate"), Hidden,
-				function(m) return not InBench(m), "still in the bench" end })
-			if not B.watch.signalledAt then failures[#failures + 1] = "the squad never went in" end
-			if not B.order.routed then failures[#failures + 1] = "no one called the fall back" end
-			if B.order.leader == B.members[1] then failures[#failures + 1] = "the lead not taken from the fallen leader" end
-			return Verdict(lines, failures)
-		end,
+		check = function ()
+			timer.Remove ("dev_3house_bench_assault")
+			local lines, failures = Each ({ Runs ("LegsEvacuate"), Hidden,
+				function (m) return not InBench (m), "still in the bench" end })
+			if not B.watch.signalledAt then failures [#failures + 1] = "the squad never went in" end
+			if not B.order.routed then failures [#failures + 1] = "no one called the fall back" end
+			if B.order.leader == B.members [1] then failures [#failures + 1] = "the lead not taken from the fallen leader" end
+			return Verdict (lines, failures)
+		end
 	},
 	{
 		name = "hold",
 		seconds = 15,
-		setup = function()
-			Spawn(Around(Named("bench_room"), SIZE, 96))
-			Give(Legs.Muster(Point(Named("bench_room"))))
+		setup = function ()
+			Spawn (Around (Named ("bench_room"), SIZE, 96))
+			Give (Legs.Muster (Point (Named ("bench_room"))))
 		end,
-		act = function() B.order:SetMode(Legs.MODE.ALERT) end,
-		check = function()
-			return Verdict(Each({ Runs("LegsPatrol"), function(m) return InBench(m), "left the bench" end }))
-		end,
+		act = function () B.order:SetMode (Legs.MODE.ALERT) end,
+		check = function ()
+			return Verdict (Each ({ Runs ("LegsPatrol"), function (m) return InBench (m), "left the bench" end }))
+		end
 	},
 	{
 		name = "evacuate",
 		seconds = 12,
-		setup = function()
-			Spawn(Around(Named("bench_room"), SIZE, 96))
-			Give(Legs.Muster(Point(Named("bench_room"))))
+		setup = function ()
+			Spawn (Around (Named ("bench_room"), SIZE, 96))
+			Give (Legs.Muster (Point (Named ("bench_room"))))
 		end,
-		act = function()
-			InTheBench(B.order)
-			WS.Feature("aiwar"):Mark("danger", WS.TEAM_RED, Point(Named("bench_danger")))
+		act = function ()
+			InTheBench (B.order)
+			WS.Feature ("aiwar"):Mark ("danger", WS.TEAM_RED, Point (Named ("bench_danger")))
 		end,
-		check = function()
-			local danger, room = Named("bench_danger"), Named("bench_room")
-			local away = room:Distance2D(danger)
-			local lines, failures = Each({ Runs("LegsEvacuate"), Hidden,
-				function(m) return not InBench(m), "still in the bench" end,
-				function(m) return m:GetPos():Distance2D(danger) > away, "no further from the danger than the room" end })
-			if not B.order.routed then failures[#failures + 1] = "the leader did not call the fall back" end
-			return Verdict(lines, failures)
+		check = function ()
+			local danger, room = Named ("bench_danger"), Named ("bench_room")
+			local away = room:Distance2D (danger)
+			local lines, failures = Each ({ Runs ("LegsEvacuate"), Hidden,
+				function (m) return not InBench (m), "still in the bench" end,
+				function (m) return m:GetPos ():Distance2D (danger) > away, "no further from the danger than the room" end })
+			if not B.order.routed then failures [#failures + 1] = "the leader did not call the fall back" end
+			return Verdict (lines, failures)
 		end,
-		cleanup = function() WS.Feature("aiwar"):Unmark(Named("bench_danger"), DANGER_UNMARK) end,
+		cleanup = function () WS.Feature ("aiwar"):Unmark (Named ("bench_danger"), DANGER_UNMARK) end
 	},
 	{
 		name = "rout",
 		seconds = 12,
-		setup = function()
-			Spawn(Around(Named("bench_room"), SIZE, 96))
-			InTheBench(Give(Legs.Muster(Point(Named("bench_room")))))
+		setup = function ()
+			Spawn (Around (Named ("bench_room"), SIZE, 96))
+			InTheBench (Give (Legs.Muster (Point (Named ("bench_room")))))
 		end,
-		act = function()
-			for i = SIZE - ROUT_KILLS + 1, SIZE do B.members[i]:TakeDamage(10000) end
+		act = function ()
+			for i = SIZE - ROUT_KILLS + 1, SIZE do B.members [i]:TakeDamage (10000) end
 		end,
-		check = function()
-			local lines, failures = Each({ Runs("LegsEvacuate"), Hidden, function(m) return not InBench(m), "still in the bench" end })
-			if not B.order.routed then failures[#failures + 1] = "the leader did not call the fall back" end
-			return Verdict(lines, failures)
-		end,
+		check = function ()
+			local lines, failures = Each ({ Runs ("LegsEvacuate"), Hidden, function (m) return not InBench (m), "still in the bench" end })
+			if not B.order.routed then failures [#failures + 1] = "the leader did not call the fall back" end
+			return Verdict (lines, failures)
+		end
 	},
 	{
 		name = "remuster",
 		seconds = 12,
-		setup = function() Spawn(Around(Named("bench_room") + OUTSIDE_WEST, SIZE, 72)) end,
-		act = function() Give(Legs.Muster(Point(Ground(Staging())))) end,
-		check = function()
-			local rally = Staging()
-			return Verdict(Each({ Arrived, Runs("LegsStationary"),
-				function(m) return m:GetPos():Distance2D(rally) <= GATHERED, "not at the rally point" end }))
-		end,
-	},
+		setup = function () Spawn (Around (Named ("bench_room") + OUTSIDE_WEST, SIZE, 72)) end,
+		act = function () Give (Legs.Muster (Point (Ground (Staging ())))) end,
+		check = function ()
+			local rally = Staging ()
+			return Verdict (Each ({ Arrived, Runs ("LegsStationary"),
+				function (m) return m:GetPos ():Distance2D (rally) <= GATHERED, "not at the rally point" end }))
+		end
+	}
 }
 
 local BY_NAME = {}
-for _, stage in ipairs(B.STAGES) do BY_NAME[stage.name] = stage end
+for _, stage in ipairs (B.STAGES) do BY_NAME [stage.name] = stage end
 
 -- How long after its set-up a stage acts: the bodies settle and their trees start.
 local SETTLE = 1
@@ -523,27 +524,27 @@ local SETTLE = 1
 -- over another ends the older, which would otherwise drive the same squad.
 B.runs = B.runs or 0
 
-function B.Run(name, done, run)
-	local stage = BY_NAME[name]
-	if not stage then error("no stage " .. tostring(name) .. "; stages: spawn muster mobilize assault assault_rout hold evacuate rout remuster", 2) end
-	if game.GetMap() ~= "dev_3house" then error("the bench runs on dev_3house, not " .. game.GetMap(), 2) end
+function B.Run (name, done, run)
+	local stage = BY_NAME [name]
+	if not stage then error ("no stage " .. tostring (name) .. "; stages: spawn muster mobilize assault assault_rout hold evacuate rout remuster", 2) end
+	if game.GetMap () ~= "dev_3house" then error ("the bench runs on dev_3house, not " .. game.GetMap (), 2) end
 	if not run then
 		B.runs = B.runs + 1
 		run = B.runs
 	end
-	B.results[name] = { running = true }
+	B.results [name] = { running = true }
 	-- TF2's forcefields stop only players, as the war has them while it runs
-	WS.Feature("aiwar"):SetForcefieldsPassable(true)
-	stage.setup()
-	timer.Simple(SETTLE, function()
+	WS.Feature ("aiwar"):SetForcefieldsPassable (true)
+	stage.setup ()
+	timer.Simple (SETTLE, function ()
 		if run ~= B.runs then return end
-		if stage.act then stage.act(run) end
-		timer.Simple(stage.seconds, function()
+		if stage.act then stage.act (run) end
+		timer.Simple (stage.seconds, function ()
 			if run ~= B.runs then return end
-			local ok, result = pcall(stage.check)
-			if stage.cleanup then stage.cleanup() end
-			B.results[name] = ok and result or { passed = false, failures = { "check failed: " .. tostring(result) } }
-			if done then done(B.results[name]) end
+			local ok, result = pcall (stage.check)
+			if stage.cleanup then stage.cleanup () end
+			B.results [name] = ok and result or { passed = false, failures = { "check failed: " .. tostring (result) } }
+			if done then done (B.results [name]) end
 		end)
 	end)
 	return "running " .. name .. " (" .. (SETTLE + stage.seconds) .. " s)"
@@ -551,58 +552,59 @@ end
 
 -- Runs every stage in turn, each from its own set-up, and clears the squad after; the last run's
 -- results go first, so none is read as this one's.
-function B.RunAll()
+function B.RunAll ()
 	B.results = {}
 	B.runs = B.runs + 1
 	local run = B.runs
 	local total = 0
-	for _, stage in ipairs(B.STAGES) do total = total + SETTLE + stage.seconds end
+	for _, stage in ipairs (B.STAGES) do total = total + SETTLE + stage.seconds end
 	local i = 0
-	local function Next()
+	local function Next ()
 		i = i + 1
-		local stage = B.STAGES[i]
-		if not stage then Clear() return end
-		B.Run(stage.name, Next, run)
+		local stage = B.STAGES [i]
+		if not stage then Clear () return end
+		B.Run (stage.name, Next, run)
 	end
-	Next()
+	Next ()
 	return "running all " .. #B.STAGES .. " stages (" .. total .. " s)"
 end
 
 -- Every stage's result so far, a line each, then the failures and members of those that failed.
-function B.Report()
+function B.Report ()
 	local lines = {}
-	for _, stage in ipairs(B.STAGES) do
-		local result = B.results[stage.name]
+	for _, stage in ipairs (B.STAGES) do
+		local result = B.results [stage.name]
 		local state = not result and "not run" or result.running and "running" or result.passed and "passed" or "FAILED"
-		lines[#lines + 1] = string.format("%-9s %s", stage.name, state)
+		lines [#lines + 1] = string.format ("%-9s %s", stage.name, state)
 	end
-	for _, stage in ipairs(B.STAGES) do
-		local result = B.results[stage.name]
+	for _, stage in ipairs (B.STAGES) do
+		local result = B.results [stage.name]
 		if result and result.passed == false then
-			lines[#lines + 1] = "\n" .. stage.name .. ":"
-			for _, failure in ipairs(result.failures or {}) do lines[#lines + 1] = "  " .. failure end
-			for _, member in ipairs(result.members or {}) do lines[#lines + 1] = "  " .. member end
+			lines [#lines + 1] = "\n" .. stage.name .. ":"
+			for _, failure in ipairs (result.failures or {}) do lines [#lines + 1] = "  " .. failure end
+			for _, member in ipairs (result.members or {}) do lines [#lines + 1] = "  " .. member end
 		end
 	end
-	return table.concat(lines, "\n")
+	return table.concat (lines, "\n")
 end
 
 -- One stage's result in full, passed or not: its failures, then each member's line.
-function B.Show(name)
-	local result = B.results[name]
+function B.Show (name)
+	local result = B.results [name]
 	if not result then return name .. ": not run" end
 	if result.running then return name .. ": running" end
 	local lines = { name .. ": " .. (result.passed and "passed" or "FAILED") }
-	for _, failure in ipairs(result.failures or {}) do lines[#lines + 1] = "  " .. failure end
-	for _, member in ipairs(result.members or {}) do lines[#lines + 1] = "  " .. member end
-	return table.concat(lines, "\n")
+	for _, failure in ipairs (result.failures or {}) do lines [#lines + 1] = "  " .. failure end
+	for _, member in ipairs (result.members or {}) do lines [#lines + 1] = "  " .. member end
+	return table.concat (lines, "\n")
 end
 
 -- Where an enemy is marked for Placements, about the bench's middle, the squad coming in from
 -- the west: its centre, rear (east), front (by the west door), left (north) and right (south).
-local ENEMY_AT = {
-	{ "nowhere known" }, { "center", Vector(0, 0, 0) }, { "rear", Vector(300, 0, 0) }, { "front", Vector(-260, 0, 0) },
-	{ "left", Vector(0, 300, 0) }, { "right", Vector(0, -300, 0) },
+local ENEMY_AT =
+{
+	{ "nowhere known" }, { "center", Vector (0, 0, 0) }, { "rear", Vector (300, 0, 0) }, { "front", Vector (-260, 0, 0) },
+	{ "left", Vector (0, 300, 0) }, { "right", Vector (0, -300, 0) }
 }
 
 -- The nav mesh as graph.pathfinder's graph: areas by id, each step across the ground between
@@ -610,35 +612,35 @@ local ENEMY_AT = {
 local NavGraph = {}
 NavGraph.__index = NavGraph
 
-function NavGraph:Neighbors(id)
+function NavGraph:Neighbors (id)
 	local list = {}
-	for i, other in ipairs(navmesh.GetNavAreaByID(id):GetAdjacentAreas()) do list[i] = other:GetID() end
+	for i, other in ipairs (navmesh.GetNavAreaByID (id):GetAdjacentAreas ()) do list [i] = other:GetID () end
 	return list
 end
 
-function NavGraph:Cost(from, to, costSoFar)
-	if self.closed and self.closed[to] then return -1 end
-	return costSoFar + navmesh.GetNavAreaByID(from):GetCenter():Distance(navmesh.GetNavAreaByID(to):GetCenter())
+function NavGraph:Cost (from, to, costSoFar)
+	if self.closed and self.closed [to] then return -1 end
+	return costSoFar + navmesh.GetNavAreaByID (from):GetCenter ():Distance (navmesh.GetNavAreaByID (to):GetCenter ())
 end
 
-function NavGraph:Estimate(id, goal)
-	return navmesh.GetNavAreaByID(id):GetCenter():Distance(navmesh.GetNavAreaByID(goal):GetCenter())
+function NavGraph:Estimate (id, goal)
+	return navmesh.GetNavAreaByID (id):GetCenter ():Distance (navmesh.GetNavAreaByID (goal):GetCenter ())
 end
 
 -- The route a body walks from a to b on the nav mesh, never into closed's areas (id -> true; none
 -- for nil): its points, a first, each the nearest point of the next area along the way to the
 -- last, then b; straight across where none is found.
-local function Route(a, b, closed)
-	local from, to = navmesh.GetNearestNavArea(a), navmesh.GetNearestNavArea(b)
-	local nav = setmetatable({ closed = closed }, NavGraph)
-	local areas = IsValid(from) and IsValid(to) and graph.pathfinder.Find(nav, from:GetID(), to:GetID())
+local function Route (a, b, closed)
+	local from, to = navmesh.GetNearestNavArea (a), navmesh.GetNearestNavArea (b)
+	local nav = setmetatable ({ closed = closed }, NavGraph)
+	local areas = IsValid (from) and IsValid (to) and graph.pathfinder.Find (nav, from:GetID (), to:GetID ())
 	if not areas then return { { x = a.x, y = a.y }, { x = b.x, y = b.y } } end
 	local points, last = { { x = a.x, y = a.y } }, a
 	for k = 2, #areas do
-		last = navmesh.GetNavAreaByID(areas[k]):GetClosestPointOnArea(last)
-		points[#points + 1] = { x = last.x, y = last.y }
+		last = navmesh.GetNavAreaByID (areas [k]):GetClosestPointOnArea (last)
+		points [#points + 1] = { x = last.x, y = last.y }
 	end
-	points[#points + 1] = { x = b.x, y = b.y }
+	points [#points + 1] = { x = b.x, y = b.y }
 	return points
 end
 
@@ -647,82 +649,82 @@ end
 -- mesh routes them (graph.pathfinder over its areas). Each case: the room (block,
 -- entry, doors, windows), the enemy and the ring round it, and each member's start, its place in
 -- the stack, its assault point and its place in the room.
-function B.Placements()
-	if game.GetMap() ~= "dev_3house" then error("the bench runs on dev_3house, not " .. game.GetMap(), 2) end
-	local controller = WS.Feature("aiwar")
-	if not controller.rooms then controller:FindRoomsNow() end
+function B.Placements ()
+	if game.GetMap () ~= "dev_3house" then error ("the bench runs on dev_3house, not " .. game.GetMap (), 2) end
+	local controller = WS.Feature ("aiwar")
+	if not controller.rooms then controller:FindRoomsNow () end
 	-- the entrances' flow is the classes' incursion: found on the slow lane, the first ask starting it
-	if not controller:Classes() then
-		return util.TableToJSON({ error = "the war's classes are still being found: ask again shortly" })
+	if not controller:Classes () then
+		return util.TableToJSON ({ error = "the war's classes are still being found: ask again shortly" })
 	end
-	local middle, staging = Named("bench_room"), Staging()
+	local middle, staging = Named ("bench_room"), Staging ()
 	local inside = {}
-	for _, id in ipairs(Rooms.RoomOf(controller.rooms, navmesh.GetNearestNavArea(middle):GetID()).areas) do inside[id] = true end
-	local starts = Around(staging, SIZE, 72)
-	local probe = ents.Create("npc_pathfollower")
+	for _, id in ipairs (Rooms.RoomOf (controller.rooms, navmesh.GetNearestNavArea (middle):GetID ()).areas) do inside [id] = true end
+	local starts = Around (staging, SIZE, 72)
+	local probe = ents.Create ("npc_pathfollower")
 	probe.NSToolManaged = true
-	probe:SetPos(staging)
-	probe:Spawn()
-	local function P(v) return { x = v.x, y = v.y } end
+	probe:SetPos (staging)
+	probe:Spawn ()
+	local function P (v) return { x = v.x, y = v.y } end
 	local cases = {}
-	for _, at in ipairs(ENEMY_AT) do
-		local enemy = at[2] and Ground(middle + at[2])
-		if enemy then controller:Mark("enemy", WS.TEAM_RED, Point(enemy)) end
-		local ok, why = pcall(function()
-			local room = controller:RoomForSquad(Point(middle), Point(staging), WS.TEAM_RED)
-			local order = Legs.Assault(room)
+	for _, at in ipairs (ENEMY_AT) do
+		local enemy = at [2] and Ground (middle + at [2])
+		if enemy then controller:Mark ("enemy", WS.TEAM_RED, Point (enemy)) end
+		local ok, why = pcall (function ()
+			local room = controller:RoomForSquad (Point (middle), Point (staging), WS.TEAM_RED)
+			local order = Legs.Assault (room)
 			local positions = {}
-			for i, start in ipairs(starts) do positions[i] = Point(start) end
-			local places = order:Places(positions, nextsoldier.engine.GroupSpacing(), probe:NSLegsAdmit(middle),
-				function(around) return probe:NSLegsAdmit(around) end)
-			local case = { name = at[1], lo = P(room.lo), hi = P(room.hi), entry = P(room.entry),
-				enemy = room.enemy and P(room.enemy), ring = Legs.ENCIRCLE_RADIUS, band = Legs.ENCIRCLE_BAND, members = {},
+			for i, start in ipairs (starts) do positions [i] = Point (start) end
+			local places = order:Places (positions, nextsoldier.engine.GroupSpacing (), probe:NSLegsAdmit (middle),
+				function (around) return probe:NSLegsAdmit (around) end)
+			local case = { name = at [1], lo = P (room.lo), hi = P (room.hi), entry = P (room.entry),
+				enemy = room.enemy and P (room.enemy), ring = Legs.ENCIRCLE_RADIUS, band = Legs.ENCIRCLE_BAND, members = {},
 				entrances = {} }
 			local front
-			for _, e in ipairs(room.entrances) do
+			for _, e in ipairs (room.entrances) do
 				if not front or e.flow > front.flow then front = e end
 			end
-			for i, e in ipairs(room.entrances) do case.entrances[i] = { pos = P(e.pos), flow = e.flow, front = e == front } end
+			for i, e in ipairs (room.entrances) do case.entrances [i] = { pos = P (e.pos), flow = e.flow, front = e == front } end
 			-- the entrance nearest p
-			local function EntranceOf(p)
+			local function EntranceOf (p)
 				local best
-				for _, e in ipairs(room.entrances) do
-					if not best or math.geometry.Distance2D(e.pos, p) < math.geometry.Distance2D(best.pos, p) then best = e end
+				for _, e in ipairs (room.entrances) do
+					if not best or math.geometry.Distance2D (e.pos, p) < math.geometry.Distance2D (best.pos, p) then best = e end
 				end
-				return best and P(best.pos)
+				return best and P (best.pos)
 			end
-			for i, start in ipairs(positions) do
-				local place = places[i]
-				local stage, point = place and order:StagingOf(place), place and order:BreachOf(place)
-				local decoy = place and order:DecoyOf(place)
-				case.members[i] = { start = P(start), stage = stage and P(stage), point = point and P(point), place = place and P(place),
-					entrance = stage and EntranceOf(stage), show = decoy and decoy.show and P(decoy.show),
-					hide = decoy and decoy.hide and P(decoy.hide) }
+			for i, start in ipairs (positions) do
+				local place = places [i]
+				local stage, point = place and order:StagingOf (place), place and order:BreachOf (place)
+				local decoy = place and order:DecoyOf (place)
+				case.members [i] = { start = P (start), stage = stage and P (stage), point = point and P (point), place = place and P (place),
+					entrance = stage and EntranceOf (stage), show = decoy and decoy.show and P (decoy.show),
+					hide = decoy and decoy.hide and P (decoy.hide) }
 				-- its legs in turn, the last (on to its place once the room is clear) drawn dotted
-				local V = function(p) return p and Vector(p.x, p.y, p.z or middle.z) end
+				local V = function (p) return p and Vector (p.x, p.y, p.z or middle.z) end
 				local stops = decoy and { start, decoy.hide, decoy.show, decoy.hide, place } or { start, stage, point, place }
 				-- the first leg, the approach, keeps out of the room: a flank walks round it
 				local legs, from = {}, nil
-				for _, stop in ipairs(stops) do
+				for _, stop in ipairs (stops) do
 					if stop then
-						if from then legs[#legs + 1] = Route(V(from), V(stop), #legs == 0 and inside or nil) end
+						if from then legs [#legs + 1] = Route (V (from), V (stop), #legs == 0 and inside or nil) end
 						from = stop
 					end
 				end
-				case.members[i].legs = legs
+				case.members [i].legs = legs
 			end
-			cases[#cases + 1] = case
+			cases [#cases + 1] = case
 		end)
-		if enemy then controller:Unmark(enemy, DANGER_UNMARK) end
-		if not ok then probe:Remove() error(why, 0) end
+		if enemy then controller:Unmark (enemy, DANGER_UNMARK) end
+		if not ok then probe:Remove () error (why, 0) end
 	end
-	probe:Remove()
-	local area = navmesh.GetNearestNavArea(middle)
-	local room = Rooms.RoomOf(controller.rooms, area:GetID())
+	probe:Remove ()
+	local area = navmesh.GetNearestNavArea (middle)
+	local room = Rooms.RoomOf (controller.rooms, area:GetID ())
 	local doors, windows = {}, {}
-	for i, door in ipairs(room.doors) do doors[i] = P(door.pos) end
-	for i, window in ipairs(room.windows or {}) do windows[i] = P(window.pos) end
-	return util.TableToJSON({ map = game.GetMap(), doors = doors, windows = windows, cases = cases })
+	for i, door in ipairs (room.doors) do doors [i] = P (door.pos) end
+	for i, window in ipairs (room.windows or {}) do windows [i] = P (window.pos) end
+	return util.TableToJSON ({ map = game.GetMap (), doors = doors, windows = windows, cases = cases })
 end
 
 B.Clear = Clear

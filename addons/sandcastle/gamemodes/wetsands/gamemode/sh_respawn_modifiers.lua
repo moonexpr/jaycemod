@@ -5,12 +5,16 @@
 -- under the bar.
 local E = WS.Events
 local MODIFIER_COUNT_BITS = 4 -- up to 15 reasons
-E.Define("game_respawn_modifiers", {
-	modifiers = E.List(E.Record({
-		reason = E.String(),
-		count = E.UInt(8),
-		seconds = E.Float(),
-	}), MODIFIER_COUNT_BITS),
-	total = E.Float(),
-	limited = E.Bool(),
-})
+E.Define ("game_respawn_modifiers",
+	{
+		modifiers = E.List (E.Record (
+			{
+				reason = E.String (),
+				count = E.UInt (8),
+				seconds = E.Float ()
+			}
+		), MODIFIER_COUNT_BITS),
+		total = E.Float (),
+		limited = E.Bool ()
+	}
+)

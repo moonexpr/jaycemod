@@ -9,17 +9,17 @@
 --   Passthrough(name, contains) -> the same, only passing through to what
 --     it contains, which the debug layer's TDBN leaves out (Action.passthrough)
 local Behavior = nextsoldier.behavior
-module("nextsoldier.behavior.monitor")
+module ("nextsoldier.behavior.monitor")
 
-function New(name, contains)
-	local class = Behavior.CHART:State(name)
-	function class:Init(state) self.state = state end
-	function class:InitialContainedAction(me) return contains(self.state) end
+function New (name, contains)
+	local class = Behavior.CHART:State (name)
+	function class:Init (state) self.state = state end
+	function class:InitialContainedAction (me) return contains (self.state) end
 	return class
 end
 
-function Passthrough(name, contains)
-	local class = New(name, contains)
+function Passthrough (name, contains)
+	local class = New (name, contains)
 	class.passthrough = true
 	return class
 end

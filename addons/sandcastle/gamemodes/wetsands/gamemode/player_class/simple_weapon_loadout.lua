@@ -1,17 +1,19 @@
-local HL2_WEAPONS = {
-	 "weapon_crowbar",
-	 "weapon_pistol",
-	 "weapon_smg1",
-	 "weapon_frag",
-	 "weapon_physcannon",
-	 "weapon_crossbow",
-	 "weapon_shotgun",
-	 "weapon_357",
-	 "weapon_rpg",
-	 "weapon_ar2" 
+local HL2_WEAPONS =
+{
+	"weapon_crowbar",
+	"weapon_pistol",
+	"weapon_smg1",
+	"weapon_frag",
+	"weapon_physcannon",
+	"weapon_crossbow",
+	"weapon_shotgun",
+	"weapon_357",
+	"weapon_rpg",
+	"weapon_ar2"
 }
 
-local HL2_EXTENDED_WEAPONS = {
+local HL2_EXTENDED_WEAPONS =
+{
 	"simple_hl2e_alyxgun",
 	"simple_hl2e_ar1",
 	"simple_hl2e_ar3",
@@ -20,10 +22,11 @@ local HL2_EXTENDED_WEAPONS = {
 	"simple_hl2e_autogun",
 	"simple_hl2e_crossbow_he",
 	"simple_hl2e_csniper",
-	"simple_hl2e_oicw",
+	"simple_hl2e_oicw"
 }
 
-local CSTRIKE_WEAPONS = {
+local CSTRIKE_WEAPONS =
+{
 	"simple_css_ak47",
 	"simple_css_aug",
 	"simple_css_awp",
@@ -51,10 +54,11 @@ local CSTRIKE_WEAPONS = {
 	"simple_css_tmp",
 	"simple_css_ump",
 	"simple_css_usp",
-	"simple_css_xm1014",
+	"simple_css_xm1014"
 }
 
-local BMESA_WEAPONS = {
+local BMESA_WEAPONS =
+{
 	"weapon_bmesa_357",
 	"weapon_bmesa_crossbow",
 	"weapon_bmesa_crowbar",
@@ -68,55 +72,56 @@ local BMESA_WEAPONS = {
 	"weapon_bmesa_shotgun",
 	"weapon_bmesa_mp5",
 	"weapon_bmesa_tripmine",
-	"weapon_bmesa_tau",
+	"weapon_bmesa_tau"
 }
 
-local function GiveAll(ply, classes)
-	for _, class in ipairs(classes) do
-		ply:Give(class)
+local function GiveAll (ply, classes)
+	for _, class in ipairs (classes) do
+		ply:Give (class)
 	end
 end
 
-local function GiveHL2Ammo(ply)
-	ply:GiveAmmo(256, "Pistol", true)
-	ply:GiveAmmo(256, "SMG1", true)
-	ply:GiveAmmo(5, "SMG1_Grenade", true)
-	ply:GiveAmmo(5, "grenade", true)
-	ply:GiveAmmo(64, "Buckshot", true)
-	ply:GiveAmmo(32, "357", true)
-	ply:GiveAmmo(32, "XBowBolt", true)
-	ply:GiveAmmo(6, "AR2AltFire", true)
-	ply:GiveAmmo(100, "AR2", true)
+local function GiveHL2Ammo (ply)
+	ply:GiveAmmo (256, "Pistol", true)
+	ply:GiveAmmo (256, "SMG1", true)
+	ply:GiveAmmo (5, "SMG1_Grenade", true)
+	ply:GiveAmmo (5, "grenade", true)
+	ply:GiveAmmo (64, "Buckshot", true)
+	ply:GiveAmmo (32, "357", true)
+	ply:GiveAmmo (32, "XBowBolt", true)
+	ply:GiveAmmo (6, "AR2AltFire", true)
+	ply:GiveAmmo (100, "AR2", true)
 end
 
-GM.SimpleWeaponLoadout = {
-	GiveBM = function(ply) 
-		GiveHL2Ammo(ply)
-		GiveAll(ply, BMESA_WEAPONS)
+GM.SimpleWeaponLoadout =
+{
+	GiveBM = function (ply)
+		GiveHL2Ammo (ply)
+		GiveAll (ply, BMESA_WEAPONS)
 	end,
-	GiveHL2 = function(ply)
-		GiveHL2Ammo(ply)
-		GiveAll(ply, HL2_WEAPONS)
+	GiveHL2 = function (ply)
+		GiveHL2Ammo (ply)
+		GiveAll (ply, HL2_WEAPONS)
 	end,
-	GiveHL2AndExtended = function(ply)
-		GiveHL2Ammo(ply)
-		GiveAll(ply, HL2_WEAPONS)
-		GiveAll(ply, HL2_EXTENDED_WEAPONS)
+	GiveHL2AndExtended = function (ply)
+		GiveHL2Ammo (ply)
+		GiveAll (ply, HL2_WEAPONS)
+		GiveAll (ply, HL2_EXTENDED_WEAPONS)
 	end,
-	GiveHL2Extended = function(ply)
-		GiveHL2Ammo(ply)
-		GiveAll(ply, HL2_EXTENDED_WEAPONS)
+	GiveHL2Extended = function (ply)
+		GiveHL2Ammo (ply)
+		GiveAll (ply, HL2_EXTENDED_WEAPONS)
 	end,
-	GiveCStrike = function(ply)
-		GiveAll(ply, CSTRIKE_WEAPONS)
+	GiveCStrike = function (ply)
+		GiveAll (ply, CSTRIKE_WEAPONS)
 	end,
-	GiveCombatantTools = function(ply)
-		ply:Give("gmod_tool")
-		ply:Give("gmod_camera")
+	GiveCombatantTools = function (ply)
+		ply:Give ("gmod_tool")
+		ply:Give ("gmod_camera")
 	end,
-	GiveSandboxTools = function(ply)
-		ply:Give("weapon_physgun")
-		ply:Give("gmod_tool")
-		ply:Give("gmod_camera")
-	end,
+	GiveSandboxTools = function (ply)
+		ply:Give ("weapon_physgun")
+		ply:Give ("gmod_tool")
+		ply:Give ("gmod_camera")
+	end
 }

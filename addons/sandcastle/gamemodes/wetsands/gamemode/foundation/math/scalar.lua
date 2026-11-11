@@ -10,31 +10,31 @@
 -- This is the Lua twin, which clients run; a server with native/foundation
 -- has the native one in its place, which keeps this contract.
 local error, tostring = error, tostring
-module(...)
+module (...)
 
-function Clamp(value, low, high)
-	if low > high then error("an empty range: " .. tostring(low) .. " above " .. tostring(high), 2) end
+function Clamp (value, low, high)
+	if low > high then error ("an empty range: " .. tostring (low) .. " above " .. tostring (high), 2) end
 	if value < low then return low end
 	if value > high then return high end
 	return value
 end
 
-function Saturate(value)
+function Saturate (value)
 	if value < 0 then return 0 end
 	if value > 1 then return 1 end
 	return value
 end
 
-function Lerp(a, b, t)
+function Lerp (a, b, t)
 	return a + (b - a) * t
 end
 
-function InverseLerp(a, b, value)
-	if a == b then error("a span with no length: " .. tostring(a) .. " to " .. tostring(b), 2) end
-	return Saturate((value - a) / (b - a))
+function InverseLerp (a, b, value)
+	if a == b then error ("a span with no length: " .. tostring (a) .. " to " .. tostring (b), 2) end
+	return Saturate ((value - a) / (b - a))
 end
 
-function Remap(value, a, b, c, d)
-	if a == b then error("a span with no length: " .. tostring(a) .. " to " .. tostring(b), 2) end
-	return Lerp(c, d, Saturate((value - a) / (b - a)))
+function Remap (value, a, b, c, d)
+	if a == b then error ("a span with no length: " .. tostring (a) .. " to " .. tostring (b), 2) end
+	return Lerp (c, d, Saturate ((value - a) / (b - a)))
 end

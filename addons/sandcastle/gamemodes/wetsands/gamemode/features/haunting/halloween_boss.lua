@@ -33,7 +33,7 @@ local Teams = gameplay.teams
 local ipairs = ipairs
 local Lru = cache.lru
 local Window = list.window
-module(...)
+module (...)
 
 -- HalloweenBossType
 BOSS_INVALID, BOSS_HHH, BOSS_MONOCULUS, BOSS_MERASMUS = 0, 1, 2, 3
@@ -44,35 +44,38 @@ ATTACKERS_KEPT = 128 -- more than any server has players
 SPAWN_HEIGHT = 10 -- SpawnBossAtPos lifts the boss this far
 
 -- SpawnBossAtPos's entity class per boss type.
-CLASSES = {
+CLASSES =
+{
 	[BOSS_HHH] = "headless_hatman",
 	[BOSS_MONOCULUS] = "eyeball_boss",
-	[BOSS_MERASMUS] = "merasmus",
+	[BOSS_MERASMUS] = "merasmus"
 }
 
-METHODS = {
+METHODS =
+{
 	"Break",
-	"FireGameEvent",
+	"FireGameEvent"
 }
 
-function IsSpell(team)
+function IsSpell (team)
 	return team ~= Teams.HALLOWEEN
 end
 
 -- SpawnBossAtPos: the class, its Configure{} table and where to spawn it.
 -- vector(x, y, z) builds the engine's vectors.
-function SpawnAt(bossType, pos, team, owner, vector)
-	local config = {
+function SpawnAt (bossType, pos, team, owner, vector)
+	local config =
+	{
 		team = team,
-		owner = owner,
+		owner = owner
 	}
-	return CLASSES[bossType], config, pos + vector(0, 0, SPAWN_HEIGHT)
+	return CLASSES [bossType], config, pos + vector (0, 0, SPAWN_HEIGHT)
 end
 
 -- Whether t is one of the living RED and BLU players (TF2's ToTFPlayer,
 -- for a target that is alive).
-function IsPlayer(me, t)
-	for _, ply in ipairs(me:CollectPlayers(nil)) do
+function IsPlayer (me, t)
+	for _, ply in ipairs (me:CollectPlayers (nil)) do
 		if ply == t then return true end
 	end
 	return false
@@ -80,102 +83,103 @@ end
 
 -- RememberAttacker: every hit counts towards the DPS; each attacker is kept
 -- once, with the time of its latest hit.
-function RememberAttacker(state, attacker, damage, now)
-	state.samples:Add(now, damage)
-	state.attackers[attacker] = now
+function RememberAttacker (state, attacker, damage, now)
+	state.samples:Add (now, damage)
+	state.attackers [attacker] = now
 end
 
 -- UpdateDamagePerSecond: the damage no older than the window, per second.
 -- Older samples are dropped, since they never count again.
-function UpdateDamagePerSecond(state, now)
-	state.dps = state.samples:Sum(now) / DPS_WINDOW
+function UpdateDamagePerSecond (state, now)
+	state.dps = state.samples:Sum (now) / DPS_WINDOW
 	if state.dps > state.maxDps then state.maxDps = state.dps end
 end
 
 -------------------------------------------------------------------------------
 -- BossBehavior: the top action
 
-local BossBehavior = NpcSystem.Action:Extend("BossBehavior")
+local BossBehavior = NpcSystem.Action:Extend ("BossBehavior")
 
-function BossBehavior:Init(state)
+function BossBehavior:Init (state)
 	self.state = state
 end
 
-function BossBehavior:InitialContainedAction(me)
-	return self.state.boss.EmergeAction(self.state)
+function BossBehavior:InitialContainedAction (me)
+	return self.state.boss.EmergeAction (self.state)
 end
 
 -- CHalloweenBaseBoss::Update runs the behavior, then the DPS; the variant's
 -- own per-tick work (CEyeballBoss::Update, CHeadlessHatman::Update) follows.
-function BossBehavior:Update(me, interval)
+function BossBehavior:Update (me, interval)
 	local state = self.state
-	UpdateDamagePerSecond(state, me:Now())
+	UpdateDamagePerSecond (state, me:Now ())
 	local onUpdate = state.boss.OnUpdate
-	if onUpdate then onUpdate(state, me) end
+	if onUpdate then onUpdate (state, me) end
 	local leaveAction = state.boss.LeaveAction
-	if leaveAction and me:IsAlive() then
-		local leaving = leaveAction(state, me)
-		if leaving then return self:ChangeTo(leaving, "Leaving") end
+	if leaveAction and me:IsAlive () then
+		local leaving = leaveAction (state, me)
+		if leaving then return self:ChangeTo (leaving, "Leaving") end
 	end
-	return self:Continue()
+	return self:Continue ()
 end
 
-function BossBehavior:OnInjured(me, damageEvent)
+function BossBehavior:OnInjured (me, damageEvent)
 	local state = self.state
 	local onInjured = state.boss.OnInjured
-	if onInjured then onInjured(state, damageEvent, me) end
+	if onInjured then onInjured (state, damageEvent, me) end
 	local interruptAction = state.boss.InterruptAction
 	if interruptAction then
-		local interrupting = interruptAction(state, damageEvent, me)
-		if interrupting then return self:TrySuspendFor(interrupting, NpcSystem.RESULT_IMPORTANT, "Interrupted") end
+		local interrupting = interruptAction (state, damageEvent, me)
+		if interrupting then return self:TrySuspendFor (interrupting, NpcSystem.RESULT_IMPORTANT, "Interrupted") end
 	end
-	return self:TryContinue()
+	return self:TryContinue ()
 end
 
-function BossBehavior:OnKilled(me, damageEvent)
-	return self:TryChangeTo(self.state.boss.DyingAction(self.state), NpcSystem.RESULT_CRITICAL, "I died!")
+function BossBehavior:OnKilled (me, damageEvent)
+	return self:TryChangeTo (self.state.boss.DyingAction (self.state), NpcSystem.RESULT_CRITICAL, "I died!")
 end
 
 -------------------------------------------------------------------------------
 -- The NPC variant hooks the template fills in
 
-local function NewState(boss, config, me)
-	local team = me:GetTeamNumber()
-	local state = {
+local function NewState (boss, config, me)
+	local team = me:GetTeamNumber ()
+	local state =
+	{
 		boss = boss,
 		team = team,
-		spell = IsSpell(team),
+		spell = IsSpell (team),
 		convars = config.convars,
 		spawnedByCheats = config.cheats == true, -- m_wasSpawnedByCheats: sv_cheats was on
-		level = boss.Level and boss.Level(me) or 0,
-		attackers = Lru.New({ capacity = ATTACKERS_KEPT }), -- attacker -> the time of its latest hit
-		samples = Window.New(DPS_WINDOW), -- the damage of each hit, by the time of it
+		level = boss.Level and boss.Level (me) or 0,
+		attackers = Lru.New ({ capacity = ATTACKERS_KEPT }), -- attacker -> the time of its latest hit
+		samples = Window.New (DPS_WINDOW), -- the damage of each hit, by the time of it
 		dps = 0,
-		maxDps = 0,
+		maxDps = 0
 	}
-	local health = boss.Health(#me:CollectPlayers(nil), state.level, state.convars)
-	me:SetMaxHealth(health)
-	me:SetHealth(health)
-	if boss.Setup then boss.Setup(state, config, me) end
+	local health = boss.Health (#me:CollectPlayers (nil), state.level, state.convars)
+	me:SetMaxHealth (health)
+	me:SetHealth (health)
+	if boss.Setup then boss.Setup (state, config, me) end
 	return state
 end
 
 -- OnTakeDamage_Alive: my own team and a won round do nothing; otherwise the
 -- variant decides the amount taken, and a player's hit is remembered.
-local function FilterDamage(state, damageEvent, me)
+local function FilterDamage (state, damageEvent, me)
 	local attacker = damageEvent.attacker
-	if me:TeamOf(attacker) == state.team or me:RoundHasBeenWon() then return false end
-	local amount = state.boss.ModifyDamage(state, damageEvent, me)
+	if me:TeamOf (attacker) == state.team or me:RoundHasBeenWon () then return false end
+	local amount = state.boss.ModifyDamage (state, damageEvent, me)
 	if amount <= 0 then return false end
-	if IsPlayer(me, attacker) then RememberAttacker(state, attacker, amount, me:Now()) end
+	if IsPlayer (me, attacker) then RememberAttacker (state, attacker, amount, me:Now ()) end
 	return true, amount
 end
 
 -- Fills the NPC variant's hooks into a boss part and returns it.
-function Variant(boss)
+function Variant (boss)
 	boss.KIND = KIND
-	boss.NewState = function(config, me) return NewState(boss, config, me) end
-	boss.InitialAction = function(state) return BossBehavior:New(state) end
+	boss.NewState = function (config, me) return NewState (boss, config, me) end
+	boss.InitialAction = function (state) return BossBehavior:New (state) end
 	boss.FilterDamage = FilterDamage
 	return boss
 end

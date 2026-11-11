@@ -1,4 +1,4 @@
-AddCSLuaFile()
+AddCSLuaFile ()
 
 -- weapon_ak47: a standard CS:S SWEP; its base owns shared behavior.
 
@@ -9,8 +9,8 @@ SWEP.Category = "Counter-Strike: Source"
 SWEP.Spawnable = true
 SWEP.Slot = 0
 SWEP.SlotPos = 0
-SWEP.ViewModel = Model("models/weapons/cstrike/c_rif_ak47.mdl")
-SWEP.WorldModel = Model("models/weapons/w_rif_ak47.mdl")
+SWEP.ViewModel = Model ("models/weapons/cstrike/c_rif_ak47.mdl")
+SWEP.WorldModel = Model ("models/weapons/w_rif_ak47.mdl")
 SWEP.ViewModelFOV = 54
 SWEP.ViewModelFlip = false
 SWEP.UseHands = true
@@ -24,17 +24,20 @@ SWEP.ReloadTime = 2.5
 SWEP.SingleShotSound = "Weapon_AK47.Single"
 SWEP.Primary = { ClipSize = 30, DefaultClip = 30, Automatic = true, Ammo = "BULLET_PLAYER_762MM" }
 SWEP.Secondary = { ClipSize = -1, DefaultClip = -1, Automatic = false, Ammo = "none" }
-SWEP.Stats = {
-	Ballistics = {
+SWEP.Stats =
+{
+	Ballistics =
+	{
 		Damage = 36,
 		BulletCount = 1,
 		CycleTime = 0.1,
 		Penetration = 2,
 		Range = 8192,
 		RangeModifier = 0.98,
-		FullAuto = true,
+		FullAuto = true
 	},
-	Accuracy = {
+	Accuracy =
+	{
 		Crouch = 0.00687,
 		Fire = 0.01158,
 		Jump = 0.43044,
@@ -44,17 +47,18 @@ SWEP.Stats = {
 		RecoveryCrouch = 0.34868,
 		RecoveryStand = 0.48815,
 		Spread = 0.0006,
-		Stand = 0.00916,
+		Stand = 0.00916
 	},
-	Kick = {
+	Kick =
+	{
 		UpBase = 1,
 		LateralBase = 0.375,
 		UpModifier = 0.175,
 		LateralModifier = 0.0375,
 		UpMax = 5.75,
 		LateralMax = 1.75,
-		Flip = 8,
-	},
+		Flip = 8
+	}
 }
 SWEP.SoldierClip = 30
 SWEP.SoldierInterval = 0.1

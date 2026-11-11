@@ -19,7 +19,7 @@
 local Box = math.box
 local Geometry = math.geometry
 local ipairs, setmetatable, rad = ipairs, setmetatable, math.rad
-module("games.world.trace")
+module ("games.world.trace")
 
 -- Source's player hull: 32 units across, 72 standing.
 PLAYER_WIDTH, PLAYER_HEIGHT = 32, 72
@@ -29,72 +29,72 @@ SPHERE_RAYS, FRUSTUM_COLUMNS, FRUSTUM_ROWS = 26, 5, 3
 local Preset = {}
 Preset.__index = Preset
 
-function Preset:__call(origin) return self.trace(origin, self.scale, self.mask, self.group, self.filter) end
+function Preset:__call (origin) return self.trace (origin, self.scale, self.mask, self.group, self.filter) end
 
-function Preset:Each(origins, fn)
+function Preset:Each (origins, fn)
 	local i = 0
-	local function step()
+	local function step ()
 		i = i + 1
-		local origin = origins[i]
+		local origin = origins [i]
 		if origin == nil then return nil end
-		return self(origin), origin, i
+		return self (origin), origin, i
 	end
 	if not fn then return step end
-	for tr, origin, at in step do fn(tr, origin, at) end
+	for tr, origin, at in step do fn (tr, origin, at) end
 end
 
 -- A shape's trace(origin, ...), and its preset when it is given no origin.
-local function Shape(trace)
-	return function(origin, scale, mask, group, filter)
+local function Shape (trace)
+	return function (origin, scale, mask, group, filter)
 		if origin == nil then
-			return setmetatable({ trace = trace, scale = scale, mask = mask, group = group, filter = filter }, Preset)
+			return setmetatable ({ trace = trace, scale = scale, mask = mask, group = group, filter = filter }, Preset)
 		end
-		return trace(origin, scale, mask, group, filter)
+		return trace (origin, scale, mask, group, filter)
 	end
 end
 
-function New(engine)
+function New (engine)
 	local Vector = engine.Vector
 
-	local function Spec(start, endpos, mask, group, filter)
+	local function Spec (start, endpos, mask, group, filter)
 		return { start = start, endpos = endpos, mask = mask or engine.mask, collisiongroup = group or engine.group,
 			filter = filter or {} }
 	end
 
-	local function Hull(origin, mins, maxs, mask, group, filter)
-		local spec = Spec(origin, origin, mask, group, filter)
-		spec.mins, spec.maxs = Vector(mins.x, mins.y, mins.z), Vector(maxs.x, maxs.y, maxs.z)
-		return engine.Hull(spec)
+	local function Hull (origin, mins, maxs, mask, group, filter)
+		local spec = Spec (origin, origin, mask, group, filter)
+		spec.mins, spec.maxs = Vector (mins.x, mins.y, mins.z), Vector (maxs.x, maxs.y, maxs.z)
+		return engine.Hull (spec)
 	end
 
 	-- A ray from origin to each of points: the nearest hit, or the first miss, and all of them.
-	local function Rays(origin, points, mask, group, filter)
+	local function Rays (origin, points, mask, group, filter)
 		local all, nearest = {}, nil
-		for i, p in ipairs(points) do
-			local tr = engine.Line(Spec(origin, Vector(p.x, p.y, p.z), mask, group, filter))
-			all[i] = tr
+		for i, p in ipairs (points) do
+			local tr = engine.Line (Spec (origin, Vector (p.x, p.y, p.z), mask, group, filter))
+			all [i] = tr
 			if tr.Hit and (not nearest or not nearest.Hit or tr.Fraction < nearest.Fraction) then nearest = tr end
 		end
-		return nearest or all[1], all
+		return nearest or all [1], all
 	end
 
 	local traces = {}
-	traces.Cube = Shape(function(origin, size, mask, group, filter)
-		local mins, maxs = Box.Centered(size)
-		return Hull(origin, mins, maxs, mask, group, filter)
+	traces.Cube = Shape (function (origin, size, mask, group, filter)
+		local mins, maxs = Box.Centered (size)
+		return Hull (origin, mins, maxs, mask, group, filter)
 	end)
-	traces.Player = Shape(function(origin, scale, mask, group, filter)
+	traces.Player = Shape (function (origin, scale, mask, group, filter)
 		scale = scale or 1
-		local mins, maxs = Box.Standing(PLAYER_WIDTH * scale, PLAYER_HEIGHT * scale)
-		return Hull(origin, mins, maxs, mask, group, filter)
+		local mins, maxs = Box.Standing (PLAYER_WIDTH * scale, PLAYER_HEIGHT * scale)
+		return Hull (origin, mins, maxs, mask, group, filter)
 	end)
-	traces.Sphere = Shape(function(origin, radius, mask, group, filter)
-		return Rays(origin, Geometry.Sphere(origin, radius, SPHERE_RAYS), mask, group, filter)
+	traces.Sphere = Shape (function (origin, radius, mask, group, filter)
+		return Rays (origin, Geometry.Sphere (origin, radius, SPHERE_RAYS), mask, group, filter)
 	end)
-	traces.Frustum = Shape(function(origin, view, mask, group, filter)
-		local points = Geometry.Frustum(origin, view.forward, rad(view.fov), rad(view.vfov or view.fov), view.range,
+	traces.Frustum = Shape (function (origin, view, mask, group, filter)
+		local points = Geometry.Frustum (origin, view.forward, rad (view.fov), rad (view.vfov or view.fov), view.range,
 			view.cols or FRUSTUM_COLUMNS, view.rows or FRUSTUM_ROWS)
-		return Rays(origin, points, mask, group, filter)
+		return Rays (origin, points, mask, group, filter)
 	end)
 	return traces
 end

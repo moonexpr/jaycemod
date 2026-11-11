@@ -4,32 +4,33 @@
 ENT.Type = "point"
 ENT.Base = "base_point"
 
-function ENT:KeyValue(key, value)
+function ENT:KeyValue (key, value)
 	self.wsKv = self.wsKv or {}
-	self.wsKv[string.lower(key)] = value
-	if string.sub(key, 1, 2) == "On" then self:StoreOutput(key, value) end
+	self.wsKv [string.lower (key)] = value
+	if string.sub (key, 1, 2) == "On" then self:StoreOutput (key, value) end
 end
 
-function ENT:Initialize()
+function ENT:Initialize ()
 	local kv = self.wsKv or {}
 	self.enabled = kv.startdisabled ~= "1"
-	self.team = tonumber(kv.teamnum) or TF_TEAM_UNASSIGNED
+	self.team = tonumber (kv.teamnum) or TF_TEAM_UNASSIGNED
 end
 
-function ENT:UpdateTransmitState()
+function ENT:UpdateTransmitState ()
 	return TRANSMIT_NEVER
 end
 
-local INPUTS = {
-	enable = function(self) self.enabled = true end,
-	disable = function(self) self.enabled = false end,
-	toggle = function(self) self.enabled = not self.enabled end,
-	setteam = function(self, value) self.team = tonumber(value) or TF_TEAM_UNASSIGNED end,
+local INPUTS =
+{
+	enable = function (self) self.enabled = true end,
+	disable = function (self) self.enabled = false end,
+	toggle = function (self) self.enabled = not self.enabled end,
+	setteam = function (self, value) self.team = tonumber (value) or TF_TEAM_UNASSIGNED end
 }
 
-function ENT:AcceptInput(name, activator, caller, value)
-	local handler = INPUTS[string.lower(name)]
+function ENT:AcceptInput (name, activator, caller, value)
+	local handler = INPUTS [string.lower (name)]
 	if not handler then return false end
-	handler(self, value)
+	handler (self, value)
 	return true
 end

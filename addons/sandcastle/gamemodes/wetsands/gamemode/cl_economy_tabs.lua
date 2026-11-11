@@ -8,25 +8,25 @@ WS.EconomyTabs = WS.EconomyTabs or {}
 local removed = {}
 local shown
 
-local function Apply(on)
-	local tabs = spawnmenu.GetCreationTabs()
-	for name in pairs(WS.EconomyTabs) do
-		if on and removed[name] then
-			tabs[name], removed[name] = removed[name], nil
-		elseif not on and tabs[name] then
-			removed[name], tabs[name] = tabs[name], nil
+local function Apply (on)
+	local tabs = spawnmenu.GetCreationTabs ()
+	for name in pairs (WS.EconomyTabs) do
+		if on and removed [name] then
+			tabs [name], removed [name] = removed [name], nil
+		elseif not on and tabs [name] then
+			removed [name], tabs [name] = tabs [name], nil
 		end
 	end
 end
 
-local function Sync()
-	local on = WS.EconomyEnabled()
+local function Sync ()
+	local on = WS.EconomyEnabled ()
 	if on == shown then return end
 	local built = shown ~= nil
 	shown = on
-	Apply(on)
-	if built or not on then RunConsoleCommand("spawnmenu_reload") end
+	Apply (on)
+	if built or not on then RunConsoleCommand ("spawnmenu_reload") end
 end
 
-hook.Add("InitPostEntity", "ws_economy_tabs", Sync)
-hook.Add("WSServerSettingsChanged", "ws_economy_tabs", Sync)
+hook.Add ("InitPostEntity", "ws_economy_tabs", Sync)
+hook.Add ("WSServerSettingsChanged", "ws_economy_tabs", Sync)

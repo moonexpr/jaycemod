@@ -4,9 +4,10 @@
 -- stings, the HUD's chimes). A feature's own come with it, as it loads
 -- (features/<name>/resources.lua). One missed still plays, precached as it
 -- does; ws_soundscapes_late lists those, for a list to take.
-module(...)
+module (...)
 
-PRELOAD = {
+PRELOAD =
+{
 	-- the countdown to Gameplay mode (features/gamemode/sv.lua)
 	"MatchMaking.RoundStartCasual",
 	"Announcer.TournamentModeStart",
@@ -80,5 +81,5 @@ PRELOAD = {
 	"Announcer.TimeAwardedForTeam",
 	"Announcer.TimeAwardedCongrats",
 	"Announcer.TimeAwardedSuccess",
-	"Announcer.SecurityAlert",
+	"Announcer.SecurityAlert"
 }

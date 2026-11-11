@@ -4,15 +4,15 @@
 -- map's first, and makes one with the defaults on a map without one.
 ENT.Type = "point"
 
-function ENT:KeyValue(key, value)
+function ENT:KeyValue (key, value)
 	self.wsKeyValues = self.wsKeyValues or {}
-	self.wsKeyValues[string.lower(key)] = value
+	self.wsKeyValues [string.lower (key)] = value
 end
 
 -- The settings, parsed once; mapRadius: the map's own bomb radius, or nil.
-function ENT:Config(mapRadius)
+function ENT:Config (mapRadius)
 	if not self.wsConfig then
-		self.wsConfig = WS.require("features.defuse.config").Parse(self.wsKeyValues or {}, mapRadius)
+		self.wsConfig = WS.require ("features.defuse.config").Parse (self.wsKeyValues or {}, mapRadius)
 	end
 	return self.wsConfig
 end

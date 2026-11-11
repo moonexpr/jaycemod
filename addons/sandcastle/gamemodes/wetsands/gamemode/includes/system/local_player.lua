@@ -18,37 +18,37 @@
 -- Models and materials a feature brings are preloaded by the feature
 -- loader's resource handlers (games.system.features, ws/sh_core.lua).
 local error, ipairs, setmetatable, tostring = error, ipairs, setmetatable, tostring
-module(...)
+module (...)
 
 local Library = {}
 Library.__index = Library
 
-function New(engine)
-	return setmetatable({ engine = engine, cached = {}, late = {} }, Library)
+function New (engine)
+	return setmetatable ({ engine = engine, cached = {}, late = {} }, Library)
 end
 
-function Library:Precache(name)
-	if self.cached[name] then return name end
-	if not self.engine:Exists(name) then return nil end
-	self.engine:Precache(name)
-	self.cached[name] = true
+function Library:Precache (name)
+	if self.cached [name] then return name end
+	if not self.engine:Exists (name) then return nil end
+	self.engine:Precache (name)
+	self.cached [name] = true
 	return name
 end
 
-function Library:Has(name)
-	return self.cached[name] == true
+function Library:Has (name)
+	return self.cached [name] == true
 end
 
-function Library:Play(name)
-	if not self.cached[name] then
-		if self:Precache(name) == nil then error("no soundscript is named " .. tostring(name), 2) end
-		self.late[#self.late + 1] = name
+function Library:Play (name)
+	if not self.cached [name] then
+		if self:Precache (name) == nil then error ("no soundscript is named " .. tostring (name), 2) end
+		self.late [#self.late + 1] = name
 	end
-	self.engine:Emit(name)
+	self.engine:Emit (name)
 end
 
-function Library:Late()
+function Library:Late ()
 	local copy = {}
-	for i, name in ipairs(self.late) do copy[i] = name end
+	for i, name in ipairs (self.late) do copy [i] = name end
 	return copy
 end

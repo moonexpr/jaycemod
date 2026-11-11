@@ -2,20 +2,20 @@
 -- This is the Lua twin, which clients run; a server with native/foundation
 -- has the native one in its place, which keeps this contract.
 local ceil, ipairs, max, sort, unpack = math.ceil, ipairs, math.max, table.sort, unpack
-module(...)
+module (...)
 
-function Mean(list)
+function Mean (list)
 	if #list == 0 then return 0 end
 	local sum = 0
-	for _, v in ipairs(list) do sum = sum + v end
+	for _, v in ipairs (list) do sum = sum + v end
 	return sum / #list
 end
 
 -- The nearest-rank percentile: the value at rank ceil(p * n), p in [0, 1].
 -- The list is left in its order.
-function Percentile(list, p)
+function Percentile (list, p)
 	if #list == 0 then return 0 end
-	local sorted = { unpack(list) }
-	sort(sorted)
-	return sorted[max(1, ceil(p * #sorted))]
+	local sorted = { unpack (list) }
+	sort (sorted)
+	return sorted [max (1, ceil (p * #sorted))]
 end

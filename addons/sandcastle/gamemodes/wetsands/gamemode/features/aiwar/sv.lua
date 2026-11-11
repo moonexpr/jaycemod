@@ -13,12 +13,13 @@
 -------------------------------------------------------------------------------
 -- Controller
 
-local Controller = {
+local Controller =
+{
 	war = nil, -- a features.aiwar.model War while the war runs
 	soldiers = {}, -- NPC entity or bot player -> { soldier = port, npc = games.npc.nextbot Npc, speaker (sv_responserules) }
 	bots = {}, -- bot players tf_bot_quota made -> true (sv_bots.lua)
 	doorFlags = {}, -- trigger_multiple -> its spawnflags before the war
-	tracks = setmetatable({}, { __mode = "k" }), -- a watcher's path node list -> Track
+	tracks = setmetatable ({}, { __mode = "k" }), -- a watcher's path node list -> Track
 	nextThink = 0,
 	nextRelations = 0,
 	slots = nil, -- the features.aiwar.slots Plan, read from slotStore when first needed
@@ -60,14 +61,14 @@ local Controller = {
 	-- scenarios = nil, -- the registered scenarios compiled when the war starts and as a game's players are ready (CompileRegistries), what each think decides from
 	-- behaviors = nil, -- the registered behaviours (nextsoldier.behavior.registry) compiled with them, what each soldier enlisted runs
 	shutDoorStamp = 0, -- changes when a door is noted shut to a team, or one noted is gone (ShutDoorAreas)
-	footAreas = setmetatable({}, { __mode = "k" }), -- soldier -> the nav area id it last stood on, on the ground (NoteFooting)
+	footAreas = setmetatable ({}, { __mode = "k" }), -- soldier -> the nav area id it last stood on, on the ground (NoteFooting)
 	-- hazards = nil, -- the map's wartactics.hazards, read from its save when first asked (Hazards)
 	-- hazardsSaved = nil, -- the map has a save of its hazards (Hazards, SaveHazards)
 	-- newlyDisabled = nil, -- the areas disabled since the last separation judgement, spared if they cut a team off (SpareKeystones)
 	-- separationCheck = nil, -- the transaction judging whether the disabled hazards cut a team off, on the slow lane (CheckSeparation)
 	-- separationAgain = nil, -- asked again while it was judging: judged once more when done
 	-- hazardsApplied = nil, -- the saved hazards were applied and the map judged, once its first field was made (HazardsThink)
-	shutDoorAreas = {}, -- team -> { doors, stamp, areas = nav area id -> true }: the areas of the doors noted shut to it
+	shutDoorAreas = {} -- team -> { doors, stamp, areas = nav area id -> true }: the areas of the doors noted shut to it
 	-- postCache = nil, -- the posts found, by kind, team and key (CachedPosts)
 	-- baseCache = nil, -- each team's spawns on the ground and its base, kept until the next round (Bases)
 	-- cartEntities = nil, -- team -> its cart in the last field (Field)
@@ -84,7 +85,7 @@ local Controller = {
 	-- nextQuota = nil, -- when the quota is next kept (MaintainBotQuota)
 }
 
-function Controller:Active()
+function Controller:Active ()
 	return self.war ~= nil
 end
 
@@ -92,13 +93,13 @@ local SLOTS_FILE = "ws_aiwar_slots.json" -- under garrysmod/data
 
 local SlotFile = {}
 
-function SlotFile:Read()
-	local text = file.Read(SLOTS_FILE, "DATA")
-	return text and util.JSONToTable(text)
+function SlotFile:Read ()
+	local text = file.Read (SLOTS_FILE, "DATA")
+	return text and util.JSONToTable (text)
 end
 
-function SlotFile:Write(saved)
-	file.Write(SLOTS_FILE, util.TableToJSON(saved, true))
+function SlotFile:Write (saved)
+	file.Write (SLOTS_FILE, util.TableToJSON (saved, true))
 end
 
 Controller.slotStore = SlotFile
@@ -107,81 +108,81 @@ Controller.slotStore = SlotFile
 -- each a section of the map's saved data (WS.MapData) between loads.
 local HazardFile = {}
 
-function HazardFile:Read()
-	return WS.MapData.Read("nav_hazards")
+function HazardFile:Read ()
+	return WS.MapData.Read ("nav_hazards")
 end
 
-function HazardFile:Write(data)
-	WS.MapData.Write("nav_hazards", data)
+function HazardFile:Write (data)
+	WS.MapData.Write ("nav_hazards", data)
 end
 
 local MusterFile = {}
 
-function MusterFile:Read()
-	return WS.MapData.Read("musters")
+function MusterFile:Read ()
+	return WS.MapData.Read ("musters")
 end
 
-function MusterFile:Write(data)
-	WS.MapData.Write("musters", data)
+function MusterFile:Write (data)
+	WS.MapData.Write ("musters", data)
 end
 
 Controller.musterStore = MusterFile
 
 local RoomFile = {}
 
-function RoomFile:Read()
-	return WS.MapData.Read("rooms")
+function RoomFile:Read ()
+	return WS.MapData.Read ("rooms")
 end
 
-function RoomFile:Write(data)
-	WS.MapData.Write("rooms", data)
+function RoomFile:Write (data)
+	WS.MapData.Write ("rooms", data)
 end
 
 Controller.roomStore = RoomFile
 
 Controller.hazardStore = HazardFile
 
-local Part = WS.FeatureParts(getfenv(1), "aiwar")
-local Map = Part("sv_map", Controller)
-local Soldier, ARRIVED = Part("sv_soldier", Map)
-Part("sv_gadgets", Map, Soldier)
+local Part = WS.FeatureParts (getfenv (1), "aiwar")
+local Map = Part ("sv_map", Controller)
+local Soldier, ARRIVED = Part ("sv_soldier", Map)
+Part ("sv_gadgets", Map, Soldier)
 Controller.Soldier = Soldier
-Controller.BotSoldier = Part("sv_bot_soldier", Map, Soldier)
-Part("sv_relations", Controller, Map)
-Part("sv_enlist", Controller, Map)
-Part("sv_bots", Controller, Map)
-Part("sv_responserules", Controller)
-Part("sv_gestures", Controller)
-Part("sv_missions", Controller)
-Part("sv_rooms", Controller)
-Part("sv_classes", Controller)
-Part("sv_room_hints", Controller)
-Part("sv_intel", Controller)
-Part("sv_obstacles", Controller, Map)
-local WATCH_INTERVAL = Part("sv_posts", Controller, Map)
-Part("sv_lanes", Controller, Map)
-Part("sv_probe", Controller, Map)
-Part("sv_field", Controller, Map, WATCH_INTERVAL)
-Part("sv_slots", Controller, Map)
-Part("sv_war", Controller, Map)
-Part("sv_report", Controller, Map, ARRIVED)
-Part("sv_commands", Controller, Map)
-Part("sv_hazards", Controller, Map)
-Part("sv_marks", Controller)
+Controller.BotSoldier = Part ("sv_bot_soldier", Map, Soldier)
+Part ("sv_relations", Controller, Map)
+Part ("sv_enlist", Controller, Map)
+Part ("sv_bots", Controller, Map)
+Part ("sv_responserules", Controller)
+Part ("sv_gestures", Controller)
+Part ("sv_missions", Controller)
+Part ("sv_rooms", Controller)
+Part ("sv_classes", Controller)
+Part ("sv_room_hints", Controller)
+Part ("sv_intel", Controller)
+Part ("sv_obstacles", Controller, Map)
+local WATCH_INTERVAL = Part ("sv_posts", Controller, Map)
+Part ("sv_lanes", Controller, Map)
+Part ("sv_probe", Controller, Map)
+Part ("sv_field", Controller, Map, WATCH_INTERVAL)
+Part ("sv_slots", Controller, Map)
+Part ("sv_war", Controller, Map)
+Part ("sv_report", Controller, Map, ARRIVED)
+Part ("sv_commands", Controller, Map)
+Part ("sv_hazards", Controller, Map)
+Part ("sv_marks", Controller)
 
 -- A cleanup (every full round reset) removes the soldiers and remakes the
 -- map's triggers: the doors are opened again and the first wave comes at once.
-hook.Add("PostCleanupMap", "ws_aiwar", function()
+hook.Add ("PostCleanupMap", "ws_aiwar", function ()
 	if not Controller.war then return end
 	Controller.doorFlags = {}
-	Controller:OpenDoorsToSoldiers()
-	Controller:SetForcefieldsPassable(true)
+	Controller:OpenDoorsToSoldiers ()
+	Controller:SetForcefieldsPassable (true)
 	Controller.gates = nil
 	Controller.zones = nil
 	Controller.shutDoors = nil
 	Controller.postCache = nil
 	Controller.baseCache = nil
-	Controller.war:ResetWaves()
+	Controller.war:ResetWaves ()
 end)
 
 return Controller

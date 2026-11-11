@@ -30,15 +30,15 @@ local Explore = wartactics.explore
 local Squad = wartactics.squad
 local Teams = gameplay.teams
 local Class = core.class
-module(...)
+module (...)
 
 ALLOCATION_HOLD = 3 -- docs/aiwar-command.md §2.2
 
 local TEAMS = { Teams.RED, Teams.BLUE }
 
-local function BothTeams(byTeam)
-	for _, team in ipairs(TEAMS) do
-		if byTeam == nil or byTeam[team] == nil then return false end
+local function BothTeams (byTeam)
+	for _, team in ipairs (TEAMS) do
+		if byTeam == nil or byTeam [team] == nil then return false end
 	end
 	return true
 end
@@ -52,69 +52,72 @@ end
 -- hostages, the hostages
 -- and the zone BLU leads them to (hostage rescue).
 POINTS, BASES, CLOCKS, WAYPOINTS, FLAGS, BOMB, HOSTAGES = "points", "bases", "clocks", "waypoints", "flags", "bomb", "hostages"
-PARTS = {
-	[POINTS] = function(field) return field.points ~= nil and #field.points > 0 end,
-	[BASES] = function(field) return BothTeams(field.bases) end,
-	[CLOCKS] = function(field) return BothTeams(field.clocks) end,
-	[WAYPOINTS] = function(field) return field.waypoints ~= nil and #field.waypoints > 0 end,
-	[FLAGS] = function(field) return BothTeams(field.flags) end,
-	[BOMB] = function(field)
-		return field.flags ~= nil and field.flags[Teams.BLUE] ~= nil and field.zones ~= nil and field.zones[Teams.BLUE] ~= nil
+PARTS =
+{
+	[POINTS] = function (field) return field.points ~= nil and #field.points > 0 end,
+	[BASES] = function (field) return BothTeams (field.bases) end,
+	[CLOCKS] = function (field) return BothTeams (field.clocks) end,
+	[WAYPOINTS] = function (field) return field.waypoints ~= nil and #field.waypoints > 0 end,
+	[FLAGS] = function (field) return BothTeams (field.flags) end,
+	[BOMB] = function (field)
+		return field.flags ~= nil and field.flags [Teams.BLUE] ~= nil and field.zones ~= nil and field.zones [Teams.BLUE] ~= nil
 	end,
-	[HOSTAGES] = function(field)
-		return field.hostages ~= nil and #field.hostages > 0 and field.zones ~= nil and field.zones[Teams.BLUE] ~= nil
-	end,
+	[HOSTAGES] = function (field)
+		return field.hostages ~= nil and #field.hostages > 0 and field.zones ~= nil and field.zones [Teams.BLUE] ~= nil
+	end
 }
 
 -- NEEDS: the parts the map must have, or the war cannot start. AWAITS: the
 -- parts a round brings (none in Sandbox mode, none between rounds), which
 -- the war waits for: a field lacking any is never briefed.
 -- SQUAD_SIZE: the most a squad the war forms holds.
-Scenario = {
+Scenario =
+{
 	NAME = "none",
 	NEEDS = { BASES },
 	AWAITS = {},
-	SQUAD_SIZE = Squad.FIRE_TEAM_SIZE,
+	SQUAD_SIZE = Squad.FIRE_TEAM_SIZE
 }
 Scenario.__index = Scenario
 
 -- The first of parts the field lacks, or nil.
-local function FirstMissing(field, parts)
-	for _, part in ipairs(parts) do
-		if not PARTS[part](field) then return part end
+local function FirstMissing (field, parts)
+	for _, part in ipairs (parts) do
+		if not PARTS [part] (field) then return part end
 	end
 	return nil
 end
 
 -- The first part the map lacks for this variant, or nil: the war may start.
-function Scenario:MapLacks(field)
-	return FirstMissing(field, self.NEEDS)
+function Scenario:MapLacks (field)
+	return FirstMissing (field, self.NEEDS)
 end
 
 -- The first part the field lacks for this variant, or nil: the field is
 -- whole, and Command may brief it.
-function Scenario:Lacks(field)
-	return FirstMissing(field, self.NEEDS) or FirstMissing(field, self.AWAITS)
+function Scenario:Lacks (field)
+	return FirstMissing (field, self.NEEDS) or FirstMissing (field, self.AWAITS)
 end
 
 -- A variant, inheriting what it does not override.
-function Scenario:Extend(name)
-	return Class.Extend(self, { NAME = name })
+function Scenario:Extend (name)
+	return Class.Extend (self, { NAME = name })
 end
 
 -- memory: the variant's own, across ticks; pending: team -> the key waiting
 -- and since when; current: team -> the stance entry applied.
-function Scenario:New()
-	return setmetatable({
-		memory = {},
-		pending = {},
-		current = {},
-	}, self)
+function Scenario:New ()
+	return setmetatable (
+		{
+			memory = {},
+			pending = {},
+			current = {}
+		}, self)
 end
 
 -- A new round: the stances are chosen afresh and exploring starts over. A
 -- variant whose memory is of the round clears it too.
-function Scenario:Reset()
+function Scenario:Reset ()
 	self.pending = {}
 	self.current = {}
 	self.board = nil
@@ -125,69 +128,70 @@ end
 -- have been and how far along its lane, a squad in contact is engaged, and
 -- the field carries the board (field.explore). Then the variant briefs the
 -- field and the stances are allocated.
-function Scenario:Command(war, field, now)
-	self:Explore(field).explore:Survey(war:Members(), now)
-	self:Brief(field, now)
-	self:Allocate(war, field, now)
+function Scenario:Command (war, field, now)
+	self:Explore (field).explore:Survey (war:Members (), now)
+	self:Brief (field, now)
+	self:Allocate (war, field, now)
 end
 
 -- The field with the scenario's exploration board on it (field.explore),
 -- made on first use; a variant's Brief may call it too.
-function Scenario:Explore(field)
-	self.board = self.board or Explore.Board.New(field.waypoints)
+function Scenario:Explore (field)
+	self.board = self.board or Explore.Board.New (field.waypoints)
 	field.explore = self.board
 	return field
 end
 
-local function NotImplemented(self, name)
-	error(self.NAME .. " scenario: " .. name .. " not implemented", 3)
+local function NotImplemented (self, name)
+	error (self.NAME .. " scenario: " .. name .. " not implemented", 3)
 end
 
 -- Each side's soldiers at a team size (mp_aiwar_team_size): as many a side.
-function Scenario:TeamSizes(size)
+function Scenario:TeamSizes (size)
 	return { [Teams.RED] = size, [Teams.BLUE] = size }
 end
 
 -- The kit (primary, secondary, melee, as the host's enlisting reads it) a
 -- soldier of team in role carries, or nil for its faction's.
-function Scenario:Kit(team, role) return nil end
+function Scenario:Kit (team, role) return nil end
 
-function Scenario:Brief(field, now) NotImplemented(self, "Brief") end
-function Scenario:Stances(field, now) NotImplemented(self, "Stances") end
-function Scenario:Front(field, team) NotImplemented(self, "Front") end
-function Scenario:SetupAttacks(field) NotImplemented(self, "SetupAttacks") end
+function Scenario:Brief (field, now) NotImplemented (self, "Brief") end
+function Scenario:Stances (field, now) NotImplemented (self, "Stances") end
+function Scenario:Front (field, team) NotImplemented (self, "Front") end
+function Scenario:SetupAttacks (field) NotImplemented (self, "SetupAttacks") end
 
 -- The entry to apply for the team now, or nil to leave it as it is.
-function Scenario:Damp(team, entry, now)
-	local current = self.current[team]
+function Scenario:Damp (team, entry, now)
+	local current = self.current [team]
 	if current == nil or entry.critical or entry.key == current.key then
-		self.pending[team] = nil
+		self.pending [team] = nil
 		return entry
 	end
-	local pending = self.pending[team]
+	local pending = self.pending [team]
 	if pending == nil or pending.key ~= entry.key then
-		self.pending[team] = {
+		self.pending [team] =
+		{
 			key = entry.key,
-			since = now,
+			since = now
 		}
 		return nil
 	end
 	if now - pending.since >= ALLOCATION_HOLD then
-		self.pending[team] = nil
+		self.pending [team] = nil
 		return entry
 	end
 	return nil
 end
 
-function Scenario:Allocate(war, field, now)
-	local entries, defense = self:Stances(field, now)
+function Scenario:Allocate (war, field, now)
+	local entries, defense = self:Stances (field, now)
 	local chosen = {}
-	for _, team in ipairs(TEAMS) do
-		local entry = entries[team] and self:Damp(team, entries[team], now)
+	for _, team in ipairs (TEAMS) do
+		local entry = entries [team] and self:Damp (team, entries [team], now)
 		if entry then
-			self.current[team] = entry
-			chosen[team] = entry.stance
+			self.current [team] = entry
+			chosen [team] = entry.stance
 		end
 	end
-	war:AssignStances(chosen, defense)
+	war:AssignStances (chosen, defense)
 end

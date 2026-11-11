@@ -1,4 +1,4 @@
-AddCSLuaFile()
+AddCSLuaFile ()
 
 -- weapon_m249: a standard CS:S SWEP; its base owns shared behavior.
 
@@ -9,8 +9,8 @@ SWEP.Category = "Counter-Strike: Source"
 SWEP.Spawnable = true
 SWEP.Slot = 0
 SWEP.SlotPos = 0
-SWEP.ViewModel = Model("models/weapons/cstrike/c_mach_m249para.mdl")
-SWEP.WorldModel = Model("models/weapons/w_mach_m249para.mdl")
+SWEP.ViewModel = Model ("models/weapons/cstrike/c_mach_m249para.mdl")
+SWEP.WorldModel = Model ("models/weapons/w_mach_m249para.mdl")
 SWEP.ViewModelFOV = 54
 SWEP.ViewModelFlip = false
 SWEP.UseHands = true
@@ -25,17 +25,20 @@ SWEP.SingleShotSound = "Weapon_M249.Single"
 SWEP.SpecialSound3 = "Default.Zoom"
 SWEP.Primary = { ClipSize = 100, DefaultClip = 100, Automatic = true, Ammo = "BULLET_PLAYER_556MM_BOX" }
 SWEP.Secondary = { ClipSize = -1, DefaultClip = -1, Automatic = false, Ammo = "none" }
-SWEP.Stats = {
-	Ballistics = {
+SWEP.Stats =
+{
+	Ballistics =
+	{
 		Damage = 35,
 		BulletCount = 1,
 		CycleTime = 0.08,
 		Penetration = 2,
 		Range = 8192,
 		RangeModifier = 0.97,
-		FullAuto = true,
+		FullAuto = true
 	},
-	Accuracy = {
+	Accuracy =
+	{
 		Crouch = 0.00763,
 		Fire = 0.00427,
 		Jump = 0.7083,
@@ -45,17 +48,18 @@ SWEP.Stats = {
 		RecoveryCrouch = 0.5592,
 		RecoveryStand = 0.78288,
 		Spread = 0.002,
-		Stand = 0.01017,
+		Stand = 0.01017
 	},
-	Kick = {
+	Kick =
+	{
 		UpBase = 0.8,
 		LateralBase = 0.65,
 		UpModifier = 0.45,
 		LateralModifier = 0.125,
 		UpMax = 5,
 		LateralMax = 3.5,
-		Flip = 8,
-	},
+		Flip = 8
+	}
 }
 SWEP.SoldierClip = 100
 SWEP.SoldierInterval = 0.08

@@ -8,20 +8,20 @@ ENT.Base = "base_point"
 -- Its outputs are named Is*, not On*.
 local OUTPUT_PREFIX = "Is"
 
-function ENT:KeyValue(key, value)
-	if string.sub(key, 1, #OUTPUT_PREFIX) == OUTPUT_PREFIX then self:StoreOutput(key, value) end
+function ENT:KeyValue (key, value)
+	if string.sub (key, 1, #OUTPUT_PREFIX) == OUTPUT_PREFIX then self:StoreOutput (key, value) end
 end
 
-function ENT:UpdateTransmitState()
+function ENT:UpdateTransmitState ()
 	return TRANSMIT_NEVER
 end
 
-function ENT:Initialize()
-	self.holiday = WS.Feature("holiday")
+function ENT:Initialize ()
+	self.holiday = WS.Feature ("holiday")
 end
 
-function ENT:AcceptInput(name, activator, caller, value)
-	if string.lower(name) ~= "fire" then return false end
-	for _, output in ipairs(self.holiday:OnHolidayOutputs()) do self:TriggerOutput(output, self) end
+function ENT:AcceptInput (name, activator, caller, value)
+	if string.lower (name) ~= "fire" then return false end
+	for _, output in ipairs (self.holiday:OnHolidayOutputs ()) do self:TriggerOutput (output, self) end
 	return true
 end

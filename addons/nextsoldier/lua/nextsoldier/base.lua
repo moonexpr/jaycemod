@@ -41,123 +41,137 @@
 -- uses, and its check refuses one this file does not declare.
 local Port, Sets = core.port, world.sets
 local concat, error, ipairs = table.concat, error, ipairs
-module("nextsoldier.base")
+module ("nextsoldier.base")
 
-local function Named(name, members)
+local function Named (name, members)
 	if members == nil then return nil end
-	return Sets.Named(name, members)
+	return Sets.Named (name, members)
 end
 
-local function Component(name, spec)
-	return {
+local function Component (name, spec)
+	return
+	{
 		name = name,
-		methods = Port.New("NextSoldier " .. name, spec.methods),
-		hooks = Named("NextSoldier " .. name .. " hooks", spec.hooks),
-		fields = Named("NextSoldier " .. name .. " fields", spec.fields),
-		optional = spec.optional == true,
+		methods = Port.New ("NextSoldier " .. name, spec.methods),
+		hooks = Named ("NextSoldier " .. name .. " hooks", spec.hooks),
+		fields = Named ("NextSoldier " .. name .. " fields", spec.fields),
+		optional = spec.optional == true
 	}
 end
 
 local NONE = {}
 
-function Hooks(component)
-	return component.hooks and component.hooks:Members() or NONE
+function Hooks (component)
+	return component.hooks and component.hooks:Members () or NONE
 end
 
-function Fields(component)
-	return component.fields and component.fields:Members() or NONE
+function Fields (component)
+	return component.fields and component.fields:Members () or NONE
 end
 
 -- The bot itself (INextBot, its combat character): alive, down or dead,
 -- hurt and dying, its own setup and think, and whom it fights (dispositions
 -- by entity and by faction; INextBot's IsEnemy and IsFriend read them).
-NEXTBOT = Component("nextbot", {
-	methods = { "IsAlive", "IsDead", "IsDown", "AddEntityRelationship", "SetFactionRelationship", "Disposition",
-		"JoinFaction", "LeaveFaction", "GetFactions", "Team", "Timer" },
-	hooks = { "CustomInitialize", "CustomThink", "OnTakeDamage", "OnTraceAttack", "OnDealtDamage", "OnDeath" },
-	fields = { "SpawnHealth", "RagdollOnDeath", "Factions", "DefaultRelationship" },
-})
+NEXTBOT = Component ("nextbot",
+	{
+		methods = { "IsAlive", "IsDead", "IsDown", "AddEntityRelationship", "SetFactionRelationship", "Disposition",
+			"JoinFaction", "LeaveFaction", "GetFactions", "Team", "Timer" },
+		hooks = { "CustomInitialize", "CustomThink", "OnTakeDamage", "OnTraceAttack", "OnDealtDamage", "OnDeath" },
+		fields = { "SpawnHealth", "RagdollOnDeath", "Factions", "DefaultRelationship" }
+	}
+)
 
 -- Moving (ILocomotion): its path, priced by the class (GetPathGenerator),
 -- facing, jumping, climbing ledges and dropping down, its speeds.
-LOCOMOTION = Component("locomotion", {
-	methods = { "FollowPath", "GetPath", "FaceTowards", "IsMoving", "Jump", "GetStepHeight", "GetDeathDropHeight",
-		"IsOnGround", "TraceHull", "TraceLine" },
-	hooks = { "GetPathGenerator", "OnComputePath", "CustomClimbing", "OnStartClimbing", "OnLandOnGround", "OnLeaveGround",
-		"OnNavAreaChanged" },
-	fields = { "WalkSpeed", "RunSpeed", "ClimbLedges", "ClimbLedgesMaxHeight", "DeathDropHeight" },
-})
+LOCOMOTION = Component ("locomotion",
+	{
+		methods = { "FollowPath", "GetPath", "FaceTowards", "IsMoving", "Jump", "GetStepHeight", "GetDeathDropHeight",
+			"IsOnGround", "TraceHull", "TraceLine" },
+		hooks = { "GetPathGenerator", "OnComputePath", "CustomClimbing", "OnStartClimbing", "OnLandOnGround", "OnLeaveGround",
+			"OnNavAreaChanged" },
+		fields = { "WalkSpeed", "RunSpeed", "ClimbLedges", "ClimbLedgesMaxHeight", "DeathDropHeight" }
+	}
+)
 
 -- What it holds and looks like (IBody): its weapons (the bot equips the best
 -- for its threat, as CTFBot::EquipBestWeaponForThreat; the intention fires),
 -- its scale, models, animations and sounds.
-BODY = Component("body", {
-	methods = { "GetActiveWeapon", "GetWeapons", "GiveWeapon", "RemoveWeapon", "SelectWeapon", "SetScale" },
-	hooks = { "OnWeaponChange", "OnUpdateAnimation", "PlaysJump", "OnAnimEvent" },
-	fields = { "Model", "Weapons", "BloodColor", "CollisionBounds", "IdleAnimation", "WalkAnimation",
-		"RunAnimation", "OnDamageSounds", "OnDeathSounds" },
-})
+BODY = Component ("body",
+	{
+		methods = { "GetActiveWeapon", "GetWeapons", "GiveWeapon", "RemoveWeapon", "SelectWeapon", "SetScale" },
+		hooks = { "OnWeaponChange", "OnUpdateAnimation", "PlaysJump", "OnAnimEvent" },
+		fields = { "Model", "Weapons", "BloodColor", "CollisionBounds", "IdleAnimation", "WalkAnimation",
+			"RunAnimation", "OnDamageSounds", "OnDeathSounds" }
+	}
+)
 
 -- The body's posture: crouching, which a human soldier has and a
 -- vortigaunt does not.
-POSTURE = Component("posture", {
-	methods = { "IsCrouching", "SetCrouching" },
-	optional = true,
-})
+POSTURE = Component ("posture",
+	{
+		methods = { "IsCrouching", "SetCrouching" },
+		optional = true
+	}
+)
 
 -- What it senses (IVision, with hearing): sight (spotted, lost), hearing,
 -- the range to another, and being no one's target.
-VISION = Component("vision", {
-	methods = { "IsDeaf", "GetHearingCoefficient", "GetRangeTo", "SetNoTarget" },
-	hooks = { "OnSpotted", "OnLost", "OnSound" },
-})
+VISION = Component ("vision",
+	{
+		methods = { "IsDeaf", "GetHearingCoefficient", "GetRangeTo", "SetNoTarget" },
+		hooks = { "OnSpotted", "OnLost", "OnSound" }
+	}
+)
 
 -- What it wants (IIntention): its enemy, its AI on or off, and the stages
 -- of fighting an enemy; the behaviours themselves are nextsoldier.behavior's
 -- states, run from its Update.
-INTENTION = Component("intention", {
-	methods = { "GetEnemy", "HasEnemy", "SetAIDisabled", "IsAIDisabled" },
-	hooks = { "OnIdle", "OnNewEnemy", "OnEnemyChange", "OnLastEnemy", "OnFetchEnemy", "OnChaseEnemy", "OnAvoidEnemy",
-		"OnIdleEnemy", "OnRangeAttack", "OnMeleeAttack", "ShouldRun" },
-	fields = { "ReachEnemyRange", "AvoidEnemyRange", "RangeAttackRange", "MeleeAttackRange" },
-})
+INTENTION = Component ("intention",
+	{
+		methods = { "GetEnemy", "HasEnemy", "SetAIDisabled", "IsAIDisabled" },
+		hooks = { "OnIdle", "OnNewEnemy", "OnEnemyChange", "OnLastEnemy", "OnFetchEnemy", "OnChaseEnemy", "OnAvoidEnemy",
+			"OnIdleEnemy", "OnRangeAttack", "OnMeleeAttack", "ShouldRun" },
+		fields = { "ReachEnemyRange", "AvoidEnemyRange", "RangeAttackRange", "MeleeAttackRange" }
+	}
+)
 
 COMPONENTS = { NEXTBOT, LOCOMOTION, BODY, POSTURE, VISION, INTENTION }
 
 local methods, hooks, fields, owner = {}, {}, {}, {}
-for _, component in ipairs(COMPONENTS) do
-	for _, name in ipairs(component.methods:Methods()) do
-		owner[name] = component
-		if not component.optional then methods[#methods + 1] = name end
+for _, component in ipairs (COMPONENTS) do
+	for _, name in ipairs (component.methods:Methods ()) do
+		owner [name] = component
+		if not component.optional then methods [#methods + 1] = name end
 	end
-	for _, name in ipairs(Hooks(component)) do
-		hooks[#hooks + 1], owner[name] = name, component
+	for _, name in ipairs (Hooks (component)) do
+		hooks [#hooks + 1], owner [name] = name, component
 	end
-	for _, name in ipairs(Fields(component)) do
-		fields[#fields + 1], owner[name] = name, component
+	for _, name in ipairs (Fields (component)) do
+		fields [#fields + 1], owner [name] = name, component
 	end
 end
 
-METHODS = Port.New("NextSoldier base", methods)
-HOOKS = Sets.Named("NextSoldier hooks", hooks)
-FIELDS = Sets.Named("NextSoldier fields", fields)
+METHODS = Port.New ("NextSoldier base", methods)
+HOOKS = Sets.Named ("NextSoldier hooks", hooks)
+FIELDS = Sets.Named ("NextSoldier fields", fields)
 
-function ComponentOf(name)
-	return owner[name]
+function ComponentOf (name)
+	return owner [name]
 end
 
-function Has(soldier, component)
+function Has (soldier, component)
 	local present, missing = 0, {}
-	for _, name in ipairs(component.methods:Methods()) do
-		if soldier[name] ~= nil then present = present + 1 else missing[#missing + 1] = name end
+	for _, name in ipairs (component.methods:Methods ()) do
+		if soldier [name] ~= nil then present = present + 1 else missing [#missing + 1] = name end
 	end
 	if present > 0 and #missing > 0 then
-		error("a soldier has part of NextSoldier " .. component.name .. ": no " .. concat(missing, ", "), 2)
+		error ("a soldier has part of NextSoldier " .. component.name .. ": no " .. concat (missing, ", "), 2)
 	end
 	return present > 0
 end
 
-REPLACED = {
+REPLACED =
+{
 	-- DrGBase's own landing handling, which the soldier's OnLandOnGround
 	-- calls first: the base runs its own before raising the hook.
 	_HandleLandOnGround = "the base's landing, run before OnLandOnGround",
@@ -169,5 +183,5 @@ REPLACED = {
 	PauseCoroutine = "a behaviour that waits, ticked in IIntention's Update",
 	-- DrGBase's list a model is drawn from: what chooses a soldier's model
 	-- chooses one (its profile, its kit).
-	Models = "Model: the one it is given",
+	Models = "Model: the one it is given"
 }

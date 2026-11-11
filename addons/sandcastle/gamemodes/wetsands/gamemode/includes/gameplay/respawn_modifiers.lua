@@ -6,7 +6,7 @@
 -- team's wave, never into the death animation, later by at most MOST_PENALTY.
 local format, ipairs, max, min = string.format, ipairs, math.max, math.min
 local Credit = gameplay.kill_credit
-module(...)
+module (...)
 
 -- Reasons, in the order they are told: sooner first, then later.
 KILLS, CAPTURE, DEFENSE, FINISHED_OFF, SUICIDE = "kills", "capture", "defense", "finished_off", "suicide"
@@ -18,53 +18,54 @@ DEFENSE_SECONDS = 2 -- each capture blocked, named its defender
 SUICIDE_SECONDS = 5 -- killing oneself (not a team change)
 MOST_PENALTY = 10
 
-local function Entry(reason, count, seconds)
+local function Entry (reason, count, seconds)
 	return { reason = reason, count = count, seconds = seconds }
 end
 
 -- facts = { kills, captures, defenses (counts), finishedOff, suicide }
 -- since the last spawn -> the reasons that move the respawn, in order:
 -- { reason, count, seconds (negative: sooner) }.
-function For(facts)
+function For (facts)
 	local list = {}
 	if facts.kills > 0 then
-		list[#list + 1] = Entry(KILLS, facts.kills, -min(facts.kills, MOST_KILLS) * KILL_SECONDS)
+		list [#list + 1] = Entry (KILLS, facts.kills, -min (facts.kills, MOST_KILLS) * KILL_SECONDS)
 	end
 	if facts.captures > 0 then
-		list[#list + 1] = Entry(CAPTURE, facts.captures, -facts.captures * CAPTURE_SECONDS)
+		list [#list + 1] = Entry (CAPTURE, facts.captures, -facts.captures * CAPTURE_SECONDS)
 	end
 	if facts.defenses > 0 then
-		list[#list + 1] = Entry(DEFENSE, facts.defenses, -facts.defenses * DEFENSE_SECONDS)
+		list [#list + 1] = Entry (DEFENSE, facts.defenses, -facts.defenses * DEFENSE_SECONDS)
 	end
 	-- a death the world dealt, credited to an enemy (games.gameplay.kill_credit)
-	if facts.finishedOff then list[#list + 1] = Entry(FINISHED_OFF, 1, Credit.CREDITED_RESPAWN) end
-	if facts.suicide then list[#list + 1] = Entry(SUICIDE, 1, SUICIDE_SECONDS) end
+	if facts.finishedOff then list [#list + 1] = Entry (FINISHED_OFF, 1, Credit.CREDITED_RESPAWN) end
+	if facts.suicide then list [#list + 1] = Entry (SUICIDE, 1, SUICIDE_SECONDS) end
 	return list
 end
 
 -- The seconds list moves the respawn, for a team whose waves are wave
 -- seconds long, and whether a limit cut it.
-function Total(list, wave)
+function Total (list, wave)
 	local sum = 0
-	for _, m in ipairs(list) do sum = sum + m.seconds end
-	local total = max(-wave, min(sum, MOST_PENALTY))
+	for _, m in ipairs (list) do sum = sum + m.seconds end
+	local total = max (-wave, min (sum, MOST_PENALTY))
 	return total, total ~= sum
 end
 
-local WORDS = {
-	[KILLS] = function(n) return n == 1 and "1 kill" or format("%d kills", n) end,
-	[CAPTURE] = function(n) return n == 1 and "Captured a point" or format("Captured a point (%d)", n) end,
-	[DEFENSE] = function(n) return n == 1 and "Defended a point" or format("Defended a point (%d)", n) end,
-	[FINISHED_OFF] = function() return "Finished off by an enemy" end,
-	[SUICIDE] = function() return "Suicide" end,
+local WORDS =
+{
+	[KILLS] = function (n) return n == 1 and "1 kill" or format ("%d kills", n) end,
+	[CAPTURE] = function (n) return n == 1 and "Captured a point" or format ("Captured a point (%d)", n) end,
+	[DEFENSE] = function (n) return n == 1 and "Defended a point" or format ("Defended a point (%d)", n) end,
+	[FINISHED_OFF] = function () return "Finished off by an enemy" end,
+	[SUICIDE] = function () return "Suicide" end
 }
 
 -- A reason in words, for the respawn screen.
-function Describe(m)
-	return WORDS[m.reason](m.count)
+function Describe (m)
+	return WORDS [m.reason] (m.count)
 end
 
 -- Seconds a reason moves the respawn, signed: "-2 s" sooner, "+5 s" later.
-function Seconds(seconds)
-	return format("%s%g s", seconds > 0 and "+" or "", seconds)
+function Seconds (seconds)
+	return format ("%s%g s", seconds > 0 and "+" or "", seconds)
 end

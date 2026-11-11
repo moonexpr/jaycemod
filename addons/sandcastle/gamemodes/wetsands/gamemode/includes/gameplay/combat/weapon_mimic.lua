@@ -14,7 +14,7 @@ local require = require
 local Teams = gameplay.teams
 local abs, cos, floor, max, rad, sin = math.abs, math.cos, math.floor, math.max, math.rad, math.sin
 local setmetatable = setmetatable
-module(...)
+module (...)
 
 -- eWeaponType
 WEAPON_STANDARD_ROCKET = 0
@@ -38,82 +38,89 @@ HALF_TURN = 180 -- GetFiringAngles turns about forward by up to this either way
 local Mimic = {}
 Mimic.__index = Mimic
 
-function New(config)
-	return setmetatable({
-		config = config,
-	}, Mimic)
+function New (config)
+	return setmetatable (
+		{
+			config = config
+		}, Mimic)
 end
 
 -- InputFireMultiple: Max(1, abs(n)) shots.
-function FireCount(n)
-	return max(1, abs(floor(n)))
+function FireCount (n)
+	return max (1, abs (floor (n)))
 end
 
 -- GetFiringAngles as a direction: turned about up by half the spread at
 -- most, then about the aim by any angle; straight when there is no spread.
-local function Direction(spread, aim, randomFloat)
+local function Direction (spread, aim, randomFloat)
 	if spread == 0 then return aim.forward end
 	local half = spread / 2
-	local off = rad(randomFloat(-half, half))
-	local around = rad(randomFloat(-HALF_TURN, HALF_TURN))
-	local side = aim.right * cos(around) + aim.up * sin(around)
-	return aim.forward * cos(off) + side * sin(off)
+	local off = rad (randomFloat (-half, half))
+	local around = rad (randomFloat (-HALF_TURN, HALF_TURN))
+	local side = aim.right * cos (around) + aim.up * sin (around)
+	return aim.forward * cos (off) + side * sin (off)
 end
 
-local function Velocity(config, aim, randomFloat)
-	local direction = Direction(config.spreadAngle, aim, randomFloat)
-	return direction * randomFloat(config.speedMin, config.speedMax) -- GetSpeed
+local function Velocity (config, aim, randomFloat)
+	local direction = Direction (config.spreadAngle, aim, randomFloat)
+	return direction * randomFloat (config.speedMin, config.speedMax) -- GetSpeed
 end
 
 -- FireRocket: the rocket's own radius (TF_ROCKET_RADIUS); SplashRadius is
 -- not passed on.
-local function Rocket(config, aim, randomFloat, randomInt)
-	return {
+local function Rocket (config, aim, randomFloat, randomInt)
+	return
+	{
 		class = ROCKET_CLASS,
-		config = {
+		config =
+		{
 			damage = config.damage,
 			crit = config.crits,
 			team = TEAM,
-			velocity = Velocity(config, aim, randomFloat),
-			model = config.modelOverride,
-		},
+			velocity = Velocity (config, aim, randomFloat),
+			model = config.modelOverride
+		}
 	}
 end
 
 -- FireGrenade
-local function Grenade(config, aim, randomFloat, randomInt)
-	local velocity = Velocity(config, aim, randomFloat)
-	return {
+local function Grenade (config, aim, randomFloat, randomInt)
+	local velocity = Velocity (config, aim, randomFloat)
+	return
+	{
 		class = PIPE_CLASS,
-		config = {
+		config =
+		{
 			damage = config.damage,
 			crit = config.crits,
 			team = TEAM,
 			radius = config.splashRadius,
 			velocity = velocity,
-			spin = {
+			spin =
+			{
 				x = GRENADE_SPIN,
-				y = randomInt(-GRENADE_TUMBLE, GRENADE_TUMBLE),
-				z = 0,
+				y = randomInt (-GRENADE_TUMBLE, GRENADE_TUMBLE),
+				z = 0
 			},
 			fuse = GRENADE_FUSE,
 			explodeOnTouch = false,
 			model = config.modelOverride,
 			skin = GRENADE_SKIN,
-			scale = config.modelScale,
-		},
+			scale = config.modelScale
+		}
 	}
 end
 
-local WEAPONS = {
+local WEAPONS =
+{
 	[WEAPON_STANDARD_ROCKET] = Rocket,
-	[WEAPON_STANDARD_GRENADE] = Grenade,
+	[WEAPON_STANDARD_GRENADE] = Grenade
 }
 
-function Mimic:Fires()
-	return WEAPONS[self.config.weaponType] ~= nil
+function Mimic:Fires ()
+	return WEAPONS [self.config.weaponType] ~= nil
 end
 
-function Mimic:Shot(aim, randomFloat, randomInt)
-	return WEAPONS[self.config.weaponType](self.config, aim, randomFloat, randomInt)
+function Mimic:Shot (aim, randomFloat, randomInt)
+	return WEAPONS [self.config.weaponType] (self.config, aim, randomFloat, randomInt)
 end

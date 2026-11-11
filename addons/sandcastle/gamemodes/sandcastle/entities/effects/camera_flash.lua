@@ -1,12 +1,11 @@
+function EFFECT:Init (data)
 
-function EFFECT:Init( data )
+	local vOffset = data:GetOrigin ()
+	local ent = data:GetEntity ()
 
-	local vOffset = data:GetOrigin()
-	local ent = data:GetEntity()
+	local dlight = DynamicLight (ent:EntIndex ())
 
-	local dlight = DynamicLight( ent:EntIndex() )
-
-	if ( dlight ) then
+	if dlight then
 
 		dlight.Pos = vOffset
 		dlight.r = 255
@@ -14,16 +13,16 @@ function EFFECT:Init( data )
 		dlight.b = 255
 		dlight.Brightness = 10
 		dlight.Size = 512
-		dlight.DieTime = CurTime() + 0.02
+		dlight.DieTime = CurTime () + 0.02
 		dlight.Decay = 512
 
 	end
 
 end
 
-function EFFECT:Think()
+function EFFECT:Think ()
 	return false
 end
 
-function EFFECT:Render()
+function EFFECT:Render ()
 end

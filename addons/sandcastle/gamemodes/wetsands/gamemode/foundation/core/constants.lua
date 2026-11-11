@@ -25,80 +25,83 @@
 local Class = core.class
 local error, getmetatable, next, pairs, rawget, rawset, setmetatable, sort, tostring, type = error, getmetatable, next, pairs, rawget, rawset, setmetatable, table.sort, tostring, type
 local match = string.match
-module(...)
+module (...)
 
 -- Init runs under Construct, under a module's New: this blames New's caller.
 local NEW_CALLER = 4
 
 -- Each set's own state, apart from its constants, so pairs gives only those.
-local state = setmetatable({}, { __mode = "k" })
+local state = setmetatable ({}, { __mode = "k" })
 
-local function NameOf(set)
-	local own = state[set]
-	return own and own.name or tostring(set)
+local function NameOf (set)
+	local own = state [set]
+	return own and own.name or tostring (set)
 end
 
-local function Lookup(set, key)
-	local class = getmetatable(set)
+local function Lookup (set, key)
+	local class = getmetatable (set)
 	while class do
-		local method = rawget(class, key)
+		local method = rawget (class, key)
 		if method ~= nil then return method end
-		class = getmetatable(class)
+		class = getmetatable (class)
 	end
-	error(NameOf(set) .. ": no constant " .. tostring(key), 2)
+	error (NameOf (set) .. ": no constant " .. tostring (key), 2)
 end
 
-local function Fixed(set, key)
-	error(NameOf(set) .. ": constants are fixed, no new " .. tostring(key), 2)
+local function Fixed (set, key)
+	error (NameOf (set) .. ": constants are fixed, no new " .. tostring (key), 2)
 end
 
-local function IsName(key)
-	return type(key) == "string" and match(key, "^[A-Z][A-Z0-9_]*$") ~= nil
+local function IsName (key)
+	return type (key) == "string" and match (key, "^[A-Z][A-Z0-9_]*$") ~= nil
 end
 
-local function Parse(set, token)
-	return rawget(set, token)
+local function Parse (set, token)
+	return rawget (set, token)
 end
 
-local function Name(set)
-	return state[set].name
+local function Name (set)
+	return state [set].name
 end
 
-ConstantSet = Class.Extend(nil, {
-	__index = Lookup,
-	__newindex = Fixed,
-	__call = Parse,
-	__tostring = Name,
-	__len = function(set) return state[set].count end,
-	Name = Name,
-})
+ConstantSet = Class.Extend (nil,
+	{
+		__index = Lookup,
+		__newindex = Fixed,
+		__call = Parse,
+		__tostring = Name,
+		__len = function (set) return state [set].count end,
+		Name = Name
+	}
+)
 
-function ConstantSet:Init(name, constants)
-	if type(name) ~= "string" or name == "" then error("a constant set needs a name", NEW_CALLER) end
-	if type(constants) ~= "table" or next(constants) == nil then error(name .. ": a constant set needs constants", NEW_CALLER) end
+function ConstantSet:Init (name, constants)
+	if type (name) ~= "string" or name == "" then error ("a constant set needs a name", NEW_CALLER) end
+	if type (constants) ~= "table" or next (constants) == nil then error (name .. ": a constant set needs constants", NEW_CALLER) end
 	local count = 0
-	for key, value in pairs(constants) do
-		if not IsName(key) then error(name .. ": a constant's name is upper case, not " .. tostring(key), NEW_CALLER) end
-		rawset(self, key, value)
+	for key, value in pairs (constants) do
+		if not IsName (key) then error (name .. ": a constant's name is upper case, not " .. tostring (key), NEW_CALLER) end
+		rawset (self, key, value)
 		count = count + 1
 	end
-	state[self] = {
+	state [self] =
+	{
 		name = name,
-		count = count,
+		count = count
 	}
 end
 
-function ConstantSet:Has(name)
-	return Parse(self, name) ~= nil
+function ConstantSet:Has (name)
+	return Parse (self, name) ~= nil
 end
 
-function ConstantSet:Names()
+function ConstantSet:Names ()
 	local names = {}
-	for key in pairs(self) do names[#names + 1] = key end
-	sort(names)
+	for key in pairs (self) do names [#names + 1] = key end
+	sort (names)
 	return names
 end
 
-function New(name, constants)
-	return Class.Construct(ConstantSet, name, constants)
+function New (name, constants)
+	return Class.Construct (ConstantSet, name, constants)
 end

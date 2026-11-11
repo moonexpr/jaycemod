@@ -10,35 +10,36 @@ ENT.Base = "base_point"
 -- FIELD_INTEGER inputs read as atoi does: a non-number is 0.
 local ATOI_FALLBACK = 0
 
-function ENT:KeyValue(key, value)
+function ENT:KeyValue (key, value)
 	self.kv = self.kv or {}
-	self.kv[string.lower(key)] = value
+	self.kv [string.lower (key)] = value
 end
 
-function ENT:UpdateTransmitState()
+function ENT:UpdateTransmitState ()
 	return TRANSMIT_NEVER
 end
 
-function ENT:Initialize()
-	local Zombie = WS.require("features.haunting.zombie")
-	self.spawner = WS.Feature("npc"):BindSpawner(self, Zombie.SpawnerConfig(self.kv or {}))
+function ENT:Initialize ()
+	local Zombie = WS.require ("features.haunting.zombie")
+	self.spawner = WS.Feature ("npc"):BindSpawner (self, Zombie.SpawnerConfig (self.kv or {}))
 end
 
-local INPUTS = {
-	enable = function(self)
-		self.spawner:Enable(CurTime())
+local INPUTS =
+{
+	enable = function (self)
+		self.spawner:Enable (CurTime ())
 	end,
-	disable = function(self)
-		self.spawner:Disable()
+	disable = function (self)
+		self.spawner:Disable ()
 	end,
-	setmaxactivezombies = function(self, value)
-		self.spawner:SetMaxActive(math.floor(tonumber(value) or ATOI_FALLBACK))
-	end,
+	setmaxactivezombies = function (self, value)
+		self.spawner:SetMaxActive (math.floor (tonumber (value) or ATOI_FALLBACK))
+	end
 }
 
-function ENT:AcceptInput(name, activator, caller, value)
-	local handler = INPUTS[string.lower(name)]
+function ENT:AcceptInput (name, activator, caller, value)
+	local handler = INPUTS [string.lower (name)]
 	if not handler then return false end
-	handler(self, value)
+	handler (self, value)
 	return true
 end

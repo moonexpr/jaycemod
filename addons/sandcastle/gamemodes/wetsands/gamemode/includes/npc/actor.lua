@@ -15,9 +15,10 @@
 -- Event payloads, built once at the entity: damageEvent = { attacker,
 -- inflictor, amount, dmgType, position, crit }; OnOtherKilled gets
 -- (victim, damageEvent); OnContact gets (other).
-module(...)
+module (...)
 
-METHODS = {
+METHODS =
+{
 	-- time, chance
 	"Now",
 	"RandomFloat",
@@ -83,14 +84,15 @@ METHODS = {
 	"ApplyImpulse",
 	"DealDamage",
 	"FireOutput",
-	"SpawnEntity",
+	"SpawnEntity"
 }
 
 -- Methods GMod's Entity or NextBot metatable already provides with the
 -- port's meaning. GMod's entity __index searches the metatable before the
 -- entity's own table, so the entity must not define these: its version
 -- would never run.
-ENGINE = {
+ENGINE =
+{
 	WorldSpaceCenter = true,
 	SetHealth = true,
 	GetMaxHealth = true,
@@ -103,7 +105,7 @@ ENGINE = {
 	SetPoseParameter = true,
 	SetSkin = true,
 	SetModelScale = true,
-	EmitSound = true,
+	EmitSound = true
 }
 
 -- Source's damage type bits (shared/shareddefs.h).

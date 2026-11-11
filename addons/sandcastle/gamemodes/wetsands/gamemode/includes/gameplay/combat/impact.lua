@@ -7,7 +7,7 @@
 -- controller (ws/sv_hits.lua) watches the thrown and traces what they hit.
 local Geometry = math.geometry
 local math = math
-module(...)
+module (...)
 
 WINDOW = 1.5 -- seconds after a throw that a strike counts
 MIN_SPEED = 600 -- units/s into the surface that hurt nothing
@@ -18,45 +18,45 @@ STOP_FRACTION = 0.5 -- a throw whose speed falls to this in a tick has struck so
 
 -- Whether a throw by attackerTeam of victimTeam (selfHarm: one's own) can
 -- hurt: only an enemy's.
-function Harms(attackerTeam, victimTeam, selfHarm)
+function Harms (attackerTeam, victimTeam, selfHarm)
 	return not selfHarm and attackerTeam ~= victimTeam
 end
 
 -- Whether a throw moving at before, then at after a tick later, was
 -- stopped by something.
-function Stopped(before, after)
+function Stopped (before, after)
 	return before > 0 and after <= before * STOP_FRACTION
 end
 
 -- Whether a surface whose normal rises normalZ is struck: a wall or a
 -- ceiling, not a floor.
-function Struck(normalZ)
+function Struck (normalZ)
 	return normalZ < WALL_NORMAL_Z
 end
 
 -- The speed of velocity into a surface of normal ({ x, y, z }): none when
 -- moving off it.
-function Into(velocity, normal)
-	return math.max(0, -Geometry.Dot(velocity, normal))
+function Into (velocity, normal)
+	return math.max (0, -Geometry.Dot (velocity, normal))
 end
 
 -- The damage of striking a surface at speed into it.
-function Damage(speed)
-	return math.min(MAX_DAMAGE, math.max(0, speed - MIN_SPEED) * DAMAGE_PER_SPEED)
+function Damage (speed)
+	return math.min (MAX_DAMAGE, math.max (0, speed - MIN_SPEED) * DAMAGE_PER_SPEED)
 end
 
 -- HL2's body impacts (physics/body/body_medium_impact_*), each strike one at
 -- random (the caller draws it): a strike too slow to hurt thuds soft.
-local function Variants(kind, count)
+local function Variants (kind, count)
 	local paths = {}
-	for i = 1, count do paths[i] = "physics/body/body_medium_impact_" .. kind .. i .. ".wav" end
+	for i = 1, count do paths [i] = "physics/body/body_medium_impact_" .. kind .. i .. ".wav" end
 	return paths
 end
 
-SOFT_SOUNDS = Variants("soft", 7)
-HARD_SOUNDS = Variants("hard", 6)
+SOFT_SOUNDS = Variants ("soft", 7)
+HARD_SOUNDS = Variants ("hard", 6)
 
 -- The sounds a strike dealing damage plays from.
-function Sounds(damage)
+function Sounds (damage)
 	return damage > 0 and HARD_SOUNDS or SOFT_SOUNDS
 end

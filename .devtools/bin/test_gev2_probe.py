@@ -34,7 +34,7 @@ class FakeServer:
         self.commands.append(text)
         if text == "status":
             return self.status
-        m = re.search(r'RunString\(file\.Read\("ws_tests/gev2/(\w+)\.txt", "DATA"\)', text)
+        m = re.search(r'RunString\s*\(file\.Read\s*\("ws_tests/gev2/(\w+)\.txt", "DATA"\)', text)
         if m and self.answers:
             out = self.install.data_dir / "ws_tests" / "gev2" / "client_out" / f"{m.group(1)}.txt"
             out.write_text(f"realm | client\nran {m.group(1)}\n")
@@ -60,7 +60,7 @@ def test_client_mode_sends_the_loader_to_every_human_player(tmp_path, probes):
     assert loaders == [client_loader("client_t4")]
     assert "player.GetHumans()" in loaders[0] and ":SendLua(" in loaders[0]
     assert ";" not in loaders[0]  # the console would split the line there
-    sent = re.search(r"SendLua\(\[\[(.*)\]\]\)", loaders[0]).group(1)
+    sent = re.search(r"SendLua\s*\(\[\[(.*)\]\]\)", loaders[0]).group(1)
     assert len(sent.encode()) < 255  # SendLua's limit
     assert (tmp_path / "data" / "ws_tests" / "gev2" / "client_t4.txt").read_text() == "-- a probe\n"
 

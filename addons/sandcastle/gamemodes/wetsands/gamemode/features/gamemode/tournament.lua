@@ -12,8 +12,8 @@
 -- Rects are { x, y, w, h } in pixels.
 local ceil, concat, format, ipairs = math.ceil, table.concat, string.format, ipairs
 local Teams = gameplay.teams
-local Text = require("features.rounds.text")
-module(...)
+local Text = require ("features.rounds.text")
+module (...)
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 
@@ -26,9 +26,10 @@ STATE_Y, STATE_TALL, STATE_FONT_TALL = 3, 19, 14
 -- HudTournamentBLUEBG 5,23 and HudTournamentREDBG 125,23, 120x16,
 -- tournament_panel_blu and _red, src_corner_width 15, draw_corner_width 4.
 STRIP_Y, STRIP_W, STRIP_H, BLUE_STRIP_X, RED_STRIP_X = 23, 120, 16, 5, 125
-STRIP_IMAGES = {
+STRIP_IMAGES =
+{
 	[BLUE] = "hud/tournament_panel_blu",
-	[RED] = "hud/tournament_panel_red",
+	[RED] = "hud/tournament_panel_red"
 }
 STRIP_SRC_CORNER, STRIP_DRAW_CORNER = 15, 4
 -- The team labels, 24 down, 65x15: TournamentBLUELabel 12 west and
@@ -64,10 +65,11 @@ local TEAM_READY = { [true] = "Ready", [false] = "Not Ready" }
 -- CHudTournament::PreparePanel's win conditions (#Tournament_WinConditions
 -- and its kin), from mp_timelimit, mp_winlimit and mp_maxrounds.
 local CONDITIONS, NO_CONDITIONS = "Win Conditions: ", "None"
-local CONDITION_WORDS = {
+local CONDITION_WORDS =
+{
 	{ key = "timelimit", one = "minute", many = "minutes" },
 	{ key = "winlimit", one = "win", many = "wins" },
-	{ key = "maxrounds", one = "round", many = "rounds" },
+	{ key = "maxrounds", one = "round", many = "rounds" }
 }
 
 -- What the player may do, with the key bound to it (input.LookupBinding),
@@ -78,61 +80,62 @@ local KEYED, UNBOUND = "%s = %s", "%s: bind a key to %s"
 local TOGGLE_TEAM_READY, TOGGLE_READY, PICK_TEAM = "Toggle Team Ready", "Toggle Ready", "Pick a Team"
 local READY_COMMAND, TEAM_COMMAND = "player_ready_toggle", "changeteam"
 
-local function Keyed(key, action, command)
-	if key then return format(KEYED, key, action) end
-	return format(UNBOUND, action, command)
+local function Keyed (key, action, command)
+	if key then return format (KEYED, key, action) end
+	return format (UNBOUND, action, command)
 end
 
-local function OnGameTeam(team)
+local function OnGameTeam (team)
 	return team == Teams.RED or team == Teams.BLUE
 end
 
 local MODE_SANDBOX, MODE_WAITING, MODE_COUNTDOWN = Text.PREGAME_SANDBOX, Text.PREGAME_WAITING, Text.PREGAME_COUNTDOWN
 
-local STATE_LINES = {
-	[MODE_WAITING] = function(q) return format(WAITING, q.waitingHave, q.waitingNeed) end,
-	[MODE_COUNTDOWN] = function(q)
-		local left = ceil(q.transitionEnd - q.now)
-		return format(left == 1 and COUNTDOWN_ONE or COUNTDOWN, left)
-	end,
+local STATE_LINES =
+{
+	[MODE_WAITING] = function (q) return format (WAITING, q.waitingHave, q.waitingNeed) end,
+	[MODE_COUNTDOWN] = function (q)
+		local left = ceil (q.transitionEnd - q.now)
+		return format (left == 1 and COUNTDOWN_ONE or COUNTDOWN, left)
+	end
 }
 
-local function Count(n, one, many)
-	return format(n == 1 and one or many, n)
+local function Count (n, one, many)
+	return format (n == 1 and one or many, n)
 end
 
-local function Conditions(limits)
+local function Conditions (limits)
 	local parts = {}
-	for _, word in ipairs(CONDITION_WORDS) do
-		local n = limits[word.key]
-		if n > 0 then parts[#parts + 1] = format("%d %s", n, n == 1 and word.one or word.many) end
+	for _, word in ipairs (CONDITION_WORDS) do
+		local n = limits [word.key]
+		if n > 0 then parts [#parts + 1] = format ("%d %s", n, n == 1 and word.one or word.many) end
 	end
-	return CONDITIONS .. (#parts > 0 and concat(parts, ", ") or NO_CONDITIONS)
+	return CONDITIONS .. (#parts > 0 and concat (parts, ", ") or NO_CONDITIONS)
 end
 
-local function TeamState(q, mode, t)
-	if mode == MODE_WAITING and q.humans[t] > 0 then return TEAM_READY[q.teamReady[t] == true] end
-	return Count(q.players[t], PLAYER, PLAYERS)
+local function TeamState (q, mode, t)
+	if mode == MODE_WAITING and q.humans [t] > 0 then return TEAM_READY [q.teamReady [t] == true] end
+	return Count (q.players [t], PLAYER, PLAYERS)
 end
 
 -- The line under the panel: while the game waits, the ready key for a
 -- player on a team, the team key for a player on none.
-local function Instructions(q, mode)
+local function Instructions (q, mode)
 	if mode ~= MODE_WAITING then return nil end
-	if not OnGameTeam(q.localTeam) then return Keyed(q.teamKey, PICK_TEAM, TEAM_COMMAND) end
-	return Keyed(q.readyKey, TOGGLE_TEAM_READY, READY_COMMAND)
+	if not OnGameTeam (q.localTeam) then return Keyed (q.teamKey, PICK_TEAM, TEAM_COMMAND) end
+	return Keyed (q.readyKey, TOGGLE_TEAM_READY, READY_COMMAND)
 end
 
 -- The pregame a panel shows for, nil in Gameplay mode and Sandbox mode.
-local function Pregame(q)
-	local mode = Text.Pregame(q)
+local function Pregame (q)
+	local mode = Text.Pregame (q)
 	if mode == MODE_SANDBOX then return nil end
 	return mode
 end
 
 -- Whether the panel appeared or went since the last look: shown (it was up
 -- then), panel (Panel's or MvMPanel's answer now).
-function Toggled(shown, panel)
+function Toggled (shown, panel)
 	return shown ~= (panel ~= nil)
 end
 
@@ -145,21 +148,23 @@ end
 -- (the keys bound to player_ready_toggle or gm_showspare2, and to the team
 -- menu; nil unbound) }. Returns nil when no panel shows, else { state, teams
 -- (by team: { name, state }), conditions, instructions (nil for none) }.
-function Panel(q)
-	local mode = Pregame(q)
+function Panel (q)
+	local mode = Pregame (q)
 	if mode == nil or q.winPanel then return nil end
 	local teams = {}
-	for _, t in ipairs({ BLUE, RED }) do
-		teams[t] = {
-			name = q.names[t],
-			state = TeamState(q, mode, t),
+	for _, t in ipairs ({ BLUE, RED }) do
+		teams [t] =
+		{
+			name = q.names [t],
+			state = TeamState (q, mode, t)
 		}
 	end
-	return {
-		state = STATE_LINES[mode](q),
+	return
+	{
+		state = STATE_LINES [mode] (q),
 		teams = teams,
-		conditions = Conditions(q.limits),
-		instructions = Instructions(q, mode),
+		conditions = Conditions (q.limits),
+		instructions = Instructions (q, mode)
 	}
 end
 
@@ -170,14 +175,14 @@ end
 MVM_WAITING = "Waiting For Players"
 local MVM_COUNTDOWN, MVM_COUNTDOWN_ONE = "Starting in %d seconds...", "Starting in %d second..."
 
-local function MvMInstructions(q, mode)
+local function MvMInstructions (q, mode)
 	if mode == MODE_COUNTDOWN then
-		local left = ceil(q.transitionEnd - q.now)
-		return format(left == 1 and MVM_COUNTDOWN_ONE or MVM_COUNTDOWN, left), false
+		local left = ceil (q.transitionEnd - q.now)
+		return format (left == 1 and MVM_COUNTDOWN_ONE or MVM_COUNTDOWN, left), false
 	end
 	if q.waitingHave < q.waitingNeed then return MVM_WAITING, true end
-	if not q.localDefender then return Keyed(q.teamKey, PICK_TEAM, TEAM_COMMAND), false end
-	return Keyed(q.readyKey, TOGGLE_READY, READY_COMMAND), not q.localReady
+	if not q.localDefender then return Keyed (q.teamKey, PICK_TEAM, TEAM_COMMAND), false end
+	return Keyed (q.readyKey, TOGGLE_READY, READY_COMMAND), not q.localReady
 end
 
 -- q = { now, transitionEnd, waitingHave, waitingNeed, halted, winPanel (as
@@ -186,12 +191,12 @@ end
 -- teamKey }. Returns nil when no panel shows, else
 -- { players (each { name, ready }), instructions, pulse (the line pulses
 -- red: CHudTournament's HudReadyPulse while the player is not ready) }.
-function MvMPanel(q)
-	local mode = Pregame(q)
+function MvMPanel (q)
+	local mode = Pregame (q)
 	if mode == nil or q.winPanel then return nil end
 	local players = {}
-	for i, d in ipairs(q.defenders) do players[i] = { name = d.name, ready = d.ready } end
-	local instructions, pulse = MvMInstructions(q, mode)
+	for i, d in ipairs (q.defenders) do players [i] = { name = d.name, ready = d.ready } end
+	local instructions, pulse = MvMInstructions (q, mode)
 	return { players = players, instructions = instructions, pulse = pulse }
 end
 
@@ -203,14 +208,14 @@ PULSE_PERIOD, PULSE_TAN, PULSE_RED_AT, PULSE_RED_FOR = 0.5, 0.1, 0.3, 0.4
 local PULSE_PEAK = (PULSE_PERIOD - PULSE_RED_AT) / PULSE_RED_FOR -- how red it gets as it restarts
 
 -- How red the pulsing line is at time now: 0 TanLight, 1 RedSolid.
-function PulseRedness(now)
+function PulseRedness (now)
 	local t = now % PULSE_PERIOD
 	if t < PULSE_TAN then return PULSE_PEAK * (1 - t / PULSE_TAN) end
 	if t < PULSE_RED_AT then return 0 end
 	return (t - PULSE_RED_AT) / PULSE_RED_FOR
 end
 
-local function Rect(x, y, w, h)
+local function Rect (x, y, w, h)
 	return { x = x, y = y, w = w, h = h }
 end
 
@@ -219,30 +224,34 @@ end
 -- states (by team: { x, y }, x the left of a west label and the right of an
 -- east one, y its middle), conditions (its top left), help (the strip
 -- under it), instructions (its centre) }.
-function Layout(centreX, top, unit)
+function Layout (centreX, top, unit)
 	local left = centreX - W / 2 * unit
 	local labelY = top + (TEAM_LABEL_Y + TEAM_LABEL_TALL / 2) * unit
 	local instructionsY = top + (INSTRUCTIONS_Y + INSTRUCTIONS_TALL / 2) * unit
-	local function Strip(x) return Rect(left + x * unit, top + STRIP_Y * unit, STRIP_W * unit, STRIP_H * unit) end
-	local function At(x) return { x = left + x * unit, y = labelY } end
-	return {
-		bg = Rect(left, top, W * unit, BG_H * unit),
+	local function Strip (x) return Rect (left + x * unit, top + STRIP_Y * unit, STRIP_W * unit, STRIP_H * unit) end
+	local function At (x) return { x = left + x * unit, y = labelY } end
+	return
+	{
+		bg = Rect (left, top, W * unit, BG_H * unit),
 		state = { x = centreX, y = top + (STATE_Y + STATE_TALL / 2) * unit },
-		strips = {
-			[BLUE] = Strip(BLUE_STRIP_X),
-			[RED] = Strip(RED_STRIP_X),
+		strips =
+		{
+			[BLUE] = Strip (BLUE_STRIP_X),
+			[RED] = Strip (RED_STRIP_X)
 		},
-		names = {
-			[BLUE] = At(BLUE_NAME_X),
-			[RED] = At(RED_NAME_X + TEAM_LABEL_W),
+		names =
+		{
+			[BLUE] = At (BLUE_NAME_X),
+			[RED] = At (RED_NAME_X + TEAM_LABEL_W)
 		},
-		states = {
-			[BLUE] = At(BLUE_STATE_X + TEAM_LABEL_W),
-			[RED] = At(RED_STATE_X),
+		states =
+		{
+			[BLUE] = At (BLUE_STATE_X + TEAM_LABEL_W),
+			[RED] = At (RED_STATE_X)
 		},
 		conditions = { x = left + CONDITION_X * unit, y = top + CONDITION_Y * unit },
-		help = Rect(left, top + HELP_Y * unit, W * unit, HELP_H * unit),
-		instructions = { x = centreX, y = instructionsY },
+		help = Rect (left, top + HELP_Y * unit, W * unit, HELP_H * unit),
+		instructions = { x = centreX, y = instructionsY }
 	}
 end
 
@@ -268,33 +277,36 @@ MVM_NAME_FONT, MVM_NAME_FONT_TALL = "Verdana", 6
 MVM_COLOR_READY, MVM_COLOR_NOT_READY = { 0, 255, 0, 220 }, { 0, 0, 0, 220 }
 MVM_INSTRUCTIONS_Y, MVM_INSTRUCTIONS_TALL, MVM_INSTRUCTIONS_FONT_TALL, MVM_SHADOW = 105 - 66, 20, 16, 1
 
-local function Part(box, x, y, unit)
-	return Rect(x + box.x * unit, y + box.y * unit, box.w * unit, box.h * unit)
+local function Part (box, x, y, unit)
+	return Rect (x + box.x * unit, y + box.y * unit, box.w * unit, box.h * unit)
 end
 
 -- count players' panels in a row centred on centreX from top: { players
 -- (each { bg, avatar, readyBg, check, name (its centre) }), instructions
 -- and shadow (their centres) }.
-function MvMLayout(centreX, top, unit, count)
+function MvMLayout (centreX, top, unit, count)
 	local left = centreX - count * MVM_PLAYER_DELTA * unit / 2
 	local players = {}
 	for i = 1, count do
 		local x = left + (i - 1) * MVM_PLAYER_DELTA * unit
-		players[i] = {
-			bg = Rect(x, top, MVM_PLAYER_W * unit, MVM_PLAYER_H * unit),
-			avatar = Part(MVM_AVATAR, x, top, unit),
-			readyBg = Part(MVM_READY_BG, x, top, unit),
-			check = Part(MVM_CHECK, x, top, unit),
-			name = {
+		players [i] =
+		{
+			bg = Rect (x, top, MVM_PLAYER_W * unit, MVM_PLAYER_H * unit),
+			avatar = Part (MVM_AVATAR, x, top, unit),
+			readyBg = Part (MVM_READY_BG, x, top, unit),
+			check = Part (MVM_CHECK, x, top, unit),
+			name =
+			{
 				x = x + (MVM_NAME.x + MVM_NAME.w / 2) * unit,
-				y = top + (MVM_NAME.y + MVM_NAME.h / 2) * unit,
-			},
+				y = top + (MVM_NAME.y + MVM_NAME.h / 2) * unit
+			}
 		}
 	end
 	local y = top + (MVM_INSTRUCTIONS_Y + MVM_INSTRUCTIONS_TALL / 2) * unit
-	return {
+	return
+	{
 		players = players,
 		instructions = { x = centreX, y = y },
-		shadow = { x = centreX + MVM_SHADOW * unit, y = y + MVM_SHADOW * unit },
+		shadow = { x = centreX + MVM_SHADOW * unit, y = y + MVM_SHADOW * unit }
 	}
 end

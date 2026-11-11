@@ -14,321 +14,324 @@ local GAP, TEAM_GAP = 28, 64
 local BAR_H, CANCEL_W, CANCEL_H = 50, 150, 30
 local REFRESH = 0.1 -- CTFTeamMenu's tick signal: every 100 ms
 
-local TEXT = Color(235, 227, 203)
-local BACKDROP = Color(24, 21, 19, 245)
-local BAR = Color(0, 0, 0, 200)
-local DISABLED = Color(75, 72, 68)
-local SHADE = Color(0, 0, 0, 170)
+local TEXT = Color (235, 227, 203)
+local BACKDROP = Color (24, 21, 19, 245)
+local BAR = Color (0, 0, 0, 200)
+local DISABLED = Color (75, 72, 68)
+local SHADE = Color (0, 0, 0, 170)
 
-local function CreateFonts()
-	local s = ScrH() / UNIT
-	surface.CreateFont("Sandcastle.TeamMenu.Title", { font = "Coolvetica", size = math.Round(26 * s) })
-	surface.CreateFont("Sandcastle.TeamMenu.Count", { font = "Coolvetica", size = math.Round(34 * s) })
-	surface.CreateFont("Sandcastle.TeamMenu.Name", { font = "Coolvetica", size = math.Round(30 * s) })
-	surface.CreateFont("Sandcastle.TeamMenu.Label", { font = "Coolvetica", size = math.Round(16 * s) })
-	surface.CreateFont("Sandcastle.TeamMenu.Small", { font = "Roboto", size = math.Round(9 * s), weight = 800 })
+local function CreateFonts ()
+	local s = ScrH () / UNIT
+	surface.CreateFont ("Sandcastle.TeamMenu.Title", { font = "Coolvetica", size = math.Round (26 * s) })
+	surface.CreateFont ("Sandcastle.TeamMenu.Count", { font = "Coolvetica", size = math.Round (34 * s) })
+	surface.CreateFont ("Sandcastle.TeamMenu.Name", { font = "Coolvetica", size = math.Round (30 * s) })
+	surface.CreateFont ("Sandcastle.TeamMenu.Label", { font = "Coolvetica", size = math.Round (16 * s) })
+	surface.CreateFont ("Sandcastle.TeamMenu.Small", { font = "Roboto", size = math.Round (9 * s), weight = 800 })
 end
-CreateFonts()
+CreateFonts ()
 
-local function Scale(c, f)
-	return Color(math.min(255, c.r * f), math.min(255, c.g * f), math.min(255, c.b * f), c.a)
-end
-
-local function Rect(color, x, y, w, h)
-	surface.SetDrawColor(color)
-	surface.DrawRect(x, y, w, h)
+local function Scale (c, f)
+	return Color (math.min (255, c.r * f), math.min (255, c.g * f), math.min (255, c.b * f), c.a)
 end
 
-local function Band(text, font, w, y, s)
-	Rect(SHADE, 0, y - 11 * s, w, 22 * s)
-	draw.SimpleText(text, font, w / 2, y, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+local function Rect (color, x, y, w, h)
+	surface.SetDrawColor (color)
+	surface.DrawRect (x, y, w, h)
+end
+
+local function Band (text, font, w, y, s)
+	Rect (SHADE, 0, y - 11 * s, w, 22 * s)
+	draw.SimpleText (text, font, w / 2, y, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end
 
 -- A choice: a door (a team, auto-assign) or the spectate box -----------------------
 
 local CHOICE = {}
 
-function CHOICE:Init()
-	self:SetText("")
-	self:SetKeyboardInputEnabled(false) -- the keys belong to the menu
+function CHOICE:Init ()
+	self:SetText ("")
+	self:SetKeyboardInputEnabled (false) -- the keys belong to the menu
 end
 
 -- choice: an entry of L.TeamMenu; scale: pixels per layout unit.
-function CHOICE:SetChoice(choice, scale)
+function CHOICE:SetChoice (choice, scale)
 	self.choice, self.scale = choice, scale
-	self:SetEnabled(choice.enabled)
+	self:SetEnabled (choice.enabled)
 end
 
-function CHOICE:DoClick()
-	self:GetParent():Choose(self.choice)
+function CHOICE:DoClick ()
+	self:GetParent ():Choose (self.choice)
 end
 
-function CHOICE:BodyColor()
+function CHOICE:BodyColor ()
 	local c = self.choice
 	if not c.enabled then return DISABLED end
-	if self:IsHovered() then return Scale(c.color, 1.3) end
+	if self:IsHovered () then return Scale (c.color, 1.3) end
 	return c.color
 end
 
-function CHOICE:DrawHotkey(x, y)
+function CHOICE:DrawHotkey (x, y)
 	local s = self.scale
-	Rect(SHADE, x, y, 14 * s, 14 * s)
-	draw.SimpleText(self.choice.hotkey, "Sandcastle.TeamMenu.Small", x + 7 * s, y + 7 * s, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	Rect (SHADE, x, y, 14 * s, 14 * s)
+	draw.SimpleText (self.choice.hotkey, "Sandcastle.TeamMenu.Small", x + 7 * s, y + 7 * s, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end
 
 -- A panelled door in the choice's colour below the header.
-function CHOICE:DrawDoor(w, h, top)
-	local s, color = self.scale, self:BodyColor()
+function CHOICE:DrawDoor (w, h, top)
+	local s, color = self.scale, self:BodyColor ()
 	local inset, body = 6 * s, h - top
-	Rect(Scale(color, 0.45), 0, top, w, body)
-	Rect(color, inset, top + inset, w - 2 * inset, body - 2 * inset)
-	local panel = Scale(color, 0.8)
-	Rect(panel, 2 * inset, top + 2 * inset, w - 4 * inset, body * 0.34)
-	Rect(panel, 2 * inset, top + body * 0.42, w - 4 * inset, body * 0.34)
-	Rect(Scale(color, 0.5), w - 5 * inset, top + body * 0.5, 2 * inset, 2 * inset) -- the knob
-	self:DrawHotkey(2 * inset, top + 2 * inset)
+	Rect (Scale (color, 0.45), 0, top, w, body)
+	Rect (color, inset, top + inset, w - 2 * inset, body - 2 * inset)
+	local panel = Scale (color, 0.8)
+	Rect (panel, 2 * inset, top + 2 * inset, w - 4 * inset, body * 0.34)
+	Rect (panel, 2 * inset, top + body * 0.42, w - 4 * inset, body * 0.34)
+	Rect (Scale (color, 0.5), w - 5 * inset, top + body * 0.5, 2 * inset, 2 * inset) -- the knob
+	self:DrawHotkey (2 * inset, top + 2 * inset)
 end
 
-function CHOICE:DrawMarks(w, h, top)
+function CHOICE:DrawMarks (w, h, top)
 	local c, s = self.choice, self.scale
 	if c.current then
-		surface.SetDrawColor(TEXT)
-		surface.DrawOutlinedRect(0, top, w, h - top, math.max(1, math.Round(2 * s)))
-		Band("YOUR TEAM", "Sandcastle.TeamMenu.Small", w, h - 20 * s, s)
+		surface.SetDrawColor (TEXT)
+		surface.DrawOutlinedRect (0, top, w, h - top, math.max (1, math.Round (2 * s)))
+		Band ("YOUR TEAM", "Sandcastle.TeamMenu.Small", w, h - 20 * s, s)
 	end
-	if c.reason then Band(string.upper(c.reason), "Sandcastle.TeamMenu.Small", w, top + (h - top) * 0.2, s) end
+	if c.reason then Band (string.upper (c.reason), "Sandcastle.TeamMenu.Small", w, top + (h - top) * 0.2, s) end
 end
 
 local PAINT = {}
 
-function PAINT.team(self, w, h)
+function PAINT.team (self, w, h)
 	local c, s = self.choice, self.scale
 	local top = HEADER * s
-	draw.SimpleText(c.count, "Sandcastle.TeamMenu.Count", w / 2, top / 2, c.color, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-	self:DrawDoor(w, h, top)
-	draw.SimpleText(c.label, "Sandcastle.TeamMenu.Name", w / 2, top + (h - top) * 0.82, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-	self:DrawMarks(w, h, top)
+	draw.SimpleText (c.count, "Sandcastle.TeamMenu.Count", w / 2, top / 2, c.color, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	self:DrawDoor (w, h, top)
+	draw.SimpleText (c.label, "Sandcastle.TeamMenu.Name", w / 2, top + (h - top) * 0.82, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	self:DrawMarks (w, h, top)
 end
 
-function PAINT.auto(self, w, h)
+function PAINT.auto (self, w, h)
 	local c, s = self.choice, self.scale
 	local top = HEADER * s
-	draw.SimpleText(c.label, "Sandcastle.TeamMenu.Label", w / 2, top / 2, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-	self:DrawDoor(w, h, top)
-	draw.SimpleText("?", "Sandcastle.TeamMenu.Count", w / 2, top + (h - top) * 0.5, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText (c.label, "Sandcastle.TeamMenu.Label", w / 2, top / 2, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	self:DrawDoor (w, h, top)
+	draw.SimpleText ("?", "Sandcastle.TeamMenu.Count", w / 2, top + (h - top) * 0.5, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end
 
 -- A screen, with the spectator count, above its label.
-function PAINT.spectate(self, w, h)
+function PAINT.spectate (self, w, h)
 	local c, s = self.choice, self.scale
 	local box, inset = BOX_H * s, 5 * s
-	local color = self:BodyColor()
-	Rect(Scale(color, 0.45), 0, 0, w, box)
-	Rect(color, inset, inset, w - 2 * inset, box - 2 * inset)
-	draw.SimpleText(c.count, "Sandcastle.TeamMenu.Label", w / 2, box / 2, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-	self:DrawHotkey(inset, inset)
-	draw.SimpleText(c.label, "Sandcastle.TeamMenu.Label", w / 2, box + BOX_LABEL * s / 2, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	local color = self:BodyColor ()
+	Rect (Scale (color, 0.45), 0, 0, w, box)
+	Rect (color, inset, inset, w - 2 * inset, box - 2 * inset)
+	draw.SimpleText (c.count, "Sandcastle.TeamMenu.Label", w / 2, box / 2, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	self:DrawHotkey (inset, inset)
+	draw.SimpleText (c.label, "Sandcastle.TeamMenu.Label", w / 2, box + BOX_LABEL * s / 2, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	if c.current then
-		surface.SetDrawColor(TEXT)
-		surface.DrawOutlinedRect(0, 0, w, box, math.max(1, math.Round(2 * s)))
+		surface.SetDrawColor (TEXT)
+		surface.DrawOutlinedRect (0, 0, w, box, math.max (1, math.Round (2 * s)))
 	end
 end
 
-function CHOICE:Paint(w, h)
-	PAINT[self.choice.kind](self, w, h)
+function CHOICE:Paint (w, h)
+	PAINT [self.choice.kind] (self, w, h)
 end
 
-vgui.Register("WSTeamChoice", CHOICE, "DButton")
+vgui.Register ("WSTeamChoice", CHOICE, "DButton")
 
 -- The cancel button ----------------------------------------------------------------
 
 local CANCEL = {}
 
-function CANCEL:Init()
-	self:SetKeyboardInputEnabled(false)
-	self:SetFont("Sandcastle.TeamMenu.Label")
-	self:SetTextColor(TEXT)
+function CANCEL:Init ()
+	self:SetKeyboardInputEnabled (false)
+	self:SetFont ("Sandcastle.TeamMenu.Label")
+	self:SetTextColor (TEXT)
 end
 
-function CANCEL:DoClick()
-	self:GetParent():Remove()
+function CANCEL:DoClick ()
+	self:GetParent ():Remove ()
 end
 
-function CANCEL:Paint(w, h)
-	Rect(self:IsHovered() and Color(120, 60, 40) or Color(60, 55, 50), 0, 0, w, h)
+function CANCEL:Paint (w, h)
+	Rect (self:IsHovered () and Color (120, 60, 40) or Color (60, 55, 50), 0, 0, w, h)
 end
 
-vgui.Register("WSTeamCancel", CANCEL, "DButton")
+vgui.Register ("WSTeamCancel", CANCEL, "DButton")
 
 -- The menu -------------------------------------------------------------------------
 
 local MENU = {}
 
-local function BoundKey(bind)
-	local name = input.LookupBinding(bind)
-	return name and input.GetKeyCode(name)
+local function BoundKey (bind)
+	local name = input.LookupBinding (bind)
+	return name and input.GetKeyCode (name)
 end
 
-local function Counted(entry)
-	local t = { count = team.NumPlayers(entry.index) }
-	for k, v in pairs(entry) do t[k] = v end
+local function Counted (entry)
+	local t = { count = team.NumPlayers (entry.index) }
+	for k, v in pairs (entry) do t [k] = v end
 	return t
 end
 
-function MENU:Init()
-	self:SetSize(ScrW(), ScrH())
-	self.cancelButton = vgui.Create("WSTeamCancel", self)
+function MENU:Init ()
+	self:SetSize (ScrW (), ScrH ())
+	self.cancelButton = vgui.Create ("WSTeamCancel", self)
 	self.nextRefresh = 0
 end
 
 -- config: { title, teams = { { index, name, color, command } }, auto, spectate,
 -- limit (a convar), autoKey, cancel = { label, key }, closeBinds }.
-function MENU:SetConfig(config)
+function MENU:SetConfig (config)
 	self.config = config
-	self.cancelButton:SetText(config.cancel.label)
+	self.cancelButton:SetText (config.cancel.label)
 	-- CTFTeamMenu::ShowPanel reads the bound keys when the menu opens.
 	self.closeKeys = {}
-	for _, bind in ipairs(config.closeBinds) do
-		local key = BoundKey(bind)
-		if key then self.closeKeys[key] = true end
+	for _, bind in ipairs (config.closeBinds) do
+		local key = BoundKey (bind)
+		if key then self.closeKeys [key] = true end
 	end
-	self.scoreKey = BoundKey("+showscores")
-	self.menu = self:Build()
+	self.scoreKey = BoundKey ("+showscores")
+	self.menu = self:Build ()
 	self.choicePanels = {}
-	for i in ipairs(self.menu.choices) do self.choicePanels[i] = vgui.Create("WSTeamChoice", self) end
-	self:Refresh()
+	for i in ipairs (self.menu.choices) do self.choicePanels [i] = vgui.Create ("WSTeamChoice", self) end
+	self:Refresh ()
 end
 
-function MENU:Build()
+function MENU:Build ()
 	local config = self.config
 	local teams = {}
-	for i, t in ipairs(config.teams) do teams[i] = Counted(t) end
-	local extras = {
+	for i, t in ipairs (config.teams) do teams [i] = Counted (t) end
+	local extras =
+	{
 		auto = config.auto,
-		spectate = config.spectate and Counted(config.spectate),
-		forceAuto = WS.ForceAutoTeam:GetBool(),
-		noSpectators = not WS.AllowSpectators:GetBool(),
+		spectate = config.spectate and Counted (config.spectate),
+		forceAuto = WS.ForceAutoTeam:GetBool (),
+		noSpectators = not WS.AllowSpectators:GetBool ()
 	}
-	return L.TeamMenu(teams, LocalPlayer():Team(), config.limit:GetInt(), extras)
+	return L.TeamMenu (teams, LocalPlayer ():Team (), config.limit:GetInt (), extras)
 end
 
-function MENU:Refresh()
-	self.menu = self:Build()
-	local s = self:GetTall() / UNIT
-	for i, c in ipairs(self.menu.choices) do self.choicePanels[i]:SetChoice(c, s) end
-	self.cancelButton:SetVisible(self.menu.cancel)
+function MENU:Refresh ()
+	self.menu = self:Build ()
+	local s = self:GetTall () / UNIT
+	for i, c in ipairs (self.menu.choices) do self.choicePanels [i]:SetChoice (c, s) end
+	self.cancelButton:SetVisible (self.menu.cancel)
 end
 
-function MENU:Think()
-	if RealTime() < self.nextRefresh then return end
-	self.nextRefresh = RealTime() + REFRESH
-	self:Refresh()
+function MENU:Think ()
+	if RealTime () < self.nextRefresh then return end
+	self.nextRefresh = RealTime () + REFRESH
+	self:Refresh ()
 end
 
-local function Width(c)
+local function Width (c)
 	if c.kind == "spectate" then return BOX_W end
 	return DOOR_W
 end
 
-local function Gap(a, b)
+local function Gap (a, b)
 	if a.kind == "team" and b.kind == "team" then return TEAM_GAP end
 	return GAP
 end
 
 -- The choices in a centred row, in the model's order.
-function MENU:PerformLayout(w, h)
+function MENU:PerformLayout (w, h)
 	local s = h / UNIT
 	local choices = self.menu.choices
 	local total = 0
-	for i, c in ipairs(choices) do total = total + Width(c) + (i > 1 and Gap(choices[i - 1], c) or 0) end
+	for i, c in ipairs (choices) do total = total + Width (c) + (i > 1 and Gap (choices [i - 1], c) or 0) end
 	local x = (w - total * s) / 2
-	for i, c in ipairs(choices) do
-		if i > 1 then x = x + Gap(choices[i - 1], c) * s end
-		local p = self.choicePanels[i]
+	for i, c in ipairs (choices) do
+		if i > 1 then x = x + Gap (choices [i - 1], c) * s end
+		local p = self.choicePanels [i]
 		if c.kind == "spectate" then
-			p:SetPos(math.Round(x), math.Round(BOX_Y * s))
-			p:SetSize(math.Round(BOX_W * s), math.Round((BOX_H + BOX_LABEL) * s))
+			p:SetPos (math.Round (x), math.Round (BOX_Y * s))
+			p:SetSize (math.Round (BOX_W * s), math.Round ((BOX_H + BOX_LABEL) * s))
 		else
-			p:SetPos(math.Round(x), math.Round((DOOR_Y - HEADER) * s))
-			p:SetSize(math.Round(DOOR_W * s), math.Round((DOOR_H + HEADER) * s))
+			p:SetPos (math.Round (x), math.Round ((DOOR_Y - HEADER) * s))
+			p:SetSize (math.Round (DOOR_W * s), math.Round ((DOOR_H + HEADER) * s))
 		end
-		x = x + Width(c) * s
+		x = x + Width (c) * s
 	end
-	self.cancelButton:SetPos(math.Round(w - (CANCEL_W + 40) * s), math.Round(h - (BAR_H + CANCEL_H) / 2 * s))
-	self.cancelButton:SetSize(math.Round(CANCEL_W * s), math.Round(CANCEL_H * s))
+	self.cancelButton:SetPos (math.Round (w - (CANCEL_W + 40) * s), math.Round (h - (BAR_H + CANCEL_H) / 2 * s))
+	self.cancelButton:SetSize (math.Round (CANCEL_W * s), math.Round (CANCEL_H * s))
 end
 
-function MENU:Paint(w, h)
+function MENU:Paint (w, h)
 	local s = h / UNIT
-	Rect(BACKDROP, 0, 0, w, h)
-	Rect(BAR, 0, h - BAR_H * s, w, BAR_H * s)
-	draw.SimpleText(self.config.title, "Sandcastle.TeamMenu.Title", 30 * s, h - BAR_H / 2 * s, TEXT, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+	Rect (BACKDROP, 0, 0, w, h)
+	Rect (BAR, 0, h - BAR_H * s, w, BAR_H * s)
+	draw.SimpleText (self.config.title, "Sandcastle.TeamMenu.Title", 30 * s, h - BAR_H / 2 * s, TEXT, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
 end
 
 -- CTFTeamMenu::OnCommand: a disabled team keeps the menu open; picking the
 -- team the player is on sends nothing.
-function MENU:Choose(choice)
+function MENU:Choose (choice)
 	if not choice.enabled then return end
-	if not choice.current then RunConsoleCommand("jointeam", choice.command) end
-	self:Remove()
+	if not choice.current then RunConsoleCommand ("jointeam", choice.command) end
+	self:Remove ()
 end
 
 -- CTFTeamMenu::OnKeyCodePressed: the changeteam key (and Cancel's) closes the
 -- menu once the player has a team, the auto key auto-assigns, the scoreboard
 -- key shows the scores; the number keys are Teammenu.res's hotkeys.
-function MENU:OnKeyCodePressed(code)
+function MENU:OnKeyCodePressed (code)
 	local menu, config = self.menu, self.config
 	if code == self.scoreKey then
-		GAMEMODE:ScoreboardShow()
+		GAMEMODE:ScoreboardShow ()
 		self.scoreboardShown = true
-	elseif self.closeKeys[code] or code == config.cancel.key then
-		if menu.cancel then self:Remove() end
+	elseif self.closeKeys [code] or code == config.cancel.key then
+		if menu.cancel then self:Remove () end
 	elseif code == config.autoKey and menu.auto then
-		self:Choose(menu.auto)
-	elseif menu.choices[code - KEY_0] then
-		self:Choose(menu.choices[code - KEY_0]) -- KEY_1 .. KEY_9 follow KEY_0
+		self:Choose (menu.auto)
+	elseif menu.choices [code - KEY_0] then
+		self:Choose (menu.choices [code - KEY_0]) -- KEY_1 .. KEY_9 follow KEY_0
 	end
 end
 
-function MENU:OnKeyCodeReleased(code)
+function MENU:OnKeyCodeReleased (code)
 	if code == self.scoreKey then
-		GAMEMODE:ScoreboardHide()
+		GAMEMODE:ScoreboardHide ()
 		self.scoreboardShown = false
 	end
 end
 
-function MENU:OnRemove()
-	if self.scoreboardShown then GAMEMODE:ScoreboardHide() end
+function MENU:OnRemove ()
+	if self.scoreboardShown then GAMEMODE:ScoreboardHide () end
 end
 
-vgui.Register("WSTeamMenu", MENU, "EditablePanel")
+vgui.Register ("WSTeamMenu", MENU, "EditablePanel")
 
 -- TF2's team menu ------------------------------------------------------------------
 
-local TEAM_MENU = {
+local TEAM_MENU =
+{
 	title = "SELECT A TEAM",
-	teams = {
-		{ index = WS.TEAM_BLUE, name = WS.TeamName[WS.TEAM_BLUE], color = WS.TeamColor[WS.TEAM_BLUE], command = "blue" },
-		{ index = WS.TEAM_RED, name = WS.TeamName[WS.TEAM_RED], color = WS.TeamColor[WS.TEAM_RED], command = "red" },
+	teams =
+	{
+		{ index = WS.TEAM_BLUE, name = WS.TeamName [WS.TEAM_BLUE], color = WS.TeamColor [WS.TEAM_BLUE], command = "blue" },
+		{ index = WS.TEAM_RED, name = WS.TeamName [WS.TEAM_RED], color = WS.TeamColor [WS.TEAM_RED], command = "red" }
 	},
-	auto = { name = "AUTO-ASSIGN", color = Color(112, 102, 88), command = "auto" },
-	spectate = { index = WS.TEAM_SPECTATOR, name = "SPECTATE", color = Color(62, 60, 58), command = "spectate" },
+	auto = { name = "AUTO-ASSIGN", color = Color (112, 102, 88), command = "auto" },
+	spectate = { index = WS.TEAM_SPECTATOR, name = "SPECTATE", color = Color (62, 60, 58), command = "spectate" },
 	limit = WS.UnbalanceLimit,
 	autoKey = KEY_SPACE,
 	cancel = { label = "CANCEL (0)", key = KEY_0 },
-	closeBinds = { "changeteam", "gm_showteam" },
+	closeBinds = { "changeteam", "gm_showteam" }
 }
 
 local menu
 
 -- CTFTeamMenu::ShowPanel does nothing while the menu is already up. The
 -- menu remembers the team it opened on, for TeamMenuReaction.
-function WS.OpenTeamMenu()
-	if IsValid(menu) then return end
-	menu = vgui.Create("WSTeamMenu")
-	menu.openedOn = LocalPlayer():Team()
-	menu:SetConfig(TEAM_MENU)
-	menu:MakePopup()
+function WS.OpenTeamMenu ()
+	if IsValid (menu) then return end
+	menu = vgui.Create ("WSTeamMenu")
+	menu.openedOn = LocalPlayer ():Team ()
+	menu:SetConfig (TEAM_MENU)
+	menu:MakePopup ()
 end
 
 -- The client opens and closes the menu itself, as its team says
@@ -337,56 +340,60 @@ end
 -- unassigned everyone; a new team closes it. The server only sets teams.
 local REACT_INTERVAL = 0.25
 
-local REACTIONS = {
-	[L.MENU_STAY] = function() end,
-	[L.MENU_OPEN] = function() WS.OpenTeamMenu() end,
-	[L.MENU_CLOSE] = function() menu:Remove() end,
+local REACTIONS =
+{
+	[L.MENU_STAY] = function () end,
+	[L.MENU_OPEN] = function () WS.OpenTeamMenu () end,
+	[L.MENU_CLOSE] = function () menu:Remove () end
 }
 
-timer.Create("ws_team_menu", REACT_INTERVAL, 0, function()
-	local ply = LocalPlayer()
-	if not IsValid(ply) then return end
-	local reaction = L.TeamMenuReaction({
-		teamPlay = WS.TeamPlay(),
-		ready = WS.LocalReady(),
-		team = ply:Team(),
-		openedOn = IsValid(menu) and menu.openedOn or nil,
-		state = WS.State(),
-		winner = GetGlobal2Int("ws_round_winner", WS.TEAM_UNASSIGNED),
-	})
-	REACTIONS[reaction]()
+timer.Create ("ws_team_menu", REACT_INTERVAL, 0, function ()
+	local ply = LocalPlayer ()
+	if not IsValid (ply) then return end
+	local reaction = L.TeamMenuReaction (
+		{
+			teamPlay = WS.TeamPlay (),
+			ready = WS.LocalReady (),
+			team = ply:Team (),
+			openedOn = IsValid (menu) and menu.openedOn or nil,
+			state = WS.State (),
+			winner = GetGlobal2Int ("ws_round_winner", WS.TEAM_UNASSIGNED)
+		}
+	)
+	REACTIONS [reaction] ()
 end)
 
 -- The team keys (F2's gm_showteam, TF2's changeteam) open the menu here, on
 -- a map with rounds, whenever a team may be picked (WS.MayPickTeam: before
 -- the round starts too); CTFTeamMenu::ShowPanel refuses during game over and
 -- to a losing player while the winners celebrate.
-local TEAM_BINDS = {
+local TEAM_BINDS =
+{
 	gm_showteam = true,
-	changeteam = true,
+	changeteam = true
 }
 local REFUSED_SECONDS = 3
 
 -- F2 is the vote's No while the player may vote (ws/cl_votes.lua).
-local function Voting()
+local function Voting ()
 	return WS.VoteState ~= nil and WS.VoteState.running and WS.VoteState.mine
 end
 
-hook.Add("PlayerBindPress", "ws_teams", function(ply, bind, pressed)
-	if not pressed or not TEAM_BINDS[bind] or not WS.MayPickTeam() or Voting() then return end
-	local winner = GetGlobal2Int("ws_round_winner", WS.TEAM_UNASSIGNED)
-	if L.TeamMenuAllowed(WS.State(), ply:Team(), winner) then
-		WS.OpenTeamMenu()
+hook.Add ("PlayerBindPress", "ws_teams", function (ply, bind, pressed)
+	if not pressed or not TEAM_BINDS [bind] or not WS.MayPickTeam () or Voting () then return end
+	local winner = GetGlobal2Int ("ws_round_winner", WS.TEAM_UNASSIGNED)
+	if L.TeamMenuAllowed (WS.State (), ply:Team (), winner) then
+		WS.OpenTeamMenu ()
 	else
-		notification.AddLegacy("You can't change team at this time.", NOTIFY_ERROR, REFUSED_SECONDS)
+		notification.AddLegacy ("You can't change team at this time.", NOTIFY_ERROR, REFUSED_SECONDS)
 	end
 	return true
 end)
 
-hook.Add("OnScreenSizeChanged", "ws_teams", function()
-	CreateFonts()
-	if IsValid(menu) then
-		menu:SetSize(ScrW(), ScrH())
-		menu:Refresh()
+hook.Add ("OnScreenSizeChanged", "ws_teams", function ()
+	CreateFonts ()
+	if IsValid (menu) then
+		menu:SetSize (ScrW (), ScrH ())
+		menu:Refresh ()
 	end
 end)

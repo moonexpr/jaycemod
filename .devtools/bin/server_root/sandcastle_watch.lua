@@ -28,59 +28,59 @@ Watch = Watch or {}
 local hooked = Watch.hooked or {} -- name -> the hook it listens to
 Watch.hooked = hooked
 
-local function Line(name, kind, text)
-	local line = string.format("%.2f %s %s %s", CurTime(), name, kind, tostring(text))
-	file.Append(LOG, line:gsub("\n", " ") .. "\n")
+local function Line (name, kind, text)
+	local line = string.format ("%.2f %s %s %s", CurTime (), name, kind, tostring (text))
+	file.Append (LOG, line:gsub ("\n", " ") .. "\n")
 end
 
-function Watch.Emit(name, text)
-	Line(name, "event", text)
+function Watch.Emit (name, text)
+	Line (name, "event", text)
 end
 
-function Watch.Stop(name)
-	timer.Remove(TIMER_PREFIX .. name)
-	if hooked[name] then
-		hook.Remove(hooked[name], HOOK_PREFIX .. name)
-		hooked[name] = nil
+function Watch.Stop (name)
+	timer.Remove (TIMER_PREFIX .. name)
+	if hooked [name] then
+		hook.Remove (hooked [name], HOOK_PREFIX .. name)
+		hooked [name] = nil
 	end
 end
 
 -- Runs fn(); an error is reported and stops the watch. Returns ok, results...
-local function Guarded(name, fn, ...)
-	local results = { pcall(fn, ...) }
-	if not results[1] then
-		Watch.Stop(name)
-		Line(name, "error", results[2])
+local function Guarded (name, fn, ...)
+	local results = { pcall (fn, ...) }
+	if not results [1] then
+		Watch.Stop (name)
+		Line (name, "error", results [2])
 	end
-	return unpack(results)
+	return unpack (results)
 end
 
-function Watch.Every(name, seconds, fn)
-	Watch.Stop(name)
+function Watch.Every (name, seconds, fn)
+	Watch.Stop (name)
 	local last
-	timer.Create(TIMER_PREFIX .. name, seconds, 0, function()
-		local ok, answer = Guarded(name, fn)
+	timer.Create (TIMER_PREFIX .. name, seconds, 0, function ()
+		local ok, answer = Guarded (name, fn)
 		if not ok then return end
-		answer = tostring(answer)
+		answer = tostring (answer)
 		if answer ~= last then
 			last = answer
-			Line(name, "changed", answer)
+			Line (name, "changed", answer)
 		end
 	end)
 end
 
-function Watch.Until(name, seconds, timeout, check)
-	Watch.Stop(name)
-	local deadline = CurTime() + timeout
-	timer.Create(TIMER_PREFIX .. name, seconds, 0, function()
-		local ok, met, report = Guarded(name, check)
+function Watch.Until (name, seconds, timeout, check)
+	Watch.Stop (name)
+	local deadline = CurTime () + timeout
+	timer.Create (TIMER_PREFIX .. name, seconds, 0, function ()
+		local ok, met, report = Guarded (name, check)
 		if not ok then return end
 		if met then
-			Watch.Stop(name)
-			Line(name, "met", report)
-		elseif CurTime() >= deadline then
-			Watch.Stop(name)
-			Line(name, "timeout", report)
+			Watch.Stop (name)
+			Line (name, "met", report)
+		elseif CurTime () >= deadline then
+			Watch.Stop (name)
+			Line (name, "timeout", report)
 		end
 	end)
 end
@@ -88,38 +88,38 @@ end
 local TASK_EVERY = 1 -- seconds between a Task's looks
 local TASK_TIMEOUT = 600
 
-function Watch.Task(name, spec)
-	Watch.Stop(name)
+function Watch.Task (name, spec)
+	Watch.Stop (name)
 	local every, timeout = spec.every or TASK_EVERY, spec.timeout or TASK_TIMEOUT
-	local deadline = CurTime() + timeout
+	local deadline = CurTime () + timeout
 	local last
-	timer.Create(TIMER_PREFIX .. name, every, 0, function()
+	timer.Create (TIMER_PREFIX .. name, every, 0, function ()
 		if spec.progress then
-			local ok, text = Guarded(name, spec.progress)
+			local ok, text = Guarded (name, spec.progress)
 			if not ok then return end
-			text = tostring(text)
+			text = tostring (text)
 			if text ~= last then
 				last = text
-				Line(name, "progress", text)
+				Line (name, "progress", text)
 			end
 		end
-		local ok, finished, report = Guarded(name, spec.done)
+		local ok, finished, report = Guarded (name, spec.done)
 		if not ok then return end
 		if finished then
-			Watch.Stop(name)
-			Line(name, "met", report)
-		elseif CurTime() >= deadline then
-			Watch.Stop(name)
-			Line(name, "timeout", last)
+			Watch.Stop (name)
+			Line (name, "met", report)
+		elseif CurTime () >= deadline then
+			Watch.Stop (name)
+			Line (name, "timeout", last)
 		end
 	end)
 end
 
-function Watch.On(hookName, name, fn)
-	Watch.Stop(name)
-	hooked[name] = hookName
-	hook.Add(hookName, HOOK_PREFIX .. name, function(...)
-		local ok, answer = Guarded(name, fn, ...)
-		if ok then Line(name, "event", answer) end
+function Watch.On (hookName, name, fn)
+	Watch.Stop (name)
+	hooked [name] = hookName
+	hook.Add (hookName, HOOK_PREFIX .. name, function (...)
+		local ok, answer = Guarded (name, fn, ...)
+		if ok then Line (name, "event", answer) end
 	end)
 end

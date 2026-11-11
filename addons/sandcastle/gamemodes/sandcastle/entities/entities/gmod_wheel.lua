@@ -1,25 +1,24 @@
-
-AddCSLuaFile()
-DEFINE_BASECLASS( "base_gmodentity" )
+AddCSLuaFile ()
+DEFINE_BASECLASS ("base_gmodentity")
 
 ENT.PrintName = "Wheel"
 
 -- Set up our data table
-function ENT:SetupDataTables()
+function ENT:SetupDataTables ()
 
-	self:NetworkVar( "Bool", 0, "Toggle" )
-	self:NetworkVar( "Float", 0, "Direction" )
+	self:NetworkVar ("Bool", 0, "Toggle")
+	self:NetworkVar ("Float", 0, "Direction")
 
 end
 
-function ENT:Initialize()
+function ENT:Initialize ()
 
-	if ( SERVER ) then
+	if SERVER then
 
-		self:PhysicsInit( SOLID_VPHYSICS )
-		self:SetUseType( SIMPLE_USE )
+		self:PhysicsInit (SOLID_VPHYSICS)
+		self:SetUseType (SIMPLE_USE)
 
-		self:SetToggle( false )
+		self:SetToggle (false)
 
 		self.ToggleState = false
 		self.BaseTorque = 1
@@ -30,50 +29,50 @@ function ENT:Initialize()
 end
 
 -- Sets the base torque
-function ENT:SetBaseTorque( base )
+function ENT:SetBaseTorque (base)
 
 	self.BaseTorque = base
-	if ( self.BaseTorque == 0 ) then self.BaseTorque = 1 end
-	self:UpdateOverlayText()
+	if self.BaseTorque == 0 then self.BaseTorque = 1 end
+	self:UpdateOverlayText ()
 
 end
 
 -- Refresh the entity overlay text
-function ENT:UpdateOverlayText()
+function ENT:UpdateOverlayText ()
 
-	self:SetOverlayText( "Torque: " .. math.floor( self.BaseTorque ) )
+	self:SetOverlayText ("Torque: " .. math.floor (self.BaseTorque))
 
 end
 
 -- Sets the axis (world space)
-function ENT:SetAxis( vec )
+function ENT:SetAxis (vec)
 
-	self.Axis = self:GetPos() + vec * 512
-	self.Axis = self:NearestPoint( self.Axis )
-	self.Axis = self:WorldToLocal( self.Axis )
+	self.Axis = self:GetPos () + vec * 512
+	self.Axis = self:NearestPoint (self.Axis)
+	self.Axis = self:WorldToLocal (self.Axis)
 
 end
 
-function ENT:OnTakeDamage( dmginfo )
+function ENT:OnTakeDamage (dmginfo)
 
-	self:TakePhysicsDamage( dmginfo )
+	self:TakePhysicsDamage (dmginfo)
 
 end
 
 -- Set the motor constraint
-function ENT:SetMotor( Motor )
+function ENT:SetMotor (Motor)
 
 	self.Motor = Motor
 
 end
 
 -- Get the motor constraint :)
-function ENT:GetMotor()
+function ENT:GetMotor ()
 
 	-- Fuck knows why it's doing this here.
-	if ( !IsValid( self.Motor ) ) then
+	if not IsValid (self.Motor) then
 
-		self.Motor = constraint.FindConstraintEntity( self, "Motor" )
+		self.Motor = constraint.FindConstraintEntity (self, "Motor")
 
 	end
 
@@ -82,122 +81,122 @@ function ENT:GetMotor()
 end
 
 -- Forward key is pressed/released
-function ENT:Forward( onoff, mul )
+function ENT:Forward (onoff, mul)
 
 	--
 	-- Is this entity invalid now?
 	-- If so return false to remove it
 	--
-	if ( !IsValid( self ) ) then return false end
+	if not IsValid (self) then return false end
 
-	local Motor = self:GetMotor()
-	if ( !IsValid( Motor ) ) then return false end
+	local Motor = self:GetMotor ()
+	if not IsValid (Motor) then return false end
 
-	local toggle = self:GetToggle()
+	local toggle = self:GetToggle ()
 
 	--
 	-- If we're toggle mode and the key has been
 	-- released then just return.
 	--
-	if ( toggle and !onoff ) then return true end
+	if toggle and not onoff then return true end
 
 	mul = mul or 1
 	local Speed = Motor.direction * mul * self.TorqueScale
 
-	if ( !onoff ) then Speed = 0 end
+	if not onoff then Speed = 0 end
 
-	if ( toggle and onoff ) then
+	if toggle and onoff then
 
-		self.ToggleState = !self.ToggleState
+		self.ToggleState = not self.ToggleState
 
-		if ( !self.ToggleState ) then
+		if not self.ToggleState then
 			Speed = 0
 		end
 
 	end
 
-	Motor:Fire( "Scale", Speed )
+	Motor:Fire ("Scale", Speed)
 	Motor.forcescale = Speed
-	Motor:Fire( "Activate" )
+	Motor:Fire ("Activate")
 
 	return true
 
 end
 
 -- Reverse key is pressed/released
-function ENT:Reverse( onoff )
-	return self:Forward( onoff, -1 )
+function ENT:Reverse (onoff)
+	return self:Forward (onoff, -1)
 end
 
 -- Register numpad functions
-if ( SERVER ) then
+if SERVER then
 
-	numpad.Register( "WheelForward", function( ply, ent, onoff )
+	numpad.Register ("WheelForward", function (ply, ent, onoff)
 
-		if ( !IsValid( ent ) ) then return false end
+		if not IsValid (ent) then return false end
 
-		return ent:Forward( onoff )
+		return ent:Forward (onoff)
 
-	end )
+	end)
 
-	numpad.Register( "WheelReverse", function( ply, ent, onoff )
+	numpad.Register ("WheelReverse", function (ply, ent, onoff)
 
-		if ( !IsValid( ent ) ) then return false end
+		if not IsValid (ent) then return false end
 
-		return ent:Reverse( onoff )
+		return ent:Reverse (onoff)
 
-	end )
+	end)
 
 end
 
 -- Todo? Scale Motor.direction?
-function ENT:SetTorque( torque )
+function ENT:SetTorque (torque)
 
-	if ( self.BaseTorque == 0 ) then self.BaseTorque = 1 end
+	if self.BaseTorque == 0 then self.BaseTorque = 1 end
 
 	self.TorqueScale = torque / self.BaseTorque
 
-	local Motor = self:GetMotor()
-	if ( !IsValid( Motor ) ) then return end
-	Motor:Fire( "Scale", Motor.direction * Motor.forcescale * self.TorqueScale )
+	local Motor = self:GetMotor ()
+	if not IsValid (Motor) then return end
+	Motor:Fire ("Scale", Motor.direction * Motor.forcescale * self.TorqueScale)
 
-	self:SetOverlayText( "Torque: " .. math.floor( torque ) )
+	self:SetOverlayText ("Torque: " .. math.floor (torque))
 
 end
 
 -- Creates the direction arrows on the wheel
-function ENT:DoDirectionEffect()
+function ENT:DoDirectionEffect ()
 
-	local Motor = self:GetMotor()
+	local Motor = self:GetMotor ()
 
-	if ( !IsValid( Motor ) ) then return end
+	if not IsValid (Motor) then return end
 
-	local effectdata = EffectData()
-	effectdata:SetOrigin( self.Axis * 100 ) -- Ugly hack, but necessary due to network precision problems of EffectData()
-	effectdata:SetEntity( self )
-	effectdata:SetScale( Motor.direction )
-	util.Effect( "wheel_indicator", effectdata, true, true )
+	local effectdata = EffectData ()
+	effectdata:SetOrigin (self.Axis * 100) -- Ugly hack, but necessary due to network precision problems of EffectData()
+	effectdata:SetEntity (self)
+	effectdata:SetScale (Motor.direction)
+	util.Effect ("wheel_indicator", effectdata, true, true)
 
 end
 
 -- Reverse the wheel direction when a player uses the wheel
-function ENT:Use( activator, caller, type, value )
+function ENT:Use (activator, caller, type, value)
 
-	local Motor = self:GetMotor()
-	local Owner = self:GetPlayer()
+	local Motor = self:GetMotor ()
+	local Owner = self:GetPlayer ()
 
-	if ( IsValid( Motor ) and ( Owner == nil or Owner == activator ) ) then
+	if IsValid (Motor) and (Owner == nil or Owner == activator) then
 
-		if ( Motor.direction == 1 ) then
+		if Motor.direction == 1 then
 			Motor.direction = -1
 		else
 			Motor.direction = 1
 		end
 
-		Motor:Fire( "Scale", Motor.direction * Motor.forcescale * self.TorqueScale )
-		self:SetDirection( Motor.direction )
+		Motor:Fire ("Scale", Motor.direction * Motor.forcescale * self.TorqueScale)
+		self:SetDirection (Motor.direction)
 
-		self:DoDirectionEffect()
+		self:DoDirectionEffect ()
 
 	end
 

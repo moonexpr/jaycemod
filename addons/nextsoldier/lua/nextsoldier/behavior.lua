@@ -4,7 +4,7 @@
 local Port = core.port
 local StateChart = generator.state_chart
 local error, ipairs, pairs, setmetatable, sort, type = error, ipairs, pairs, setmetatable, table.sort, type
-module("nextsoldier.behavior")
+module ("nextsoldier.behavior")
 
 -- The soldier port: what a NextSoldier soldier's behaviours (the states of
 -- nextsoldier.behavior, features.aiwar.ns_behaviors' among them) may ask of the
@@ -102,7 +102,8 @@ module("nextsoldier.behavior")
 --   Mark(kind, detail, to): tell whoever debugs me that my orders stepped
 --     in on my movement (a features.nbdebug.model MARK_* kind), what happened,
 --     and where I am sent (nil: nowhere)
-METHODS = {
+METHODS =
+{
 	"Now",
 	"IsAlive",
 	"IsDisarmed",
@@ -147,10 +148,10 @@ METHODS = {
 	"CallMedic",
 	"Announce",
 	"LookAt",
-	"Gesture",
+	"Gesture"
 }
 
-PORT = Port.New("NextSoldier soldier", METHODS)
+PORT = Port.New ("NextSoldier soldier", METHODS)
 
 -- NextSoldier's chart: the contract every behaviour of a soldier is a state
 -- of (generator.state_chart's Chart, NextBot's Action/Behavior engine with its
@@ -180,40 +181,42 @@ YES_NO_QUERIES = { "ShouldAttack", "ShouldHurry", "ShouldRetreat", "ShouldPickUp
 local ResponderClass = {}
 ResponderClass.__index = ResponderClass
 
-local function AsksYesOrNo(name)
-	for _, query in ipairs(YES_NO_QUERIES) do
+local function AsksYesOrNo (name)
+	for _, query in ipairs (YES_NO_QUERIES) do
 		if query == name then return true end
 	end
 	return false
 end
 
-function Responder()
-	return setmetatable({ answers = {} }, ResponderClass)
+function Responder ()
+	return setmetatable ({ answers = {} }, ResponderClass)
 end
 
-function ResponderClass:Set(name, yes)
-	if not AsksYesOrNo(name) then error("no soldier asks " .. name, 2) end
-	self.answers[name] = yes
+function ResponderClass:Set (name, yes)
+	if not AsksYesOrNo (name) then error ("no soldier asks " .. name, 2) end
+	self.answers [name] = yes
 end
 
-function ResponderClass:Answers(name)
-	return self.answers[name] == true
+function ResponderClass:Answers (name)
+	return self.answers [name] == true
 end
 
-function ResponderClass:Query(name)
-	if not AsksYesOrNo(name) then return StateChart.ANSWER_UNDEFINED end
-	return self:Answers(name) and StateChart.ANSWER_YES or StateChart.ANSWER_NO
+function ResponderClass:Query (name)
+	if not AsksYesOrNo (name) then return StateChart.ANSWER_UNDEFINED end
+	return self:Answers (name) and StateChart.ANSWER_YES or StateChart.ANSWER_NO
 end
 
-function ResponderClass:Event() end
+function ResponderClass:Event () end
 
-CHART = StateChart.Chart({
-	name = "NextSoldier",
-	port = PORT,
-	events = EVENTS,
-	queries = QUERIES,
-	initial = function(first) return first end,
-})
+CHART = StateChart.Chart (
+	{
+		name = "NextSoldier",
+		port = PORT,
+		events = EVENTS,
+		queries = QUERIES,
+		initial = function (first) return first end
+	}
+)
 
 -- Whom a soldier fights: its dispositions toward entities and factions,
 -- answered when asked, as TF2's INextBot::IsEnemy and IsFriend are, never
@@ -235,53 +238,54 @@ CHART = StateChart.Chart({
 local Dispositions = {}
 Dispositions.__index = Dispositions
 
-function Relations(spec)
-	if type(spec) ~= "table" or spec.default == nil then error("relations need a default disposition", 2) end
-	if spec.ally == nil then error("relations need an ally disposition", 2) end
-	return setmetatable({
-		default = spec.default,
-		ally = spec.ally,
-		entities = setmetatable({}, { __mode = "k" }),
-		factions = {},
-		joined = {},
-	}, Dispositions)
+function Relations (spec)
+	if type (spec) ~= "table" or spec.default == nil then error ("relations need a default disposition", 2) end
+	if spec.ally == nil then error ("relations need an ally disposition", 2) end
+	return setmetatable (
+		{
+			default = spec.default,
+			ally = spec.ally,
+			entities = setmetatable ({}, { __mode = "k" }),
+			factions = {},
+			joined = {}
+		}, Dispositions)
 end
 
-local function Entry(disposition, priority)
+local function Entry (disposition, priority)
 	if disposition == nil then return nil end
 	return { disposition = disposition, priority = priority or 0 }
 end
 
-function Dispositions:SetEntity(other, disposition, priority)
-	self.entities[other] = Entry(disposition, priority)
+function Dispositions:SetEntity (other, disposition, priority)
+	self.entities [other] = Entry (disposition, priority)
 end
 
-function Dispositions:SetFaction(faction, disposition, priority)
-	self.factions[faction] = Entry(disposition, priority)
+function Dispositions:SetFaction (faction, disposition, priority)
+	self.factions [faction] = Entry (disposition, priority)
 end
 
-function Dispositions:Join(faction) self.joined[faction] = true end
-function Dispositions:Leave(faction) self.joined[faction] = nil end
-function Dispositions:InFaction(faction) return self.joined[faction] == true end
+function Dispositions:Join (faction) self.joined [faction] = true end
+function Dispositions:Leave (faction) self.joined [faction] = nil end
+function Dispositions:InFaction (faction) return self.joined [faction] == true end
 
-function Dispositions:Factions()
+function Dispositions:Factions ()
 	local list = {}
-	for faction in pairs(self.joined) do list[#list + 1] = faction end
-	sort(list)
+	for faction in pairs (self.joined) do list [#list + 1] = faction end
+	sort (list)
 	return list
 end
 
-function Dispositions:Disposition(other, factionsOf)
-	local own = self.entities[other]
+function Dispositions:Disposition (other, factionsOf)
+	local own = self.entities [other]
 	if own then return own.disposition, own.priority end
 	local best, bestName, shared
-	for _, faction in ipairs(factionsOf(other)) do
-		local entry = self.factions[faction]
+	for _, faction in ipairs (factionsOf (other)) do
+		local entry = self.factions [faction]
 		if entry and (best == nil or entry.priority > best.priority
 			or (entry.priority == best.priority and faction < bestName)) then
-			best, bestName = entry, faction
-		end
-		if self.joined[faction] then shared = true end
+				best, bestName = entry, faction
+			end
+		if self.joined [faction] then shared = true end
 	end
 	if best then return best.disposition, best.priority end
 	if shared then return self.ally, 0 end

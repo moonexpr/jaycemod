@@ -14,26 +14,26 @@
 --   (costs not negative); nodes farther than limit are left out.
 local ipairs = ipairs
 local Heap = tree.heap
-module(...)
+module (...)
 
-function Flood(starts, neighbors, admit, limit, stop)
+function Flood (starts, neighbors, admit, limit, stop)
 	local seen, reached, head = {}, {}, 1
-	for _, node in ipairs(starts) do
-		if not seen[node] then
-			seen[node] = true
-			reached[#reached + 1] = node
+	for _, node in ipairs (starts) do
+		if not seen [node] then
+			seen [node] = true
+			reached [#reached + 1] = node
 		end
 	end
 	while head <= #reached do
-		local node = reached[head]
+		local node = reached [head]
 		head = head + 1
-		if stop and stop(node) then return reached, true end
-		for _, next in ipairs(neighbors(node)) do
-			if not seen[next] then
-				seen[next] = true
-				if admit(next) then
+		if stop and stop (node) then return reached, true end
+		for _, next in ipairs (neighbors (node)) do
+			if not seen [next] then
+				seen [next] = true
+				if admit (next) then
 					if #reached >= limit then return reached, true end
-					reached[#reached + 1] = next
+					reached [#reached + 1] = next
 				end
 			end
 		end
@@ -41,20 +41,20 @@ function Flood(starts, neighbors, admit, limit, stop)
 	return reached, false
 end
 
-function Components(nodes, neighbors)
+function Components (nodes, neighbors)
 	local component, count = {}, 0
-	for _, node in ipairs(nodes) do
-		if not component[node] then
+	for _, node in ipairs (nodes) do
+		if not component [node] then
 			count = count + 1
-			component[node] = count
+			component [node] = count
 			local stack = { node }
 			while #stack > 0 do
-				local n = stack[#stack]
-				stack[#stack] = nil
-				for _, m in ipairs(neighbors(n)) do
-					if not component[m] then
-						component[m] = count
-						stack[#stack + 1] = m
+				local n = stack [#stack]
+				stack [#stack] = nil
+				for _, m in ipairs (neighbors (n)) do
+					if not component [m] then
+						component [m] = count
+						stack [#stack + 1] = m
 					end
 				end
 			end
@@ -63,22 +63,22 @@ function Components(nodes, neighbors)
 	return component
 end
 
-function Distances(starts, edges, limit)
+function Distances (starts, edges, limit)
 	local dist = {}
-	local queue = Heap()
-	for _, node in ipairs(starts) do
-		dist[node] = 0
-		queue:Push(0, node)
+	local queue = Heap ()
+	for _, node in ipairs (starts) do
+		dist [node] = 0
+		queue:Push (0, node)
 	end
-	while queue:Size() > 0 do
-		local node, reached = queue:Pop()
-		if reached == dist[node] then
-			for _, edge in ipairs(edges(node)) do
+	while queue:Size () > 0 do
+		local node, reached = queue:Pop ()
+		if reached == dist [node] then
+			for _, edge in ipairs (edges (node)) do
 				local cost = reached + edge.cost
-				local known = dist[edge.node]
+				local known = dist [edge.node]
 				if cost <= limit and (known == nil or cost < known) then
-					dist[edge.node] = cost
-					queue:Push(cost, edge.node)
+					dist [edge.node] = cost
+					queue:Push (cost, edge.node)
 				end
 			end
 		end

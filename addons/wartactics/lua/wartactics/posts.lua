@@ -13,7 +13,7 @@
 local abs, ipairs, min = math.abs, ipairs, math.min
 local Spread = world.grid.Spread
 local Select = list.select
-module(...)
+module (...)
 
 MAX_RANGE = 1400 -- from the checkpoint
 IDEAL_RANGE = 500
@@ -31,23 +31,23 @@ local W_AHEAD = 4 -- pushing forward outweighs height and cover together
 local W_SNIPER = { [0] = 0, [GOOD_SNIPER] = 0.75, [IDEAL_SNIPER] = 1.25 }
 
 -- Height, cover and the sniper flags, which both sides value.
-local function Ground(c)
-	local height = min(abs(c.elevation), ELEVATION_CAP) / ELEVATION_CAP
+local function Ground (c)
+	local height = min (abs (c.elevation), ELEVATION_CAP) / ELEVATION_CAP
 	local score = height * (c.elevation >= 0 and W_HIGH or W_LOW)
 	if c.cover then score = score + W_COVER end
-	return score + W_SNIPER[c.sniper]
+	return score + W_SNIPER [c.sniper]
 end
 
 -- A defenders' post's worth, or nil for no post at all.
-function Score(c)
+function Score (c)
 	if not c.sees or c.toObjective > MAX_RANGE or c.toCart < MIN_CART_DISTANCE then return nil end
-	return -W_RANGE * abs(c.toObjective - IDEAL_RANGE) / IDEAL_RANGE + Ground(c)
+	return -W_RANGE * abs (c.toObjective - IDEAL_RANGE) / IDEAL_RANGE + Ground (c)
 end
 
 -- An attackers' post's worth, or nil for no post at all.
-function ScoreForward(c)
+function ScoreForward (c)
 	if not c.sees or c.ahead <= 0 or c.ahead > MAX_LEAD or c.toCart > MAX_COVER_RANGE then return nil end
-	return W_AHEAD * c.ahead / MAX_LEAD + Ground(c)
+	return W_AHEAD * c.ahead / MAX_LEAD + Ground (c)
 end
 
 -- Guards (ScoreGuard): posts round a control point its team holds, from
@@ -62,22 +62,22 @@ MAX_GUARD_RANGE = 1250
 PAST_POINT_LIMIT, GUARD_TOO_LOW = 250, 220
 
 -- A guard post's worth, or nil for no post at all.
-function ScoreGuard(c)
+function ScoreGuard (c)
 	if not c.sees or c.toPoint > MAX_GUARD_RANGE or c.elevation < -GUARD_TOO_LOW then return nil end
 	if not c.anywhere and c.past > PAST_POINT_LIMIT then return nil end
-	return -W_RANGE * abs(c.toPoint - IDEAL_RANGE) / IDEAL_RANGE + Ground(c)
+	return -W_RANGE * abs (c.toPoint - IDEAL_RANGE) / IDEAL_RANGE + Ground (c)
 end
 
 -- Up to `count` posts, best first by `scorer` (default Score), each at
 -- least SPACING from those picked before it.
-function Pick(candidates, count, scorer)
+function Pick (candidates, count, scorer)
 	scorer = scorer or Score
 	local ranked = {}
-	for _, c in ipairs(candidates) do
-		local score = scorer(c)
-		if score then ranked[#ranked + 1] = { pos = c.pos, score = score } end
+	for _, c in ipairs (candidates) do
+		local score = scorer (c)
+		if score then ranked [#ranked + 1] = { pos = c.pos, score = score } end
 	end
 	local positions = {}
-	for i, place in ipairs(Select.Order(ranked, function(a, b) return a.score > b.score end)) do positions[i] = ranked[place].pos end
-	return Spread(positions, SPACING, count)
+	for i, place in ipairs (Select.Order (ranked, function (a, b) return a.score > b.score end)) do positions [i] = ranked [place].pos end
+	return Spread (positions, SPACING, count)
 end

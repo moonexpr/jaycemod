@@ -2,7 +2,7 @@
 -- lua/includes/modules/responserules.lua): their criteria set. The rules
 -- and lines are data in this addon (scripts/responserules/), by the speaker
 -- model's affiliation, not its team, as a team may wear either side's models.
-module("nextsoldier.body.responserules")
+module ("nextsoldier.body.responserules")
 
 -- TF2's teamrole criterion: the cart's own team is on offense.
 OFFENSE, DEFENSE = "offense", "defense"
@@ -54,7 +54,7 @@ CONCEPT_IDLE = "TLK_NS_IDLE"
 ALLY_DOWN_RANGE = 1500
 IDLE_INTERVAL = 5
 
-function WitnessesFall(distance)
+function WitnessesFall (distance)
 	return distance <= ALLY_DOWN_RANGE
 end
 
@@ -62,20 +62,21 @@ end
 -- faster (a walk; standing about beside it is not passing).
 GREET_RANGE, PASS_SPEED = 128, 90
 
-function Passes(distance, speed)
+function Passes (distance, speed)
 	return distance <= GREET_RANGE and speed >= PASS_SPEED
 end
 
 -- A soldier's criteria set: its voice's affiliation and name
 -- (ws.voices), its team's role, a random draw 0..100 (TF2's
 -- randomnum), and whether the enemy holds the cart.
-function Criteria(voice, role, randomnum, blocked, gesture)
-	return {
+function Criteria (voice, role, randomnum, blocked, gesture)
+	return
+	{
 		affiliation = voice.affiliation,
 		voice = voice.name,
 		teamrole = role,
 		randomnum = randomnum,
 		cartblocked = blocked and 1 or 0,
-		gesture = gesture,
+		gesture = gesture
 	}
 end

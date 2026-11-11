@@ -6,11 +6,12 @@ ENT.Type = "point"
 ENT.Base = "ws_stub_point"
 
 ENT.StubReason = "Robot Destruction scoring is not supported; the round limits decide its rounds"
-ENT.StubInputs = {
-	roundactivate = true,
+ENT.StubInputs =
+{
+	roundactivate = true
 }
 
-function ENT:Initialize()
-	baseclass.Get("ws_stub_point").Initialize(self)
-	WS.Feature("rounds"):SetMode(WS.require("features.rounds.destruction").Mode)
+function ENT:Initialize ()
+	baseclass.Get ("ws_stub_point").Initialize (self)
+	WS.Feature ("rounds"):SetMode (WS.require ("features.rounds.destruction").Mode)
 end

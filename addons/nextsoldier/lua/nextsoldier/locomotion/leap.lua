@@ -9,7 +9,7 @@
 local sqrt = math.sqrt
 local min = math.min
 local Lerp = math.scalar.Lerp
-module("nextsoldier.locomotion.leap")
+module ("nextsoldier.locomotion.leap")
 
 CLEARANCE = 10 -- how far above the lip the arc ends
 OVER = 16 -- how far past the lip, across, the arc ends
@@ -18,10 +18,10 @@ DURATION = 0.45 -- seconds the arc takes
 -- The point of the arc from `from` onto the ledge (its lip, the point the
 -- walker stands on at the top) at t, the share of DURATION gone (past 1:
 -- the end).
-function Arc(from, ledge, t)
-	t = min(t, 1)
+function Arc (from, ledge, t)
+	t = min (t, 1)
 	local dx, dy = ledge.x - from.x, ledge.y - from.y
-	local reach = sqrt(dx * dx + dy * dy)
+	local reach = sqrt (dx * dx + dy * dy)
 	local ux, uy = 0, 0
 	if reach > 0 then ux, uy = dx / reach, dy / reach end
 	local across = 0
@@ -29,10 +29,11 @@ function Arc(from, ledge, t)
 	local up = 1 - (1 - t) ^ 3
 	local distance = (reach + OVER) * across
 	if reach == 0 then distance = 0 end
-	return {
+	return
+	{
 		x = from.x + ux * distance,
 		y = from.y + uy * distance,
-		z = from.z + (ledge.z + CLEARANCE - from.z) * up,
+		z = from.z + (ledge.z + CLEARANCE - from.z) * up
 	}
 end
 
@@ -41,8 +42,8 @@ end
 -- the area above, where it is nearest the walker (the lip, as the engine's
 -- PathFollower::Climbing finds it; the path may go on far across it); a gap's,
 -- where the path goes on.
-function Landing(after, from, climbing)
-	if climbing then return after.area:GetClosestPointOnArea(from) end
+function Landing (after, from, climbing)
+	if climbing then return after.area:GetClosestPointOnArea (from) end
 	return after.pos
 end
 
@@ -58,26 +59,26 @@ VAULT_DURATION = 0.7 -- seconds the vault takes
 -- it survives) }: whether the vault is one it can make, the top no higher
 -- than it climbs above it, the landing below the top and no farther below
 -- it than it falls.
-function VaultFits(q)
+function VaultFits (q)
 	return q.top.z - q.from.z <= q.maxHeight and q.land.z < q.top.z and q.from.z - q.land.z <= q.maxDrop
 end
 
-function Vault(from, top, land, t)
-	t = min(t, 1)
+function Vault (from, top, land, t)
+	t = min (t, 1)
 	local apex = top.z + CLEARANCE
 	if t <= VAULT_RISE then
 		local s = 1 - (1 - t / VAULT_RISE) ^ 2
-		return { x = from.x, y = from.y, z = Lerp(from.z, apex, s) }
+		return { x = from.x, y = from.y, z = Lerp (from.z, apex, s) }
 	end
 	local dx, dy = top.x - from.x, top.y - from.y
-	local reach = sqrt(dx * dx + dy * dy)
+	local reach = sqrt (dx * dx + dy * dy)
 	local ux, uy = 0, 0
 	if reach > 0 then ux, uy = dx / reach, dy / reach end
 	local overX, overY = top.x + ux * OVER, top.y + uy * OVER
 	if t <= VAULT_CROSS then
 		local s = (t - VAULT_RISE) / (VAULT_CROSS - VAULT_RISE)
-		return { x = Lerp(from.x, overX, s), y = Lerp(from.y, overY, s), z = apex }
+		return { x = Lerp (from.x, overX, s), y = Lerp (from.y, overY, s), z = apex }
 	end
 	local s = (t - VAULT_CROSS) / (1 - VAULT_CROSS)
-	return { x = Lerp(overX, land.x, s), y = Lerp(overY, land.y, s), z = Lerp(apex, land.z, s * s) }
+	return { x = Lerp (overX, land.x, s), y = Lerp (overY, land.y, s), z = Lerp (apex, land.z, s * s) }
 end

@@ -1,4 +1,4 @@
-AddCSLuaFile()
+AddCSLuaFile ()
 
 -- weapon_p228: a standard CS:S SWEP; its base owns shared behavior.
 
@@ -9,8 +9,8 @@ SWEP.Category = "Counter-Strike: Source"
 SWEP.Spawnable = true
 SWEP.Slot = 1
 SWEP.SlotPos = 1
-SWEP.ViewModel = Model("models/weapons/cstrike/c_pist_p228.mdl")
-SWEP.WorldModel = Model("models/weapons/w_pist_p228.mdl")
+SWEP.ViewModel = Model ("models/weapons/cstrike/c_pist_p228.mdl")
+SWEP.WorldModel = Model ("models/weapons/w_pist_p228.mdl")
 SWEP.ViewModelFOV = 54
 SWEP.ViewModelFlip = false
 SWEP.UseHands = true
@@ -24,17 +24,20 @@ SWEP.ReloadTime = 2.2
 SWEP.SingleShotSound = "Weapon_P228.Single"
 SWEP.Primary = { ClipSize = 13, DefaultClip = 13, Automatic = false, Ammo = "BULLET_PLAYER_357SIG" }
 SWEP.Secondary = { ClipSize = -1, DefaultClip = -1, Automatic = false, Ammo = "none" }
-SWEP.Stats = {
-	Ballistics = {
+SWEP.Stats =
+{
+	Ballistics =
+	{
 		Damage = 40,
 		BulletCount = 1,
 		CycleTime = 0.15,
 		Penetration = 1,
 		Range = 4096,
 		RangeModifier = 0.8,
-		FullAuto = false,
+		FullAuto = false
 	},
-	Accuracy = {
+	Accuracy =
+	{
 		Crouch = 0.00825,
 		Fire = 0.03318,
 		Jump = 0.285,
@@ -44,12 +47,13 @@ SWEP.Stats = {
 		RecoveryCrouch = 0.23026,
 		RecoveryStand = 0.27631,
 		Spread = 0.004,
-		Stand = 0.011,
+		Stand = 0.011
 	},
-	Kick = {
+	Kick =
+	{
 		PunchMin = 2,
-		PunchMax = 2,
-	},
+		PunchMax = 2
+	}
 }
 SWEP.SoldierClip = 13
 SWEP.SoldierInterval = 0.15

@@ -20,7 +20,7 @@
 -- entity that walks in is left out.
 local ipairs, remove, setmetatable = ipairs, table.remove, setmetatable
 local Players = gameplay.players
-module(...)
+module (...)
 
 -- The CTriggerIgnite constructor and BURN_INTERVAL.
 BURN_DURATION_DEFAULT = 1
@@ -33,11 +33,12 @@ local PERCENT = 0.01
 local C = Players.COND
 
 -- CTFPlayerShared::IsInvulnerable
-local INVULNERABLE_CONDS = {
+local INVULNERABLE_CONDS =
+{
 	C.INVULNERABLE,
 	C.INVULNERABLE_USER_BUFF,
 	C.INVULNERABLE_HIDE_UNLESS_DAMAGED,
-	C.INVULNERABLE_CARD_EFFECT,
+	C.INVULNERABLE_CARD_EFFECT
 }
 
 local IgniteModel = {}
@@ -45,56 +46,58 @@ IgniteModel.__index = IgniteModel
 
 -- nextBurn is when BurnThink runs next (nil: no think); lastBurn is
 -- m_flLastBurnTime.
-function New(config, players)
-	return setmetatable({
-		burnDuration = config.burnDuration or BURN_DURATION_DEFAULT,
-		damagePercent = config.damagePercentPerSecond or DAMAGE_PERCENT_DEFAULT,
-		players = players,
-		touching = {},
-		nextBurn = nil,
-		lastBurn = 0,
-	}, IgniteModel)
+function New (config, players)
+	return setmetatable (
+		{
+			burnDuration = config.burnDuration or BURN_DURATION_DEFAULT,
+			damagePercent = config.damagePercentPerSecond or DAMAGE_PERCENT_DEFAULT,
+			players = players,
+			touching = {},
+			nextBurn = nil,
+			lastBurn = 0
+		}, IgniteModel)
 end
 
-function IgniteModel:NextBurn() return self.nextBurn end
+function IgniteModel:NextBurn () return self.nextBurn end
 
-local function Invulnerable(players, target)
-	for _, cond in ipairs(INVULNERABLE_CONDS) do
-		if players:InCond(target, cond) then return true end
+local function Invulnerable (players, target)
+	for _, cond in ipairs (INVULNERABLE_CONDS) do
+		if players:InCond (target, cond) then return true end
 	end
 	return false
 end
 
 -- Neither invulnerable nor already burning.
-local function MayCatchFire(self, target)
-	return not Invulnerable(self.players, target) and not self.players:InCond(target, C.BURNING)
+local function MayCatchFire (self, target)
+	return not Invulnerable (self.players, target) and not self.players:InCond (target, C.BURNING)
 end
 
 -- IgniteEntity
-local function Ignition(self, target)
-	return {
+local function Ignition (self, target)
+	return
+	{
 		kind = IGNITE,
 		target = target,
-		duration = MayCatchFire(self, target) and self.burnDuration or nil,
+		duration = MayCatchFire (self, target) and self.burnDuration or nil
 	}
 end
 
 -- CTriggerIgnite::StartTouch: the ignition, and the burn think if none runs.
-function IgniteModel:StartTouch(now, target)
-	self.touching[#self.touching + 1] = target
+function IgniteModel:StartTouch (now, target)
+	self.touching [#self.touching + 1] = target
 	if self.nextBurn == nil then
 		self.lastBurn = now
 		self.nextBurn = now + BURN_INTERVAL
 	end
-	return { Ignition(self, target) }
+	return { Ignition (self, target) }
 end
 
 -- The last one out stops the burn think, which in TF2 stops at its next
 -- run for want of anyone to burn.
-function IgniteModel:EndTouch(target)
-	for i, t in ipairs(self.touching) do
+function IgniteModel:EndTouch (target)
+	for i, t in ipairs (self.touching) do
 		if t == target then
-			remove(self.touching, i)
+			remove (self.touching, i)
 			break
 		end
 	end
@@ -102,18 +105,19 @@ function IgniteModel:EndTouch(target)
 end
 
 -- BurnThink / BurnEntities: the damage is for the time since the last burn.
-function IgniteModel:Think(now)
+function IgniteModel:Think (now)
 	if self.nextBurn == nil or now < self.nextBurn then return {} end
 	local dt = now - self.lastBurn
 	self.lastBurn = now
 	self.nextBurn = now + BURN_INTERVAL
 	local events = {}
-	for _, target in ipairs(self.touching) do
-		if MayCatchFire(self, target) then events[#events + 1] = Ignition(self, target) end
-		events[#events + 1] = {
+	for _, target in ipairs (self.touching) do
+		if MayCatchFire (self, target) then events [#events + 1] = Ignition (self, target) end
+		events [#events + 1] =
+		{
 			kind = DAMAGE,
 			target = target,
-			amount = dt * self.damagePercent * PERCENT * self.players:MaxHealth(target),
+			amount = dt * self.damagePercent * PERCENT * self.players:MaxHealth (target)
 		}
 	end
 	return events

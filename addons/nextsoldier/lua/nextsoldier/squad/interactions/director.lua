@@ -17,39 +17,39 @@
 local Port = core.port
 local Radio = nextsoldier.squad.comms.radio
 local error, tostring, pairs = error, tostring, pairs
-module("nextsoldier.squad.interactions.director")
+module ("nextsoldier.squad.interactions.director")
 
-PORT = Port.New("SquadDirector", { "Request" })
+PORT = Port.New ("SquadDirector", { "Request" })
 
 ANSWERS = { VACATE = true, DEFEND = true, ATTACK = true, STANDBY = true }
 
-function Set(order, director)
-	PORT:Check(director)
+function Set (order, director)
+	PORT:Check (director)
 	order.director = director
 end
 
-function Request(order, request)
+function Request (order, request)
 	if order.requested then return false end
 	order.requested = true
 	if order.director then
-		order.director:Request(order, request)
+		order.director:Request (order, request)
 	else
 		order.directive = { kind = "VACATE" }
 	end
 	return true
 end
 
-function Answer(order, kind, decision)
-	if not ANSWERS[kind] then error("no director's answer " .. tostring(kind), 2) end
+function Answer (order, kind, decision)
+	if not ANSWERS [kind] then error ("no director's answer " .. tostring (kind), 2) end
 	local directive = { kind = kind }
-	for key, value in pairs(decision or {}) do directive[key] = value end
+	for key, value in pairs (decision or {}) do directive [key] = value end
 	directive.kind = kind
 	order.directive = directive
-	return Radio.Say(order, Radio.DIRECTOR, order.leader, kind)
+	return Radio.Say (order, Radio.DIRECTOR, order.leader, kind)
 end
 
-function Directive(order) return order.directive end
+function Directive (order) return order.directive end
 
-function Requested(order) return order.requested == true end
+function Requested (order) return order.requested == true end
 
-function Forget(order) order.requested, order.directive = nil, nil end
+function Forget (order) order.requested, order.directive = nil, nil end

@@ -3,7 +3,7 @@
 -- team_round_timer and tf_gamerules a Hammer map would hold (capture layout,
 -- scoring, the clock, respawn waves); its Wire inputs set the respawn waves and
 -- scores as a game runs. A map has at most one.
-local Model = WS.require("features.builder.model")
+local Model = WS.require ("features.builder.model")
 
 ENT.Type = "anim"
 ENT.Base = "base_gameplay_piece"
@@ -20,7 +20,8 @@ local MASTER, TIMER, KOTH, RULES = "Control Point Master", "Round Timer", "King 
 
 -- TF2's own goal lines, by the words a player reads: its language files word them
 -- in each player's language (WS.Localize).
-local RED_GOALS = {
+local RED_GOALS =
+{
 	["None"] = "",
 	["Defend the Control points against team BLU!"] = "#Dustbowl_red_setup_goal",
 	["Defend the final two Control Points or the enemy will win the game!"] = "#Dustbowl_red_final_goal",
@@ -32,9 +33,10 @@ local RED_GOALS = {
 	["Prevent the cart from moving to your base or the enemy will win the game!"] = "#Goldrush_red_final_goal",
 	["Grab the Intelligence Briefcase from the enemy basement. Return to your basement to win!"] = "#2fort_red_setup_goal",
 	["Steal the Intelligence Briefcase from the enemy base."] = "#ctf_turbine_winter_team_goal",
-	["Kill the enemy team or capture the point!"] = "#arena_perks_team_goal",
+	["Kill the enemy team or capture the point!"] = "#arena_perks_team_goal"
 }
-local BLU_GOALS = {
+local BLU_GOALS =
+{
 	["None"] = "",
 	["Capture both Control Points to win the round and advance!"] = "#Dustbowl_blue_setup_goal",
 	["Capture the final two Control Points to win the game!"] = "#Dustbowl_blue_final_goal",
@@ -46,12 +48,13 @@ local BLU_GOALS = {
 	["Move the cart to the enemy base to destroy it and win the game!"] = "#Goldrush_blue_final_goal",
 	["Grab the Intelligence Briefcase from the enemy basement. Return to your basement to win!"] = "#2fort_blue_setup_goal",
 	["Steal the Intelligence Briefcase from the enemy base."] = "#ctf_turbine_winter_team_goal",
-	["Kill the enemy team or capture the point!"] = "#arena_perks_team_goal",
+	["Kill the enemy team or capture the point!"] = "#arena_perks_team_goal"
 }
 
 -- Titles, choices and help are tf.fgd's, as Hammer shows them. Automatic is ours:
 -- what the layout calls for, which a Hammer author would work out by hand.
-ENT.Properties = {
+ENT.Properties =
+{
 	{ name = "CapLayout", key = "caplayout", type = "String", title = "Cap Layout", category = MASTER, default = "",
 		help = "A string that tells the HUD how to lay out the cap points. It should be a string with indexes of cap points seperated by commas to denote a new line. So <2,0 1> would create a pyramid, with cap point 2 on the top and cap points 0 & 1 on the bottom." },
 	{ name = "ScoreStyle", key = "score_style", type = "Int", title = "Scoring style", category = MASTER, default = 0,
@@ -90,15 +93,17 @@ ENT.Properties = {
 	{ name = "BluGoal", rules = "SetBlueTeamGoalString", type = "String", title = "BLU goal", category = RULES, default = "", values = BLU_GOALS,
 		help = "Set the BLU team's goal string to show in the hud" },
 	{ name = "StalemateOnTimelimit", rules = "SetStalemateOnTimelimit", type = "Bool", title = "Stalemate on timelimit", category = RULES, default = false,
-		help = "Determines whether mp_timelimit can end the match in the middle of a round." },
+		help = "Determines whether mp_timelimit can end the match in the middle of a round." }
 }
-ENT.WirePorts = {
+ENT.WirePorts =
+{
 	inputs = { "RedRespawnTime", "BluRespawnTime", "AddRedScore", "AddBluScore" },
-	outputs = { "RoundState", "Winner" },
+	outputs = { "RoundState", "Winner" }
 }
-ENT.WireCommands = {
-	RedRespawnTime = Model.WireValue("SetRedTeamRespawnWaveTime"),
-	BluRespawnTime = Model.WireValue("SetBlueTeamRespawnWaveTime"),
-	AddRedScore = Model.WireValue("AddRedTeamScore"),
-	AddBluScore = Model.WireValue("AddBlueTeamScore"),
+ENT.WireCommands =
+{
+	RedRespawnTime = Model.WireValue ("SetRedTeamRespawnWaveTime"),
+	BluRespawnTime = Model.WireValue ("SetBlueTeamRespawnWaveTime"),
+	AddRedScore = Model.WireValue ("AddRedTeamScore"),
+	AddBluScore = Model.WireValue ("AddBlueTeamScore")
 }

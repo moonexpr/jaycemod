@@ -21,7 +21,7 @@
 local error, ipairs, setmetatable, tostring, type = error, ipairs, setmetatable, tostring, type
 local pairs, select, sort = pairs, select, table.sort
 local sub, upper = string.sub, string.upper
-module(...)
+module (...)
 
 -- Check blames the function that called the one checking.
 local CALLER_OF_CHECKER = 3
@@ -29,101 +29,102 @@ local CALLER_OF_CHECKER = 3
 local NamedSet = {}
 NamedSet.__index = NamedSet
 
-local function Refuse(name, why)
-	error("named set " .. tostring(name) .. ": " .. why, 3)
+local function Refuse (name, why)
+	error ("named set " .. tostring (name) .. ": " .. why, 3)
 end
 
-function Named(name, members)
-	if type(name) ~= "string" or name == "" then Refuse(name, "needs a name") end
-	if type(members) ~= "table" or #members == 0 then Refuse(name, name .. ": lists no members") end
-	local set = setmetatable({
-		name = name,
-		list = {},
-		has = {},
-	}, NamedSet)
-	for i, member in ipairs(members) do
-		if set.has[member] then Refuse(name, name .. ": lists " .. tostring(member) .. " twice") end
-		set.has[member] = true
-		set.list[i] = member
+function Named (name, members)
+	if type (name) ~= "string" or name == "" then Refuse (name, "needs a name") end
+	if type (members) ~= "table" or #members == 0 then Refuse (name, name .. ": lists no members") end
+	local set = setmetatable (
+		{
+			name = name,
+			list = {},
+			has = {}
+		}, NamedSet)
+	for i, member in ipairs (members) do
+		if set.has [member] then Refuse (name, name .. ": lists " .. tostring (member) .. " twice") end
+		set.has [member] = true
+		set.list [i] = member
 	end
 	return set
 end
 
-function NamedSet:Has(value)
-	return value ~= nil and self.has[value] == true
+function NamedSet:Has (value)
+	return value ~= nil and self.has [value] == true
 end
 
-function NamedSet:Check(value)
-	if not self:Has(value) then error(self.name .. ": unknown " .. tostring(value), CALLER_OF_CHECKER) end
+function NamedSet:Check (value)
+	if not self:Has (value) then error (self.name .. ": unknown " .. tostring (value), CALLER_OF_CHECKER) end
 	return value
 end
 
-function NamedSet:Match(token)
+function NamedSet:Match (token)
 	if token == "" then return nil end
-	local wanted = upper(token)
-	for _, member in ipairs(self.list) do
-		if upper(sub(tostring(member), 1, #token)) == wanted then return member end
+	local wanted = upper (token)
+	for _, member in ipairs (self.list) do
+		if upper (sub (tostring (member), 1, #token)) == wanted then return member end
 	end
 	return nil
 end
 
-function NamedSet:Members()
+function NamedSet:Members ()
 	local copy = {}
-	for i, member in ipairs(self.list) do copy[i] = member end
+	for i, member in ipairs (self.list) do copy [i] = member end
 	return copy
 end
 
-function NamedSet:Name()
+function NamedSet:Name ()
 	return self.name
 end
 
 -- Plain sets -------------------------------------------------------------------
 
-function Of(list)
+function Of (list)
 	local set = {}
-	for _, value in ipairs(list) do set[value] = true end
+	for _, value in ipairs (list) do set [value] = true end
 	return set
 end
 
-function Copy(set)
+function Copy (set)
 	local copy = {}
-	for value in pairs(set) do copy[value] = true end
+	for value in pairs (set) do copy [value] = true end
 	return copy
 end
 
-function Union(...)
+function Union (...)
 	local union = {}
-	for i = 1, select("#", ...) do
-		for value in pairs((select(i, ...))) do union[value] = true end
+	for i = 1, select ("#", ...) do
+		for value in pairs ((select (i, ...))) do union [value] = true end
 	end
 	return union
 end
 
-function Intersect(a, b)
+function Intersect (a, b)
 	local both = {}
-	for value in pairs(a) do
-		if b[value] then both[value] = true end
+	for value in pairs (a) do
+		if b [value] then both [value] = true end
 	end
 	return both
 end
 
-function Subtract(a, b)
+function Subtract (a, b)
 	local rest = {}
-	for value in pairs(a) do
-		if not b[value] then rest[value] = true end
+	for value in pairs (a) do
+		if not b [value] then rest [value] = true end
 	end
 	return rest
 end
 
-function Count(set)
+function Count (set)
 	local n = 0
-	for _ in pairs(set) do n = n + 1 end
+	for _ in pairs (set) do n = n + 1 end
 	return n
 end
 
-function Sorted(set)
+function Sorted (set)
 	local list = {}
-	for value in pairs(set) do list[#list + 1] = value end
-	sort(list)
+	for value in pairs (set) do list [#list + 1] = value end
+	sort (list)
 	return list
 end

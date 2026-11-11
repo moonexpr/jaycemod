@@ -15,108 +15,109 @@
 -- LuaSocket is luadev's win64 build, lua/bin/gmsv_luasocket_win64.dll in the
 -- server's own lua/bin (server_root.py's SERVER_BINARIES); it defines the
 -- global socket, the same API as danielga's gmod_luasocket.
-require("luasocket")
+require ("luasocket")
 
 local HOST = "127.0.0.1"
-local PORT = tonumber(file.Read("sandcastle_luadev_port.txt", "DATA") or "") or 27098
+local PORT = tonumber (file.Read ("sandcastle_luadev_port.txt", "DATA") or "") or 27098
 local READ_TIMEOUT = 2 -- seconds a connected client has to send its request
 local LISTEN_BACKLOG = 4
 
 -- a refresh of this file runs it again: let go of the old port first
-if SANDCASTLE_LUADEV_SOCKET then SANDCASTLE_LUADEV_SOCKET:close() end
+if SANDCASTLE_LUADEV_SOCKET then SANDCASTLE_LUADEV_SOCKET:close () end
 -- no reuseaddr: setsockopt fails under CrossOver's wine
-local listener = assert(socket.tcp())
-assert(listener:bind(HOST, PORT))
-assert(listener:listen(LISTEN_BACKLOG))
-listener:settimeout(0)
+local listener = assert (socket.tcp ())
+assert (listener:bind (HOST, PORT))
+assert (listener:listen (LISTEN_BACKLOG))
+listener:settimeout (0)
 SANDCASTLE_LUADEV_SOCKET = listener
 
-local function joined(...)
+local function joined (...)
 	local parts = {}
-	for i = 1, select("#", ...) do parts[i] = tostring((select(i, ...))) end
-	return table.concat(parts, "\t")
+	for i = 1, select ("#", ...) do parts [i] = tostring ((select (i, ...))) end
+	return table.concat (parts, "\t")
 end
 
-local function run_on_server(result, code, label)
+local function run_on_server (result, code, label)
 	local saved_print, saved_msgn = print, MsgN
-	local function capture(saved)
-		return function(...)
-			result.output[#result.output + 1] = joined(...)
-			saved(...)
+	local function capture (saved)
+		return function (...)
+			result.output [#result.output + 1] = joined (...)
+			saved (...)
 		end
 	end
-	print, MsgN = capture(saved_print), capture(saved_msgn)
-	local called, ok, values = pcall(luadev.RunOnServer, code, label)
+	print, MsgN = capture (saved_print), capture (saved_msgn)
+	local called, ok, values = pcall (luadev.RunOnServer, code, label)
 	print, MsgN = saved_print, saved_msgn
 	if not called then
-		result.error = "luadev failed: " .. tostring(ok)
+		result.error = "luadev failed: " .. tostring (ok)
 	elseif ok == true then
-		for i = 1, table.maxn(values) do result.returns[#result.returns + 1] = tostring(values[i]) end
+		for i = 1, table.maxn (values) do result.returns [#result.returns + 1] = tostring (values [i]) end
 	elseif ok == false then
-		result.error = tostring(values)
+		result.error = tostring (values)
 	else
 		result.error = "a luadev hook stopped the chunk"
 	end
 end
 
-local function run_on_clients(result, code, label)
-	local sent, why = luadev.RunOnClients(code, label)
-	if not sent then result.error = "not sent to the clients: " .. tostring(why) end
-	result.clients = player.GetCount()
+local function run_on_clients (result, code, label)
+	local sent, why = luadev.RunOnClients (code, label)
+	if not sent then result.error = "not sent to the clients: " .. tostring (why) end
+	result.clients = player.GetCount ()
 end
 
 -- realm "op": the label names one of SANDCASTLE_OPS (sandcastle_debug.lua's,
 -- for gmod_mcp.py), the code is its JSON arguments, and the answer carries
 -- what it returned as result; an error it raises is the answer's error
 SANDCASTLE_OPS = SANDCASTLE_OPS or {}
-local function run_op(result, body, name)
-	local op = SANDCASTLE_OPS[name]
+local function run_op (result, body, name)
+	local op = SANDCASTLE_OPS [name]
 	if not op then
 		result.error = "no op " .. name
 		return
 	end
-	local ok, value = pcall(op, util.JSONToTable(body ~= "" and body or "{}") or {})
-	if ok then result.result = value else result.error = tostring(value) end
+	local ok, value = pcall (op, util.JSONToTable (body ~= "" and body or "{}") or {})
+	if ok then result.result = value else result.error = tostring (value) end
 end
 
-local REALMS = {
+local REALMS =
+{
 	op = run_op,
 	sv = run_on_server,
 	cl = run_on_clients,
-	sh = function(result, code, label)
-		run_on_clients(result, code, label)
-		if not result.error then run_on_server(result, code, label) end
-	end,
+	sh = function (result, code, label)
+		run_on_clients (result, code, label)
+		if not result.error then run_on_server (result, code, label) end
+	end
 }
 
-local function answer(client)
-	local realm = client:receive("*l")
-	local label = client:receive("*l")
-	local length = tonumber(client:receive("*l") or "")
+local function answer (client)
+	local realm = client:receive ("*l")
+	local label = client:receive ("*l")
+	local length = tonumber (client:receive ("*l") or "")
 	local result = { output = {}, returns = {} }
-	if not (REALMS[realm] and label and length) then
+	if not (REALMS [realm] and label and length) then
 		result.error = "bad request: expected realm (sv, cl, sh), label and length lines"
 	else
-		local code = length == 0 and "" or client:receive(length)
+		local code = length == 0 and "" or client:receive (length)
 		if not code then
 			result.error = "the code ended before its " .. length .. " bytes"
 		else
-			REALMS[realm](result, code, label)
+			REALMS [realm] (result, code, label)
 		end
 	end
-	client:send(util.TableToJSON(result))
+	client:send (util.TableToJSON (result))
 end
 
-local function serve(client)
-	client:settimeout(READ_TIMEOUT)
-	local ok, err = pcall(answer, client)
-	if not ok then ErrorNoHalt("[luadev_socket] " .. tostring(err) .. "\n") end
-	client:close()
+local function serve (client)
+	client:settimeout (READ_TIMEOUT)
+	local ok, err = pcall (answer, client)
+	if not ok then ErrorNoHalt ("[luadev_socket] " .. tostring (err) .. "\n") end
+	client:close ()
 end
 -- sandcastle_debug.lua's pause loop serves the socket from inside its hook
 SANDCASTLE_SOCKET = { listener = listener, serve = serve }
 
-hook.Add("Think", "SandcastleLuadevSocket", function()
-	local client = listener:accept()
-	if client then serve(client) end
+hook.Add ("Think", "SandcastleLuadevSocket", function ()
+	local client = listener:accept ()
+	if client then serve (client) end
 end)

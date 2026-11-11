@@ -1,120 +1,122 @@
-
 TOOL.Category = "Render"
 TOOL.Name = "#tool.trails.name"
 
-TOOL.ClientConVar[ "r" ] = 255
-TOOL.ClientConVar[ "g" ] = 255
-TOOL.ClientConVar[ "b" ] = 255
-TOOL.ClientConVar[ "a" ] = 255
+TOOL.ClientConVar ["r"] = 255
+TOOL.ClientConVar ["g"] = 255
+TOOL.ClientConVar ["b"] = 255
+TOOL.ClientConVar ["a"] = 255
 
-TOOL.ClientConVar[ "length" ] = 5
-TOOL.ClientConVar[ "startsize" ] = 32
-TOOL.ClientConVar[ "endsize" ] = 0
+TOOL.ClientConVar ["length"] = 5
+TOOL.ClientConVar ["startsize"] = 32
+TOOL.ClientConVar ["endsize"] = 0
 
-TOOL.ClientConVar[ "material" ] = "trails/lol"
+TOOL.ClientConVar ["material"] = "trails/lol"
 
-TOOL.Information = {
+TOOL.Information =
+{
 	{ name = "left" },
 	{ name = "right" }
 }
 
-cleanup.Register( "trails" )
+cleanup.Register ("trails")
 
-local function SetTrails( ply, ent, data )
+local function SetTrails (ply, ent, data)
 
-	if ( IsValid( ent.SToolTrail ) ) then
+	if IsValid (ent.SToolTrail) then
 
-		ent.SToolTrail:Remove()
+		ent.SToolTrail:Remove ()
 		ent.SToolTrail = nil
 
 	end
 
-	if ( !data ) then
+	if not data then
 
-		duplicator.ClearEntityModifier( ent, "trail" )
+		duplicator.ClearEntityModifier (ent, "trail")
 		return
 
 	end
 
 	-- Just don't even bother with invisible trails
-	if ( data.StartSize <= 0 && data.EndSize <= 0 ) then return end
+	if data.StartSize <= 0 and data.EndSize <= 0 then return end
 
-		-- This is here to fix crash exploits
-	if ( !game.SinglePlayer() ) then
+	-- This is here to fix crash exploits
+	if not game.SinglePlayer () then
 
 		-- Lock down the trail material - only allow what the server allows
-		if ( !list.Contains( "trail_materials", data.Material ) ) then return end
+		if not list.Contains ("trail_materials", data.Material) then return end
 
 		-- Clamp sizes in multiplayer
-		data.Length = math.Clamp( data.Length, 0.1, 10 )
-		data.EndSize = math.Clamp( data.EndSize, 0, 128 )
-		data.StartSize = math.Clamp( data.StartSize, 0, 128 )
+		data.Length = math.Clamp (data.Length, 0.1, 10)
+		data.EndSize = math.Clamp (data.EndSize, 0, 128)
+		data.StartSize = math.Clamp (data.StartSize, 0, 128)
 
 	end
 
-	data.StartSize = math.max( 0.0001, data.StartSize )
+	data.StartSize = math.max (0.0001, data.StartSize)
 
-	local trail_entity = util.SpriteTrail( ent, 0, data.Color, false, data.StartSize, data.EndSize, data.Length, 1 / ( ( data.StartSize + data.EndSize ) * 0.5 ), data.Material .. ".vmt" )
-	if ( !IsValid( trail_entity ) ) then return end
+	local trail_entity = util.SpriteTrail (ent, 0, data.Color, false, data.StartSize, data.EndSize, data.Length, 1 / ((data.StartSize + data.EndSize) * 0.5), data.Material .. ".vmt")
+	if not IsValid (trail_entity) then return end
 
 	ent.SToolTrail = trail_entity
 
-	if ( IsValid( ply ) ) then
-		ply:AddCleanup( "trails", trail_entity )
+	if IsValid (ply) then
+		ply:AddCleanup ("trails", trail_entity)
 	end
 
-	duplicator.StoreEntityModifier( ent, "trail", data )
+	duplicator.StoreEntityModifier (ent, "trail", data)
 
 	return trail_entity
 
 end
-if ( SERVER ) then
-	duplicator.RegisterEntityModifier( "trail", SetTrails )
+if SERVER then
+	duplicator.RegisterEntityModifier ("trail", SetTrails)
 end
 
-function TOOL:LeftClick( trace )
+function TOOL:LeftClick (trace)
 
-	if ( !IsValid( trace.Entity ) ) then return false end
-	if ( trace.Entity:IsPlayer() ) then return false end
-	if ( CLIENT ) then return true end
+	if not IsValid (trace.Entity) then return false end
+	if trace.Entity:IsPlayer () then return false end
+	if CLIENT then return true end
 
-	local r = math.Clamp( self:GetClientNumber( "r", 255 ), 0, 255 )
-	local g = math.Clamp( self:GetClientNumber( "g", 255 ), 0, 255 )
-	local b = math.Clamp( self:GetClientNumber( "b", 255 ), 0, 255 )
-	local a = math.Clamp( self:GetClientNumber( "a", 255 ), 0, 255 )
+	local r = math.Clamp (self:GetClientNumber ("r", 255), 0, 255)
+	local g = math.Clamp (self:GetClientNumber ("g", 255), 0, 255)
+	local b = math.Clamp (self:GetClientNumber ("b", 255), 0, 255)
+	local a = math.Clamp (self:GetClientNumber ("a", 255), 0, 255)
 
-	local length = self:GetClientNumber( "length", 5 )
-	local endsize = self:GetClientNumber( "endsize", 0 )
-	local startsize = self:GetClientNumber( "startsize", 32 )
-	local mat = self:GetClientInfo( "material" )
+	local length = self:GetClientNumber ("length", 5)
+	local endsize = self:GetClientNumber ("endsize", 0)
+	local startsize = self:GetClientNumber ("startsize", 32)
+	local mat = self:GetClientInfo ("material")
 
-	local trail = SetTrails( self:GetOwner(), trace.Entity, {
-		Color = Color( r, g, b, a ),
-		Length = length,
-		StartSize = startsize,
-		EndSize = endsize,
-		Material = mat
-	} )
+	local trail = SetTrails (self:GetOwner (), trace.Entity,
+		{
+			Color = Color (r, g, b, a),
+			Length = length,
+			StartSize = startsize,
+			EndSize = endsize,
+			Material = mat
+		}
+	)
 
-	if ( !IsValid( trail ) ) then return false end
+	if not IsValid (trail) then return false end
 
-	undo.Create( "Trail" )
-		undo.AddEntity( trail )
-		undo.SetPlayer( self:GetOwner() )
-		undo.SetCustomUndoText( "Undone #tool.trails.name" )
-	undo.Finish( "#tool.trails.name" )
+	undo.Create ("Trail")
+	undo.AddEntity (trail)
+	undo.SetPlayer (self:GetOwner ())
+	undo.SetCustomUndoText ("Undone #tool.trails.name")
+	undo.Finish ("#tool.trails.name")
 
 	return true
 
 end
 
-function TOOL:RightClick( trace )
+function TOOL:RightClick (trace)
 
-	if ( !IsValid( trace.Entity ) ) then return false end
-	if ( trace.Entity:IsPlayer() ) then return false end
-	if ( CLIENT ) then return true end
+	if not IsValid (trace.Entity) then return false end
+	if trace.Entity:IsPlayer () then return false end
+	if CLIENT then return true end
 
-	SetTrails( self:GetOwner(), trace.Entity, nil )
+	SetTrails (self:GetOwner (), trace.Entity, nil)
 	return true
 
 end
@@ -123,40 +125,40 @@ end
 -- Add default materials to list
 -- Note: Addons can easily add to this list in their -- own file placed in autorun or something.
 --
-list.Set( "trail_materials", "#trail.plasma", "trails/plasma" )
-list.Set( "trail_materials", "#trail.tube", "trails/tube" )
-list.Set( "trail_materials", "#trail.electric", "trails/electric" )
-list.Set( "trail_materials", "#trail.smoke", "trails/smoke" )
-list.Set( "trail_materials", "#trail.laser", "trails/laser" )
-list.Set( "trail_materials", "#trail.physbeam", "trails/physbeam" )
-list.Set( "trail_materials", "#trail.love", "trails/love" )
-list.Set( "trail_materials", "#trail.lol", "trails/lol" )
+list.Set ("trail_materials", "#trail.plasma", "trails/plasma")
+list.Set ("trail_materials", "#trail.tube", "trails/tube")
+list.Set ("trail_materials", "#trail.electric", "trails/electric")
+list.Set ("trail_materials", "#trail.smoke", "trails/smoke")
+list.Set ("trail_materials", "#trail.laser", "trails/laser")
+list.Set ("trail_materials", "#trail.physbeam", "trails/physbeam")
+list.Set ("trail_materials", "#trail.love", "trails/love")
+list.Set ("trail_materials", "#trail.lol", "trails/lol")
 
-if ( IsMounted( "tf" ) ) then
-	list.Set( "trail_materials", "#trail.beam001_blu", "effects/beam001_blu" )
-	list.Set( "trail_materials", "#trail.beam001_red", "effects/beam001_red" )
-	list.Set( "trail_materials", "#trail.beam001_white", "effects/beam001_white" )
-	list.Set( "trail_materials", "#trail.arrowtrail_blu", "effects/arrowtrail_blu" )
-	list.Set( "trail_materials", "#trail.arrowtrail_red", "effects/arrowtrail_red" )
-	list.Set( "trail_materials", "#trail.repair_claw_trail_blue", "effects/repair_claw_trail_blue" )
-	list.Set( "trail_materials", "#trail.repair_claw_trail_red", "effects/repair_claw_trail_red" )
-	list.Set( "trail_materials", "#trail.australiumtrail_red", "effects/australiumtrail_red" )
-	list.Set( "trail_materials", "#trail.beam_generic01", "effects/beam_generic01" )
+if IsMounted ("tf") then
+	list.Set ("trail_materials", "#trail.beam001_blu", "effects/beam001_blu")
+	list.Set ("trail_materials", "#trail.beam001_red", "effects/beam001_red")
+	list.Set ("trail_materials", "#trail.beam001_white", "effects/beam001_white")
+	list.Set ("trail_materials", "#trail.arrowtrail_blu", "effects/arrowtrail_blu")
+	list.Set ("trail_materials", "#trail.arrowtrail_red", "effects/arrowtrail_red")
+	list.Set ("trail_materials", "#trail.repair_claw_trail_blue", "effects/repair_claw_trail_blue")
+	list.Set ("trail_materials", "#trail.repair_claw_trail_red", "effects/repair_claw_trail_red")
+	list.Set ("trail_materials", "#trail.australiumtrail_red", "effects/australiumtrail_red")
+	list.Set ("trail_materials", "#trail.beam_generic01", "effects/beam_generic01")
 end
 
-local ConVarsDefault = TOOL:BuildConVarList()
+local ConVarsDefault = TOOL:BuildConVarList ()
 
-function TOOL.BuildCPanel( CPanel )
+function TOOL.BuildCPanel (CPanel)
 
-	CPanel:Help( "#tool.trails.desc" )
-	CPanel:ToolPresets( "trails", ConVarsDefault )
+	CPanel:Help ("#tool.trails.desc")
+	CPanel:ToolPresets ("trails", ConVarsDefault)
 
-	CPanel:ColorPicker( "#tool.trails.color", "trails_r", "trails_g", "trails_b", "trails_a" )
+	CPanel:ColorPicker ("#tool.trails.color", "trails_r", "trails_g", "trails_b", "trails_a")
 
-	CPanel:NumSlider( "#tool.trails.length", "trails_length", 0, 10 )
-	CPanel:NumSlider( "#tool.trails.startsize", "trails_startsize", 0, 128 )
-	CPanel:NumSlider( "#tool.trails.endsize", "trails_endsize", 0, 128 )
+	CPanel:NumSlider ("#tool.trails.length", "trails_length", 0, 10)
+	CPanel:NumSlider ("#tool.trails.startsize", "trails_startsize", 0, 128)
+	CPanel:NumSlider ("#tool.trails.endsize", "trails_endsize", 0, 128)
 
-	CPanel:MatSelect( "trails_material", list.Get( "trail_materials" ), true, 0.25, 0.25 )
+	CPanel:MatSelect ("trails_material", list.Get ("trail_materials"), true, 0.25, 0.25)
 
 end

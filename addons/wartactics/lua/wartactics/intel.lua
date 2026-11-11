@@ -22,7 +22,7 @@
 --     within SUPPORT_MEMORY, strongest first (the lower room on a tie).
 local error, ipairs, pairs, setmetatable, tostring = error, ipairs, pairs, setmetatable, tostring
 local sort = table.sort
-module(...)
+module (...)
 
 SOLDIER, TURRET, MEDIC, DISPENSER, TELEPORTER = "soldier", "turret", "medic", "dispenser", "teleporter"
 WEIGHTS = { [SOLDIER] = 1, [MEDIC] = 1, [TURRET] = 3, [DISPENSER] = 2, [TELEPORTER] = 1 }
@@ -34,74 +34,74 @@ LOSS_WEIGHT = 1
 local Intel_ = {}
 Intel_.__index = Intel_
 
-function New()
-	return setmetatable({ seen = {}, arrivals = {}, losses = {} }, Intel_)
+function New ()
+	return setmetatable ({ seen = {}, arrivals = {}, losses = {} }, Intel_)
 end
 
-local function Push(lists, room, value)
-	local list = lists[room]
+local function Push (lists, room, value)
+	local list = lists [room]
 	if not list then
 		list = {}
-		lists[room] = list
+		lists [room] = list
 	end
-	list[#list + 1] = value
+	list [#list + 1] = value
 end
 
-function Intel_:Sight(room, kind, subject, now)
-	if not WEIGHTS[kind] then error("no enemy kind " .. tostring(kind), 2) end
-	local last = self.seen[subject]
-	if not last or last.room ~= room then Push(self.arrivals, room, now) end
-	self.seen[subject] = { room = room, kind = kind, at = now }
+function Intel_:Sight (room, kind, subject, now)
+	if not WEIGHTS [kind] then error ("no enemy kind " .. tostring (kind), 2) end
+	local last = self.seen [subject]
+	if not last or last.room ~= room then Push (self.arrivals, room, now) end
+	self.seen [subject] = { room = room, kind = kind, at = now }
 end
 
-function Intel_:Loss(room, now)
-	Push(self.losses, room, now)
+function Intel_:Loss (room, now)
+	Push (self.losses, room, now)
 end
 
-function Intel_:Gone(subject)
-	self.seen[subject] = nil
+function Intel_:Gone (subject)
+	self.seen [subject] = nil
 end
 
-local function Memory(kind)
-	return SUPPORT[kind] and SUPPORT_MEMORY or GUARD_MEMORY
+local function Memory (kind)
+	return SUPPORT [kind] and SUPPORT_MEMORY or GUARD_MEMORY
 end
 
 -- How many of a room's times (appended in order) are within memory; the
 -- older ones are dropped, so the lists stay short.
-local function Recent(list, now, memory)
+local function Recent (list, now, memory)
 	if not list then return 0 end
 	local first = 1
-	while list[first] and now - list[first] > memory do first = first + 1 end
+	while list [first] and now - list [first] > memory do first = first + 1 end
 	if first > 1 then
 		local n = #list
-		for i = first, n do list[i - first + 1] = list[i] end
-		for i = n - first + 2, n do list[i] = nil end
+		for i = first, n do list [i - first + 1] = list [i] end
+		for i = n - first + 2, n do list [i] = nil end
 	end
 	return #list
 end
 
-function Intel_:Guarded(room, now)
+function Intel_:Guarded (room, now)
 	local strength = 0
-	for _, sight in pairs(self.seen) do
-		if sight.room == room and now - sight.at <= Memory(sight.kind) then strength = strength + WEIGHTS[sight.kind] end
+	for _, sight in pairs (self.seen) do
+		if sight.room == room and now - sight.at <= Memory (sight.kind) then strength = strength + WEIGHTS [sight.kind] end
 	end
-	return strength + LOSS_WEIGHT * Recent(self.losses[room], now, GUARD_MEMORY)
+	return strength + LOSS_WEIGHT * Recent (self.losses [room], now, GUARD_MEMORY)
 end
 
-function Intel_:Traffic(room, now)
-	return Recent(self.arrivals[room], now, TRAFFIC_MEMORY)
+function Intel_:Traffic (room, now)
+	return Recent (self.arrivals [room], now, TRAFFIC_MEMORY)
 end
 
-function Intel_:SupportBases(now)
+function Intel_:SupportBases (now)
 	local strength = {}
-	for _, sight in pairs(self.seen) do
-		if SUPPORT[sight.kind] and now - sight.at <= SUPPORT_MEMORY then
-			strength[sight.room] = (strength[sight.room] or 0) + WEIGHTS[sight.kind]
+	for _, sight in pairs (self.seen) do
+		if SUPPORT [sight.kind] and now - sight.at <= SUPPORT_MEMORY then
+			strength [sight.room] = (strength [sight.room] or 0) + WEIGHTS [sight.kind]
 		end
 	end
 	local bases = {}
-	for room, s in pairs(strength) do bases[#bases + 1] = { room = room, strength = s } end
-	sort(bases, function(a, b)
+	for room, s in pairs (strength) do bases [#bases + 1] = { room = room, strength = s } end
+	sort (bases, function (a, b)
 		if a.strength ~= b.strength then return a.strength > b.strength end
 		return a.room < b.room
 	end)

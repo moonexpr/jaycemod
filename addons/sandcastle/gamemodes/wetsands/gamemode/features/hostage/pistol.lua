@@ -13,70 +13,70 @@
 local error, ipairs, pairs, require, setmetatable = error, ipairs, pairs, require, setmetatable
 local Weapons = nextsoldier.body.weapons
 local Geometry = math.geometry
-local Rescue = require("features.hostage.model")
-module(...)
+local Rescue = require ("features.hostage.model")
+module (...)
 
 CLASS = "weapon_pistol"
 RELOAD = 4
 -- A hostage this near a pistol lying takes it up.
 PICKUP_RANGE = 40
 
-STATS = (function()
+STATS = (function ()
 	local spec = {}
-	for key, value in pairs(Weapons.STATS[CLASS]) do spec[key] = value end
+	for key, value in pairs (Weapons.STATS [CLASS]) do spec [key] = value end
 	spec.reload = RELOAD
-	return Weapons.Stats(spec)
-end)()
+	return Weapons.Stats (spec)
+end) ()
 
 local Pistol = {}
 Pistol.__index = Pistol
 
-local function Made(holder, lying) return setmetatable({ holder = holder, lying = lying }, Pistol) end
+local function Made (holder, lying) return setmetatable ({ holder = holder, lying = lying }, Pistol) end
 
 -- The pistol in the hand of one of ids (a list of hostage ids), drawn by
 -- randomInt(low, high); nil when there are no hostages.
-function Arm(ids, randomInt)
+function Arm (ids, randomInt)
 	if #ids == 0 then return nil end
-	return Made(ids[randomInt(1, #ids)], nil)
+	return Made (ids [randomInt (1, #ids)], nil)
 end
 
 -- Who holds it, or nil while it lies.
-function Pistol:Holder() return self.holder end
+function Pistol:Holder () return self.holder end
 
 -- Where it lies ({ x, y, z }), or nil while held.
-function Pistol:Lying() return self.lying end
+function Pistol:Lying () return self.lying end
 
 -- Its holder died at pos.
-function Pistol:Drop(pos)
-	if not self.holder then error("a pistol lying is not dropped", 2) end
-	return Made(nil, pos)
+function Pistol:Drop (pos)
+	if not self.holder then error ("a pistol lying is not dropped", 2) end
+	return Made (nil, pos)
 end
 
 -- A hostage takes it up.
-function Pistol:PickUp(id)
-	if not self.lying then error("a pistol held is not taken up", 2) end
-	return Made(id, nil)
+function Pistol:PickUp (id)
+	if not self.lying then error ("a pistol held is not taken up", 2) end
+	return Made (id, nil)
 end
 
 -- The hostages of round (features.hostage.model's) who rush for it: while it
 -- lies, each still held or following.
-function Pistol:Rushers(round)
+function Pistol:Rushers (round)
 	local ids = {}
 	if not self.lying then return ids end
-	for _, id in ipairs(round.ids) do
-		local state = round:StateOf(id)
-		if state == Rescue.HELD or state == Rescue.FOLLOWING then ids[#ids + 1] = id end
+	for _, id in ipairs (round.ids) do
+		local state = round:StateOf (id)
+		if state == Rescue.HELD or state == Rescue.FOLLOWING then ids [#ids + 1] = id end
 	end
 	return ids
 end
 
 -- Of positions (id -> { x, y, z }), the nearest within PICKUP_RANGE of the
 -- pistol lying, or nil.
-function Pistol:Claimant(positions)
+function Pistol:Claimant (positions)
 	if not self.lying then return nil end
 	local best, bestDistance = nil, PICKUP_RANGE
-	for id, pos in pairs(positions) do
-		local distance = Geometry.Distance(pos, self.lying)
+	for id, pos in pairs (positions) do
+		local distance = Geometry.Distance (pos, self.lying)
 		if distance <= bestDistance then best, bestDistance = id, distance end
 	end
 	return best

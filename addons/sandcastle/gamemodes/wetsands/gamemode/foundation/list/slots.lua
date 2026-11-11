@@ -10,59 +10,60 @@
 -- This is the Lua twin, which clients run; a server with native/foundation
 -- has the native one in its place, which keeps this contract.
 local error, setmetatable, tostring = error, setmetatable, tostring
-module(...)
+module (...)
 
 local Slots = {}
 Slots.__index = Slots
 
-function New()
-	return setmetatable({
-		used = {}, -- slot -> true while held
-		free = {}, -- freed slots, the last freed on top
-		high = 0,
-		size = 0,
-	}, Slots)
+function New ()
+	return setmetatable (
+		{
+			used = {}, -- slot -> true while held
+			free = {}, -- freed slots, the last freed on top
+			high = 0,
+			size = 0
+		}, Slots)
 end
 
-local function Alloc(pool)
+local function Alloc (pool)
 	local free = pool.free
-	local slot = free[#free]
+	local slot = free [#free]
 	if slot then
-		free[#free] = nil
+		free [#free] = nil
 	else
 		slot = pool.high + 1
 		pool.high = slot
 	end
-	pool.used[slot] = true
+	pool.used [slot] = true
 	pool.size = pool.size + 1
 	return slot
 end
 
-local function Size(pool)
+local function Size (pool)
 	return pool.size
 end
 
 Slots.__call = Alloc
 Slots.__len = Size
-Slots.__tostring = function(pool) return "slots: " .. pool.size .. " in use of " .. pool.high end
+Slots.__tostring = function (pool) return "slots: " .. pool.size .. " in use of " .. pool.high end
 Slots.Alloc = Alloc
 Slots.Size = Size
 
-function Slots:Free(slot)
-	if not self.used[slot] then error("slot " .. tostring(slot) .. " is not in use", 2) end
-	self.used[slot] = nil
-	self.free[#self.free + 1] = slot
+function Slots:Free (slot)
+	if not self.used [slot] then error ("slot " .. tostring (slot) .. " is not in use", 2) end
+	self.used [slot] = nil
+	self.free [#self.free + 1] = slot
 	self.size = self.size - 1
 end
 
-function Slots:InUse(slot)
-	return self.used[slot] == true
+function Slots:InUse (slot)
+	return self.used [slot] == true
 end
 
-function Slots:High()
+function Slots:High ()
 	return self.high
 end
 
-function Slots:Clear()
+function Slots:Clear ()
 	self.used, self.free, self.high, self.size = {}, {}, 0, 0
 end

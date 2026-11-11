@@ -5,7 +5,7 @@
 -- This is the Lua twin, which clients run; a server with native/foundation has
 -- the native one in its place, which keeps this contract.
 local setmetatable = setmetatable
-module(...)
+module (...)
 
 -- IntervalTimer::GetElapsedTime when unstarted.
 INTERVAL_UNSTARTED = 99999.9
@@ -16,23 +16,24 @@ local UNSTARTED = -1
 local Interval = {}
 Interval.__index = Interval
 
-function New(clock)
-	return setmetatable({
-		clock = clock,
-		timestamp = UNSTARTED,
-	}, Interval)
+function New (clock)
+	return setmetatable (
+		{
+			clock = clock,
+			timestamp = UNSTARTED
+		}, Interval)
 end
 
-function Interval:Reset() self.timestamp = self.clock:Now() end
-function Interval:Start() self.timestamp = self.clock:Now() end
-function Interval:Invalidate() self.timestamp = UNSTARTED end
-function Interval:HasStarted() return self.timestamp > 0 end
+function Interval:Reset () self.timestamp = self.clock:Now () end
+function Interval:Start () self.timestamp = self.clock:Now () end
+function Interval:Invalidate () self.timestamp = UNSTARTED end
+function Interval:HasStarted () return self.timestamp > 0 end
 
-function Interval:GetElapsedTime()
-	if self:HasStarted() then return self.clock:Now() - self.timestamp end
+function Interval:GetElapsedTime ()
+	if self:HasStarted () then return self.clock:Now () - self.timestamp end
 	return INTERVAL_UNSTARTED
 end
 
 -- The names keep util_shared.h's "Then".
-function Interval:IsLessThen(duration) return self.clock:Now() - self.timestamp < duration end
-function Interval:IsGreaterThen(duration) return self.clock:Now() - self.timestamp > duration end
+function Interval:IsLessThen (duration) return self.clock:Now () - self.timestamp < duration end
+function Interval:IsGreaterThen (duration) return self.clock:Now () - self.timestamp > duration end

@@ -11,7 +11,7 @@
 -- (ws/sv_hits.lua, ws/sh_weapon_balance.lua) applies it to each hit and shot.
 local math = math
 local Scalar = math.scalar
-module(...)
+module (...)
 
 -- damage: a hit's damage, in place of HL2's; cone: the full spread in
 -- degrees; interval: the least seconds between two shots; range: how far
@@ -28,151 +28,168 @@ module(...)
 -- punt.
 RANGE_LONG, RANGE_MEDIUM, RANGE_SHORT = "long", "medium", "short"
 
-WEAPONS = {
-	weapon_crossbow = {
+WEAPONS =
+{
+	weapon_crossbow =
+	{
 		damage = 50,
 		range = RANGE_MEDIUM,
 		headshotCrit = false,
 		knockback = 1400,
 		headshotKnockback = 1.5,
-		lift = 0.3,
+		lift = 0.3
 	},
-	weapon_pistol = {
+	weapon_pistol =
+	{
 		damage = 18,
 		range = RANGE_LONG,
 		cone = 0.5,
-		interval = 0.3,
+		interval = 0.3
 	},
-	weapon_357 = {
+	weapon_357 =
+	{
 		damage = 75,
 		range = RANGE_LONG,
 		cone = 0,
-		interval = 1.0,
+		interval = 1.0
 	},
 	weapon_smg1 = { range = RANGE_MEDIUM },
 	weapon_ar2 = { range = RANGE_MEDIUM },
-	weapon_shotgun = {
+	weapon_shotgun =
+	{
 		range = RANGE_SHORT,
-		closeCrits = true,
+		closeCrits = true
 	},
-	weapon_crowbar = {
+	weapon_crowbar =
+	{
 		damage = 20,
 		interval = 2.0,
 		pushback = 100,
-		lift = .1,
+		lift = .1
 	},
-	weapon_stunstick = {
+	weapon_stunstick =
+	{
 		damage = 20,
 		interval = 2.0,
 		pushback = 100,
-		lift = .1,
+		lift = .1
 	},
-	weapon_frag = { 
+	weapon_frag =
+	{
 		blast = 175,
 		knockback = 1400,
 		lift = 1
 	},
-	weapon_slam = { 
+	weapon_slam =
+	{
 		blast = 200,
 		knockback = 1400,
 		lift = 1
 	},
-	weapon_rpg = { 
+	weapon_rpg =
+	{
 		blast = 75,
 		knockback = 1400,
 		lift = 1
-	},
+	}
 }
 
 -- The gravity gun's punt (CWeaponPhysCannon::PuntNonVPhysics): HL2 hits a
 -- character for 1 (DMG_CRUSH | DMG_PHYSGUN), pushing it along a unit
 -- vector; here PUNT_THROW times the crowbar's push.
 PUNT_THROW = 50
-WEAPONS.weapon_physcannon = {
+WEAPONS.weapon_physcannon =
+{
 	damage = 10,
 	knockback = PUNT_THROW * WEAPONS.weapon_crowbar.pushback,
-	lift = 0.2,
+	lift = 0.2
 }
 
 -- The damage of HL2's explosives at their centre (GMod's skill convars:
 -- sk_plr_dmg_fraggrenade, sk_plr_dmg_satchel, sk_plr_dmg_rpg_round), which
 -- a blast's damage is scaled from.
-HL2_BLAST = {
+HL2_BLAST =
+{
 	weapon_frag = 125,
 	weapon_slam = 150,
-	weapon_rpg = 100,
+	weapon_rpg = 100
 }
 
 -- The entity each weapon's hits come from, when not the weapon itself.
-INFLICTORS = {
+INFLICTORS =
+{
 	crossbow_bolt = "weapon_crossbow",
 	npc_grenade_frag = "weapon_frag",
 	npc_satchel = "weapon_slam",
 	npc_tripmine = "weapon_slam",
-	rpg_missile = "weapon_rpg",
+	rpg_missile = "weapon_rpg"
 }
 
 -- By range: full damage to start units, falling to floor of it at finish
 -- and beyond. A long range has none.
-FALLOFF = {
-	[RANGE_MEDIUM] = {
+FALLOFF =
+{
+	[RANGE_MEDIUM] =
+	{
 		start = 1024,
 		finish = 2048,
-		floor = 0.5,
+		floor = 0.5
 	},
-	[RANGE_SHORT] = {
+	[RANGE_SHORT] =
+	{
 		start = 512,
 		finish = 1024,
-		floor = 0.5,
-	},
+		floor = 0.5
+	}
 }
 
 -- No crit at far units or beyond, rising to chance at near and nearer.
-CLOSE_CRITS = {
+CLOSE_CRITS =
+{
 	far = 512,
 	near = 64,
-	chance = 0.4,
+	chance = 0.4
 }
 
 -- The weapon class a hit's inflictor is balanced as, or nil.
-function Weapon(class, cstrike)
-	if WEAPONS[class] then return class end
-	return INFLICTORS[class] or (cstrike and class or nil)
+function Weapon (class, cstrike)
+	if WEAPONS [class] then return class end
+	return INFLICTORS [class] or (cstrike and class or nil)
 end
 
 -- 0 at from, 1 at to, clamped.
-local function Progress(value, from, to)
-	return Scalar.InverseLerp(from, to, value)
+local function Progress (value, from, to)
+	return Scalar.InverseLerp (from, to, value)
 end
 
 -- The fraction of its damage a bullet keeps at distance; all of it for a
 -- long range.
-local function Falloff(range, distance)
-	local curve = FALLOFF[range]
+local function Falloff (range, distance)
+	local curve = FALLOFF [range]
 	if not curve then return 1 end
-	return 1 + (curve.floor - 1) * Progress(distance, curve.start, curve.finish)
+	return 1 + (curve.floor - 1) * Progress (distance, curve.start, curve.finish)
 end
 
-local function CritChance(distance)
-	return CLOSE_CRITS.chance * Progress(distance, CLOSE_CRITS.far, CLOSE_CRITS.near)
+local function CritChance (distance)
+	return CLOSE_CRITS.chance * Progress (distance, CLOSE_CRITS.far, CLOSE_CRITS.near)
 end
 
 -- A hit by class (a weapon class or nil): hit = { damage (HL2's), bullet
 -- (a bullet's), blast (an explosion's), punt (the gravity gun's), distance (from the attacker),
 -- headshot, roll (in [0, 1), drawn by the caller) } -> its damage, whether
 -- its headshot counts, and whether it is a crit by distance.
-function Shot(class, hit)
+function Shot (class, hit)
 	if hit.cstrike then return hit.damage, false, false end
-	local weapon = WEAPONS[class]
+	local weapon = WEAPONS [class]
 	if not weapon then return hit.damage, hit.headshot, false end
 	local damage = hit.damage
-	if hit.blast and weapon.blast then damage = damage * weapon.blast / HL2_BLAST[class] end
+	if hit.blast and weapon.blast then damage = damage * weapon.blast / HL2_BLAST [class] end
 	local crit = false
 	if hit.punt then damage = weapon.damage or damage end
 	if hit.bullet then
 		damage = weapon.damage or damage
-		damage = damage * Falloff(weapon.range, hit.distance)
-		crit = weapon.closeCrits == true and hit.roll < CritChance(hit.distance)
+		damage = damage * Falloff (weapon.range, hit.distance)
+		crit = weapon.closeCrits == true and hit.roll < CritChance (hit.distance)
 	end
 	return damage, hit.headshot and weapon.headshotCrit ~= false, crit
 end
@@ -182,33 +199,36 @@ end
 -- for a weapon that does not knock back.
 -- excess: the damage the hit could not deal (Cap), which pushes and
 -- staggers by OVERFLOW; the stronger of that and the weapon's own counts.
-function Knockback(class, headshot, excess)
-	local weapon = WEAPONS[class]
+function Knockback (class, headshot, excess)
+	local weapon = WEAPONS [class]
 	local own = nil
 	if weapon and weapon.knockback then
 		local speed = weapon.knockback
 		if headshot and weapon.headshotKnockback then speed = speed * weapon.headshotKnockback end
-		own = {
+		own =
+		{
 			speed = speed,
 			lift = speed * weapon.lift,
 			stagger = weapon.stagger,
-			slow = weapon.staggerSlow,
+			slow = weapon.staggerSlow
 		}
 	end
 	if not excess or excess <= 0 then return own end
-	local speed = math.min(excess * OVERFLOW.speed, OVERFLOW.maxSpeed)
-	local over = {
+	local speed = math.min (excess * OVERFLOW.speed, OVERFLOW.maxSpeed)
+	local over =
+	{
 		speed = speed,
 		lift = speed * OVERFLOW.lift,
-		stagger = math.min(excess * OVERFLOW.stagger, OVERFLOW.maxStagger),
-		slow = OVERFLOW.slow,
+		stagger = math.min (excess * OVERFLOW.stagger, OVERFLOW.maxStagger),
+		slow = OVERFLOW.slow
 	}
 	if own == nil then return over end
-	return {
-		speed = math.max(own.speed, over.speed),
-		lift = math.max(own.lift, over.lift),
-		stagger = math.max(own.stagger or 0, over.stagger),
-		slow = math.max(own.slow or 0, over.slow),
+	return
+	{
+		speed = math.max (own.speed, over.speed),
+		lift = math.max (own.lift, over.lift),
+		stagger = math.max (own.stagger or 0, over.stagger),
+		slow = math.max (own.slow or 0, over.slow)
 	}
 end
 
@@ -221,48 +241,49 @@ HIT_CAP = 0.8
 
 -- The excess's push: speed per point, up to maxSpeed, lifted by lift of
 -- it; its stagger: seconds per point, up to maxStagger, slowed by slow.
-OVERFLOW = {
+OVERFLOW =
+{
 	speed = 6,
 	maxSpeed = 600,
 	lift = 0.25,
 	stagger = 0.008,
 	maxStagger = 0.6,
-	slow = 0.5,
+	slow = 0.5
 }
 
-function Cap(damage, dealt, maxHealth, skill)
+function Cap (damage, dealt, maxHealth, skill)
 	if skill then return damage, 0 end
-	local room = math.max(0, HIT_CAP * maxHealth - dealt)
-	local hurt = math.min(damage, room)
+	local room = math.max (0, HIT_CAP * maxHealth - dealt)
+	local hurt = math.min (damage, room)
 	return hurt, damage - hurt
 end
 
 -- When class may fire after a shot at firedAt, or nil when its rate is the
 -- engine's.
-function NextShot(class, firedAt)
-	local weapon = WEAPONS[class]
+function NextShot (class, firedAt)
+	local weapon = WEAPONS [class]
 	if not weapon or not weapon.interval then return nil end
 	return firedAt + weapon.interval
 end
 
 -- Whether class may fire at now, its last shot at firedAt (nil: never).
-function CanFire(class, firedAt, now)
+function CanFire (class, firedAt, now)
 	if firedAt == nil then return true end
-	local next = NextShot(class, firedAt)
+	local next = NextShot (class, firedAt)
 	return next == nil or now >= next
 end
 
 -- A bullet's spread (FireBullets' Spread, the sine of half the cone), or
 -- nil when it is the engine's.
-function Spread(class)
-	local weapon = WEAPONS[class]
+function Spread (class)
+	local weapon = WEAPONS [class]
 	if not weapon or not weapon.cone then return nil end
-	return math.sin(math.rad(weapon.cone / 2))
+	return math.sin (math.rad (weapon.cone / 2))
 end
 
 -- The damage the Store shows for class, HL2's being skill.
-function Damage(class, skill)
-	local weapon = WEAPONS[class]
+function Damage (class, skill)
+	local weapon = WEAPONS [class]
 	if not weapon then return skill end
 	return weapon.damage or weapon.blast or skill
 end

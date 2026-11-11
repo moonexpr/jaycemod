@@ -14,25 +14,25 @@
 --   (true or false, nil to leave it), then the higher priority, then the
 --   nearer
 local error, ipairs, type = error, ipairs, type
-module("nextsoldier.behavior.intention")
+module ("nextsoldier.behavior.intention")
 
 CHASE, AVOID, HOLD = "chase", "avoid", "hold"
 MELEE, RANGED = "melee", "ranged"
 
-function Ranges(spec)
-	for _, key in ipairs({ "reach", "avoid", "range", "melee" }) do
-		if type(spec[key]) ~= "number" then error("ranges need a number " .. key, 2) end
+function Ranges (spec)
+	for _, key in ipairs ({ "reach", "avoid", "range", "melee" }) do
+		if type (spec [key]) ~= "number" then error ("ranges need a number " .. key, 2) end
 	end
 	return { reach = spec.reach, avoid = spec.avoid, range = spec.range, melee = spec.melee }
 end
 
-function Stage(distance, ranges)
+function Stage (distance, ranges)
 	if distance > ranges.reach then return CHASE end
 	if distance < ranges.avoid then return AVOID end
 	return HOLD
 end
 
-function Attack(distance, ranges, visible, melee)
+function Attack (distance, ranges, visible, melee)
 	if not visible then return nil end
 	if melee then
 		if distance <= ranges.melee then return MELEE end
@@ -42,10 +42,10 @@ function Attack(distance, ranges, visible, melee)
 	return nil
 end
 
-function Better(a, b, ask, priorityOf, distanceOf)
-	local answer = ask(a, b)
+function Better (a, b, ask, priorityOf, distanceOf)
+	local answer = ask (a, b)
 	if answer ~= nil then return answer end
-	local pa, pb = priorityOf(a), priorityOf(b)
+	local pa, pb = priorityOf (a), priorityOf (b)
 	if pa ~= pb then return pa > pb end
-	return distanceOf(a) < distanceOf(b)
+	return distanceOf (a) < distanceOf (b)
 end

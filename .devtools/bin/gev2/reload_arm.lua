@@ -7,36 +7,36 @@ local NAME = "reload_arm"
 WS_GEV2 = WS_GEV2 or { log = {} }
 local G = WS_GEV2
 
-local function Log(...)
-	local parts = { string.format("%.3f", SysTime()) }
-	for i = 1, select("#", ...) do parts[#parts + 1] = tostring(select(i, ...)) end
-	G.log[#G.log + 1] = table.concat(parts, " | ")
+local function Log (...)
+	local parts = { string.format ("%.3f", SysTime ()) }
+	for i = 1, select ("#", ...) do parts [#parts + 1] = tostring (select (i, ...)) end
+	G.log [#G.log + 1] = table.concat (parts, " | ")
 end
 G.Log = Log
 
-local function Caller(level)
-	local info = debug.getinfo(level, "Sl")
-	return info and (info.source .. ":" .. tostring(info.currentline)) or "?"
+local function Caller (level)
+	local info = debug.getinfo (level, "Sl")
+	return info and (info.source .. ":" .. tostring (info.currentline)) or "?"
 end
 
-hook.Add("OnReloaded", "ws_tests_gev2", function()
-	Log("hook OnReloaded", "GAMEMODE.FolderName=" .. tostring(GAMEMODE and GAMEMODE.FolderName))
+hook.Add ("OnReloaded", "ws_tests_gev2", function ()
+	Log ("hook OnReloaded", "GAMEMODE.FolderName=" .. tostring (GAMEMODE and GAMEMODE.FolderName))
 end)
 
-local function Wrap(name)
-	if G["orig_" .. name] then return end
-	local orig = _G[name]
-	G["orig_" .. name] = orig
-	_G[name] = function(path, ...)
-		Log(name, tostring(path), "caller=" .. Caller(3))
-		return orig(path, ...)
+local function Wrap (name)
+	if G ["orig_" .. name] then return end
+	local orig = _G [name]
+	G ["orig_" .. name] = orig
+	_G [name] = function (path, ...)
+		Log (name, tostring (path), "caller=" .. Caller (3))
+		return orig (path, ...)
 	end
 end
-Wrap("AddCSLuaFile")
-Wrap("include")
-Wrap("CompileFile")
+Wrap ("AddCSLuaFile")
+Wrap ("include")
+Wrap ("CompileFile")
 
-Log("armed")
-file.CreateDir("ws_tests/gev2/out")
-file.Write("ws_tests/gev2/out/" .. NAME .. ".txt", "armed at " .. SysTime() .. "\n")
-print("ws_tests: gev2 " .. NAME .. " done")
+Log ("armed")
+file.CreateDir ("ws_tests/gev2/out")
+file.Write ("ws_tests/gev2/out/" .. NAME .. ".txt", "armed at " .. SysTime () .. "\n")
+print ("ws_tests: gev2 " .. NAME .. " done")

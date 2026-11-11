@@ -18,13 +18,14 @@
 local P = gameplay.players
 local Teams = gameplay.teams
 local ipairs = ipairs
-module(...)
+module (...)
 
 local C = P.COND
 
 BODY, WEAPON, OVERHEAD = "body", "weapon", "overhead"
 
-EFFECTS = {
+EFFECTS =
+{
 	-- UpdateCritBoostEffect
 	{
 		name = "crit",
@@ -32,7 +33,7 @@ EFFECTS = {
 		file = "particles/firstperson_weapon_fx.pcf",
 		particle = { red = "critgun_weaponmodel_red", blue = "critgun_weaponmodel_blu" },
 		on = WEAPON,
-		loop = "Weapon_General.CritPower",
+		loop = "Weapon_General.CritPower"
 	},
 	-- OnAddBurning, and C_TFRagdoll's burning corpse
 	{
@@ -44,7 +45,7 @@ EFFECTS = {
 		thirdPersonOnly = true,
 		overlay = "effects/imcookin", -- TF_SCREEN_OVERLAY_MATERIAL_BURNING
 		corpse = "burningplayer_corpse",
-		ignite = "Fire.Engulf",
+		ignite = "Fire.Engulf"
 	},
 	-- OnAddUrine, OnAddMadMilk
 	{
@@ -53,19 +54,19 @@ EFFECTS = {
 		file = "particles/item_fx.pcf",
 		particle = { any = "peejar_drips" },
 		on = BODY,
-		overlay = "effects/jarate_overlay", -- TF_SCREEN_OVERLAY_MATERIAL_URINE
+		overlay = "effects/jarate_overlay" -- TF_SCREEN_OVERLAY_MATERIAL_URINE
 	},
 	{
 		name = "ghost",
 		conds = { C.HALLOWEEN_GHOST_MODE },
-		overlay = "effects/ghost_overlay",
+		overlay = "effects/ghost_overlay"
 	},
 	{
 		name = "milk",
 		conds = { C.MAD_MILK },
 		file = "particles/item_fx.pcf",
 		particle = { any = "peejar_drips_milk" },
-		on = BODY,
+		on = BODY
 		-- no overlay: OnAddMadMilk's TF_SCREEN_OVERLAY_MATERIAL_MILK is
 		-- commented out in TF2
 	},
@@ -73,7 +74,7 @@ EFFECTS = {
 	{
 		name = "bleeding",
 		conds = { C.BLEEDING },
-		overlay = "effects/bleed_overlay", -- TF_SCREEN_OVERLAY_MATERIAL_BLEED
+		overlay = "effects/bleed_overlay" -- TF_SCREEN_OVERLAY_MATERIAL_BLEED
 	},
 	-- C_TFPlayer::UpdateMarkedForDeathEffect, AddOverheadEffect
 	{
@@ -83,7 +84,7 @@ EFFECTS = {
 		particle = { any = "mark_for_death" },
 		on = OVERHEAD,
 		above = 20,
-		othersOnly = true,
+		othersOnly = true
 	},
 	-- OnAddSpeedBoost
 	{
@@ -91,20 +92,21 @@ EFFECTS = {
 		conds = { C.SPEED_BOOST, C.HALLOWEEN_SPEED_BOOST },
 		file = "particles/soldierbuff.pcf",
 		particle = { any = "speed_boost_trail" },
-		on = BODY,
+		on = BODY
 	},
 	-- OnAddInvulnerable: the uber's material (TF_INVULN_MATERIAL_*)
 	{
 		name = "invulnerable",
 		conds = { C.INVULNERABLE, C.INVULNERABLE_USER_BUFF, C.INVULNERABLE_CARD_EFFECT },
 		material = { red = "models/effects/invulnfx_red", blue = "models/effects/invulnfx_blue" },
-		loop = "TFPlayer.InvulnerableOn",
-	},
+		loop = "TFPlayer.InvulnerableOn"
+	}
 }
 
 -- The conditions the C menu's Conditions toggles on a player or soldier
 -- (ws/sh_condition_menu.lua), in its order.
-TOGGLES = {
+TOGGLES =
+{
 	{ cond = C.CRITBOOSTED, label = "Crit boosted" },
 	{ cond = C.INVULNERABLE, label = "Ubercharged" },
 	{ cond = C.SPEED_BOOST, label = "Speed boost" },
@@ -114,11 +116,11 @@ TOGGLES = {
 	{ cond = C.URINE, label = "Jarate" },
 	{ cond = C.MAD_MILK, label = "Mad Milk" },
 	{ cond = C.BLEEDING, label = "Bleeding" },
-	{ cond = C.MARKED_FOR_DEATH, label = "Marked for death" },
+	{ cond = C.MARKED_FOR_DEATH, label = "Marked for death" }
 }
 
-function Toggle(cond)
-	for _, toggle in ipairs(TOGGLES) do
+function Toggle (cond)
+	for _, toggle in ipairs (TOGGLES) do
 		if toggle.cond == cond then return toggle end
 	end
 	return nil
@@ -133,23 +135,23 @@ PREDICTED = { C.STUNNED }
 NETWORKED = {}
 do
 	local files, conds = {}, {}
-	for _, cond in ipairs(PREDICTED) do
-		conds[cond] = true
-		NETWORKED[#NETWORKED + 1] = cond
+	for _, cond in ipairs (PREDICTED) do
+		conds [cond] = true
+		NETWORKED [#NETWORKED + 1] = cond
 	end
-	for _, toggle in ipairs(TOGGLES) do
-		conds[toggle.cond] = true
-		NETWORKED[#NETWORKED + 1] = toggle.cond
+	for _, toggle in ipairs (TOGGLES) do
+		conds [toggle.cond] = true
+		NETWORKED [#NETWORKED + 1] = toggle.cond
 	end
-	for _, effect in ipairs(EFFECTS) do
-		if effect.file and not files[effect.file] then
-			files[effect.file] = true
-			FILES[#FILES + 1] = effect.file
+	for _, effect in ipairs (EFFECTS) do
+		if effect.file and not files [effect.file] then
+			files [effect.file] = true
+			FILES [#FILES + 1] = effect.file
 		end
-		for _, cond in ipairs(effect.conds) do
-			if not conds[cond] then
-				conds[cond] = true
-				NETWORKED[#NETWORKED + 1] = cond
+		for _, cond in ipairs (effect.conds) do
+			if not conds [cond] then
+				conds [cond] = true
+				NETWORKED [#NETWORKED + 1] = cond
 			end
 		end
 	end
@@ -157,12 +159,12 @@ end
 
 -- The effects showing now; endsOf(cond) is the time cond ends, 0 for one
 -- not held.
-function Shown(endsOf, now)
+function Shown (endsOf, now)
 	local shown = {}
-	for _, effect in ipairs(EFFECTS) do
-		for _, cond in ipairs(effect.conds) do
-			if now < endsOf(cond) then
-				shown[#shown + 1] = effect
+	for _, effect in ipairs (EFFECTS) do
+		for _, cond in ipairs (effect.conds) do
+			if now < endsOf (cond) then
+				shown [#shown + 1] = effect
 				break
 			end
 		end
@@ -171,21 +173,21 @@ function Shown(endsOf, now)
 end
 
 -- The sound of catching cond, or nil.
-function IgniteSound(cond)
-	for _, effect in ipairs(EFFECTS) do
-		for _, held in ipairs(effect.conds) do
+function IgniteSound (cond)
+	for _, effect in ipairs (EFFECTS) do
+		for _, held in ipairs (effect.conds) do
 			if held == cond and effect.ignite then return effect.ignite end
 		end
 	end
 	return nil
 end
 
-local function ByTeam(choices, team)
+local function ByTeam (choices, team)
 	if not choices then return nil end
 	if choices.any then return choices.any end
 	return team == Teams.BLUE and choices.blue or choices.red
 end
 
 -- An effect's particle and material for team: BLU's, else RED's.
-function Particle(effect, team) return ByTeam(effect.particle, team) end
-function Material(effect, team) return ByTeam(effect.material, team) end
+function Particle (effect, team) return ByTeam (effect.particle, team) end
+function Material (effect, team) return ByTeam (effect.material, team) end

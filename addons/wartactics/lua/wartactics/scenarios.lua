@@ -50,58 +50,61 @@
 --     compiled:Entries() -> the entries, highest priority first, then by name
 --   Compiled entries and the compiled structure refuse any change.
 local error, ipairs, pairs, require, setmetatable, sort, tostring, type =
-	error, ipairs, pairs, require, setmetatable, table.sort, tostring, type
-module(...)
+error, ipairs, pairs, require, setmetatable, table.sort, tostring, type
+module (...)
 
 FREEFORM_PRIORITY, MODE_PRIORITY = 0, 10
 
 local Registry = {}
 Registry.__index = Registry
 
-function New()
-	return setmetatable({ specs = {} }, Registry)
+function New ()
+	return setmetatable ({ specs = {} }, Registry)
 end
 
-local function Check(ok, why)
-	if not ok then error("a scenario spec " .. why, 3) end
+local function Check (ok, why)
+	if not ok then error ("a scenario spec " .. why, 3) end
 end
 
-function Registry:Register(spec)
-	Check(type(spec) == "table", "is a table")
-	Check(type(spec.name) == "string" and spec.name ~= "", "needs a name")
-	Check(type(spec.priority) == "number", "needs a number priority")
-	Check(spec.mode == nil or type(spec.mode) == "string", "names its mode by the rounds mode's NAME")
-	Check(spec.active == nil or type(spec.active) == "function", "gives its further criteria as active(context)")
-	Check(type(spec.scenario) == "table" or type(spec.scenario) == "string", "needs its Scenario class or module")
-	Check(spec.monitor == nil or (type(spec.monitor) == "string" and spec.monitor ~= ""),
+function Registry:Register (spec)
+	Check (type (spec) == "table", "is a table")
+	Check (type (spec.name) == "string" and spec.name ~= "", "needs a name")
+	Check (type (spec.priority) == "number", "needs a number priority")
+	Check (spec.mode == nil or type (spec.mode) == "string", "names its mode by the rounds mode's NAME")
+	Check (spec.active == nil or type (spec.active) == "function", "gives its further criteria as active(context)")
+	Check (type (spec.scenario) == "table" or type (spec.scenario) == "string", "needs its Scenario class or module")
+	Check (spec.monitor == nil or (type (spec.monitor) == "string" and spec.monitor ~= ""),
 		"names its monitor as it is registered with NextSoldier")
-	Check(spec.behaviors == nil or type(spec.behaviors) == "table", "lists the behaviours it relies on")
+	Check (spec.behaviors == nil or type (spec.behaviors) == "table", "lists the behaviours it relies on")
 	local behaviors = {}
-	for i, name in ipairs(spec.behaviors or {}) do
-		Check(type(name) == "string" and name ~= "", "names each behaviour it relies on")
-		behaviors[i] = name
+	for i, name in ipairs (spec.behaviors or {}) do
+		Check (type (name) == "string" and name ~= "", "names each behaviour it relies on")
+		behaviors [i] = name
 	end
-	self.specs[spec.name] = {
+	self.specs [spec.name] =
+	{
 		name = spec.name,
 		priority = spec.priority,
 		mode = spec.mode,
 		active = spec.active,
 		scenario = spec.scenario,
 		monitor = spec.monitor,
-		behaviors = behaviors,
+		behaviors = behaviors
 	}
 end
 
 -- A read-only view of data: a key set on it is refused, naming what.
-local function Frozen(data, what)
-	return setmetatable({}, {
-		__index = data,
-		__newindex = function(_, key) error(what .. " is compiled: " .. tostring(key) .. " cannot be set", 2) end,
-		__metatable = what,
-	})
+local function Frozen (data, what)
+	return setmetatable ({},
+		{
+			__index = data,
+			__newindex = function (_, key) error (what .. " is compiled: " .. tostring (key) .. " cannot be set", 2) end,
+			__metatable = what
+		}
+	)
 end
 
-local function Ordered(a, b)
+local function Ordered (a, b)
 	if a.priority ~= b.priority then return a.priority > b.priority end
 	return a.name < b.name
 end
@@ -110,71 +113,71 @@ local Compiled = {}
 Compiled.__index = Compiled
 
 -- An entry's behaviours, each one NextSoldier was given, else refused.
-local function Given(spec, behaviors)
-	if spec.monitor and not behaviors:Has(spec.monitor) then
-		error("scenario " .. spec.name .. "'s monitor " .. spec.monitor .. " is no behaviour registered with NextSoldier", 3)
+local function Given (spec, behaviors)
+	if spec.monitor and not behaviors:Has (spec.monitor) then
+		error ("scenario " .. spec.name .. "'s monitor " .. spec.monitor .. " is no behaviour registered with NextSoldier", 3)
 	end
-	for _, name in ipairs(spec.behaviors) do
-		if not behaviors:Has(name) then
-			error("scenario " .. spec.name .. " relies on " .. name .. ", no behaviour registered with NextSoldier", 3)
+	for _, name in ipairs (spec.behaviors) do
+		if not behaviors:Has (name) then
+			error ("scenario " .. spec.name .. " relies on " .. name .. ", no behaviour registered with NextSoldier", 3)
 		end
 	end
 end
 
-function Registry:Compile(behaviors)
+function Registry:Compile (behaviors)
 	local order = {}
-	for _, spec in pairs(self.specs) do
-		Given(spec, behaviors)
-		order[#order + 1] = spec
+	for _, spec in pairs (self.specs) do
+		Given (spec, behaviors)
+		order [#order + 1] = spec
 	end
-	sort(order, Ordered)
+	sort (order, Ordered)
 	local entries, anyMode, byMode = {}, {}, {}
-	for i, spec in ipairs(order) do
-		entries[i] = Frozen(spec, "scenario " .. spec.name)
-		if spec.mode then byMode[spec.mode] = byMode[spec.mode] or {} end
+	for i, spec in ipairs (order) do
+		entries [i] = Frozen (spec, "scenario " .. spec.name)
+		if spec.mode then byMode [spec.mode] = byMode [spec.mode] or {} end
 	end
 	-- each mode's list: its own entries and those of any mode, in order
-	for i, spec in ipairs(order) do
+	for i, spec in ipairs (order) do
 		if spec.mode == nil then
-			anyMode[#anyMode + 1] = entries[i]
-			for _, list in pairs(byMode) do list[#list + 1] = entries[i] end
+			anyMode [#anyMode + 1] = entries [i]
+			for _, list in pairs (byMode) do list [#list + 1] = entries [i] end
 		else
-			local list = byMode[spec.mode]
-			list[#list + 1] = entries[i]
+			local list = byMode [spec.mode]
+			list [#list + 1] = entries [i]
 		end
 	end
-	return Frozen(setmetatable({ entries = entries, anyMode = anyMode, byMode = byMode }, Compiled), "the compiled scenarios")
+	return Frozen (setmetatable ({ entries = entries, anyMode = anyMode, byMode = byMode }, Compiled), "the compiled scenarios")
 end
 
-function Compiled:Choose(context)
-	local candidates = self.byMode[context.mode] or self.anyMode
+function Compiled:Choose (context)
+	local candidates = self.byMode [context.mode] or self.anyMode
 	for i = 1, #candidates do
-		local entry = candidates[i]
+		local entry = candidates [i]
 		local active = entry.active
-		if active == nil or active(context) then return entry end
+		if active == nil or active (context) then return entry end
 	end
-	error("no scenario is active for mode " .. tostring(context.mode), 2)
+	error ("no scenario is active for mode " .. tostring (context.mode), 2)
 end
 
 -- A module named is required each time (require keeps it), so a module
 -- loaded again, or put in place, is the one given.
-function Compiled:Class(entry)
+function Compiled:Class (entry)
 	local scenario = entry.scenario
-	if type(scenario) == "string" then return require(scenario).Scenario end
+	if type (scenario) == "string" then return require (scenario).Scenario end
 	return scenario
 end
 
 -- The behaviours an entry relies on, by name: a fresh list.
-function Compiled:Behaviors(entry)
+function Compiled:Behaviors (entry)
 	local copy = {}
-	for i, name in ipairs(entry.behaviors) do copy[i] = name end
+	for i, name in ipairs (entry.behaviors) do copy [i] = name end
 	return copy
 end
 
-function Compiled:Entries()
+function Compiled:Entries ()
 	local copy = {}
-	for i, entry in ipairs(self.entries) do copy[i] = entry end
+	for i, entry in ipairs (self.entries) do copy [i] = entry end
 	return copy
 end
 
-Shared = Shared or New()
+Shared = Shared or New ()

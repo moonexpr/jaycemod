@@ -11,7 +11,7 @@ local Capabilities = gameplay.capabilities
 local Teams = gameplay.teams
 local Transaction = transaction
 local setmetatable = setmetatable
-module(...)
+module (...)
 
 -- The share of its respawn wave a helped team waits (tuning).
 WAVE_SCALE = 0.5
@@ -20,31 +20,31 @@ NO_SCALE = 1
 ALREADY_SUPPORTED = "already supported"
 
 -- What a helped team's soldiers gain.
-local HELPED = Capabilities.None():With(Capabilities.AMBUSH)
-local NONE = Capabilities.None()
+local HELPED = Capabilities.None ():With (Capabilities.AMBUSH)
+local NONE = Capabilities.None ()
 
 local Handicap = {}
 Handicap.__index = Handicap
 
-local function Of(team)
-	return setmetatable({ supported = team }, Handicap)
+local function Of (team)
+	return setmetatable ({ supported = team }, Handicap)
 end
 
-function New()
-	return Of(Teams.UNASSIGNED)
+function New ()
+	return Of (Teams.UNASSIGNED)
 end
 
-function Handicap:Grant(team)
-	if self.supported == team then Transaction.Refuse(ALREADY_SUPPORTED, "That team is already being helped.") end
-	return Of(team)
+function Handicap:Grant (team)
+	if self.supported == team then Transaction.Refuse (ALREADY_SUPPORTED, "That team is already being helped.") end
+	return Of (team)
 end
 
-function Handicap:Supported() return self.supported end
+function Handicap:Supported () return self.supported end
 
-function Handicap:WaveScale(team)
+function Handicap:WaveScale (team)
 	return team == self.supported and WAVE_SCALE or NO_SCALE
 end
 
-function Handicap:Capabilities(team)
+function Handicap:Capabilities (team)
 	return team == self.supported and HELPED or NONE
 end

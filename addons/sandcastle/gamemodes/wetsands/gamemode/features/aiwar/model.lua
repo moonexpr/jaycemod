@@ -10,14 +10,14 @@
 -- of teams with a cart moving on the map.
 local floor, max, min, ipairs, next, pairs, setmetatable, sort, table, type = math.floor, math.max, math.min, ipairs, next, pairs, setmetatable, table.sort, table, type
 local Teams = gameplay.teams
-local STATE = require("games.gameplay.rounds.state")
+local STATE = require ("games.gameplay.rounds.state")
 local Squad = wartactics.squad
 local Lease = world.lease
 local Lanes = wartactics.lanes
 local Hunt = wartactics.hunt
 local Tactics = wartactics.fireteam
 local Capabilities = gameplay.capabilities
-module(...)
+module (...)
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local EnemyOf = Teams.EnemyOf
@@ -27,16 +27,16 @@ local EnemyOf = Teams.EnemyOf
 -- humiliation): its soldiers fear their enemies instead of fighting them.
 ALLY, ENEMY_OF, FEAR, NEUTRAL = "ally", "enemy", "fear", "neutral"
 
-function Relation(team, otherTeam, losers)
+function Relation (team, otherTeam, losers)
 	if team == otherTeam then return ALLY end
-	if EnemyOf(team) ~= otherTeam then return NEUTRAL end
+	if EnemyOf (team) ~= otherTeam then return NEUTRAL end
 	if team == losers then return FEAR end
 	return ENEMY_OF
 end
 
 -- The team humiliated when `winner` wins: its enemy, or none on a stalemate.
-function LosersOf(winner)
-	return EnemyOf(winner)
+function LosersOf (winner)
+	return EnemyOf (winner)
 end
 
 -- Roles: what a soldier is for. features.aiwar.ns_behaviors gives each its goal.
@@ -62,9 +62,9 @@ EXPLORE = "explore"
 -- remote base on the enemy carrier's way home.
 COURIER, CTF_DEFEND, OPERATIVE = "courier", "ctf_defend", "operative"
 
-function MedicsFor(teamSize)
+function MedicsFor (teamSize)
 	if (teamSize or 0) < 4 then return 0 end
-	return max(1, floor(teamSize / 8 + 0.5))
+	return max (1, floor (teamSize / 8 + 0.5))
 end
 
 TEAM_SIZE_DEFAULT = 8
@@ -87,24 +87,27 @@ SQUADS_MIN_DEFAULT = 3
 -- trade (War:SwapFactions).
 COMBINE, RESISTANCE = "combine", "resistance"
 SOLDIER_CLASS = "npc_nextsoldier"
-FACTIONS = {
-	[COMBINE] = {
+FACTIONS =
+{
+	[COMBINE] =
+	{
 		id = COMBINE,
 		name = "Combine",
 		home = BLUE,
 		kinds = { combine = true },
 		recruits = { { kind = "combine" } },
-		medic = { kind = "combine" }, -- in a metrocop's kit
+		medic = { kind = "combine" } -- in a metrocop's kit
 	},
-	[RESISTANCE] = {
+	[RESISTANCE] =
+	{
 		id = RESISTANCE,
 		name = "Resistance",
 		home = RED,
 		-- a kind whose value is a job only ever does that job
 		kinds = { rebel = true, vortigaunt = MEDIC },
 		recruits = { { kind = "rebel" } },
-		medic = { kind = "vortigaunt" },
-	},
+		medic = { kind = "vortigaunt" }
+	}
 }
 
 -- Clients learn the sides from the team the Combine fight for now
@@ -112,50 +115,50 @@ FACTIONS = {
 -- each faction's: faction id -> team.
 SIDES_KEY = "ws.aiwar.combine"
 
-function Sides(combineTeam)
-	return { [COMBINE] = combineTeam, [RESISTANCE] = EnemyOf(combineTeam) }
+function Sides (combineTeam)
+	return { [COMBINE] = combineTeam, [RESISTANCE] = EnemyOf (combineTeam) }
 end
 
 -- The faction whose home is team.
-function HomeFaction(team)
-	for _, faction in pairs(FACTIONS) do
+function HomeFaction (team)
+	for _, faction in pairs (FACTIONS) do
 		if faction.home == team then return faction end
 	end
 	return nil
 end
 
 -- The job a kind only ever does (the vortigaunt heals), or nil.
-function FixedRole(kind)
-	for _, faction in pairs(FACTIONS) do
-		local value = faction.kinds[kind]
-		if type(value) == "string" then return value end
+function FixedRole (kind)
+	for _, faction in pairs (FACTIONS) do
+		local value = faction.kinds [kind]
+		if type (value) == "string" then return value end
 	end
 	return nil
 end
 
 -- The faction a kind of soldier belongs to, or nil for a kind in none.
-function FactionOf(kind)
-	for _, faction in pairs(FACTIONS) do
-		if faction.kinds[kind] then return faction end
+function FactionOf (kind)
+	for _, faction in pairs (FACTIONS) do
+		if faction.kinds [kind] then return faction end
 	end
 	return nil
 end
 
 -- The home team of an NPC class's faction, or nil for a class in none
 -- (in a war, War:FactionTeam: the team it fights for now).
-function FactionTeam(class)
-	local faction = FactionOf(class)
+function FactionTeam (class)
+	local faction = FactionOf (class)
 	return faction and faction.home or nil
 end
 
 -- Whether winner won the round as its defender: it held until the time
 -- limit (defendedTimeLimit: WINREASON.DEFEND_UNTIL_TIME_LIMIT), or, on
 -- payload, it had no cart and the losers had one. carts: team -> cart.
-function DefenderWon(winner, defendedTimeLimit, carts)
-	local loser = EnemyOf(winner)
+function DefenderWon (winner, defendedTimeLimit, carts)
+	local loser = EnemyOf (winner)
 	if not loser then return false end
 	if defendedTimeLimit then return true end
-	return carts[winner] == nil and carts[loser] ~= nil
+	return carts [winner] == nil and carts [loser] ~= nil
 end
 
 -- Stances: how a team splits its soldiers between roles, as integer
@@ -180,24 +183,24 @@ end
 DEFENSE_EVEN, DEFENSE_LEAD, DEFENSE_CLOSE = 0.5, 1.5, 0.2
 DEFENSE_MIN, DEFENSE_MAX = 0.2, 0.8
 
-local function Info(cart) return type(cart) == "table" and cart or {} end
+local function Info (cart) return type (cart) == "table" and cart or {} end
 
 -- The team's defense share, in tenths (0 to 10), or nil with no cart at all.
-function DefenseTenths(team, carts)
-	local own, enemy = carts[team], carts[EnemyOf(team)]
+function DefenseTenths (team, carts)
+	local own, enemy = carts [team], carts [EnemyOf (team)]
 	if not own and not enemy then return nil end
 	if not enemy then return 0 end
 	if not own then return 10 end
-	own, enemy = Info(own), Info(enemy)
+	own, enemy = Info (own), Info (enemy)
 	local share = DEFENSE_EVEN + ((enemy.progress or 0) - (own.progress or 0)) * DEFENSE_LEAD
 	if enemy.close then share = share + DEFENSE_CLOSE end
 	if own.close then share = share - DEFENSE_CLOSE end
-	share = min(DEFENSE_MAX, max(DEFENSE_MIN, share))
-	return floor(share * 10 + 0.5)
+	share = min (DEFENSE_MAX, max (DEFENSE_MIN, share))
+	return floor (share * 10 + 0.5)
 end
 
-function DefenseShare(team, carts)
-	local tenths = DefenseTenths(team, carts)
+function DefenseShare (team, carts)
+	local tenths = DefenseTenths (team, carts)
 	return tenths and tenths / 10 or nil
 end
 
@@ -210,29 +213,30 @@ local RAID_W, SUPPORT_W = 20, 10
 
 local stances = {} -- key -> stance: the same situation, the same table
 
-function Stance(team, carts)
-	local tenths = DefenseTenths(team, carts)
+function Stance (team, carts)
+	local tenths = DefenseTenths (team, carts)
 	if not tenths then return nil end
-	local close = tenths > 0 and Info(carts[EnemyOf(team)]).close == true
+	local close = tenths > 0 and Info (carts [EnemyOf (team)]).close == true
 	local key = tenths .. (close and "c" or "")
-	if stances[key] then return stances[key] end
+	if stances [key] then return stances [key] end
 	local offense, defense = 10 - tenths, tenths
 	local defendW, blockW = DEFEND_W, BLOCK_W
 	if close then defendW, blockW = BLOCK_W, DEFEND_W end
-	local cartWork = {
+	local cartWork =
+	{
 		offense = { { role = PUSH, weight = offense * PUSH_W }, { role = ESCORT, weight = offense * ESCORT_W } },
-		defense = { { role = DEFEND, weight = defense * defendW }, { role = BLOCK, weight = defense * blockW } },
+		defense = { { role = DEFEND, weight = defense * defendW }, { role = BLOCK, weight = defense * blockW } }
 	}
 	local order = tenths >= 5 and { "defense", "offense" } or { "offense", "defense" }
 	local stance = {}
-	for _, side in ipairs(order) do
-		for _, share in ipairs(cartWork[side]) do
-			if share.weight > 0 then stance[#stance + 1] = share end
+	for _, side in ipairs (order) do
+		for _, share in ipairs (cartWork [side]) do
+			if share.weight > 0 then stance [#stance + 1] = share end
 		end
 	end
-	stance[#stance + 1] = { role = RAID, weight = RAID_W }
-	stance[#stance + 1] = { role = SUPPORT, weight = SUPPORT_W }
-	stances[key] = stance
+	stance [#stance + 1] = { role = RAID, weight = RAID_W }
+	stance [#stance + 1] = { role = SUPPORT, weight = SUPPORT_W }
+	stances [key] = stance
 	return stance
 end
 
@@ -241,33 +245,33 @@ end
 -- cart rocking at the edge does not swap the defenders' roles back and forth.
 CLOSE_RANGE, CLOSE_HYSTERESIS = 1024, 384
 
-function CartClose(wasClose, remaining)
+function CartClose (wasClose, remaining)
 	if remaining <= CLOSE_RANGE then return true end
 	return wasClose and remaining <= CLOSE_RANGE + CLOSE_HYSTERESIS or false
 end
 
 -- Whether two stances share their roles (weights aside): a team moving
 -- between them keeps its members' roles where it can.
-local function SameRoles(a, b)
+local function SameRoles (a, b)
 	if #a ~= #b then return false end
 	local roles = {}
-	for _, share in ipairs(a) do roles[share.role] = true end
-	for _, share in ipairs(b) do
-		if not roles[share.role] then return false end
+	for _, share in ipairs (a) do roles [share.role] = true end
+	for _, share in ipairs (b) do
+		if not roles [share.role] then return false end
 	end
 	return true
 end
 
 -- The role most short of its share once one more soldier joins.
-function PickRole(stance, counts)
+function PickRole (stance, counts)
 	local total, sum = 0, 0
-	for _, share in ipairs(stance) do
-		total = total + (counts[share.role] or 0)
+	for _, share in ipairs (stance) do
+		total = total + (counts [share.role] or 0)
 		sum = sum + share.weight
 	end
 	local best, bestDeficit
-	for _, share in ipairs(stance) do
-		local deficit = share.weight * (total + 1) - (counts[share.role] or 0) * sum
+	for _, share in ipairs (stance) do
+		local deficit = share.weight * (total + 1) - (counts [share.role] or 0) * sum
 		if bestDeficit == nil or deficit > bestDeficit then best, bestDeficit = share.role, deficit end
 	end
 	return best
@@ -280,73 +284,82 @@ end
 -- hunt them down knowing what they saw (hunt: wartactics.hunt, TF2's
 -- CTFBotTacticalMonitor "Get the losers!"); a round over with no winner
 -- ends orders.
-PHASES = {
-	waiting = {
+PHASES =
+{
+	waiting =
+	{
 		name = "waiting",
 		reinforce = false,
 		orders = false,
 		hunt = false,
 		everyoneHunts = false,
-		sightAll = false,
+		sightAll = false
 	},
-	frozen = {
+	frozen =
+	{
 		name = "frozen",
 		reinforce = true,
 		orders = false,
 		hunt = false,
 		everyoneHunts = false,
-		sightAll = false,
+		sightAll = false
 	},
-	running = {
+	running =
+	{
 		name = "running",
 		reinforce = true,
 		orders = true,
 		hunt = false,
 		everyoneHunts = false,
-		sightAll = false,
+		sightAll = false
 	},
-	suddenDeath = {
+	suddenDeath =
+	{
 		name = "suddenDeath",
 		reinforce = false,
 		orders = true,
 		hunt = true,
 		everyoneHunts = true,
-		sightAll = true,
+		sightAll = true
 	},
-	humiliation = {
+	humiliation =
+	{
 		name = "humiliation",
 		reinforce = false,
 		orders = true,
 		hunt = true,
 		everyoneHunts = false,
-		sightAll = false,
+		sightAll = false
 	},
-	over = {
+	over =
+	{
 		name = "over",
 		reinforce = false,
 		orders = false,
 		hunt = false,
 		everyoneHunts = false,
-		sightAll = false,
+		sightAll = false
 	},
 	-- the arena round (STALEMATE where it is the round): no respawns, but no
 	-- hunt and no sight of every enemy; the scenario's orders run
-	arena = {
+	arena =
+	{
 		name = "arena",
 		reinforce = false,
 		orders = true,
 		hunt = false,
 		everyoneHunts = false,
-		sightAll = false,
-	},
+		sightAll = false
+	}
 }
 
-local PHASE_OF_STATE = {
+local PHASE_OF_STATE =
+{
 	[STATE.INIT] = PHASES.waiting,
 	[STATE.PREGAME] = PHASES.waiting,
 	[STATE.PREROUND] = PHASES.frozen,
 	[STATE.RND_RUNNING] = PHASES.running,
-	[STATE.STALEMATE] = PHASES.suddenDeath,
+	[STATE.STALEMATE] = PHASES.suddenDeath
 }
 
 -- active: the map runs TF2's rounds (tf_gamerules); without them the war
@@ -354,11 +367,11 @@ local PHASE_OF_STATE = {
 -- (GAME_OVER, whose winners hunt to its music), or nil. stalemateIsRound:
 -- the rounds mode fights its round in STALEMATE (arena), which is then no
 -- sudden death.
-function PhaseOf(active, state, winner, stalemateIsRound)
+function PhaseOf (active, state, winner, stalemateIsRound)
 	if not active then return PHASES.running end
-	if (state == STATE.TEAM_WIN or state == STATE.GAME_OVER) and EnemyOf(winner) then return PHASES.humiliation end
+	if (state == STATE.TEAM_WIN or state == STATE.GAME_OVER) and EnemyOf (winner) then return PHASES.humiliation end
 	if state == STATE.STALEMATE and stalemateIsRound then return PHASES.arena end
-	return PHASE_OF_STATE[state] or PHASES.over
+	return PHASE_OF_STATE [state] or PHASES.over
 end
 
 -------------------------------------------------------------------------------
@@ -367,114 +380,115 @@ end
 War = {}
 War.__index = War
 
-function War.New()
-	return setmetatable({
-		members = {}, -- handle -> member
-		fireTeams = {}, -- every fire team: { team, role, index (per team and role), squad, members = place -> member,
-		-- manual (formed or changed by hand: any size, the war leaves it be), chosen (the leader it was formed for) }
-		autoSquads = true, -- whether the war groups soldiers into fire teams itself (SetAutoSquads)
-		fireTeamSize = FIRE_TEAM_SIZE, -- the most a fire team the war forms holds (SetFireTeamSize)
-		squadsMax = SQUADS_MAX_DEFAULT, -- the most squads a team forms (SetSquadsMax)
-		squadsMin = SQUADS_MIN_DEFAULT, -- the fewest (SetSquadsMin)
-		enlisted = 0, -- members ever enlisted, for their order
-		claims = Lease.New(), -- spots soldiers hold, by wartactics.squad's Key
-		hunt = Hunt.Board.New(), -- the winners' sightings of the losers (wartactics.hunt)
-		stances = {}, -- team -> stance
-		defense = {}, -- team -> its defense share (DefenseShare), or nil
-		drafts = { [RED] = 0, [BLUE] = 0 },
-		sizes = { [RED] = 0, [BLUE] = 0 }, -- team -> its size, as Reinforcements was last given it
-		nextWave = { [RED] = 0, [BLUE] = 0 },
-		factions = { [RED] = HomeFaction(RED), [BLUE] = HomeFaction(BLUE) }, -- team -> the faction fighting for it
-		field = nil,
-		offRoles = OFF_ROLES, -- roles no stance gives (SetOffRoles)
-		onStances = setmetatable({}, { __mode = "k" }), -- stance -> it without them
-		capabilities = {}, -- team -> what its soldiers may use beyond their opponents' (SetCapabilities)
-	}, War)
+function War.New ()
+	return setmetatable (
+		{
+			members = {}, -- handle -> member
+			fireTeams = {}, -- every fire team: { team, role, index (per team and role), squad, members = place -> member,
+			-- manual (formed or changed by hand: any size, the war leaves it be), chosen (the leader it was formed for) }
+			autoSquads = true, -- whether the war groups soldiers into fire teams itself (SetAutoSquads)
+			fireTeamSize = FIRE_TEAM_SIZE, -- the most a fire team the war forms holds (SetFireTeamSize)
+			squadsMax = SQUADS_MAX_DEFAULT, -- the most squads a team forms (SetSquadsMax)
+			squadsMin = SQUADS_MIN_DEFAULT, -- the fewest (SetSquadsMin)
+			enlisted = 0, -- members ever enlisted, for their order
+			claims = Lease.New (), -- spots soldiers hold, by wartactics.squad's Key
+			hunt = Hunt.Board.New (), -- the winners' sightings of the losers (wartactics.hunt)
+			stances = {}, -- team -> stance
+			defense = {}, -- team -> its defense share (DefenseShare), or nil
+			drafts = { [RED] = 0, [BLUE] = 0 },
+			sizes = { [RED] = 0, [BLUE] = 0 }, -- team -> its size, as Reinforcements was last given it
+			nextWave = { [RED] = 0, [BLUE] = 0 },
+			factions = { [RED] = HomeFaction (RED), [BLUE] = HomeFaction (BLUE) }, -- team -> the faction fighting for it
+			field = nil,
+			offRoles = OFF_ROLES, -- roles no stance gives (SetOffRoles)
+			onStances = setmetatable ({}, { __mode = "k" }), -- stance -> it without them
+			capabilities = {} -- team -> what its soldiers may use beyond their opponents' (SetCapabilities)
+		}, War)
 end
 
 -- What a team's soldiers may use beyond their opponents' (games.gameplay.capabilities;
 -- a helped team's, games.gameplay.handicap): held for the AI Commander, which offers
 -- the jobs a capability opens. Until then it changes no behaviour.
-function War:SetCapabilities(team, set)
-	self.capabilities[team] = set
+function War:SetCapabilities (team, set)
+	self.capabilities [team] = set
 end
 
-function War:Capabilities(team)
-	return self.capabilities[team] or Capabilities.None()
+function War:Capabilities (team)
+	return self.capabilities [team] or Capabilities.None ()
 end
 
 -- The faction fighting for team: its home faction to begin with, swapped
 -- when the defenders win (SwapFactions).
-function War:Faction(team)
-	return self.factions[team]
+function War:Faction (team)
+	return self.factions [team]
 end
 
 -- The team faction (an id: COMBINE, RESISTANCE) fights for now.
-function War:TeamOf(faction)
-	for team, f in pairs(self.factions) do
+function War:TeamOf (faction)
+	for team, f in pairs (self.factions) do
 		if f.id == faction then return team end
 	end
 	return nil
 end
 
 -- The team a kind fights for in this war, or nil for a kind in no faction.
-function War:FactionTeam(kind)
-	for team, faction in pairs(self.factions) do
-		if faction.kinds[kind] then return team end
+function War:FactionTeam (kind)
+	for team, faction in pairs (self.factions) do
+		if faction.kinds [kind] then return team end
 	end
 	return nil
 end
 
 -- The defenders won (DefenderWon): the factions trade sides, so the side
 -- that defended attacks next.
-function War:SwapFactions()
-	self.factions[RED], self.factions[BLUE] = self.factions[BLUE], self.factions[RED]
+function War:SwapFactions ()
+	self.factions [RED], self.factions [BLUE] = self.factions [BLUE], self.factions [RED]
 end
 
 -- Every member, oldest first.
-function War:Members()
+function War:Members ()
 	local list = {}
-	for _, member in pairs(self.members) do list[#list + 1] = member end
-	sort(list, function(a, b) return a.seq < b.seq end)
+	for _, member in pairs (self.members) do list [#list + 1] = member end
+	sort (list, function (a, b) return a.seq < b.seq end)
 	return list
 end
 
-function War:Member(handle)
-	return self.members[handle]
+function War:Member (handle)
+	return self.members [handle]
 end
 
 -- The lowest slot no other member of the team has in that role.
-local function FreeSlot(members, team, role, except)
+local function FreeSlot (members, team, role, except)
 	local taken = {}
-	for _, member in pairs(members) do
-		if member ~= except and member.team == team and member.role == role then taken[member.slot] = true end
+	for _, member in pairs (members) do
+		if member ~= except and member.team == team and member.role == role then taken [member.slot] = true end
 	end
 	local slot = 0
-	while taken[slot] do slot = slot + 1 end
+	while taken [slot] do slot = slot + 1 end
 	return slot
 end
 
-local function RoleCounts(members, team, except)
+local function RoleCounts (members, team, except)
 	local counts = {}
-	for _, member in pairs(members) do
+	for _, member in pairs (members) do
 		if member ~= except and member.team == team and member.role then
-			counts[member.role] = (counts[member.role] or 0) + 1
+			counts [member.role] = (counts [member.role] or 0) + 1
 		end
 	end
 	return counts
 end
 
 -- Leaves the member's fire team, which goes when empty.
-function War:LeaveFireTeam(member)
+function War:LeaveFireTeam (member)
 	local fireTeam = member.fireTeam
 	if not fireTeam then return end
-	fireTeam.members[member.place] = nil
+	fireTeam.members [member.place] = nil
 	if fireTeam.leader == member then fireTeam.leader = nil end
 	member.fireTeam, member.place, member.attached, member.host = nil, nil, nil, nil
-	if next(fireTeam.members) == nil then
-		for i, other in ipairs(self.fireTeams) do
+	if next (fireTeam.members) == nil then
+		for i, other in ipairs (self.fireTeams) do
 			if other == fireTeam then
-				table.remove(self.fireTeams, i)
+				table.remove (self.fireTeams, i)
 				break
 			end
 		end
@@ -484,54 +498,55 @@ end
 -- The lowest free place; a fire team the war formed holds its size (the
 -- war's fire team size when it was formed), one formed by hand, or one
 -- taken past its size (over: the squads max reached), any number.
-local function FreePlace(fireTeam, over)
+local function FreePlace (fireTeam, over)
 	local place = 0
-	while fireTeam.members[place] do place = place + 1 end
+	while fireTeam.members [place] do place = place + 1 end
 	if not (fireTeam.manual or over) and place >= fireTeam.size then return nil end
 	return place
 end
 
 -- The lowest index no fire team of the team and role has.
-local function FreeIndex(fireTeams, team, role, except)
+local function FreeIndex (fireTeams, team, role, except)
 	local used = {}
-	for _, fireTeam in ipairs(fireTeams) do
-		if fireTeam ~= except and fireTeam.team == team and fireTeam.role == role then used[fireTeam.index] = true end
+	for _, fireTeam in ipairs (fireTeams) do
+		if fireTeam ~= except and fireTeam.team == team and fireTeam.role == role then used [fireTeam.index] = true end
 	end
 	local index = 0
-	while used[index] do index = index + 1 end
+	while used [index] do index = index + 1 end
 	return index
 end
 
 -- Names the fire team for its team, role and index (its squad).
-local function Index(fireTeams, fireTeam)
-	fireTeam.index = FreeIndex(fireTeams, fireTeam.team, fireTeam.role, fireTeam)
+local function Index (fireTeams, fireTeam)
+	fireTeam.index = FreeIndex (fireTeams, fireTeam.team, fireTeam.role, fireTeam)
 	fireTeam.squad = "ws_aiwar_" .. fireTeam.team .. "_" .. fireTeam.role .. "_" .. fireTeam.index
 end
 
-local function NewFireTeam(war, team, role, manual)
-	local fireTeam = {
+local function NewFireTeam (war, team, role, manual)
+	local fireTeam =
+	{
 		team = team,
 		role = role,
 		members = {},
 		manual = manual,
-		size = war.fireTeamSize,
+		size = war.fireTeamSize
 	}
-	Index(war.fireTeams, fireTeam)
-	war.fireTeams[#war.fireTeams + 1] = fireTeam
+	Index (war.fireTeams, fireTeam)
+	war.fireTeams [#war.fireTeams + 1] = fireTeam
 	return fireTeam
 end
 
-local function Seat(member, fireTeam, over)
-	member.place = FreePlace(fireTeam, over)
+local function Seat (member, fireTeam, over)
+	member.place = FreePlace (fireTeam, over)
 	member.fireTeam = fireTeam
-	fireTeam.members[member.place] = member
+	fireTeam.members [member.place] = member
 end
 
 -- Joins an open fire team the war formed of the member's team and role,
 -- the lowest indexed first, or starts one at the lowest free index.
-local function Size(fireTeam)
+local function Size (fireTeam)
 	local n = 0
-	for _ in pairs(fireTeam.members) do n = n + 1 end
+	for _ in pairs (fireTeam.members) do n = n + 1 end
 	return n
 end
 
@@ -542,126 +557,126 @@ end
 -- formed (the first formed on a tie), so they stay even; with none open,
 -- it starts one below the max, else joins its role's smallest squad beyond
 -- its size, or, its role having none, fights solo.
-function War:JoinFireTeam(member)
+function War:JoinFireTeam (member)
 	local open, smallest, squads = nil, nil, 0
-	for _, fireTeam in ipairs(self.fireTeams) do
+	for _, fireTeam in ipairs (self.fireTeams) do
 		if fireTeam.team == member.team then
 			squads = squads + 1
 			if fireTeam.role == member.role and not fireTeam.manual then
-				if FreePlace(fireTeam) and (not open or Size(fireTeam) < Size(open)
-					or (Size(fireTeam) == Size(open) and fireTeam.index < open.index)) then
-					open = fireTeam
-				end
-				if not smallest or Size(fireTeam) < Size(smallest) then smallest = fireTeam end
+				if FreePlace (fireTeam) and (not open or Size (fireTeam) < Size (open)
+					or (Size (fireTeam) == Size (open) and fireTeam.index < open.index)) then
+						open = fireTeam
+					end
+				if not smallest or Size (fireTeam) < Size (smallest) then smallest = fireTeam end
 			end
 		end
 	end
-	if squads < self.squadsMin then return Seat(member, NewFireTeam(self, member.team, member.role, false)) end
-	if open then return Seat(member, open) end
-	if squads < self.squadsMax then return Seat(member, NewFireTeam(self, member.team, member.role, false)) end
-	if smallest then Seat(member, smallest, true) end
+	if squads < self.squadsMin then return Seat (member, NewFireTeam (self, member.team, member.role, false)) end
+	if open then return Seat (member, open) end
+	if squads < self.squadsMax then return Seat (member, NewFireTeam (self, member.team, member.role, false)) end
+	if smallest then Seat (member, smallest, true) end
 end
 
-function War:SetSquadsMax(n)
+function War:SetSquadsMax (n)
 	self.squadsMax = n
 end
 
-function War:SetSquadsMin(n)
+function War:SetSquadsMin (n)
 	self.squadsMin = n
 end
 
-local function ByPlace(a, b)
+local function ByPlace (a, b)
 	return a.place < b.place
 end
 
 -- The member's fire team's members in place order.
-function War:FireTeamMembers(fireTeam)
+function War:FireTeamMembers (fireTeam)
 	local list = {}
-	for _, member in pairs(fireTeam.members) do list[#list + 1] = member end
-	sort(list, ByPlace)
+	for _, member in pairs (fireTeam.members) do list [#list + 1] = member end
+	sort (list, ByPlace)
 	return list
 end
 
 -- Whether the war leaves the member's job and squad be: given by hand, or
 -- in a squad formed or changed by hand.
-local function Held(member)
+local function Held (member)
 	return member.roleByHand == true or (member.fireTeam ~= nil and member.fireTeam.manual == true)
 end
 
 -- In a fire team of the war's, when the war groups soldiers itself.
-local function Regroup(war, member)
-	if war.autoSquads and member.role and not member.fireTeam then war:JoinFireTeam(member) end
+local function Regroup (war, member)
+	if war.autoSquads and member.role and not member.fireTeam then war:JoinFireTeam (member) end
 end
 
-function War:AssignRole(member)
-	self:LeaveFireTeam(member)
-	local stance = self.stances[member.team]
+function War:AssignRole (member)
+	self:LeaveFireTeam (member)
+	local stance = self.stances [member.team]
 	if member.fixed then
 		member.role = member.fixed
 	else
-		member.role = stance and PickRole(stance, RoleCounts(self.members, member.team, member)) or nil
+		member.role = stance and PickRole (stance, RoleCounts (self.members, member.team, member)) or nil
 	end
-	member.slot = member.role and FreeSlot(self.members, member.team, member.role, member) or 0
-	Regroup(self, member)
+	member.slot = member.role and FreeSlot (self.members, member.team, member.role, member) or 0
+	Regroup (self, member)
 end
 
 -- drafted: spawned by the war (counted against the team's size), rather
 -- than added by a player. fixed: the job it only ever does (MEDIC), or nil.
-function War:Enlist(handle, team, drafted, fixed)
+function War:Enlist (handle, team, drafted, fixed)
 	self.enlisted = self.enlisted + 1
 	local member = { handle = handle, team = team, drafted = drafted, seq = self.enlisted, role = nil, slot = 0, fixed = fixed }
-	self.members[handle] = member
-	self:AssignRole(member)
+	self.members [handle] = member
+	self:AssignRole (member)
 	return member
 end
 
 -- The member fell at pos, by a killer at killerPos (nil when unknown): its
 -- squad investigates (Tactics.ReportDeath) the killer's place, else where
 -- it fell. The caller discharges it.
-function War:Fallen(handle, pos, killerPos, now)
-	local member = self.members[handle]
-	if member and member.fireTeam then Tactics.ReportDeath(member.fireTeam, killerPos or pos, now) end
+function War:Fallen (handle, pos, killerPos, now)
+	local member = self.members [handle]
+	if member and member.fireTeam then Tactics.ReportDeath (member.fireTeam, killerPos or pos, now) end
 end
 
-function War:Discharge(handle)
-	local member = self.members[handle]
+function War:Discharge (handle)
+	local member = self.members [handle]
 	if member then
-		self:LeaveFireTeam(member)
-		self.claims:ReleaseAll(member)
+		self:LeaveFireTeam (member)
+		self.claims:ReleaseAll (member)
 	end
-	self.members[handle] = nil
+	self.members [handle] = nil
 end
 
 -- The member takes another role, in its own fire team of that role.
-function War:ChangeRole(member, role)
-	self:LeaveFireTeam(member)
+function War:ChangeRole (member, role)
+	self:LeaveFireTeam (member)
 	member.role = role
-	member.slot = FreeSlot(self.members, member.team, role, member)
-	Regroup(self, member)
+	member.slot = FreeSlot (self.members, member.team, role, member)
+	Regroup (self, member)
 end
 
 -- Rebalances a team to its stance's shares with as few role changes as
 -- possible: the newest members of the roles over their share take the
 -- roles under theirs.
-function War:Rebalance(team, stance)
+function War:Rebalance (team, stance)
 	local list = {}
-	for _, member in ipairs(self:Members()) do
-		if member.team == team and member.role and not member.fixed and not Held(member) then list[#list + 1] = member end
+	for _, member in ipairs (self:Members ()) do
+		if member.team == team and member.role and not member.fixed and not Held (member) then list [#list + 1] = member end
 	end
 	local target = {}
 	for _ = 1, #list do
-		local role = PickRole(stance, target)
-		target[role] = (target[role] or 0) + 1
+		local role = PickRole (stance, target)
+		target [role] = (target [role] or 0) + 1
 	end
-	local counts = RoleCounts(self.members, team)
+	local counts = RoleCounts (self.members, team)
 	for i = #list, 1, -1 do
-		local member = list[i]
-		if (counts[member.role] or 0) > (target[member.role] or 0) then
-			for _, share in ipairs(stance) do
-				if (counts[share.role] or 0) < (target[share.role] or 0) then
-					counts[member.role] = counts[member.role] - 1
-					counts[share.role] = (counts[share.role] or 0) + 1
-					self:ChangeRole(member, share.role)
+		local member = list [i]
+		if (counts [member.role] or 0) > (target [member.role] or 0) then
+			for _, share in ipairs (stance) do
+				if (counts [share.role] or 0) < (target [share.role] or 0) then
+					counts [member.role] = counts [member.role] - 1
+					counts [share.role] = (counts [share.role] or 0) + 1
+					self:ChangeRole (member, share.role)
 					break
 				end
 			end
@@ -671,32 +686,32 @@ end
 
 -- The team's roles given out again under its stance, from scratch, oldest
 -- first.
-function War:Reassign(team, stance)
-	self.stances[team] = stance
+function War:Reassign (team, stance)
+	self.stances [team] = stance
 	local list = {}
-	for _, member in ipairs(self:Members()) do
-		if member.team == team and not Held(member) then
-			self:LeaveFireTeam(member)
+	for _, member in ipairs (self:Members ()) do
+		if member.team == team and not Held (member) then
+			self:LeaveFireTeam (member)
 			member.role = nil
-			list[#list + 1] = member
+			list [#list + 1] = member
 		end
 	end
-	for _, member in ipairs(list) do self:AssignRole(member) end
+	for _, member in ipairs (list) do self:AssignRole (member) end
 end
 
 -- A team whose stance changes is reassigned: rebalanced when the new
 -- stance has the same roles (a cart nearing its checkpoint), otherwise (a
 -- cart appears or goes) from scratch, oldest first.
-function War:Assign(carts)
-	for _, team in ipairs({ RED, BLUE }) do
-		self.defense[team] = DefenseShare(team, carts)
-		local stance = Stance(team, carts)
-		local old = self.stances[team]
-		if stance ~= old and stance and old and SameRoles(stance, old) then
-			self.stances[team] = stance
-			self:Rebalance(team, stance)
+function War:Assign (carts)
+	for _, team in ipairs ({ RED, BLUE }) do
+		self.defense [team] = DefenseShare (team, carts)
+		local stance = Stance (team, carts)
+		local old = self.stances [team]
+		if stance ~= old and stance and old and SameRoles (stance, old) then
+			self.stances [team] = stance
+			self:Rebalance (team, stance)
 		elseif stance ~= old then
-			self:Reassign(team, stance)
+			self:Reassign (team, stance)
 		end
 	end
 end
@@ -712,45 +727,46 @@ end
 -- and exploring; raiders, assault squads, support and escorts are dropped
 -- from every stance (OnRoles), whatever the scenario asks. A war may switch
 -- off others, or none (SetOffRoles).
-OFF_ROLES = {
+OFF_ROLES =
+{
 	[RAID] = true,
 	[ASSAULT] = true,
 	[SUPPORT] = true,
-	[ESCORT] = true,
+	[ESCORT] = true
 }
 
-function War:SetOffRoles(roles)
+function War:SetOffRoles (roles)
 	self.offRoles = roles
-	self.onStances = setmetatable({}, { __mode = "k" })
+	self.onStances = setmetatable ({}, { __mode = "k" })
 end
 
 -- The stance without the off roles' shares, the same table for the same
 -- stance (AssignStances tells a new stance by identity).
-local function OnRoles(self, stance)
-	local on = self.onStances[stance]
+local function OnRoles (self, stance)
+	local on = self.onStances [stance]
 	if not on then
 		on = {}
-		for _, share in ipairs(stance) do
-			if not self.offRoles[share.role] then on[#on + 1] = share end
+		for _, share in ipairs (stance) do
+			if not self.offRoles [share.role] then on [#on + 1] = share end
 		end
 		-- nothing off: the stance itself
 		if #on == #stance then on = stance end
-		self.onStances[stance] = on
+		self.onStances [stance] = on
 	end
 	return on
 end
 
-function War:AssignStances(stances, defense)
-	for _, team in ipairs({ RED, BLUE }) do
-		local stance = stances[team] and OnRoles(self, stances[team])
+function War:AssignStances (stances, defense)
+	for _, team in ipairs ({ RED, BLUE }) do
+		local stance = stances [team] and OnRoles (self, stances [team])
 		if stance then
-			self.defense[team] = defense[team]
-			local old = self.stances[team]
+			self.defense [team] = defense [team]
+			local old = self.stances [team]
 			if old and stance ~= old then
-				self.stances[team] = stance
-				self:Rebalance(team, stance)
+				self.stances [team] = stance
+				self:Rebalance (team, stance)
 			elseif not old then
-				self:Reassign(team, stance)
+				self:Reassign (team, stance)
 			end
 		end
 	end
@@ -761,45 +777,45 @@ end
 
 -- on: the war groups soldiers into fire teams itself, and groups those in
 -- none now; off: soldiers out of a squad stay out until put in one by hand.
-function War:SetAutoSquads(on)
+function War:SetAutoSquads (on)
 	self.autoSquads = on
-	for _, member in ipairs(self:Members()) do Regroup(self, member) end
+	for _, member in ipairs (self:Members ()) do Regroup (self, member) end
 end
 
 -- Every soldier out of its squad; with automatic squads, grouped afresh.
-function War:DissolveSquads()
-	for _, member in pairs(self.members) do self:LeaveFireTeam(member) end
-	for _, member in ipairs(self:Members()) do Regroup(self, member) end
+function War:DissolveSquads ()
+	for _, member in pairs (self.members) do self:LeaveFireTeam (member) end
+	for _, member in ipairs (self:Members ()) do Regroup (self, member) end
 end
 
 -- A squad by hand, led by `leader`, which leaves its own; returns it.
-function War:FormSquad(leader)
-	self:LeaveFireTeam(leader)
-	local fireTeam = NewFireTeam(self, leader.team, leader.role, true)
+function War:FormSquad (leader)
+	self:LeaveFireTeam (leader)
+	local fireTeam = NewFireTeam (self, leader.team, leader.role, true)
 	fireTeam.chosen = leader
-	Seat(leader, fireTeam)
+	Seat (leader, fireTeam)
 	return fireTeam
 end
 
 -- The fire teams the war forms from now on hold at most n soldiers.
-function War:SetFireTeamSize(n)
+function War:SetFireTeamSize (n)
 	self.fireTeamSize = n
 end
 
 -- The member joins the squad and takes its job (a medic keeps healing);
 -- the squad is one by hand from now on. Returns true, or false and why.
-function War:JoinSquad(member, fireTeam)
+function War:JoinSquad (member, fireTeam)
 	if member.team ~= fireTeam.team then return false, member.handle .. " fights for the other side" end
 	fireTeam.manual = true
 	if member.fireTeam == fireTeam then return true end
-	self:LeaveFireTeam(member)
+	self:LeaveFireTeam (member)
 	if not member.fixed then
 		member.role = fireTeam.role
-		member.slot = FreeSlot(self.members, member.team, fireTeam.role, member)
+		member.slot = FreeSlot (self.members, member.team, fireTeam.role, member)
 	end
 	-- the squad keeps its leader: a newcomer, a hero too, joins as a member
-	fireTeam.chosen = fireTeam.chosen or Squad.Leader(fireTeam)
-	Seat(member, fireTeam)
+	fireTeam.chosen = fireTeam.chosen or Squad.Leader (fireTeam)
+	Seat (member, fireTeam)
 	return true
 end
 
@@ -807,78 +823,78 @@ end
 -- another is in it (Squad's attached tier), and goes with host (member.host)
 -- rather than the squad's leader; a solo host gets a squad of the war's,
 -- which it leads. The squad stays the war's. Returns the squad.
-function War:Attach(member, host)
+function War:Attach (member, host)
 	if member.attached and member.fireTeam ~= nil and member.fireTeam == host.fireTeam then return member.fireTeam end
-	self:LeaveFireTeam(member)
+	self:LeaveFireTeam (member)
 	local fireTeam = host.fireTeam
 	if not fireTeam then
-		fireTeam = NewFireTeam(self, host.team, host.role, false)
-		Seat(host, fireTeam)
+		fireTeam = NewFireTeam (self, host.team, host.role, false)
+		Seat (host, fireTeam)
 	end
 	member.attached, member.host = true, host
-	Seat(member, fireTeam, true)
+	Seat (member, fireTeam, true)
 	return fireTeam
 end
 
 -- An attached member back to a squad of its own job (LeaveSquad).
-function War:Detach(member)
+function War:Detach (member)
 	if not member.attached then return end
-	self:LeaveSquad(member)
+	self:LeaveSquad (member)
 end
 
 -- Out of its squad: solo, or in one of the war's with automatic squads.
-function War:LeaveSquad(member)
-	self:LeaveFireTeam(member)
-	Regroup(self, member)
+function War:LeaveSquad (member)
+	self:LeaveFireTeam (member)
+	Regroup (self, member)
 end
 
 -- The member's job, by hand; in a squad by hand, the whole squad's. The war
 -- leaves it be until ReleaseRole. Returns true, or false and why.
-function War:SetRole(member, role)
+function War:SetRole (member, role)
 	if member.fixed then return false, member.handle .. " only ever does " .. member.fixed end
 	local fireTeam = member.fireTeam
 	if fireTeam and fireTeam.manual then
 		fireTeam.role = role
-		Index(self.fireTeams, fireTeam)
-		for _, mate in pairs(fireTeam.members) do
+		Index (self.fireTeams, fireTeam)
+		for _, mate in pairs (fireTeam.members) do
 			if not mate.fixed then
 				mate.role = role
-				mate.slot = FreeSlot(self.members, mate.team, role, mate)
+				mate.slot = FreeSlot (self.members, mate.team, role, mate)
 			end
 		end
 		return true
 	end
 	member.roleByHand = true
-	self:ChangeRole(member, role)
+	self:ChangeRole (member, role)
 	return true
 end
 
 -- The member's job is the war's again: given now from the team's stance.
-function War:ReleaseRole(member)
+function War:ReleaseRole (member)
 	member.roleByHand = nil
-	if not Held(member) then self:AssignRole(member) end
+	if not Held (member) then self:AssignRole (member) end
 end
 
 -- The next recruit to spawn for a team (its squad is its fire team's,
 -- given once it is enlisted).
 -- A medic comes first while the side has fewer than MedicsFor its size:
 -- { recruit, role = MEDIC }.
-function War:Draft(team)
-	local faction = self:Faction(team)
+function War:Draft (team)
+	local faction = self:Faction (team)
 	local medics = 0
-	for _, member in pairs(self.members) do
+	for _, member in pairs (self.members) do
 		if member.team == team and member.role == MEDIC then medics = medics + 1 end
 	end
-	if faction.medic and medics < MedicsFor(self.sizes[team]) then return { recruit = faction.medic, role = MEDIC } end
-	local n = self.drafts[team] + 1
-	self.drafts[team] = n
+	if faction.medic and medics < MedicsFor (self.sizes [team]) then return { recruit = faction.medic, role = MEDIC } end
+	local n = self.drafts [team] + 1
+	self.drafts [team] = n
 	local recruits = faction.recruits
-	return { recruit = recruits[(n - 1) % #recruits + 1] }
+	return { recruit = recruits [(n - 1) % #recruits + 1] }
 end
 
-function War:DraftedCount(team)
+function War:DraftedCount (team)
 	local n = 0
-	for _, member in pairs(self.members) do
+	for _, member in pairs (self.members) do
 		if member.team == team and member.drafted then n = n + 1 end
 	end
 	return n
@@ -889,26 +905,26 @@ end
 -- soldiers it keeps: its faction's slots, features.aiwar.slots), and the
 -- next wave is waveLength(team) seconds away (0: every call). Returns team
 -- -> how many to spawn now.
-function War:Reinforcements(now, sizes, waveLength)
+function War:Reinforcements (now, sizes, waveLength)
 	self.sizes = sizes
 	local wave = {}
-	for _, team in ipairs({ RED, BLUE }) do
-		if now >= self.nextWave[team] then
-			self.nextWave[team] = now + waveLength(team)
-			local missing = sizes[team] - self:DraftedCount(team)
-			if missing > 0 then wave[team] = missing end
+	for _, team in ipairs ({ RED, BLUE }) do
+		if now >= self.nextWave [team] then
+			self.nextWave [team] = now + waveLength (team)
+			local missing = sizes [team] - self:DraftedCount (team)
+			if missing > 0 then wave [team] = missing end
 		end
 	end
 	return wave
 end
 
-function War:ResetWaves()
+function War:ResetWaves ()
 	self.nextWave = { [RED] = 0, [BLUE] = 0 }
 end
 
 -- The team's next wave comes at the next Reinforcements (a slot was added).
-function War:CallWave(team)
-	self.nextWave[team] = 0
+function War:CallWave (team)
+	self.nextWave [team] = 0
 end
 
 -- The battlefield the orders read: { phase, setup (the round is in
@@ -919,14 +935,14 @@ end
 -- establish their line, forwardPosts = team -> points ahead of its own
 -- cart where its escorts do (wartactics.posts) }. The war adds
 -- defense = team -> its defense share (DefenseShare).
-function War:SetField(field)
+function War:SetField (field)
 	field.defense = self.defense
 	-- each offensive squad holds one of its team's lanes (field.lanes)
-	Lanes.Assign(self.fireTeams, field.lanes or {})
+	Lanes.Assign (self.fireTeams, field.lanes or {})
 	self.field = field
 end
 
-function War:Field()
+function War:Field ()
 	return self.field
 end
 
@@ -939,7 +955,7 @@ end
 STRANDED_TIME = 15
 WATCH_AGAIN, WATCHING, STRANDED = "watch_again", "watching", "stranded"
 
-function StrandedWatch(q)
+function StrandedWatch (q)
 	if q.moved or not q.travelling or q.fighting then return WATCH_AGAIN end
 	if q.now - q.since < STRANDED_TIME then return WATCHING end
 	return STRANDED

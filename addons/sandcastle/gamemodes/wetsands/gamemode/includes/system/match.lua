@@ -12,48 +12,49 @@
 --   match:IsRunning(name) -> whether that one is
 local pairs, setmetatable, tostring = pairs, setmetatable, tostring
 local Transaction = transaction
-module(...)
+module (...)
 
 local Match = {}
 Match.__index = Match
 
-function New(report)
-	return setmetatable({
-		report = report,
-		subscribers = {},
-	}, Match)
+function New (report)
+	return setmetatable (
+		{
+			report = report,
+			subscribers = {}
+		}, Match)
 end
 
-function Match:Subscribe(name, running)
-	self.subscribers[name] = { running = running }
+function Match:Subscribe (name, running)
+	self.subscribers [name] = { running = running }
 end
 
 -- A subscriber's failure, told unless it is the error it told last.
-local function Tell(self, name, subscriber, err)
-	local text = tostring(err)
+local function Tell (self, name, subscriber, err)
+	local text = tostring (err)
 	if subscriber.told == text then return end
 	subscriber.told = text
-	self.report(name, err)
+	self.report (name, err)
 end
 
-local function Ask(_, self)
+local function Ask (_, self)
 	local running = {}
-	for name, subscriber in pairs(self.subscribers) do
-		local asked = Transaction.Run(subscriber.running)
-		local state = asked:State()
+	for name, subscriber in pairs (self.subscribers) do
+		local asked = Transaction.Run (subscriber.running)
+		local state = asked:State ()
 		if state == Transaction.COMMITTED then
-			if asked:Value() then running[name] = true end
+			if asked:Value () then running [name] = true end
 		elseif state == Transaction.FAILED then
-			Tell(self, name, subscriber, asked:Error())
+			Tell (self, name, subscriber, asked:Error ())
 		end
 	end
 	return running
 end
 
-function Match:Running()
-	return Transaction.Run(Ask, self)
+function Match:Running ()
+	return Transaction.Run (Ask, self)
 end
 
-function Match:IsRunning(name)
-	return self:Running():Value()[name] == true
+function Match:IsRunning (name)
+	return self:Running ():Value () [name] == true
 end

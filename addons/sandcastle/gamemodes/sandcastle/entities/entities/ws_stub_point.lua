@@ -14,25 +14,25 @@ ENT.StubRemoves = false
 local MESSAGE = "%s: %s"
 local logged = {}
 
-function ENT:KeyValue(key, value)
+function ENT:KeyValue (key, value)
 	self.kv = self.kv or {}
-	self.kv[string.lower(key)] = value
-	if string.sub(key, 1, 2) == "On" then self:StoreOutput(key, value) end
+	self.kv [string.lower (key)] = value
+	if string.sub (key, 1, 2) == "On" then self:StoreOutput (key, value) end
 end
 
-function ENT:UpdateTransmitState()
+function ENT:UpdateTransmitState ()
 	return TRANSMIT_NEVER
 end
 
-function ENT:Initialize()
-	local class = self:GetClass()
-	if not logged[class] then
-		logged[class] = true
-		print(string.format(MESSAGE, class, self.StubReason))
+function ENT:Initialize ()
+	local class = self:GetClass ()
+	if not logged [class] then
+		logged [class] = true
+		print (string.format (MESSAGE, class, self.StubReason))
 	end
-	if self.StubRemoves then SafeRemoveEntityDelayed(self, 0) end
+	if self.StubRemoves then SafeRemoveEntityDelayed (self, 0) end
 end
 
-function ENT:AcceptInput(name, activator, caller, value)
-	return self.StubInputs[string.lower(name)] == true
+function ENT:AcceptInput (name, activator, caller, value)
+	return self.StubInputs [string.lower (name)] == true
 end

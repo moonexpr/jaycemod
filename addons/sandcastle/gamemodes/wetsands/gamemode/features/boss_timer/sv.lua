@@ -9,9 +9,9 @@
 -- logic spawns Merasmus). A boss variant
 -- run here provides what features.boss_timer.model asks of it, plus
 -- SharedLevel(shared) -> its level from the npc controller's shared table.
-local BossTimer = WS.require("features.boss_timer.model")
-local Holiday = WS.require("features.holiday.model")
-local HalloweenBoss = WS.require("features.haunting.halloween_boss")
+local BossTimer = WS.require ("features.boss_timer.model")
+local Holiday = WS.require ("features.holiday.model")
+local HalloweenBoss = WS.require ("features.haunting.halloween_boss")
 
 local THINK_HOOK = "ws_boss_timer"
 local CUSTOM_SPAWN_CLASS = "spawn_boss" -- SpawnHalloweenBoss looks it up by class
@@ -20,33 +20,35 @@ local WHEEL_CLASS = "wheel_of_doom"
 local MERASMUS = "features.haunting.merasmus"
 local GAME_TEAMS = { WS.TEAM_RED, WS.TEAM_BLUE }
 
-local Controller = {
-	npcs = WS.Feature("npc"),
-	runs = {}, -- variant name -> { timer, world }
+local Controller =
+{
+	npcs = WS.Feature ("npc"),
+	runs = {} -- variant name -> { timer, world }
 }
 
-local function LivingHumans()
+local function LivingHumans ()
 	local count = 0
-	for _, t in ipairs(GAME_TEAMS) do
-		for _, ply in ipairs(team.GetPlayers(t)) do
-			if ply:Alive() and not ply:IsBot() then count = count + 1 end
+	for _, t in ipairs (GAME_TEAMS) do
+		for _, ply in ipairs (team.GetPlayers (t)) do
+			if ply:Alive () and not ply:IsBot () then count = count + 1 end
 		end
 	end
 	return count
 end
 
 -- The master's points in order, as the Horsemann's, with their entities.
-local function ControlPoints()
+local function ControlPoints ()
 	local points = {}
-	if not IsValid(ents.FindByClass(MASTER_CLASS)[1]) then return points end
-	local capture = WS.Feature("capture")
-	for i, point in ipairs(capture:Points()) do
-		points[i] = {
+	if not IsValid (ents.FindByClass (MASTER_CLASS) [1]) then return points end
+	local capture = WS.Feature ("capture")
+	for i, point in ipairs (capture:Points ()) do
+		points [i] =
+		{
 			entity = point,
-			origin = point:GetPos(),
-			inRound = capture:IsInRound(point),
-			owner = capture:Owner(point),
-			blueMayCapture = capture:TeamMayCapture(point, WS.TEAM_BLUE),
+			origin = point:GetPos (),
+			inRound = capture:IsInRound (point),
+			owner = capture:Owner (point),
+			blueMayCapture = capture:TeamMayCapture (point, WS.TEAM_BLUE)
 		}
 	end
 	return points
@@ -54,112 +56,113 @@ end
 
 -- The nav areas at least minSize a side outside the spawn rooms (TF2 also
 -- skips spawn-room exits, which GMod's areas do not mark).
-local function SpawnAreas(npcs, minSize)
+local function SpawnAreas (npcs, minSize)
 	local centers = {}
-	for _, area in ipairs(navmesh.GetAllNavAreas()) do
-		if area:GetSizeX() >= minSize and area:GetSizeY() >= minSize and npcs:SpawnRoomTeam(area) == WS.TEAM_UNASSIGNED then
-			centers[#centers + 1] = area:GetCenter()
+	for _, area in ipairs (navmesh.GetAllNavAreas ()) do
+		if area:GetSizeX () >= minSize and area:GetSizeY () >= minSize and npcs:SpawnRoomTeam (area) == WS.TEAM_UNASSIGNED then
+			centers [#centers + 1] = area:GetCenter ()
 		end
 	end
 	return centers
 end
 
 -- The timer's world port for one boss variant.
-local function World(npcs, variantName, variant)
+local function World (npcs, variantName, variant)
 	local world = {}
-	function world:Now() return CurTime() end
-	function world:RandomFloat(lo, hi) return math.Rand(lo, hi) end
-	function world:RandomInt(lo, hi) return math.random(lo, hi) end
-	function world:Vector(x, y, z) return Vector(x, y, z) end
-	function world:HalloweenActive() return WS.Feature("holiday"):HolidayActive(Holiday.HALLOWEEN) end
-	function world:BossActive() return #npcs:All(HalloweenBoss.KIND) > 0 end
-	function world:Level() return variant.SharedLevel(npcs:Shared(variantName)) end
-	function world:Convars() return npcs:BossConvars(variant.CONVARS) end
-	function world:InSetup() return WS.InSetup() end
-	function world:WaitingForPlayers() return WS.State() == WS.STATE.PREGAME end
-	function world:LivingHumans() return LivingHumans() end
+	function world:Now () return CurTime () end
+	function world:RandomFloat (lo, hi) return math.Rand (lo, hi) end
+	function world:RandomInt (lo, hi) return math.random (lo, hi) end
+	function world:Vector (x, y, z) return Vector (x, y, z) end
+	function world:HalloweenActive () return WS.Feature ("holiday"):HolidayActive (Holiday.HALLOWEEN) end
+	function world:BossActive () return #npcs:All (HalloweenBoss.KIND) > 0 end
+	function world:Level () return variant.SharedLevel (npcs:Shared (variantName)) end
+	function world:Convars () return npcs:BossConvars (variant.CONVARS) end
+	function world:InSetup () return WS.InSetup () end
+	function world:WaitingForPlayers () return WS.State () == WS.STATE.PREGAME end
+	function world:LivingHumans () return LivingHumans () end
 
-	function world:CustomSpawn()
-		local spot = ents.FindByClass(CUSTOM_SPAWN_CLASS)[1]
-		return IsValid(spot) and spot:GetPos() or nil
+	function world:CustomSpawn ()
+		local spot = ents.FindByClass (CUSTOM_SPAWN_CLASS) [1]
+		return IsValid (spot) and spot:GetPos () or nil
 	end
 
-	function world:ControlPoints() return ControlPoints() end
-	function world:SpawnAreas(minSize) return SpawnAreas(npcs, minSize) end
+	function world:ControlPoints () return ControlPoints () end
+	function world:SpawnAreas (minSize) return SpawnAreas (npcs, minSize) end
 
 	-- The first wheel_of_doom, which loaded the wheel feature as it bound.
-	function world:WheelBusy()
-		local wheel = ents.FindByClass(WHEEL_CLASS)[1]
-		return IsValid(wheel) and WS.Feature("wheel"):Busy(wheel)
+	function world:WheelBusy ()
+		local wheel = ents.FindByClass (WHEEL_CLASS) [1]
+		return IsValid (wheel) and WS.Feature ("wheel"):Busy (wheel)
 	end
 	return world
 end
 
 -- A boss's scenario map runs his timer; once is enough.
-function Controller:Run(variantName)
-	if self.runs[variantName] then return end
-	local variant = WS.require(variantName)
-	self.runs[variantName] = {
-		timer = BossTimer.New(variant),
-		world = World(self.npcs, variantName, variant),
+function Controller:Run (variantName)
+	if self.runs [variantName] then return end
+	local variant = WS.require (variantName)
+	self.runs [variantName] =
+	{
+		timer = BossTimer.New (variant),
+		world = World (self.npcs, variantName, variant)
 	}
 end
 
 -- TFGameRules()->StartHalloweenBossTimer, for a boss whose timer runs here.
-function Controller:Start(variantName, seconds, variation)
-	local run = self.runs[variantName]
-	if run then run.timer:Start(seconds, variation, run.world) end
+function Controller:Start (variantName, seconds, variation)
+	local run = self.runs [variantName]
+	if run then run.timer:Start (seconds, variation, run.world) end
 end
 
 -- The map's own logic spawned the boss: no timer for him on this map.
-function Controller:MapSpawned(variantName)
-	local run = self.runs[variantName]
-	if run then run.timer:MapSpawned() end
+function Controller:MapSpawned (variantName)
+	local run = self.runs [variantName]
+	if run then run.timer:MapSpawned () end
 end
 
 -- The spawn: the boss, then the point it takes goes neutral and the KOTH
 -- clocks stop.
-function Controller:Apply(spawn)
-	self.npcs:Spawn(spawn.class, spawn.config, spawn.pos, angle_zero)
+function Controller:Apply (spawn)
+	self.npcs:Spawn (spawn.class, spawn.config, spawn.pos, angle_zero)
 	if not spawn.neutralize then return end
-	WS.Feature("capture"):ForceOwner(spawn.neutralize.entity, WS.TEAM_UNASSIGNED)
-	local rounds = WS.Feature("rounds")
-	for _, t in ipairs(GAME_TEAMS) do
-		local clock = rounds:TeamClock(t)
-		if clock then rounds:TimerInput(clock, "pause") end
+	WS.Feature ("capture"):ForceOwner (spawn.neutralize.entity, WS.TEAM_UNASSIGNED)
+	local rounds = WS.Feature ("rounds")
+	for _, t in ipairs (GAME_TEAMS) do
+		local clock = rounds:TeamClock (t)
+		if clock then rounds:TimerInput (clock, "pause") end
 	end
 end
 
-function Controller:Think()
-	for _, run in pairs(self.runs) do
-		local spawn = run.timer:Update(run.world)
-		if spawn then self:Apply(spawn) end
+function Controller:Think ()
+	for _, run in pairs (self.runs) do
+		local spawn = run.timer:Update (run.world)
+		if spawn then self:Apply (spawn) end
 	end
 end
 
-hook.Add("Think", THINK_HOOK, function() Controller:Think() end)
+hook.Add ("Think", THINK_HOOK, function () Controller:Think () end)
 
 -- CTFGameRules::SetupOnRoundStart
-hook.Add("WSRoundSpawn", THINK_HOOK, function()
-	for _, run in pairs(Controller.runs) do run.timer:Invalidate() end
+hook.Add ("WSRoundSpawn", THINK_HOOK, function ()
+	for _, run in pairs (Controller.runs) do run.timer:Invalidate () end
 end)
 
-local function ForceAll()
-	for _, run in pairs(Controller.runs) do run.timer:Force() end
+local function ForceAll ()
+	for _, run in pairs (Controller.runs) do run.timer:Force () end
 end
 
 -- TF2's cheat commands (tf_gamerules.cpp); the engine refuses them without
 -- sv_cheats.
-concommand.Add("tf_halloween_force_boss_spawn", ForceAll, nil, "For testing.", FCVAR_CHEAT)
+concommand.Add ("tf_halloween_force_boss_spawn", ForceAll, nil, "For testing.", FCVAR_CHEAT)
 
-concommand.Add("cc_spawn_merasmus_at_level", function(_, _, args)
-	local level = tonumber(args[1])
+concommand.Add ("cc_spawn_merasmus_at_level", function (_, _, args)
+	local level = tonumber (args [1])
 	if not level then
-		print("Must specify a level")
+		print ("Must specify a level")
 		return
 	end
-	Controller.npcs:Shared(MERASMUS).level = math.floor(level)
-	ForceAll()
+	Controller.npcs:Shared (MERASMUS).level = math.floor (level)
+	ForceAll ()
 end, nil, "Force Merasmus to spawn at a specific difficulty level", FCVAR_CHEAT)
 
 return Controller

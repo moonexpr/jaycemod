@@ -6,47 +6,47 @@
 ENT.Type = "brush"
 ENT.Base = "base_brush"
 
-function ENT:KeyValue(key, value)
-	local k = string.lower(key)
+function ENT:KeyValue (key, value)
+	local k = string.lower (key)
 	self.wsKv = self.wsKv or {}
-	self.wsKv[k] = value
+	self.wsKv [k] = value
 	if k == "model" then self.brushModel = value end
-	if string.sub(key, 1, 2) == "On" then self:StoreOutput(key, value) end
+	if string.sub (key, 1, 2) == "On" then self:StoreOutput (key, value) end
 end
 
-function ENT:Initialize()
-	game_manager.Enable("game_control_points")
-	if self.brushModel then self:SetModel(self.brushModel) end
-	self:SetSolid(SOLID_NONE)
-	self:SetNoDraw(true)
-	self.capture = WS.Feature("capture")
-	self.capture:BindArea(self, self.wsKv or {})
+function ENT:Initialize ()
+	game_manager.Enable ("game_control_points")
+	if self.brushModel then self:SetModel (self.brushModel) end
+	self:SetSolid (SOLID_NONE)
+	self:SetNoDraw (true)
+	self.capture = WS.Feature ("capture")
+	self.capture:BindArea (self, self.wsKv or {})
 end
 
-function ENT:OnRemove()
-	self.capture:UnbindArea(self)
+function ENT:OnRemove ()
+	self.capture:UnbindArea (self)
 end
 
 -- The watcher that moves the train this area rides (SetTrainWatcher).
-function ENT:SetTrainWatcher(watcher)
-	self.capture:SetAreaWatcher(self, watcher)
+function ENT:SetTrainWatcher (watcher)
+	self.capture:SetAreaWatcher (self, watcher)
 end
 
-function ENT:IsBlocked()
-	return self.capture:AreaBlocked(self)
+function ENT:IsBlocked ()
+	return self.capture:AreaBlocked (self)
 end
 
-function ENT:IsCapturing()
-	return self.capture:AreaCapturing(self)
+function ENT:IsCapturing ()
+	return self.capture:AreaCapturing (self)
 end
 
 -- CaptureThink
-function ENT:Think()
-	self:NextThink(CurTime() + self.capture.AREA_THINK_TIME)
-	self.capture:AreaThink(self)
+function ENT:Think ()
+	self:NextThink (CurTime () + self.capture.AREA_THINK_TIME)
+	self.capture:AreaThink (self)
 	return true
 end
 
-function ENT:AcceptInput(name, activator, caller, value)
-	return self.capture:AreaInput(self, string.lower(name), value)
+function ENT:AcceptInput (name, activator, caller, value)
+	return self.capture:AreaInput (self, string.lower (name), value)
 end

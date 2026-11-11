@@ -7,70 +7,70 @@
 local Economy = gameplay.economy
 local Transaction = transaction
 
-local ledger = Economy.New()
+local ledger = Economy.New ()
 
-local function Sync(ent)
-	ent:SetNW2Int("ws_money", Economy.Balance(ledger, ent))
+local function Sync (ent)
+	ent:SetNW2Int ("ws_money", Economy.Balance (ledger, ent))
 end
 
-function WS.OpenAccount(ent)
-	Economy.Open(ledger, ent)
-	Sync(ent)
+function WS.OpenAccount (ent)
+	Economy.Open (ledger, ent)
+	Sync (ent)
 end
 
-function WS.Money(ent)
-	return Economy.Balance(ledger, ent)
+function WS.Money (ent)
+	return Economy.Balance (ledger, ent)
 end
 
-function WS.CanAfford(ent, amount)
-	return Economy.CanAfford(ledger, ent, amount)
+function WS.CanAfford (ent, amount)
+	return Economy.CanAfford (ledger, ent, amount)
 end
 
 -- WSMoneyEarned(ent, amount) tells whoever counts earnings (the round's
 -- cash limit, games.gameplay.rounds.limits). With the economy off, money stops
 -- counting: nothing is earned.
-function WS.EarnMoney(ent, amount)
-	if not WS.EconomyEnabled() then return end
-	Economy.Earn(ledger, ent, amount)
-	Sync(ent)
-	hook.Run("WSMoneyEarned", ent, amount)
+function WS.EarnMoney (ent, amount)
+	if not WS.EconomyEnabled () then return end
+	Economy.Earn (ledger, ent, amount)
+	Sync (ent)
+	hook.Run ("WSMoneyEarned", ent, amount)
 end
 
-local function Open()
-	if not WS.EconomyEnabled() then Transaction.Refuse(Economy.ECONOMY_OFF, "Money is switched off on this server.") end
+local function Open ()
+	if not WS.EconomyEnabled () then Transaction.Refuse (Economy.ECONOMY_OFF, "Money is switched off on this server.") end
 end
 
 -- A purchase: on credit where it is allowed (WS.CreditFloor).
-function WS.SpendMoney(ent, amount)
-	Open()
-	Economy.SpendWithCredit(ledger, ent, amount, WS.CreditFloor())
-	Sync(ent)
+function WS.SpendMoney (ent, amount)
+	Open ()
+	Economy.SpendWithCredit (ledger, ent, amount, WS.CreditFloor ())
+	Sync (ent)
 end
 
 -- A player giving money to another; it is not earned, so it never counts
 -- toward a round's cash limit, and never on credit.
-function WS.TransferMoney(from, to, amount)
-	Open()
-	Economy.Transfer(ledger, from, to, amount)
-	Sync(from)
-	Sync(to)
+function WS.TransferMoney (from, to, amount)
+	Open ()
+	Economy.Transfer (ledger, from, to, amount)
+	Sync (from)
+	Sync (to)
 end
 
 -- A purchase undone (a transaction's compensation): the money comes back,
 -- and as it was never earned, it does not count toward a round's cash limit.
-function WS.RefundMoney(ent, amount)
-	Economy.Earn(ledger, ent, amount)
-	Sync(ent)
+function WS.RefundMoney (ent, amount)
+	Economy.Earn (ledger, ent, amount)
+	Sync (ent)
 end
 
 -- Money an admin grants; not earned either.
-function WS.GrantMoney(ent, amount)
-	Economy.Earn(ledger, ent, amount)
-	Sync(ent)
+function WS.GrantMoney (ent, amount)
+	Economy.Earn (ledger, ent, amount)
+	Sync (ent)
 end
 
-hook.Add("PlayerInitialSpawn", "ws_economy", WS.OpenAccount)
-hook.Add("EntityRemoved", "ws_economy", function(ent) Economy.Close(ledger, ent) end)
+hook.Add ("PlayerInitialSpawn", "ws_economy", WS.OpenAccount)
+hook.Add ("EntityRemoved", "ws_economy", function (ent) Economy.Close (ledger, ent) end)
 
 -- A reload of this file starts a new ledger: the players already here get accounts.
-for _, ply in player.Iterator() do WS.OpenAccount(ply) end
+for _, ply in player.Iterator () do WS.OpenAccount (ply) end

@@ -13,131 +13,132 @@
 --   (mp_respawn_all, mp_respawn_maptimes).
 local Permissions = system.permissions
 
-local REWARD = CreateConVar("mp_round_reward_money", "0", { FCVAR_ARCHIVE, FCVAR_NOTIFY },
+local REWARD = CreateConVar ("mp_round_reward_money", "0", { FCVAR_ARCHIVE, FCVAR_NOTIFY },
 	"Money paid to every player on the team that wins a round", 0, 100000)
 
-local function Reply(ply, text)
-	if IsValid(ply) then ply:ChatPrint(text) else print(text) end
+local function Reply (ply, text)
+	if IsValid (ply) then ply:ChatPrint (text) else print (text) end
 end
 
 -- A console command for holders of privilege; run(args) answers true, or
 -- false and why.
-local function Command(name, privilege, help, run, options)
-	concommand.Add(name, function(ply, _, args)
-		if not WS.Can(ply, privilege) then return Reply(ply, name .. ": you may not do that") end
-		local ok, why = run(args)
+local function Command (name, privilege, help, run, options)
+	concommand.Add (name, function (ply, _, args)
+		if not WS.Can (ply, privilege) then return Reply (ply, name .. ": you may not do that") end
+		local ok, why = run (args)
 		if ok then
-			print("[Sandcastle] " .. (IsValid(ply) and ply:Nick() or "Console") .. " ran " .. name .. " " .. table.concat(args, " "))
+			print ("[Sandcastle] " .. (IsValid (ply) and ply:Nick () or "Console") .. " ran " .. name .. " " .. table.concat (args, " "))
 		else
-			Reply(ply, name .. ": " .. why)
+			Reply (ply, name .. ": " .. why)
 		end
-	end, options and function(command, args)
-		return WS.CompleteOptions(command, args, { options })
+	end, options and function (command, args)
+		return WS.CompleteOptions (command, args, { options })
 	end or nil, help)
 end
 
 local NO_ROUNDS = "this map has no rounds"
 
-local function RoundsFeature()
-	return WS.Active() and WS.Feature("rounds") or nil
+local function RoundsFeature ()
+	return WS.Active () and WS.Feature ("rounds") or nil
 end
 
-Command("mp_round_suddendeath", Permissions.ROUND, "Send the running round to sudden death", function()
-	local rounds = RoundsFeature()
+Command ("mp_round_suddendeath", Permissions.ROUND, "Send the running round to sudden death", function ()
+	local rounds = RoundsFeature ()
 	if not rounds then return false, NO_ROUNDS end
-	return rounds:SuddenDeathNow(false)
+	return rounds:SuddenDeathNow (false)
 end)
 
-Command("mp_round_restart", Permissions.ROUND, "Restart the round: one with players ends as a stalemate first, else back to Pregame silently; money and weapons are kept", function()
-	local rounds = RoundsFeature()
+Command ("mp_round_restart", Permissions.ROUND, "Restart the round: one with players ends as a stalemate first, else back to Pregame silently; money and weapons are kept", function ()
+	local rounds = RoundsFeature ()
 	if not rounds then return false, NO_ROUNDS end
-	rounds:RestartRound()
+	rounds:RestartRound ()
 	return true
 end)
 
-local MATCH_TARGETS = {
+local MATCH_TARGETS =
+{
 	red = WS.TEAM_RED,
 	blue = WS.TEAM_BLUE,
-	blu = WS.TEAM_BLUE,
+	blu = WS.TEAM_BLUE
 }
 
-Command("mp_match_forcewin", Permissions.MATCH,
+Command ("mp_match_forcewin", Permissions.MATCH,
 	"End the match now: mp_match_forcewin red|blue, or sudden for a sudden death whose winner wins the match",
-	function(args)
-		local rounds = RoundsFeature()
+	function (args)
+		local rounds = RoundsFeature ()
 		if not rounds then return false, NO_ROUNDS end
-		local target = (args[1] or ""):lower()
-		if target == "sudden" then return rounds:SuddenDeathNow(true) end
-		local team = MATCH_TARGETS[target]
+		local target = (args [1] or ""):lower ()
+		if target == "sudden" then return rounds:SuddenDeathNow (true) end
+		local team = MATCH_TARGETS [target]
 		if not team then return false, "red, blue or sudden" end
-		return rounds:ForceMatchWin(team)
+		return rounds:ForceMatchWin (team)
 	end, { "red", "blue", "blu", "sudden" })
 
-Command("mp_match_restart", Permissions.MATCH, "Restart the match now: scores and rounds played start over", function()
-	if not RoundsFeature() then return false, NO_ROUNDS end
+Command ("mp_match_restart", Permissions.MATCH, "Restart the match now: scores and rounds played start over", function ()
+	if not RoundsFeature () then return false, NO_ROUNDS end
 	-- the rounds read no restart once it is over: the convar would wait for a later map
-	if WS.State() == WS.STATE.GAME_OVER then return false, "the match is over; start a new game" end
-	RunConsoleCommand("mp_restartgame_immediate", "1")
+	if WS.State () == WS.STATE.GAME_OVER then return false, "the match is over; start a new game" end
+	RunConsoleCommand ("mp_restartgame_immediate", "1")
 	return true
 end)
 
-Command("mp_teams_scramble", Permissions.MATCH, "Scramble the teams as the next round starts", function()
-	local rounds = RoundsFeature()
+Command ("mp_teams_scramble", Permissions.MATCH, "Scramble the teams as the next round starts", function ()
+	local rounds = RoundsFeature ()
 	if not rounds then return false, NO_ROUNDS end
-	if rounds:ScramblePending() then return false, "the teams are already to be scrambled" end
-	rounds:ScheduleScramble()
+	if rounds:ScramblePending () then return false, "the teams are already to be scrambled" end
+	rounds:ScheduleScramble ()
 	return true
 end)
 
 -- Round rewards: the money setting, then whatever a server adds.
-hook.Add("WSRoundWin", "ws_match_control", function(winner)
+hook.Add ("WSRoundWin", "ws_match_control", function (winner)
 	if winner ~= WS.TEAM_RED and winner ~= WS.TEAM_BLUE then return end
-	local amount = REWARD:GetInt()
+	local amount = REWARD:GetInt ()
 	if amount > 0 then
-		for _, ply in ipairs(team.GetPlayers(winner)) do WS.GrantMoney(ply, amount) end
+		for _, ply in ipairs (team.GetPlayers (winner)) do WS.GrantMoney (ply, amount) end
 	end
-	hook.Run("WSRoundRewards", winner)
+	hook.Run ("WSRoundRewards", winner)
 end)
 
 -- Tampering --------------------------------------------------------------------------
 
-local function Editors()
-	return WS.Feature("editors")
+local function Editors ()
+	return WS.Feature ("editors")
 end
 
-local function Carts(method)
-	return function()
-		local watchers = ents.FindByClass("team_train_watcher")
+local function Carts (method)
+	return function ()
+		local watchers = ents.FindByClass ("team_train_watcher")
 		if #watchers == 0 then return false, "this map has no payload cart" end
-		for _, watcher in ipairs(watchers) do Editors()[method](Editors(), watcher) end
+		for _, watcher in ipairs (watchers) do Editors () [method] (Editors (), watcher) end
 		return true
 	end
 end
 
-Command("mp_cart_advance", Permissions.TAMPER, "Advance every payload cart to its next checkpoint", Carts("AdvanceCart"))
-Command("mp_cart_retract", Permissions.TAMPER, "Retract every payload cart to its previous checkpoint", Carts("RetractCart"))
+Command ("mp_cart_advance", Permissions.TAMPER, "Advance every payload cart to its next checkpoint", Carts ("AdvanceCart"))
+Command ("mp_cart_retract", Permissions.TAMPER, "Retract every payload cart to its previous checkpoint", Carts ("RetractCart"))
 
-Command("mp_round_timer_add", Permissions.TAMPER, "Add seconds to the round clock (negative takes them away)", function(args)
-	local seconds = tonumber(args[1] or "")
+Command ("mp_round_timer_add", Permissions.TAMPER, "Add seconds to the round clock (negative takes them away)", function (args)
+	local seconds = tonumber (args [1] or "")
 	if not seconds then return false, "give a number of seconds" end
-	local editors = Editors()
-	return editors:SetTimeLeft(editors:TimeLeft() + seconds)
+	local editors = Editors ()
+	return editors:SetTimeLeft (editors:TimeLeft () + seconds)
 end)
 
-Command("mp_round_timer_pause", Permissions.TAMPER, "Pause the round clock, or resume it", function()
-	local editors = Editors()
-	return editors:SetPaused(not editors:Paused())
+Command ("mp_round_timer_pause", Permissions.TAMPER, "Pause the round clock, or resume it", function ()
+	local editors = Editors ()
+	return editors:SetPaused (not editors:Paused ())
 end)
 
-Command("mp_respawn_all", Permissions.TAMPER, "Respawn every dead player now", function()
+Command ("mp_respawn_all", Permissions.TAMPER, "Respawn every dead player now", function ()
 	local due = {}
-	for _, ply in player.Iterator() do
-		if not ply:Alive() and WS.TeamOf(ply) ~= WS.TEAM_UNASSIGNED and WS.TeamOf(ply) ~= WS.TEAM_SPECTATOR then due[#due + 1] = ply end
+	for _, ply in player.Iterator () do
+		if not ply:Alive () and WS.TeamOf (ply) ~= WS.TEAM_UNASSIGNED and WS.TeamOf (ply) ~= WS.TEAM_SPECTATOR then due [#due + 1] = ply end
 	end
-	WS.Respawn(due)
+	WS.Respawn (due)
 	return true
 end)
 
-Command("mp_respawn_maptimes", Permissions.TAMPER, "Go back to the map's own respawn wave times", function()
-	return Editors():UseMapRespawnTimes()
+Command ("mp_respawn_maptimes", Permissions.TAMPER, "Go back to the map's own respawn wave times", function ()
+	return Editors ():UseMapRespawnTimes ()
 end)

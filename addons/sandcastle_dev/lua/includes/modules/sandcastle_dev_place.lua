@@ -8,21 +8,21 @@
 --   Reach(mins, maxs) -> a body's reach across the ground from its middle: its widest side
 local Geometry = math.geometry
 local abs, max, rad = math.abs, math.max, math.rad
-module(...)
+module (...)
 
 -- How far apart the two bodies stand.
 GAP = 16
 
-function Before(at, yaw, reach, ownReach)
-	local ahead = Geometry.Polar(at, reach + ownReach + GAP, rad(yaw))
+function Before (at, yaw, reach, ownReach)
+	local ahead = Geometry.Polar (at, reach + ownReach + GAP, rad (yaw))
 	return { x = ahead.x, y = ahead.y, z = at.z or 0 }
 end
 
-function Yaw(yaw, facingTowards)
+function Yaw (yaw, facingTowards)
 	if not facingTowards then return yaw end
 	return (yaw + 180) % 360
 end
 
-function Reach(mins, maxs)
-	return max(abs(mins.x), abs(maxs.x), abs(mins.y), abs(maxs.y))
+function Reach (mins, maxs)
+	return max (abs (mins.x), abs (maxs.x), abs (mins.y), abs (maxs.y))
 end

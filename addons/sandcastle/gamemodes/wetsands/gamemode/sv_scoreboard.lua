@@ -7,8 +7,8 @@
 local UNASSIGNED = WS.TEAM_UNASSIGNED
 
 -- A soldier's kill counts after its war lets it go (its killer may die with it).
-local function Fighter(ent)
-	return IsValid(ent) and not ent:IsPlayer() and WS.LastTeamNumber(ent) ~= UNASSIGNED
+local function Fighter (ent)
+	return IsValid (ent) and not ent:IsPlayer () and WS.LastTeamNumber (ent) ~= UNASSIGNED
 end
 
 -- A kill of the other game team's player or NPC is its killer's team's frag:
@@ -16,30 +16,30 @@ end
 -- games.gameplay.rounds.limits).
 local GAME_TEAMS = { [WS.TEAM_RED] = true, [WS.TEAM_BLUE] = true }
 
-local function TeamFrag(attacker, victimTeam)
-	local team = WS.LastTeamNumber(attacker)
-	if GAME_TEAMS[team] and GAME_TEAMS[victimTeam] and team ~= victimTeam then hook.Run("WSTeamFrag", team) end
+local function TeamFrag (attacker, victimTeam)
+	local team = WS.LastTeamNumber (attacker)
+	if GAME_TEAMS [team] and GAME_TEAMS [victimTeam] and team ~= victimTeam then hook.Run ("WSTeamFrag", team) end
 end
 
-local function Credit(attacker, victimTeam)
-	TeamFrag(attacker, victimTeam)
-	if attacker:IsPlayer() then
-		if victimTeam ~= UNASSIGNED and victimTeam ~= attacker:Team() then attacker:AddFrags(1) end
-	elseif Fighter(attacker) then
-		attacker:SetNW2Int("ws_kills", attacker:GetNW2Int("ws_kills", 0) + 1)
+local function Credit (attacker, victimTeam)
+	TeamFrag (attacker, victimTeam)
+	if attacker:IsPlayer () then
+		if victimTeam ~= UNASSIGNED and victimTeam ~= attacker:Team () then attacker:AddFrags (1) end
+	elseif Fighter (attacker) then
+		attacker:SetNW2Int ("ws_kills", attacker:GetNW2Int ("ws_kills", 0) + 1)
 	end
 end
 
-hook.Add("PlayerDeath", "ws_scoreboard", function(victim, _, attacker)
-	if Fighter(attacker) then
-		Credit(attacker, victim:Team())
-	elseif IsValid(attacker) and attacker:IsPlayer() then
+hook.Add ("PlayerDeath", "ws_scoreboard", function (victim, _, attacker)
+	if Fighter (attacker) then
+		Credit (attacker, victim:Team ())
+	elseif IsValid (attacker) and attacker:IsPlayer () then
 		-- GMod counts a player's frag of a player itself
-		TeamFrag(attacker, victim:Team())
+		TeamFrag (attacker, victim:Team ())
 	end
 end)
 
-hook.Add("OnNPCKilled", "ws_scoreboard", function(npc, attacker)
-	npc:SetNW2Int("ws_team", UNASSIGNED)
-	if IsValid(attacker) and attacker ~= npc then Credit(attacker, WS.LastTeamNumber(npc)) end
+hook.Add ("OnNPCKilled", "ws_scoreboard", function (npc, attacker)
+	npc:SetNW2Int ("ws_team", UNASSIGNED)
+	if IsValid (attacker) and attacker ~= npc then Credit (attacker, WS.LastTeamNumber (npc)) end
 end)

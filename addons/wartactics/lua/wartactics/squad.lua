@@ -10,7 +10,7 @@
 -- of features.aiwar.slots carry it).
 local ipairs, pairs = ipairs, pairs
 local floor, HUGE = math.floor, math.huge
-module(...)
+module (...)
 
 -- The most a fire team holds, unless its war is set another.
 FIRE_TEAM_SIZE = 4
@@ -22,8 +22,8 @@ LEADER, MEMBER = "leader", "member"
 -- Leaders -------------------------------------------------------------------------
 
 -- Whether the member still belongs to the fire team.
-local function Within(fireTeam, member)
-	return member ~= nil and member.fireTeam == fireTeam and fireTeam.members[member.place] == member
+local function Within (fireTeam, member)
+	return member ~= nil and member.fireTeam == fireTeam and fireTeam.members [member.place] == member
 end
 
 -- Who may lead, best first: a member whose slot is pinned to lead, a hero
@@ -32,45 +32,45 @@ end
 -- war's Attach), who leads only a fire team of its own.
 local PINNED_LEADER_TIER, HERO_TIER, MEMBER_TIER, PINNED_MEMBER_TIER = 3, 2, 1, 0
 
-local function Tier(member)
+local function Tier (member)
 	if member.pin == LEADER then return PINNED_LEADER_TIER end
 	if member.pin == MEMBER or member.attached then return PINNED_MEMBER_TIER end
 	if member.hero then return HERO_TIER end
 	return MEMBER_TIER
 end
 
-local function Better(a, b)
+local function Better (a, b)
 	if b == nil then return true end
-	if Tier(a) ~= Tier(b) then return Tier(a) > Tier(b) end
+	if Tier (a) ~= Tier (b) then return Tier (a) > Tier (b) end
 	return (a.seq or HUGE) < (b.seq or HUGE)
 end
 
 -- The fire team's leader, elected when it has none or lost it: the best by
 -- tier, then the member longest in the war (the lowest seq). A leader stays
 -- until it leaves or one of a better tier is in the fire team.
-function Leader(fireTeam)
+function Leader (fireTeam)
 	-- a squad formed by hand is led by the soldier it was formed for
 	local chosen = fireTeam.chosen
-	if chosen and Within(fireTeam, chosen) then
+	if chosen and Within (fireTeam, chosen) then
 		fireTeam.leader = chosen
 		return chosen
 	end
 	local best
-	for _, member in pairs(fireTeam.members) do
-		if Better(member, best) then best = member end
+	for _, member in pairs (fireTeam.members) do
+		if Better (member, best) then best = member end
 	end
 	local current = fireTeam.leader
-	if Within(fireTeam, current) and Tier(current) >= Tier(best) then return current end
+	if Within (fireTeam, current) and Tier (current) >= Tier (best) then return current end
 	fireTeam.leader = best
 	return best
 end
 
 -- "leader", "member" (of a squad with a leader other than it) or "solo"
 -- (in no fire team).
-function Kind(member)
+function Kind (member)
 	local fireTeam = member.fireTeam
 	if not fireTeam then return "solo" end
-	return Leader(fireTeam) == member and "leader" or "member"
+	return Leader (fireTeam) == member and "leader" or "member"
 end
 
 -- Claims ---------------------------------------------------------------------------
@@ -79,6 +79,6 @@ end
 -- few units apart are one.
 CLAIM_GRID = 48
 
-function Key(kind, p)
-	return kind .. ":" .. floor(p.x / CLAIM_GRID) .. ":" .. floor(p.y / CLAIM_GRID) .. ":" .. floor((p.z or 0) / CLAIM_GRID)
+function Key (kind, p)
+	return kind .. ":" .. floor (p.x / CLAIM_GRID) .. ":" .. floor (p.y / CLAIM_GRID) .. ":" .. floor ((p.z or 0) / CLAIM_GRID)
 end

@@ -8,7 +8,7 @@
 --
 -- A subclass sets ENT.Variant (its flight), ENT.Model and ENT.ModelScale,
 -- and ENT.Trails (a particle per team) when it trails one.
-AddCSLuaFile()
+AddCSLuaFile ()
 
 ENT.Type = "anim"
 ENT.Base = "ws_projectile"
@@ -18,51 +18,51 @@ ENT.ModelScale = 1
 
 if CLIENT then return end
 
-local Base = baseclass.Get("ws_projectile")
+local Base = baseclass.Get ("ws_projectile")
 
-function ENT:Initialize()
-	local config = self:Config()
+function ENT:Initialize ()
+	local config = self:Config ()
 	config.model = self.Model
-	self.spells = WS.Feature("spells")
-	self.combat = WS.Feature("combat")
-	self.spells:BindSpellProjectile(self, config.spell, config)
-	Base.Initialize(self)
-	self:SetModelScale(self.ModelScale, 0)
-	self:SetAngles(config.velocity:Angle())
-	if self.CollisionGroup then self:SetCollisionGroup(self.CollisionGroup) end
-	if self.Trails then ParticleEffectAttach(self.Trails[config.team], PATTACH_ABSORIGIN_FOLLOW, self, 0) end
+	self.spells = WS.Feature ("spells")
+	self.combat = WS.Feature ("combat")
+	self.spells:BindSpellProjectile (self, config.spell, config)
+	Base.Initialize (self)
+	self:SetModelScale (self.ModelScale, 0)
+	self:SetAngles (config.velocity:Angle ())
+	if self.CollisionGroup then self:SetCollisionGroup (self.CollisionGroup) end
+	if self.Trails then ParticleEffectAttach (self.Trails [config.team], PATTACH_ABSORIGIN_FOLLOW, self, 0) end
 end
 
-function ENT:OnRemove()
-	self.spells:Unbind(self)
+function ENT:OnRemove ()
+	self.spells:Unbind (self)
 end
 
-function ENT:GetTeamNumber()
-	return self:Config().team
+function ENT:GetTeamNumber ()
+	return self:Config ().team
 end
 
-local function IsCharacter(ent)
-	return ent:IsPlayer() or ent:IsNPC() or ent:IsNextBot()
+local function IsCharacter (ent)
+	return ent:IsPlayer () or ent:IsNPC () or ent:IsNextBot ()
 end
 
-function ENT:IsEnemy(other)
-	return IsCharacter(other) and self.combat:TeamOf(other) ~= self:GetTeamNumber()
+function ENT:IsEnemy (other)
+	return IsCharacter (other) and self.combat:TeamOf (other) ~= self:GetTeamNumber ()
 end
 
-function ENT:Touch(other)
-	if IsCharacter(other) and self.combat:TeamOf(other) == self:GetTeamNumber() then return end
-	Base.Touch(self, other)
+function ENT:Touch (other)
+	if IsCharacter (other) and self.combat:TeamOf (other) == self:GetTeamNumber () then return end
+	Base.Touch (self, other)
 end
 
-function ENT:Think()
-	if self.spells:ThinkShot(self) then
-		self:Remove()
+function ENT:Think ()
+	if self.spells:ThinkShot (self) then
+		self:Remove ()
 		return
 	end
-	return Base.Think(self)
+	return Base.Think (self)
 end
 
-function ENT:Detonate(trace)
-	self.spells:Impact(self, trace)
-	self:Remove()
+function ENT:Detonate (trace)
+	self.spells:Impact (self, trace)
+	self:Remove ()
 end

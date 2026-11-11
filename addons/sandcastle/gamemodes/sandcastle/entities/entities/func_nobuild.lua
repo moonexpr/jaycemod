@@ -3,12 +3,13 @@
 ENT.Type = "brush"
 ENT.Base = "base_brush2"
 
-function ENT:VolumeInit()
+function ENT:VolumeInit ()
 	self.active = true
 end
 
-ENT.Inputs = {
-	setactive = function(self) self.active = true end,
-	setinactive = function(self) self.active = false end,
-	toggleactive = function(self) self.active = not self.active end,
+ENT.Inputs =
+{
+	setactive = function (self) self.active = true end,
+	setinactive = function (self) self.active = false end,
+	toggleactive = function (self) self.active = not self.active end
 }

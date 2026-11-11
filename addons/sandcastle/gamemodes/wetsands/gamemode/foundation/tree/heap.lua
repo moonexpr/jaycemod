@@ -11,27 +11,27 @@
 -- Entries live in three arrays by heap position (key, push number,
 -- value), so a push allocates no table.
 local setmetatable = setmetatable
-module(...)
+module (...)
 
 local Heap = {}
 Heap.__index = Heap
 
-function New()
-	return setmetatable({ n = 0, pushed = 0, keys = {}, seqs = {}, values = {} }, Heap)
+function New ()
+	return setmetatable ({ n = 0, pushed = 0, keys = {}, seqs = {}, values = {} }, Heap)
 end
 
-setmetatable(_M, { __call = function() return New() end })
+setmetatable (_M, { __call = function () return New () end })
 
-function Heap:Size()
+function Heap:Size ()
 	return self.n
 end
 Heap.__len = Heap.Size
 
-function Heap:Clear()
+function Heap:Clear ()
 	self.n, self.pushed, self.keys, self.seqs, self.values = 0, 0, {}, {}, {}
 end
 
-function Heap:Push(key, value)
+function Heap:Push (key, value)
 	local keys, seqs, values = self.keys, self.seqs, self.values
 	local seq = self.pushed + 1
 	self.pushed = seq
@@ -39,26 +39,26 @@ function Heap:Push(key, value)
 	self.n = i
 	while i > 1 do
 		local parent = (i - i % 2) / 2
-		local pk = keys[parent]
-		if pk < key or (pk == key and seqs[parent] < seq) then break end
-		keys[i], seqs[i], values[i] = pk, seqs[parent], values[parent]
+		local pk = keys [parent]
+		if pk < key or (pk == key and seqs [parent] < seq) then break end
+		keys [i], seqs [i], values [i] = pk, seqs [parent], values [parent]
 		i = parent
 	end
-	keys[i], seqs[i], values[i] = key, seq, value
+	keys [i], seqs [i], values [i] = key, seq, value
 end
 
-function Heap:Peek()
+function Heap:Peek ()
 	if self.n == 0 then return nil end
-	return self.values[1], self.keys[1]
+	return self.values [1], self.keys [1]
 end
 
-function Heap:Pop()
+function Heap:Pop ()
 	local n = self.n
 	if n == 0 then return nil end
 	local keys, seqs, values = self.keys, self.seqs, self.values
-	local topValue, topKey = values[1], keys[1]
-	local key, seq, value = keys[n], seqs[n], values[n]
-	keys[n], seqs[n], values[n] = nil, nil, nil
+	local topValue, topKey = values [1], keys [1]
+	local key, seq, value = keys [n], seqs [n], values [n]
+	keys [n], seqs [n], values [n] = nil, nil, nil
 	n = n - 1
 	self.n = n
 	if n > 0 then
@@ -66,18 +66,18 @@ function Heap:Pop()
 		while true do
 			local child = i * 2
 			if child > n then break end
-			local ck, cs = keys[child], seqs[child]
+			local ck, cs = keys [child], seqs [child]
 			if child < n then
-				local rk, rs = keys[child + 1], seqs[child + 1]
+				local rk, rs = keys [child + 1], seqs [child + 1]
 				if rk < ck or (rk == ck and rs < cs) then
 					child, ck, cs = child + 1, rk, rs
 				end
 			end
 			if key < ck or (key == ck and seq < cs) then break end
-			keys[i], seqs[i], values[i] = ck, cs, values[child]
+			keys [i], seqs [i], values [i] = ck, cs, values [child]
 			i = child
 		end
-		keys[i], seqs[i], values[i] = key, seq, value
+		keys [i], seqs [i], values [i] = key, seq, value
 	end
 	return topValue, topKey
 end

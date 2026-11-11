@@ -7,30 +7,30 @@
 ENT.Type = "point"
 ENT.Base = "base_point"
 
-function ENT:KeyValue(key, value)
+function ENT:KeyValue (key, value)
 	self.wsKv = self.wsKv or {}
-	self.wsKv[string.lower(key)] = value
-	if string.sub(key, 1, 2) == "On" then self:StoreOutput(key, value) end
+	self.wsKv [string.lower (key)] = value
+	if string.sub (key, 1, 2) == "On" then self:StoreOutput (key, value) end
 end
 
-function ENT:Initialize()
-	self.capture = WS.Feature("capture")
-	self.capture:BindPointTimer(self, self.wsKv or {})
+function ENT:Initialize ()
+	self.capture = WS.Feature ("capture")
+	self.capture:BindPointTimer (self, self.wsKv or {})
 end
 
-function ENT:OnRemove()
-	self.capture:UnbindPointTimer(self)
+function ENT:OnRemove ()
+	self.capture:UnbindPointTimer (self)
 end
 
-function ENT:UpdateTransmitState()
+function ENT:UpdateTransmitState ()
 	return TRANSMIT_NEVER
 end
 
-function ENT:Think()
-	self:NextThink(self.capture:PointTimerThink(self))
+function ENT:Think ()
+	self:NextThink (self.capture:PointTimerThink (self))
 	return true
 end
 
-function ENT:AcceptInput(name, activator, caller, value)
-	return self.capture:PointTimerInput(self, string.lower(name))
+function ENT:AcceptInput (name, activator, caller, value)
+	return self.capture:PointTimerInput (self, string.lower (name))
 end

@@ -26,7 +26,7 @@
 -- ws_stun_flags.
 local P = WS.PlayerRules
 local C = P.COND
-local Effects = WS.require("games.gameplay.players.condition_effects")
+local Effects = WS.require ("games.gameplay.players.condition_effects")
 
 -- HALLOWEEN_QUICK_HEAL: CTFPlayerShared::Heal(outer, 30, ...), per second.
 local QUICK_HEAL_RATE = 30
@@ -37,12 +37,12 @@ local BURN_INTERVAL, BURN_DAMAGE, BURN_SECONDS = 0.5, 4, 10
 local WATER_WAIST = 2
 
 -- Every entity that has held a condition.
-local holders = setmetatable({}, { __mode = "k" })
+local holders = setmetatable ({}, { __mode = "k" })
 
-local function Conds(ent)
+local function Conds (ent)
 	if not ent.wsConds then
 		ent.wsConds = {}
-		holders[ent] = true
+		holders [ent] = true
 	end
 	return ent.wsConds
 end
@@ -50,132 +50,132 @@ end
 -- An entity's conditions to read; the world and others never given one
 -- hold none.
 local NONE = {}
-function WS.ConditionsOf(ent)
-	return IsValid(ent) and ent.wsConds or NONE
+function WS.ConditionsOf (ent)
+	return IsValid (ent) and ent.wsConds or NONE
 end
 
-local function SyncNetworked(ent)
-	local conds, now = Conds(ent), CurTime()
-	if ent:IsPlayer() then ent:SetNW2Bool("ws_speed_boosted", P.InCond(conds, C.SPEED_BOOST, now)) end
-	for _, cond in ipairs(Effects.NETWORKED) do
-		ent:SetNW2Float("ws_cond_" .. cond, P.InCond(conds, cond, now) and conds[cond] or 0)
+local function SyncNetworked (ent)
+	local conds, now = Conds (ent), CurTime ()
+	if ent:IsPlayer () then ent:SetNW2Bool ("ws_speed_boosted", P.InCond (conds, C.SPEED_BOOST, now)) end
+	for _, cond in ipairs (Effects.NETWORKED) do
+		ent:SetNW2Float ("ws_cond_" .. cond, P.InCond (conds, cond, now) and conds [cond] or 0)
 	end
 end
 
 -- Catching a condition not held plays its sound (Fire.Engulf for a fire).
-function WS.AddCondition(ent, cond, duration)
+function WS.AddCondition (ent, cond, duration)
 	if cond == C.BURNING and duration <= 0 then duration = BURN_SECONDS end
-	local now = CurTime()
-	local ignite = not P.InCond(Conds(ent), cond, now) and Effects.IgniteSound(cond)
-	if ignite then ent:EmitSound(ignite) end
-	P.AddCond(Conds(ent), cond, duration, now)
-	if cond == C.HALLOWEEN_THRILLER then ent:Freeze(true) end
-	SyncNetworked(ent)
+	local now = CurTime ()
+	local ignite = not P.InCond (Conds (ent), cond, now) and Effects.IgniteSound (cond)
+	if ignite then ent:EmitSound (ignite) end
+	P.AddCond (Conds (ent), cond, duration, now)
+	if cond == C.HALLOWEEN_THRILLER then ent:Freeze (true) end
+	SyncNetworked (ent)
 end
 
-function WS.RemoveCondition(ent, cond)
-	P.RemoveCond(Conds(ent), cond)
-	if cond == C.HALLOWEEN_THRILLER then ent:Freeze(false) end
-	SyncNetworked(ent)
+function WS.RemoveCondition (ent, cond)
+	P.RemoveCond (Conds (ent), cond)
+	if cond == C.HALLOWEEN_THRILLER then ent:Freeze (false) end
+	SyncNetworked (ent)
 end
 
-function WS.InCondition(ent, cond)
-	return P.InCond(WS.ConditionsOf(ent), cond, CurTime())
+function WS.InCondition (ent, cond)
+	return P.InCond (WS.ConditionsOf (ent), cond, CurTime ())
 end
 
 -- CTFPlayerShared::RemoveAllCond: also ends a stun (TF_COND_STUNNED).
-function WS.RemoveAllConditions(ply)
-	if P.InCond(Conds(ply), C.HALLOWEEN_THRILLER, CurTime()) then ply:Freeze(false) end
+function WS.RemoveAllConditions (ply)
+	if P.InCond (Conds (ply), C.HALLOWEEN_THRILLER, CurTime ()) then ply:Freeze (false) end
 	ply.wsConds = {}
-	SyncNetworked(ply)
+	SyncNetworked (ply)
 end
 
 -- CTFPlayer::Regenerate's condition removals.
-function WS.ClearConditionsOnRegenerate(ply)
-	P.ClearOnRegenerate(Conds(ply))
-	SyncNetworked(ply)
+function WS.ClearConditionsOnRegenerate (ply)
+	P.ClearOnRegenerate (Conds (ply))
+	SyncNetworked (ply)
 end
 
 -- CTFPlayerShared::StunPlayer: TF_COND_STUNNED for as long as the stun
 -- folded with the one held lasts; its slow and flags are kept beside it,
 -- and mean nothing once the condition ends, however it ends.
-function WS.StunPlayer(ply, duration, reduction, flags)
-	local now = CurTime()
-	local held = P.InCond(Conds(ply), C.STUNNED, now) and ply.wsStun or nil
-	local stun = P.Stun(held, duration, reduction, flags, now)
+function WS.StunPlayer (ply, duration, reduction, flags)
+	local now = CurTime ()
+	local held = P.InCond (Conds (ply), C.STUNNED, now) and ply.wsStun or nil
+	local stun = P.Stun (held, duration, reduction, flags, now)
 	ply.wsStun = stun
-	ply:SetNW2Float("ws_stun_speed_reduction", stun.reduction)
-	ply:SetNW2Int("ws_stun_flags", stun.flags)
-	WS.AddCondition(ply, C.STUNNED, stun.ends - now)
+	ply:SetNW2Float ("ws_stun_speed_reduction", stun.reduction)
+	ply:SetNW2Int ("ws_stun_flags", stun.flags)
+	WS.AddCondition (ply, C.STUNNED, stun.ends - now)
 end
 
 -- A condition attacker's hit inflicts on ent for seconds (gameplay.players'
 -- Inflict, the longer of the one held and the new): BLEEDING hurts ent in
 -- attacker's name; any other is held as it is.
-function WS.Inflict(ent, attacker, cond, seconds)
-	local now = CurTime()
+function WS.Inflict (ent, attacker, cond, seconds)
+	local now = CurTime ()
 	if cond == C.BLEEDING then
 		ent.wsBleeder = attacker
-		if not P.InCond(Conds(ent), cond, now) then ent.wsNextBleed = now + P.BLEED_INTERVAL end
+		if not P.InCond (Conds (ent), cond, now) then ent.wsNextBleed = now + P.BLEED_INTERVAL end
 	end
-	P.Inflict(Conds(ent), cond, seconds, now)
-	SyncNetworked(ent)
+	P.Inflict (Conds (ent), cond, seconds, now)
+	SyncNetworked (ent)
 end
 
 -- RemoveCond( TF_COND_STUNNED ): the stun ends now (Merasmus frees a bomb
 -- head who reached him).
-function WS.EndStun(ply)
-	WS.RemoveCondition(ply, C.STUNNED)
+function WS.EndStun (ply)
+	WS.RemoveCondition (ply, C.STUNNED)
 end
 
 -- A player starts each life with no conditions.
-hook.Add("PlayerSpawn", "ws_conditions", WS.RemoveAllConditions)
-hook.Add("PostPlayerDeath", "ws_conditions", WS.RemoveAllConditions)
+hook.Add ("PlayerSpawn", "ws_conditions", WS.RemoveAllConditions)
+hook.Add ("PostPlayerDeath", "ws_conditions", WS.RemoveAllConditions)
 
 -- Afterburn, from nobody: what set the fire is not kept.
-local function Burn(ent)
-	local dmg = DamageInfo()
-	dmg:SetDamage(BURN_DAMAGE)
-	dmg:SetDamageType(DMG_BURN)
-	dmg:SetAttacker(game.GetWorld())
-	dmg:SetInflictor(game.GetWorld())
-	ent:TakeDamageInfo(dmg)
+local function Burn (ent)
+	local dmg = DamageInfo ()
+	dmg:SetDamage (BURN_DAMAGE)
+	dmg:SetDamageType (DMG_BURN)
+	dmg:SetAttacker (game.GetWorld ())
+	dmg:SetInflictor (game.GetWorld ())
+	ent:TakeDamageInfo (dmg)
 end
 
 -- CTFPlayerShared's bleed: TF_BLEEDING_DMG, a slash, dealt by whoever made
 -- it bleed (the world, once they are gone), so its kill is theirs.
-local function Bleed(ent)
-	local bleeder = IsValid(ent.wsBleeder) and ent.wsBleeder or game.GetWorld()
-	local dmg = DamageInfo()
-	dmg:SetDamage(P.BLEED_DAMAGE)
-	dmg:SetDamageType(DMG_SLASH)
-	dmg:SetAttacker(bleeder)
-	dmg:SetInflictor(game.GetWorld())
-	ent:TakeDamageInfo(dmg)
+local function Bleed (ent)
+	local bleeder = IsValid (ent.wsBleeder) and ent.wsBleeder or game.GetWorld ()
+	local dmg = DamageInfo ()
+	dmg:SetDamage (P.BLEED_DAMAGE)
+	dmg:SetDamageType (DMG_SLASH)
+	dmg:SetAttacker (bleeder)
+	dmg:SetInflictor (game.GetWorld ())
+	ent:TakeDamageInfo (dmg)
 end
 
-local function Alive(ent)
-	if ent:IsPlayer() then return ent:Alive() end
-	return ent:Health() > 0
+local function Alive (ent)
+	if ent:IsPlayer () then return ent:Alive () end
+	return ent:Health () > 0
 end
 
 -- The winners' crits while they celebrate, on each team's players and
 -- soldiers; everyone else's go.
-local function SyncBonusCrits(now)
-	local state = WS.State()
-	local winner = WS.Winner(state)
-	for _, t in ipairs({ WS.TEAM_RED, WS.TEAM_BLUE }) do
-		local boosted = WS.TeamRules.BonusCrits(state, winner, t)
-		local members = WS.TeamMembers(t)
-		for _, ply in ipairs(team.GetPlayers(t)) do members[#members + 1] = ply end
-		for _, ent in ipairs(members) do
-			if boosted ~= P.InCond(WS.ConditionsOf(ent), C.CRITBOOSTED_BONUS_TIME, now) then
+local function SyncBonusCrits (now)
+	local state = WS.State ()
+	local winner = WS.Winner (state)
+	for _, t in ipairs ({ WS.TEAM_RED, WS.TEAM_BLUE }) do
+		local boosted = WS.TeamRules.BonusCrits (state, winner, t)
+		local members = WS.TeamMembers (t)
+		for _, ply in ipairs (team.GetPlayers (t)) do members [#members + 1] = ply end
+		for _, ent in ipairs (members) do
+			if boosted ~= P.InCond (WS.ConditionsOf (ent), C.CRITBOOSTED_BONUS_TIME, now) then
 				if boosted then
-					WS.AddCondition(ent, C.CRITBOOSTED_BONUS_TIME, P.PERMANENT)
-					WS.AddCondition(ent, C.SPEED_BOOST, P.PERMANENT)
+					WS.AddCondition (ent, C.CRITBOOSTED_BONUS_TIME, P.PERMANENT)
+					WS.AddCondition (ent, C.SPEED_BOOST, P.PERMANENT)
 				else
-					WS.RemoveCondition(ent, C.CRITBOOSTED_BONUS_TIME)
-					WS.RemoveCondition(ent, C.SPEED_BOOST)
+					WS.RemoveCondition (ent, C.CRITBOOSTED_BONUS_TIME)
+					WS.RemoveCondition (ent, C.SPEED_BOOST)
 				end
 			end
 		end
@@ -183,28 +183,28 @@ local function SyncBonusCrits(now)
 end
 
 -- A team's fighters, its players and soldiers, as Teams.LastStandCrits counts them.
-local function Standing(t)
-	local fighters, alive = WS.TeamMembers(t), 0
-	for _, ply in ipairs(team.GetPlayers(t)) do fighters[#fighters + 1] = ply end
-	for _, ent in ipairs(fighters) do
-		if Alive(ent) then alive = alive + 1 end
+local function Standing (t)
+	local fighters, alive = WS.TeamMembers (t), 0
+	for _, ply in ipairs (team.GetPlayers (t)) do fighters [#fighters + 1] = ply end
+	for _, ent in ipairs (fighters) do
+		if Alive (ent) then alive = alive + 1 end
 	end
 	return { fighters = fighters, roster = #fighters, alive = alive }
 end
 
 -- The crits of a fighter standing alone (Teams.LastStandCrits), on its living; everyone else's go.
-local function SyncLastStandCrits(now)
-	local state, arena = WS.State(), GetGlobal2Bool("ws_round_arena", false)
-	local red, blue = Standing(WS.TEAM_RED), Standing(WS.TEAM_BLUE)
-	for _, side in ipairs({ { red, blue }, { blue, red } }) do
-		local crits = WS.TeamRules.LastStandCrits(state, arena, side[1], side[2])
-		for _, ent in ipairs(side[1].fighters) do
-			local boosted = crits and Alive(ent)
-			if boosted ~= P.InCond(WS.ConditionsOf(ent), C.CRITBOOSTED_USER_BUFF, now) then
+local function SyncLastStandCrits (now)
+	local state, arena = WS.State (), GetGlobal2Bool ("ws_round_arena", false)
+	local red, blue = Standing (WS.TEAM_RED), Standing (WS.TEAM_BLUE)
+	for _, side in ipairs ({ { red, blue }, { blue, red } }) do
+		local crits = WS.TeamRules.LastStandCrits (state, arena, side [1], side [2])
+		for _, ent in ipairs (side [1].fighters) do
+			local boosted = crits and Alive (ent)
+			if boosted ~= P.InCond (WS.ConditionsOf (ent), C.CRITBOOSTED_USER_BUFF, now) then
 				if boosted then
-					WS.AddCondition(ent, C.CRITBOOSTED_USER_BUFF, P.PERMANENT)
+					WS.AddCondition (ent, C.CRITBOOSTED_USER_BUFF, P.PERMANENT)
 				else
-					WS.RemoveCondition(ent, C.CRITBOOSTED_USER_BUFF)
+					WS.RemoveCondition (ent, C.CRITBOOSTED_USER_BUFF)
 				end
 			end
 		end
@@ -215,50 +215,50 @@ end
 -- active weapon is not drawn, nor a player's view model, until it is a
 -- loser no more. Hidden again every think, as a weapon drawn anew shows; a
 -- weapon put away is the engine's to hide and show.
-local function SyncLoserWeapon(ent)
-	local weapon, hidden = ent:GetActiveWeapon(), ent.wsLoserWeapon
-	if IsValid(weapon) and WS.IsLoser(ent) then
-		weapon:AddEffects(EF_NODRAW)
+local function SyncLoserWeapon (ent)
+	local weapon, hidden = ent:GetActiveWeapon (), ent.wsLoserWeapon
+	if IsValid (weapon) and WS.IsLoser (ent) then
+		weapon:AddEffects (EF_NODRAW)
 		ent.wsLoserWeapon = weapon
-		if ent:IsPlayer() then ent:DrawViewModel(false) end
+		if ent:IsPlayer () then ent:DrawViewModel (false) end
 	elseif hidden then
 		ent.wsLoserWeapon = nil
-		if hidden == weapon then weapon:RemoveEffects(EF_NODRAW) end
-		if ent:IsPlayer() then ent:DrawViewModel(true) end
+		if hidden == weapon then weapon:RemoveEffects (EF_NODRAW) end
+		if ent:IsPlayer () then ent:DrawViewModel (true) end
 	end
 end
 
-local function SyncLoserWeapons()
-	for _, ply in ipairs(player.GetAll()) do SyncLoserWeapon(ply) end
-	for _, t in ipairs({ WS.TEAM_RED, WS.TEAM_BLUE }) do
-		for _, ent in ipairs(WS.TeamMembers(t)) do SyncLoserWeapon(ent) end
+local function SyncLoserWeapons ()
+	for _, ply in ipairs (player.GetAll ()) do SyncLoserWeapon (ply) end
+	for _, t in ipairs ({ WS.TEAM_RED, WS.TEAM_BLUE }) do
+		for _, ent in ipairs (WS.TeamMembers (t)) do SyncLoserWeapon (ent) end
 	end
 end
 
 local nextBurn = 0
-timer.Create("ws_conditions", THINK_INTERVAL, 0, function()
-	local now = CurTime()
-	SyncBonusCrits(now)
-	SyncLastStandCrits(now)
-	SyncLoserWeapons()
+timer.Create ("ws_conditions", THINK_INTERVAL, 0, function ()
+	local now = CurTime ()
+	SyncBonusCrits (now)
+	SyncLastStandCrits (now)
+	SyncLoserWeapons ()
 	local burnTick = now >= nextBurn
 	if burnTick then nextBurn = now + BURN_INTERVAL end
-	for ent in pairs(holders) do
+	for ent in pairs (holders) do
 		local conds = ent.wsConds
-		if IsValid(ent) and next(conds) then
-			if #P.ExpireConds(conds, now) > 0 then SyncNetworked(ent) end
-			if P.InCond(conds, C.BURNING, now) and Alive(ent) then
-				if ent:WaterLevel() >= WATER_WAIST then
-					WS.RemoveCondition(ent, C.BURNING)
+		if IsValid (ent) and next (conds) then
+			if #P.ExpireConds (conds, now) > 0 then SyncNetworked (ent) end
+			if P.InCond (conds, C.BURNING, now) and Alive (ent) then
+				if ent:WaterLevel () >= WATER_WAIST then
+					WS.RemoveCondition (ent, C.BURNING)
 				elseif burnTick then
-					Burn(ent)
+					Burn (ent)
 				end
 			end
 			local bleeds
-			bleeds, ent.wsNextBleed = P.BleedTick(conds, ent.wsNextBleed, now)
-			if bleeds and Alive(ent) then Bleed(ent) end
-			if ent:IsPlayer() and P.InCond(conds, C.HALLOWEEN_QUICK_HEAL, now) and ent:Alive() and ent:Health() < ent:GetMaxHealth() then
-				ent:SetHealth(math.min(ent:GetMaxHealth(), ent:Health() + math.ceil(QUICK_HEAL_RATE * THINK_INTERVAL)))
+			bleeds, ent.wsNextBleed = P.BleedTick (conds, ent.wsNextBleed, now)
+			if bleeds and Alive (ent) then Bleed (ent) end
+			if ent:IsPlayer () and P.InCond (conds, C.HALLOWEEN_QUICK_HEAL, now) and ent:Alive () and ent:Health () < ent:GetMaxHealth () then
+				ent:SetHealth (math.min (ent:GetMaxHealth (), ent:Health () + math.ceil (QUICK_HEAL_RATE * THINK_INTERVAL)))
 			end
 		end
 	end

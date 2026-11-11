@@ -1,4 +1,4 @@
-AddCSLuaFile()
+AddCSLuaFile ()
 
 -- weapon_knife: a standard CS:S SWEP; its base owns shared behavior.
 
@@ -9,8 +9,8 @@ SWEP.Category = "Counter-Strike: Source"
 SWEP.Spawnable = true
 SWEP.Slot = 2
 SWEP.SlotPos = 1
-SWEP.ViewModel = Model("models/weapons/cstrike/c_knife_t.mdl")
-SWEP.WorldModel = Model("models/weapons/w_knife_t.mdl")
+SWEP.ViewModel = Model ("models/weapons/cstrike/c_knife_t.mdl")
+SWEP.WorldModel = Model ("models/weapons/w_knife_t.mdl")
 SWEP.ViewModelFOV = 54
 SWEP.ViewModelFlip = false
 SWEP.UseHands = true

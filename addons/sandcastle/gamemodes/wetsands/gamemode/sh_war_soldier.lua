@@ -29,48 +29,48 @@ local STEP_PLAY_LEVEL, STEP_REACH = 85, 64
 
 -- volume: as it plays (Noise.Played); gear: what its gear rattles with the
 -- step (Voices.Gear: a Combine soldier's, quietly), or nil.
-local function PlayStep(self, volume, gear)
-	local pos = self:GetPos()
-	local tr = util.TraceLine({ start = pos, endpos = pos - Vector(0, 0, STEP_REACH), filter = self, mask = MASK_PLAYERSOLID })
-	local surface = util.GetSurfaceData(tr.SurfaceProps)
+local function PlayStep (self, volume, gear)
+	local pos = self:GetPos ()
+	local tr = util.TraceLine ({ start = pos, endpos = pos - Vector (0, 0, STEP_REACH), filter = self, mask = MASK_PLAYERSOLID })
+	local surface = util.GetSurfaceData (tr.SurfaceProps)
 	self.NSLeftFoot = not self.NSLeftFoot
 	local sound = self.NSLeftFoot and surface.stepLeftSound or surface.stepRightSound
-	self:EmitSound(sound, STEP_PLAY_LEVEL, 100, volume, CHAN_BODY)
-	if gear then self:EmitSound(gear.sound, gear.level, gear.pitch, gear.volume, CHAN_AUTO) end
+	self:EmitSound (sound, STEP_PLAY_LEVEL, 100, volume, CHAN_BODY)
+	if gear then self:EmitSound (gear.sound, gear.level, gear.pitch, gear.volume, CHAN_AUTO) end
 end
 
 -- Tracing (ws_aiwar_trace): a soldier with NSTrace set prints
 -- every query it asks its orders, with the answer, and every event it tells
 -- them.
-local function Trace(self, text)
-	if self.NSTrace then print(string.format("[aiwar #%d %.2f] %s", self:EntIndex(), CurTime(), text)) end
+local function Trace (self, text)
+	if self.NSTrace then print (string.format ("[aiwar #%d %.2f] %s", self:EntIndex (), CurTime (), text)) end
 end
 
-local function Show(value)
-	if isentity(value) then return IsValid(value) and (value:GetClass() .. " #" .. value:EntIndex()) or "NULL" end
-	return tostring(value)
+local function Show (value)
+	if isentity (value) then return IsValid (value) and (value:GetClass () .. " #" .. value:EntIndex ()) or "NULL" end
+	return tostring (value)
 end
 
 local BASE = "base_nextsoldier"
 
-function WS.WarSoldier(ENT)
+function WS.WarSoldier (ENT)
 	ENT.WSSoldier = true -- on both realms: the NPC context menu offers its trace
 	if CLIENT then return end
-	local Ragdoll = WS.require("includes.ragdoll")
+	local Ragdoll = WS.require ("includes.ragdoll")
 	local Gestures = nextsoldier.body.gestures
-	local Voices = WS.require("includes.voices")
-	local HL2Path = WS.require("foundation.wetsands.path.hl2")
+	local Voices = WS.require ("includes.voices")
+	local HL2Path = WS.require ("foundation.wetsands.path.hl2")
 	local JumpActs = nextsoldier.body.jump
 	local Noise = nextsoldier.body.noise
 	local Locomotion = nextsoldier.locomotion
-	local Arms = WS.require("features.aiwar.arms")
+	local Arms = WS.require ("features.aiwar.arms")
 	local SILENT = { grunt = {}, pain = {}, death = {}, fall = {} }
 
-	local function Base() return baseclass.Get(BASE) end
+	local function Base () return baseclass.Get (BASE) end
 
 	-- One of a voice's lines, if it has any.
-	local function Say(self, lines)
-		if #lines > 0 then self:EmitSound(lines[math.random(#lines)], VOICE_LEVEL) end
+	local function Say (self, lines)
+		if #lines > 0 then self:EmitSound (lines [math.random (#lines)], VOICE_LEVEL) end
 	end
 
 	-- It climbs a ledge as high as its route may (its path to each target
@@ -84,19 +84,19 @@ function WS.WarSoldier(ENT)
 	-- Its voice for the model it wears now (ws.voices; none for a
 	-- model without one): it plays its hits' grunts and cries (NSFeedback) and
 	-- its death (OnDeath: WS.PlayDeath, loud and confirmed) itself.
-	function ENT:NSVoice()
-		local voice = Voices.For(self:GetModel()) or SILENT
+	function ENT:NSVoice ()
+		local voice = Voices.For (self:GetModel ()) or SILENT
 		self.NSVoiceLines = voice
 		self.OnDamageSounds, self.OnDeathSounds = {}, {}
 	end
 
 	-- A hit it lives through: a grunt, or for a heavy one a cry of pain
 	-- (Voices.Feedback), not again for Voices.FEEDBACK_COOLDOWN.
-	function ENT:NSFeedback(damage)
-		local now = CurTime()
-		if damage <= 0 or self:Health() - damage <= 0 or now < (self.NSNextFeedback or 0) then return end
+	function ENT:NSFeedback (damage)
+		local now = CurTime ()
+		if damage <= 0 or self:Health () - damage <= 0 or now < (self.NSNextFeedback or 0) then return end
 		self.NSNextFeedback = now + Voices.FEEDBACK_COOLDOWN
-		Say(self, self.NSVoiceLines[Voices.Feedback(damage, self:GetMaxHealth())])
+		Say (self, self.NSVoiceLines [Voices.Feedback (damage, self:GetMaxHealth ())])
 	end
 
 	-- How often a soldier with an enemy checks it holds the weapon for the
@@ -106,114 +106,114 @@ function WS.WarSoldier(ENT)
 	-- Each think: the weapon for its enemy's distance, every ARM_INTERVAL;
 	-- its footsteps, timed by its speed as a player's are (Noise.Step), and
 	-- in the air, how fast it is falling (for its landing).
-	function ENT:CustomThink()
-		local now = CurTime()
-		if now >= (self.NSNextArm or 0) and self:HasEnemy() then
+	function ENT:CustomThink ()
+		local now = CurTime ()
+		if now >= (self.NSNextArm or 0) and self:HasEnemy () then
 			self.NSNextArm = now + ARM_INTERVAL
-			self:NSArm(self:GetEnemy())
+			self:NSArm (self:GetEnemy ())
 		end
-		local velocity = self.loco:GetVelocity()
-		if not self:IsOnGround() then
-			self.NSFallSpeed = math.max(self.NSFallSpeed or 0, -velocity.z)
-			self:NSRappel(velocity)
+		local velocity = self.loco:GetVelocity ()
+		if not self:IsOnGround () then
+			self.NSFallSpeed = math.max (self.NSFallSpeed or 0, -velocity.z)
+			self:NSRappel (velocity)
 			return
 		end
-		if self.NSRappelling then self:NSRappelEnd(true) end
-		local step = Noise.Step(velocity:Length2D(), self.IsCrouching ~= nil and self:IsCrouching())
+		if self.NSRappelling then self:NSRappelEnd (true) end
+		local step = Noise.Step (velocity:Length2D (), self.IsCrouching ~= nil and self:IsCrouching ())
 		if step and now >= (self.NSNextStep or 0) then
-			PlayStep(self, Noise.Played(step.volume), self:NSGear(step.running))
+			PlayStep (self, Noise.Played (step.volume), self:NSGear (step.running))
 			self.NSNextStep = now + step.interval
 		end
 	end
 
 	-- Where it left the ground, where a rappel's rope is tied.
-	function ENT:OnLeaveGround() self.NSLeftGroundAt = self:GetPos() end
+	function ENT:OnLeaveGround () self.NSLeftGroundAt = self:GetPos () end
 
 	-- A rappel shows: a rope from where it left the ground to its waist, for as long
 	-- as it lasts, and the sounds of one (Noise.RAPPEL_SOUNDS).
 	local ROPE_MATERIAL, ROPE_WIDTH, ROPE_SUBDIVISIONS = "cable/cable2", 1.5, 2
 	local WAIST = 0.55 -- of its height
-	local function PlayRappel(self, sounds)
-		local sound = sounds[math.random(#sounds)]
-		self:EmitSound(sound, STEP_PLAY_LEVEL)
+	local function PlayRappel (self, sounds)
+		local sound = sounds [math.random (#sounds)]
+		self:EmitSound (sound, STEP_PLAY_LEVEL)
 		return sound
 	end
 
-	function ENT:NSRappelBegin()
-		local mins, maxs = self:GetCollisionBounds()
+	function ENT:NSRappelBegin ()
+		local mins, maxs = self:GetCollisionBounds ()
 		local height = maxs.z - mins.z
-		local tied = Locomotion.RappelAnchor(self:GetPos(), self.NSLeftGroundAt, height)
-		local anchor = Vector(tied.x, tied.y, tied.z)
-		local rope = ents.Create("keyframe_rope")
-		rope:SetPos(anchor)
-		rope:SetKeyValue("RopeMaterial", ROPE_MATERIAL)
-		rope:SetKeyValue("Width", ROPE_WIDTH)
-		rope:SetKeyValue("Subdiv", ROPE_SUBDIVISIONS)
-		rope:SetKeyValue("Slack", 0)
-		rope:SetEntity("StartEntity", game.GetWorld())
-		rope:SetKeyValue("StartOffset", tostring(anchor))
-		rope:SetEntity("EndEntity", self)
-		rope:SetKeyValue("EndOffset", tostring(Vector(0, 0, height * WAIST)))
-		rope:Spawn()
-		rope:Activate()
+		local tied = Locomotion.RappelAnchor (self:GetPos (), self.NSLeftGroundAt, height)
+		local anchor = Vector (tied.x, tied.y, tied.z)
+		local rope = ents.Create ("keyframe_rope")
+		rope:SetPos (anchor)
+		rope:SetKeyValue ("RopeMaterial", ROPE_MATERIAL)
+		rope:SetKeyValue ("Width", ROPE_WIDTH)
+		rope:SetKeyValue ("Subdiv", ROPE_SUBDIVISIONS)
+		rope:SetKeyValue ("Slack", 0)
+		rope:SetEntity ("StartEntity", game.GetWorld ())
+		rope:SetKeyValue ("StartOffset", tostring (anchor))
+		rope:SetEntity ("EndEntity", self)
+		rope:SetKeyValue ("EndOffset", tostring (Vector (0, 0, height * WAIST)))
+		rope:Spawn ()
+		rope:Activate ()
 		self.nsRope = rope
-		self:DeleteOnRemove(self.nsRope)
-		PlayRappel(self, Noise.RAPPEL_SOUNDS.clip)
+		self:DeleteOnRemove (self.nsRope)
+		PlayRappel (self, Noise.RAPPEL_SOUNDS.clip)
 		self.NSNextRappelRun = 0
 	end
 
 	-- The rope running through its clip, over and over.
-	function ENT:NSRappelRun(now)
+	function ENT:NSRappelRun (now)
 		if now < self.NSNextRappelRun then return end
 		self.NSNextRappelRun = now + Noise.RAPPEL_RUN_EVERY
-		self.nsRappelRunning = PlayRappel(self, Noise.RAPPEL_SOUNDS.run)
+		self.nsRappelRunning = PlayRappel (self, Noise.RAPPEL_SOUNDS.run)
 	end
 
 	-- Its rappel over, on the floor or not.
-	function ENT:NSRappelEnd(landed)
+	function ENT:NSRappelEnd (landed)
 		self.NSRappelling = nil
-		SafeRemoveEntity(self.nsRope)
+		SafeRemoveEntity (self.nsRope)
 		self.nsRope = nil
-		if self.nsRappelRunning then self:StopSound(self.nsRappelRunning) end
+		if self.nsRappelRunning then self:StopSound (self.nsRappelRunning) end
 		self.nsRappelRunning = nil
-		if landed then PlayRappel(self, Noise.RAPPEL_SOUNDS.land) end
+		if landed then PlayRappel (self, Noise.RAPPEL_SOUNDS.land) end
 	end
 
 	-- Going down a drop that would kill a player, it comes down no faster than
 	-- a rappel (nextsoldier.locomotion), to the floor.
 	local RAPPEL_LOOK = 4096
-	function ENT:NSRappel(velocity)
+	function ENT:NSRappel (velocity)
 		if velocity.z >= 0 then return end
-		local pos = self:GetPos()
-		local floor = util.TraceLine({ start = pos, endpos = pos - Vector(0, 0, RAPPEL_LOOK), mask = self:GetSolidMask(), filter = self })
+		local pos = self:GetPos ()
+		local floor = util.TraceLine ({ start = pos, endpos = pos - Vector (0, 0, RAPPEL_LOOK), mask = self:GetSolidMask (), filter = self })
 		local height = floor.Hit and pos.z - floor.HitPos.z or RAPPEL_LOOK
-		local speed, rappelling = Locomotion.RappelDescent(-velocity.z, height, GetConVar("sv_gravity"):GetFloat(), self.NSRappelling)
-		if rappelling and not self.NSRappelling then self:NSRappelBegin() end
+		local speed, rappelling = Locomotion.RappelDescent (-velocity.z, height, GetConVar ("sv_gravity"):GetFloat (), self.NSRappelling)
+		if rappelling and not self.NSRappelling then self:NSRappelBegin () end
 		self.NSRappelling = rappelling or nil
-		if rappelling then self:NSRappelRun(CurTime()) end
-		if speed < -velocity.z then self.loco:SetVelocity(Vector(velocity.x, velocity.y, -speed)) end
+		if rappelling then self:NSRappelRun (CurTime ()) end
+		if speed < -velocity.z then self.loco:SetVelocity (Vector (velocity.x, velocity.y, -speed)) end
 	end
 
 	-- What its gear rattles with its next step (the foot after the last).
-	function ENT:NSGear(running)
-		return Voices.Gear(self.NSVoiceLines, self.NSLeftFoot and "right" or "left", running, math.random)
+	function ENT:NSGear (running)
+		return Voices.Gear (self.NSVoiceLines, self.NSLeftFoot and "right" or "left", running, math.random)
 	end
 
 	-- Holds its loadout's weapon for the enemy's distance (Arms.Choose).
-	function ENT:NSArm(enemy)
+	function ENT:NSArm (enemy)
 		local loadout = self.NSLoadout
-		if not loadout or not IsValid(enemy) then return end
-		local weapons = self:GetWeapons()
-		local class = Arms.Choose(loadout, self:GetPos():Distance(enemy:GetPos()),
-			weapons[loadout.primary], weapons[loadout.secondary])
-		local active = self:GetActiveWeapon()
-		if not (IsValid(active) and active:GetClass() == class) then self:SelectWeapon(class) end
+		if not loadout or not IsValid (enemy) then return end
+		local weapons = self:GetWeapons ()
+		local class = Arms.Choose (loadout, self:GetPos ():Distance (enemy:GetPos ()),
+			weapons [loadout.primary], weapons [loadout.secondary])
+		local active = self:GetActiveWeapon ()
+		if not (IsValid (active) and active:GetClass () == class) then self:SelectWeapon (class) end
 	end
 
 	-- A weapon in hand: its ranges are the arms' (a gun fires at any enemy in
 	-- sight); a weapon the arms do not know keeps the class's.
-	function ENT:OnWeaponChange(old, new)
-		local ranges = IsValid(new) and Arms.Ranges(new)
+	function ENT:OnWeaponChange (old, new)
+		local ranges = IsValid (new) and Arms.Ranges (new)
 		if not ranges then return end
 		self.RangeAttackRange = ranges.attack
 		self.MeleeAttackRange = ranges.melee
@@ -223,46 +223,46 @@ function WS.WarSoldier(ENT)
 	end
 
 	-- Its steps are timed (CustomThink), not the walk animation's.
-	function ENT:OnAnimEvent(event, ...)
+	function ENT:OnAnimEvent (event, ...)
 		if event == "PlayerStep" then return end
-		return Base().OnAnimEvent(self, event, ...)
+		return Base ().OnAnimEvent (self, event, ...)
 	end
 
 	-- Landing (the base has landed it before raising this): the impact, a
 	-- step as loud as the fall was fast (Noise.Landing; a jump onto a ledge, as a jump's), a brief
 	-- landing animation, a grunt for a hard landing or a cry for a hurtful
 	-- one, and the enemies in earshot notice it (NSNotice).
-	function ENT:OnLandOnGround(ground)
+	function ENT:OnLandOnGround (ground)
 		local fall = self.NSFallSpeed or 0
-		local volume = self.NSLeapt and Noise.JUMP_LANDING_VOLUME or Noise.Landing(fall)
+		local volume = self.NSLeapt and Noise.JUMP_LANDING_VOLUME or Noise.Landing (fall)
 		self.NSFallSpeed, self.NSLeapt = 0, nil
 		if volume <= 0 then return end
 		-- a landing jolts its gear as a run does
-		PlayStep(self, Noise.Played(volume), self:NSGear(true))
-		local landing = self:JumpSequence(JumpActs.LAND)
-		if landing then self:AddGestureSequence(landing, true) end
-		if Noise.HardLanding(fall) then self:NSImpact() end
+		PlayStep (self, Noise.Played (volume), self:NSGear (true))
+		local landing = self:JumpSequence (JumpActs.LAND)
+		if landing then self:AddGestureSequence (landing, true) end
+		if Noise.HardLanding (fall) then self:NSImpact () end
 		if fall > Noise.MAX_SAFE_FALL_SPEED then
-			Say(self, self.NSVoiceLines.fall)
-		elseif Noise.HardLanding(fall) then
-			Say(self, self.NSVoiceLines.grunt)
+			Say (self, self.NSVoiceLines.fall)
+		elseif Noise.HardLanding (fall) then
+			Say (self, self.NSVoiceLines.grunt)
 		end
-		self:NSNotice(STEP_LEVEL, volume)
+		self:NSNotice (STEP_LEVEL, volume)
 	end
 
 	-- A noise of its body that the soldiers in earshot hear (Noise.Hears),
 	-- each told it (OnSound).
-	function ENT:NSNotice(level, volume)
-		local pos = self:GetPos()
+	function ENT:NSNotice (level, volume)
+		local pos = self:GetPos ()
 		local sound = { Entity = self, Pos = pos, SoundLevel = level, Volume = volume }
-		local reach = Noise.HearingRange(level, volume)
-		for bot in pairs(nextsoldier.bots) do
-			if IsValid(bot) and bot ~= self and not bot:IsAIDisabled() and not bot:IsDeaf() then
-				local coefficient = bot:GetHearingCoefficient()
-				local distance = bot:GetRangeTo(pos)
+		local reach = Noise.HearingRange (level, volume)
+		for bot in pairs (nextsoldier.bots) do
+			if IsValid (bot) and bot ~= self and not bot:IsAIDisabled () and not bot:IsDeaf () then
+				local coefficient = bot:GetHearingCoefficient ()
+				local distance = bot:GetRangeTo (pos)
 				-- the sight test only for one near enough to hear it seen
-				if distance <= reach * coefficient and Noise.Hears(level, volume, distance, bot:VisibleVec(pos), coefficient) then
-					bot:Timer(0, bot.OnSound, self, sound)
+				if distance <= reach * coefficient and Noise.Hears (level, volume, distance, bot:VisibleVec (pos), coefficient) then
+					bot:Timer (0, bot.OnSound, self, sound)
 				end
 			end
 		end
@@ -272,88 +272,88 @@ function WS.WarSoldier(ENT)
 	-- is: a player's shot (FireBullets, or a trace between LagCompensation
 	-- calls) meets it where the shooter saw it, not where it has walked
 	-- since; GMod compensates only players unless asked (docs/prediction.md).
-	function ENT:CustomInitialize()
-		self:SetLagCompensated(true)
-		self:NSVoice()
+	function ENT:CustomInitialize ()
+		self:SetLagCompensated (true)
+		self:NSVoice ()
 	end
 
 	-- Walks the controller's target, if it has one, or, there, faces the
 	-- enemy so it can fight (a soldier holding its ground), else watches
 	-- NSLook: true when it has a target.
-	function ENT:NSSteer(enemy)
+	function ENT:NSSteer (enemy)
 		-- frozen (the match's end): it stands where it is
 		if self.NSFrozen then return true end
 		-- held by the Path Follower stool: its orders run as ever, and its path to their
 		-- target is planned and shown, but not walked
-		if self.NSFeetHeld then return self:NSShowHeldPath(enemy) end
+		if self.NSFeetHeld then return self:NSShowHeldPath (enemy) end
 		-- riding the cart: the controller carries it; it only turns to fight
 		if self.NSSeated then
-			if IsValid(enemy) then self:FaceTowards(enemy) end
+			if IsValid (enemy) then self:FaceTowards (enemy) end
 			return true
 		end
 		-- the orders' hop, planned when it was stuck (NSHop)
-		local hop = self:NSTakeHop()
+		local hop = self:NSTakeHop ()
 		if hop then
 			self.NSMoveResult = hop
 			return true
 		end
 		local target = self.NSTarget
-		local here = self:GetPos()
-		if self.NSLastPos and here:DistToSqr(self.NSLastPos) > TELEPORT * TELEPORT then self:NSRepath() end
+		local here = self:GetPos ()
+		if self.NSLastPos and here:DistToSqr (self.NSLastPos) > TELEPORT * TELEPORT then self:NSRepath () end
 		self.NSLastPos = here
 		if not target then return false end
 		-- its own, where what drives it counts it there only nearer (a follower's legs)
 		local tolerance = self.NSGoalTolerance or GOAL_TOLERANCE
-		if here:DistToSqr(target) > tolerance * tolerance then
-			local result = self:FollowPath(target, PATH_TOLERANCE)
-			if result == "obstacle" and self:NSVault() then result = "vaulted" end
+		if here:DistToSqr (target) > tolerance * tolerance then
+			local result = self:FollowPath (target, PATH_TOLERANCE)
+			if result == "obstacle" and self:NSVault () then result = "vaulted" end
 			self.NSMoveResult = result
-		elseif IsValid(enemy) then
-			self:FaceTowards(enemy)
+		elseif IsValid (enemy) then
+			self:FaceTowards (enemy)
 		elseif self.NSLook then
-			self:FaceTowards(self.NSLook)
+			self:FaceTowards (self.NSLook)
 		end
 		return true
 	end
 
 	-- Its feet held (NSFeetHeld): its path to its target planned and drawn where it stands, its
 	-- target shown to clients (NSHeldTarget), and an enemy faced.
-	function ENT:NSShowHeldPath(enemy)
+	function ENT:NSShowHeldPath (enemy)
 		local target = self.NSTarget
-		self:SetNW2Vector("NSHeldTarget", target or vector_origin)
-		if target and self:GetPos():DistToSqr(target) > GOAL_TOLERANCE * GOAL_TOLERANCE then
-			local path = self:PlanPath(target, PATH_TOLERANCE)
-			if path:IsValid() then path:Draw() end
+		self:SetNW2Vector ("NSHeldTarget", target or vector_origin)
+		if target and self:GetPos ():DistToSqr (target) > GOAL_TOLERANCE * GOAL_TOLERANCE then
+			local path = self:PlanPath (target, PATH_TOLERANCE)
+			if path:IsValid () then path:Draw () end
 		end
-		if IsValid(enemy) then self:FaceTowards(enemy) end
+		if IsValid (enemy) then self:FaceTowards (enemy) end
 		self.NSMoveResult = target and "moving" or nil
 		return target ~= nil
 	end
 
-	function ENT:NSHoldFeet(held)
+	function ENT:NSHoldFeet (held)
 		self.NSFeetHeld = held or nil
-		self:SetNW2Bool("NSFeetHeld", held)
-		if not held then self:NSRepath() end
+		self:SetNW2Bool ("NSFeetHeld", held)
+		if not held then self:NSRepath () end
 	end
 
 	-- No enemy: the target, else stand watching NSLook.
-	function ENT:OnIdle()
-		if not self:NSSteer() and self.NSLook then self:FaceTowards(self.NSLook) end
+	function ENT:OnIdle ()
+		if not self:NSSteer () and self.NSLook then self:FaceTowards (self.NSLook) end
 	end
 
 	-- An enemy: with a target the soldier keeps to it, and the base still
 	-- fires at the enemy in sight; without one, the base's own chase,
 	-- retreat and facing.
-	function ENT:OnChaseEnemy(enemy) return self:NSSteer(enemy) end
-	function ENT:OnAvoidEnemy(enemy) return self:NSSteer(enemy) end
-	function ENT:OnIdleEnemy(enemy) return self:NSSteer(enemy) end
+	function ENT:OnChaseEnemy (enemy) return self:NSSteer (enemy) end
+	function ENT:OnAvoidEnemy (enemy) return self:NSSteer (enemy) end
+	function ENT:OnIdleEnemy (enemy) return self:NSSteer (enemy) end
 
 	-- The bridge to the war's orders (docs/aiwar-command.md §6): the base's
 	-- hooks become queries and events; its own that do work are called
 	-- through.
 	local Engine -- games.npc.nextbot, required on first use
 
-	local function Brain(self)
+	local function Brain (self)
 		local brain = self.NSBrain
 		if not brain then return nil end
 		Engine = Engine or npc.nextbot
@@ -361,70 +361,70 @@ function WS.WarSoldier(ENT)
 	end
 
 	-- The answer, or nil without a brain (Engine is loaded when it is not nil).
-	local function Ask(self, name, ...)
-		local brain = Brain(self)
+	local function Ask (self, name, ...)
+		local brain = Brain (self)
 		if not brain then return nil end
-		local answer = brain:Query(name, ...)
+		local answer = brain:Query (name, ...)
 		if self.NSTrace then
 			local args = {}
-			for i = 1, select("#", ...) do args[i] = Show((select(i, ...))) end
+			for i = 1, select ("#", ...) do args [i] = Show ((select (i, ...))) end
 			local named = { [Engine.ANSWER_NO] = "NO", [Engine.ANSWER_YES] = "YES", [Engine.ANSWER_UNDEFINED] = "undefined" }
-			Trace(self, string.format("ask %s(%s) -> %s", name, table.concat(args, ", "), named[answer] or Show(answer)))
+			Trace (self, string.format ("ask %s(%s) -> %s", name, table.concat (args, ", "), named [answer] or Show (answer)))
 		end
 		return answer
 	end
 
-	local function Answered(answer, which)
-		return answer ~= nil and answer == Engine[which]
+	local function Answered (answer, which)
+		return answer ~= nil and answer == Engine [which]
 	end
 
-	local function Tell(self, name, ...)
-		local brain = Brain(self)
+	local function Tell (self, name, ...)
+		local brain = Brain (self)
 		if not brain then return end
 		if self.NSTrace then
 			local args = {}
-			for i = 1, select("#", ...) do args[i] = Show((select(i, ...))) end
-			Trace(self, string.format("tell %s(%s)", name, table.concat(args, ", ")))
+			for i = 1, select ("#", ...) do args [i] = Show ((select (i, ...))) end
+			Trace (self, string.format ("tell %s(%s)", name, table.concat (args, ", ")))
 		end
-		brain:Event(name, ...)
+		brain:Event (name, ...)
 	end
 
 	-- ShouldAttack NO skips the base's attack (the humiliated, a healing
 	-- medic), as do a freeze and the reaction time to a new enemy
 	-- (NSReactAt, tf_bot_difficulty's).
-	function ENT:OnRangeAttack()
-		if self.NSFrozen or CurTime() < (self.NSReactAt or 0) then return true end
-		if Answered(Ask(self, "ShouldAttack", self:GetEnemy()), "ANSWER_NO") then return true end
+	function ENT:OnRangeAttack ()
+		if self.NSFrozen or CurTime () < (self.NSReactAt or 0) then return true end
+		if Answered (Ask (self, "ShouldAttack", self:GetEnemy ()), "ANSWER_NO") then return true end
 	end
 
 	-- The base strikes with no melee weapon of its own: the soldier strikes
 	-- the enemy in reach for the weapon's damage, at its pace
 	-- (features.aiwar.arms), playing the melee swing.
-	function ENT:OnMeleeAttack(enemy, weapon)
+	function ENT:OnMeleeAttack (enemy, weapon)
 		if self.NSFrozen then return true end
-		if Answered(Ask(self, "ShouldAttack", self:GetEnemy()), "ANSWER_NO") then return true end
-		local arm = IsValid(weapon) and weapon
-		local now = CurTime()
-		if not (arm and Arms.Melee(arm)) or now < (self.NSNextStrike or 0) or not IsValid(enemy) then return true end
-		local damage = Arms.Damage(arm)
-		self.NSNextStrike = now + Arms.Interval(arm)
-		self:FaceTowards(enemy)
-		self:AddGesture(ACT_HL2MP_GESTURE_RANGE_ATTACK_MELEE)
-		local dmg = DamageInfo()
-		dmg:SetDamage(damage)
-		dmg:SetDamageType(DMG_CLUB)
-		dmg:SetAttacker(self)
-		dmg:SetInflictor(weapon)
-		dmg:SetDamageForce(self:GetForward() * damage * 100)
-		dmg:SetDamagePosition(enemy:WorldSpaceCenter())
-		enemy:TakeDamageInfo(dmg)
+		if Answered (Ask (self, "ShouldAttack", self:GetEnemy ()), "ANSWER_NO") then return true end
+		local arm = IsValid (weapon) and weapon
+		local now = CurTime ()
+		if not (arm and Arms.Melee (arm)) or now < (self.NSNextStrike or 0) or not IsValid (enemy) then return true end
+		local damage = Arms.Damage (arm)
+		self.NSNextStrike = now + Arms.Interval (arm)
+		self:FaceTowards (enemy)
+		self:AddGesture (ACT_HL2MP_GESTURE_RANGE_ATTACK_MELEE)
+		local dmg = DamageInfo ()
+		dmg:SetDamage (damage)
+		dmg:SetDamageType (DMG_CLUB)
+		dmg:SetAttacker (self)
+		dmg:SetInflictor (weapon)
+		dmg:SetDamageForce (self:GetForward () * damage * 100)
+		dmg:SetDamagePosition (enemy:WorldSpaceCenter ())
+		enemy:TakeDamageInfo (dmg)
 		return true
 	end
 
 	-- SelectMoreDangerousThreat: true when a is the one to fight; nil leaves
 	-- the base's order (priority, then range).
-	function ENT:OnFetchEnemy(a, b)
-		local pick = Ask(self, "SelectMoreDangerousThreat", a, b)
+	function ENT:OnFetchEnemy (a, b)
+		local pick = Ask (self, "SelectMoreDangerousThreat", a, b)
 		if pick == a then return true end
 		if pick == b then return false end
 		return nil
@@ -432,61 +432,61 @@ function WS.WarSoldier(ENT)
 
 	-- a NextBot has no ScaleNPCDamage: its hit's group, for a headshot's
 	-- crit (ws/sv_hits.lua)
-	function ENT:OnTraceAttack(dmg, dir, tr)
-		WS.TraceHit(self, tr.HitGroup)
-		return Base().OnTraceAttack(self, dmg, dir, tr)
+	function ENT:OnTraceAttack (dmg, dir, tr)
+		WS.TraceHit (self, tr.HitGroup)
+		return Base ().OnTraceAttack (self, dmg, dir, tr)
 	end
 
-	function ENT:OnTakeDamage(dmg, hitgroup)
-		local result = Base().OnTakeDamage(self, dmg, hitgroup)
-		Tell(self, "OnInjured", dmg:GetAttacker(), dmg:GetDamage())
-		self:NSFeedback(dmg:GetDamage())
+	function ENT:OnTakeDamage (dmg, hitgroup)
+		local result = Base ().OnTakeDamage (self, dmg, hitgroup)
+		Tell (self, "OnInjured", dmg:GetAttacker (), dmg:GetDamage ())
+		self:NSFeedback (dmg:GetDamage ())
 		return result
 	end
 
-	function ENT:OnSpotted(ent) Tell(self, "OnSight", ent) end
-	function ENT:OnLost(ent) Tell(self, "OnLostSight", ent) end
+	function ENT:OnSpotted (ent) Tell (self, "OnSight", ent) end
+	function ENT:OnLost (ent) Tell (self, "OnLostSight", ent) end
 	-- a new enemy: its orders hear of it, and the AI war may have it call it
 	-- out (WSSoldierContact: features/aiwar/sv_responserules.lua)
-	function ENT:OnNewEnemy(ent)
+	function ENT:OnNewEnemy (ent)
 		-- the weapon for it at once: it fires as it calls them out
-		self:NSArm(ent)
-		Tell(self, "OnContact", ent)
-		hook.Run("WSSoldierContact", self, ent)
+		self:NSArm (ent)
+		Tell (self, "OnContact", ent)
+		hook.Run ("WSSoldierContact", self, ent)
 	end
 
-	function ENT:OnLastEnemy(ent)
-		Base().OnLastEnemy(self, ent)
-		Tell(self, "OnContactLost", ent)
-		hook.Run("WSSoldierContactLost", self, ent)
+	function ENT:OnLastEnemy (ent)
+		Base ().OnLastEnemy (self, ent)
+		Tell (self, "OnContactLost", ent)
+		hook.Run ("WSSoldierContactLost", self, ent)
 	end
 
 	-- In an area a TF2 player crouches through, the soldier crouches (the
 	-- vortigaunt's base has no crouch): its hull passes under the ceiling
 	-- either way, but not its model.
-	function ENT:OnNavAreaChanged(old, new)
-		if self.SetCrouching then self:SetCrouching(IsValid(new) and HL2Path.MustCrouch(new:GetAttributes())) end
-		Tell(self, "OnNavAreaChanged", old, new)
+	function ENT:OnNavAreaChanged (old, new)
+		if self.SetCrouching then self:SetCrouching (IsValid (new) and HL2Path.MustCrouch (new:GetAttributes ())) end
+		Tell (self, "OnNavAreaChanged", old, new)
 	end
 
 	-- What it stands on, for Lua: a soldier on a control point's base, a
 	-- prop or another soldier stands as firm as on the world, so anything
 	-- that is not moving counts as the world (a moving cart or lift is
 	-- itself).
-	local EntityGround = FindMetaTable("Entity").GetGroundEntity
+	local EntityGround = FindMetaTable ("Entity").GetGroundEntity
 	local STILL = 1
-	function ENT:GetGroundEntity()
-		local ground = EntityGround(self)
-		if IsValid(ground) and ground:GetVelocity():LengthSqr() < STILL * STILL then return game.GetWorld() end
+	function ENT:GetGroundEntity ()
+		local ground = EntityGround (self)
+		if IsValid (ground) and ground:GetVelocity ():LengthSqr () < STILL * STILL then return game.GetWorld () end
 		return ground
 	end
 
 	-- Its path planned afresh from where it stands, on FollowPath's next step
 	-- (it is computed again only as the target moves): pushed off it, the
 	-- soldier would run at its next point through whatever stands between.
-	function ENT:NSRepath()
-		local path = self:GetPath()
-		if IsValid(path) then path:Invalidate() end
+	function ENT:NSRepath ()
+		local path = self:GetPath ()
+		if IsValid (path) then path:Invalidate () end
 	end
 
 	-- Its path's cost (GetPathGenerator, which its path search takes):
@@ -496,30 +496,30 @@ function WS.WarSoldier(ENT)
 	-- built, none: every move refused, no path yet. A soldier no controller
 	-- enlisted keeps the base's own, with the link rule below. Link clearance
 	-- uses this entity's collision hull, as the base generator does.
-	local function NoPath(area, fromArea) return fromArea == nil and 0 or -1 end
-	function ENT:GetPathGenerator()
-		if not self.NSPathCost then return Base().GetPathGenerator(self) end
-		return Base().GetPathGenerator(self, self.NSPathCost() or NoPath)
+	local function NoPath (area, fromArea) return fromArea == nil and 0 or -1 end
+	function ENT:GetPathGenerator ()
+		if not self.NSPathCost then return Base ().GetPathGenerator (self) end
+		return Base ().GetPathGenerator (self, self.NSPathCost () or NoPath)
 	end
 
 	-- The base's cost of each link, for a soldier no controller enlisted: none
 	-- it cannot cross (WS.NavLinkCrossable: a players' map's clip along a
 	-- rail, which the nav mesh links a drop past, so it would ram the rail
 	-- for good). A ladder climbed crosses no opening.
-	function ENT:OnComputePath(from, to, ladder)
-		if IsValid(ladder) then return 0 end
-		local mins, maxs = self:GetCollisionBounds()
-		if not WS.NavLinkCrossable(from, to, mins, maxs) then return -1 end
+	function ENT:OnComputePath (from, to, ladder)
+		if IsValid (ladder) then return 0 end
+		local mins, maxs = self:GetCollisionBounds ()
+		if not WS.NavLinkCrossable (from, to, mins, maxs) then return -1 end
 		return 0
 	end
 
 	-- ShouldHurry, else the controller's gait (NSRun), else run at an enemy.
-	function ENT:ShouldRun()
-		local hurry = Ask(self, "ShouldHurry")
-		if Answered(hurry, "ANSWER_YES") then return true end
-		if Answered(hurry, "ANSWER_NO") then return false end
+	function ENT:ShouldRun ()
+		local hurry = Ask (self, "ShouldHurry")
+		if Answered (hurry, "ANSWER_YES") then return true end
+		if Answered (hurry, "ANSWER_NO") then return false end
 		if self.NSRun ~= nil then return self.NSRun end
-		return self:HasEnemy()
+		return self:HasEnemy ()
 	end
 
 	-- The controller's kit for the soldier's job: { primary (classes, one
@@ -527,30 +527,30 @@ function WS.WarSoldier(ENT)
 	-- these three and nothing else, the primary in hand; a kit without them,
 	-- the vortigaunt's, leaves its arms alone), model, health (its most),
 	-- damage (its damage scale), runSpeed }; nil fields take the soldier's own.
-	function ENT:NSKit(kit)
-		self.NSOwnModel = self.NSOwnModel or self:GetModel()
+	function ENT:NSKit (kit)
+		self.NSOwnModel = self.NSOwnModel or self:GetModel ()
 		local model = kit.model or self.NSOwnModel
-		if self:GetModel() ~= model then
-			self:SetModel(model)
-			self:NSVoice()
+		if self:GetModel () ~= model then
+			self:SetModel (model)
+			self:NSVoice ()
 		end
 		if kit.primary then
-			local loadout = Arms.Loadout(kit, math.random)
+			local loadout = Arms.Loadout (kit, math.random)
 			local carried = {}
-			for _, class in ipairs(Arms.Classes(loadout)) do
-				carried[class] = true
-				self:GiveWeapon(class)
+			for _, class in ipairs (Arms.Classes (loadout)) do
+				carried [class] = true
+				self:GiveWeapon (class)
 			end
-			for class in pairs(self:GetWeapons()) do
-				if not carried[class] then self:RemoveWeapon(class) end
+			for class in pairs (self:GetWeapons ()) do
+				if not carried [class] then self:RemoveWeapon (class) end
 			end
 			self.NSLoadout = loadout
-			self:SelectWeapon(loadout.primary)
+			self:SelectWeapon (loadout.primary)
 		end
 		local most = kit.health or self.SpawnHealth
-		if self:GetMaxHealth() ~= most then
-			self:SetHealth(math.max(1, math.floor(self:Health() * most / math.max(self:GetMaxHealth(), 1))))
-			self:SetMaxHealth(most)
+		if self:GetMaxHealth () ~= most then
+			self:SetHealth (math.max (1, math.floor (self:Health () * most / math.max (self:GetMaxHealth (), 1))))
+			self:SetMaxHealth (most)
 		end
 		self.NSDamageScale = kit.damage
 		self.NSOwnRunSpeed = self.NSOwnRunSpeed or self.RunSpeed
@@ -563,9 +563,9 @@ function WS.WarSoldier(ENT)
 	-- its base names for its hold (HoldAct).
 	local STANCE_CROUCHED = "crouched"
 
-	function ENT:NSTakeStance()
+	function ENT:NSTakeStance ()
 		self.NSStance = STANCE_CROUCHED
-		self:AddGesture(self:HoldAct("ACT_HL2MP_GESTURE_RELOAD_"))
+		self:AddGesture (self:HoldAct ("ACT_HL2MP_GESTURE_RELOAD_"))
 	end
 
 	-- Seated on the cart: the sitting pose, whatever the base would play; a
@@ -573,18 +573,18 @@ function WS.WarSoldier(ENT)
 	-- and panicked on the move, as a player's (sh_core.lua); in a battle
 	-- stance, its crouch.
 	-- Riding the cart its feet are off the ground, and it is no jump.
-	function ENT:PlaysJump() return not self.NSSeated end
+	function ENT:PlaysJump () return not self.NSSeated end
 
-	function ENT:OnUpdateAnimation()
+	function ENT:OnUpdateAnimation ()
 		if self.NSSeated then return ACT_HL2MP_SIT, 1 end
-		if WS.IsLoser(self) and self:IsOnGround() and not (self:IsDown() or self:IsDead()) then
-			return self:IsMoving() and ACT_HL2MP_RUN_PANICKED or ACT_HL2MP_IDLE_SCARED, 1
+		if WS.IsLoser (self) and self:IsOnGround () and not (self:IsDown () or self:IsDead ()) then
+			return self:IsMoving () and ACT_HL2MP_RUN_PANICKED or ACT_HL2MP_IDLE_SCARED, 1
 		end
-		if self.NSStance then return self:HoldAct("ACT_HL2MP_IDLE_CROUCH_"), 1 end
-		return Base().OnUpdateAnimation(self)
+		if self.NSStance then return self:HoldAct ("ACT_HL2MP_IDLE_CROUCH_"), 1 end
+		return Base ().OnUpdateAnimation (self)
 	end
 
-	function ENT:OnDealtDamage()
+	function ENT:OnDealtDamage ()
 		return self.NSDamageScale
 	end
 
@@ -595,11 +595,11 @@ function WS.WarSoldier(ENT)
 	-- arrives, before the base removes it. The method is ours: NextBot's
 	-- BecomeRagdoll belongs to the engine, and an ENT method of that name is
 	-- never reached.
-	function ENT:NSClientRagdoll(dmg)
-		if not Ragdoll.LeavesBody(self:IsFlagSet(FL_DISSOLVING), dmg:IsDamageType(DMG_REMOVENORAGDOLL)) then return false end
-		self:SetNotSolid(true)
+	function ENT:NSClientRagdoll (dmg)
+		if not Ragdoll.LeavesBody (self:IsFlagSet (FL_DISSOLVING), dmg:IsDamageType (DMG_REMOVENORAGDOLL)) then return false end
+		self:SetNotSolid (true)
 		self.NSTarget = nil
-		WS.SendClientRagdoll(self, dmg:GetDamageForce())
+		WS.SendClientRagdoll (self, dmg:GetDamageForce ())
 		return true
 	end
 
@@ -607,26 +607,26 @@ function WS.WarSoldier(ENT)
 	-- plays one of the player model's deaths (nextsoldier.body.gestures' Death),
 	-- not solid, and is handed to the clients' ragdolls where it ends. A
 	-- body that leaves none, or a model with no such death, falls at once.
-	function ENT:NSCannedDeath(dmg)
-		local death = Gestures.Death(dmg:IsDamageType(DMG_ACID), math.random)
-		local sequence = death and self:LookupSequence(death) or -1
+	function ENT:NSCannedDeath (dmg)
+		local death = Gestures.Death (dmg:IsDamageType (DMG_ACID), math.random)
+		local sequence = death and self:LookupSequence (death) or -1
 		if sequence < 0 or not self.DeathSequence then return false end
-		if not Ragdoll.LeavesBody(self:IsFlagSet(FL_DISSOLVING), dmg:IsDamageType(DMG_REMOVENORAGDOLL)) then return false end
-		self:SetNotSolid(true)
+		if not Ragdoll.LeavesBody (self:IsFlagSet (FL_DISSOLVING), dmg:IsDamageType (DMG_REMOVENORAGDOLL)) then return false end
+		self:SetNotSolid (true)
 		self.NSTarget = nil
-		local length = self:DeathSequence(sequence)
-		timer.Simple(length, function()
-			if IsValid(self) then WS.SendClientRagdoll(self, vector_origin) end
+		local length = self:DeathSequence (sequence)
+		timer.Simple (length, function ()
+			if IsValid (self) then WS.SendClientRagdoll (self, vector_origin) end
 		end)
-		self:Linger(length + Ragdoll.HANDOFF)
+		self:Linger (length + Ragdoll.HANDOFF)
 		return true
 	end
 
-	function ENT:OnDeath(dmg)
-		if self.NSRappelling then self:NSRappelEnd(false) end
-		WS.PlayDeath(self:GetPos(), self.NSVoiceLines)
-		if self:NSCannedDeath(dmg) then return end
-		if self:NSClientRagdoll(dmg) then self:Linger(Ragdoll.HANDOFF) end
+	function ENT:OnDeath (dmg)
+		if self.NSRappelling then self:NSRappelEnd (false) end
+		WS.PlayDeath (self:GetPos (), self.NSVoiceLines)
+		if self:NSCannedDeath (dmg) then return end
+		if self:NSClientRagdoll (dmg) then self:Linger (Ragdoll.HANDOFF) end
 	end
 end
 

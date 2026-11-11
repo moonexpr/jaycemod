@@ -13,7 +13,7 @@ local Expiring = cache.expiring
 local Teams = gameplay.teams
 local Distance = math.geometry.Distance
 local Select = list.select
-module(...)
+module (...)
 
 -- A sighting of a loser is followed this long.
 HUNT_MEMORY = 10
@@ -24,13 +24,14 @@ HUNT_ARRIVE, HUNT_GIVE_UP = 96, 12
 -- spawn.
 FLEE_COVER, FLEE_REPICK, HIDE_ARRIVE = 600, 256, 160
 
-local ENEMY = {
+local ENEMY =
+{
 	[Teams.RED] = Teams.BLUE,
-	[Teams.BLUE] = Teams.RED,
+	[Teams.BLUE] = Teams.RED
 }
 
-local function Nearest(points, here)
-	return (Select.Nearest(points, here))
+local function Nearest (points, here)
+	return (Select.Nearest (points, here))
 end
 
 -------------------------------------------------------------------------------
@@ -41,43 +42,44 @@ Board.__index = Board
 
 -- A board is told the time by each report and each asking, and keeps each
 -- team's sightings in a cache that forgets them HUNT_MEMORY after the report.
-function Board.New()
-	local board = setmetatable({ seen = {}, now = 0 }, Board)
-	board.clock = { Now = function() return board.now end }
+function Board.New ()
+	local board = setmetatable ({ seen = {}, now = 0 }, Board)
+	board.clock = { Now = function () return board.now end }
 	return board
 end
 
 -- A soldier of `team` saw `subject` at `pos`.
-function Board:Report(team, subject, pos, now)
+function Board:Report (team, subject, pos, now)
 	self.now = now
-	local seen = self.seen[team]
+	local seen = self.seen [team]
 	if not seen then
-		seen = Expiring.New({ clock = self.clock, term = HUNT_MEMORY })
-		self.seen[team] = seen
+		seen = Expiring.New ({ clock = self.clock, term = HUNT_MEMORY })
+		self.seen [team] = seen
 	end
-	seen[subject] = {
+	seen [subject] =
+	{
 		subject = subject,
 		pos = pos,
-		time = now,
+		time = now
 	}
 end
 
 -- The team's sightings within HUNT_MEMORY, newest first; older ones are
 -- forgotten.
-function Board:Sightings(team, now)
+function Board:Sightings (team, now)
 	self.now = now
 	local list = {}
-	local seen = self.seen[team]
+	local seen = self.seen [team]
 	if not seen then return list end
-	for _, sighting in seen() do list[#list + 1] = sighting end
+	for _, sighting in seen () do list [#list + 1] = sighting end
 	return list
 end
 
 -- The nearest sighting to here, or nil.
-local function SightingPos(sighting) return sighting.pos end
+local function SightingPos (sighting) return sighting.pos end
 
-function Quarry(sightings, here)
-	return (Select.Nearest(sightings, here, SightingPos))
+function Quarry (sightings, here)
+	return (Select.Nearest (sightings, here, SightingPos))
 end
 
 -- A hunter on its way turns for a loser sighted within PURSUE_REACH of it.
@@ -86,26 +88,26 @@ PURSUE_REACH = 1200
 -- The sighting a hunter on its way to goal turns for: the nearest fresh one
 -- within PURSUE_REACH of here, unless the trip already goes there; nil to
 -- keep on.
-function Pursues(sightings, here, goal)
-	local quarry = Quarry(sightings, here)
-	if not quarry or Distance(quarry.pos, here) > PURSUE_REACH then return nil end
-	if goal and Distance(quarry.pos, goal) <= HUNT_ARRIVE then return nil end
+function Pursues (sightings, here, goal)
+	local quarry = Quarry (sightings, here)
+	if not quarry or Distance (quarry.pos, here) > PURSUE_REACH then return nil end
+	if goal and Distance (quarry.pos, goal) <= HUNT_ARRIVE then return nil end
 	return quarry
 end
 
 -- Where a winner hunts: its quarry, else the member's pick of the losers'
 -- spawns (by slot, so the hunters spread over them); nil with neither.
-function HuntGoal(field, member, sightings, here)
-	local quarry = Quarry(sightings, here)
+function HuntGoal (field, member, sightings, here)
+	local quarry = Quarry (sightings, here)
 	if quarry then return quarry.pos end
-	local spawns = field.spawns and field.spawns[ENEMY[member.team]]
+	local spawns = field.spawns and field.spawns [ENEMY [member.team]]
 	if not spawns or #spawns == 0 then return nil end
-	return spawns[member.slot % #spawns + 1]
+	return spawns [member.slot % #spawns + 1]
 end
 
 -- Where a loser hides: the nearest of its own team's spawns, or nil.
-function Hideout(field, member, here)
-	local spawns = field.spawns and field.spawns[member.team]
+function Hideout (field, member, here)
+	local spawns = field.spawns and field.spawns [member.team]
 	if not spawns then return nil end
-	return Nearest(spawns, here)
+	return Nearest (spawns, here)
 end
