@@ -326,6 +326,106 @@ fire-team table.
 6. `docs/places-plan.md`'s room graph and occupation on §5.1.
 7. §5.3, a problem at a time.
 
+## 6a. The controller split into its parts' objects (for review)
+
+The operator, 2026-11-12: the war's controller (`features/aiwar/sv.lua`)
+is bloated; plan a refactor before any code. Nothing here is built.
+
+### What it is now, measured
+
+The root table declares 72 fields, written and read by 26 `sv_*` parts
+(8,030 lines, 209 `Controller:` methods), driven by seven `Think` and `Tick`
+hooks. How the fields are used:
+
+- **26 are shared**, read by two parts or more: `war` (16 parts),
+  `soldiers` (13), `scenario` (10), `gates` (6), then `rooms`, `bench`,
+  `paused`, `winner`, `laneSets`, `shutDoors`, `baseCache` (4 each),
+  `doorFlags`, `nextRelations`, `losers`, `lanePlans`, `zones`,
+  `postCache`, `waitingFor` (3), and `bots`, `intel`, `swapFactions`,
+  `heroes`, `roomExits`, `scenarios`, `behaviors`, `scenarioEntry` (2).
+- **The other 46 are one part's own**, nobody else reads them. Each
+  such part is an object whose state is laid on the controller.
+- **About ten of those are hand-rolled timers**: a `next*` time a `Think`
+  checks against `CurTime()`, each with its own interval.
+
+| Part | Its own fields | Its timers, and what drives them |
+|---|---|---|
+| `sv_hazards.lua` | `hazardStore`, `footAreas`, `hazards`, `hazardsSaved`, `newlyDisabled`, `separationCheck`, `separationAgain`, `hazardsApplied` | `separationAgain` |
+| `sv_obstacles.lua` | `cartBounds`, `trains`, `doorOpened`, `openedDoors`, `shutDoorStamp`, `shutDoorAreas` | `DOOR_OPEN_INTERVAL` 1 s |
+| `sv_field.lua` | `tracks`, `cartEntities`, `waypointCache`, `nextThink`, `nextWatch` | its `Think`: `THINK_INTERVAL` 0.25 s (`Survey`), `WATCH_INTERVAL`, `RELATIONSHIP_INTERVAL` 1 s |
+| `sv_bots.lua` | `plans`, `calendar`, `lookFighters`, `lookFightersAt`, `botSerial`, `nextQuota` | its `Think`: the quota 1 s; the looks (on the calendar, uncommitted) |
+| `sv_slots.lua` | `slots`, `slotStore`, `slotViewers`, `slotSignature`, `nextSlotSync` | `SLOT_SYNC_INTERVAL` 0.5 s |
+| `sv_classes.lua` | `classes`, `classesFinding`, `classesFailed` | none (a transaction on the slow lane) |
+| `sv_rooms.lua` | `roomStore`, `roomsFinding`, `nextRoomsDebug` | `ROOMS_DEBUG_INTERVAL` 5 s |
+| `sv_marks.lua` | `marks`, `nextMarkReport` | `ENEMY_EVERY` 2 s |
+| `sv_lanes.lua` | `musterStore`, `musters` | none |
+| `sv_relations.lua` | `gadgets`, `monsters` | `HEAR_INTERVAL` 0.5 s |
+| `sv_probe.lua` | `probes`, `probeReport` | a `timer` |
+| `sv_report.lua` | `nextDebug` | `DEBUG_INTERVAL` 0.5 s |
+| `sv_commands.lua` | `tuner` | none |
+
+Parts with no fields of their own but a hook on the clock:
+`sv_intel.lua` (`Think`, `INTEL_INTERVAL` 1 s), `sv_gestures.lua`
+(`Think`, `CALM_INTERVAL` 0.5 s), `sv_responserules.lua` (two `Think`s,
+`GREET_INTERVAL` 0.5 s), `sv_enlist.lua` (`Tick`, `ws_aiwar_move`).
+
+### The shape proposed
+
+1. **A part with fields of its own becomes an object of its own.** Its
+   state is one table on the controller (`Controller.hazards`), its
+   methods those of a class the part file returns (`Hazards`), and the
+   root declares one field for it in place of its several. What it needs
+   of the rest it is handed when made (the controller's shared fields it
+   reads, the calendar), as `Part (...)` hands parts their arguments now.
+   The 26 shared fields stay on the root: they are what a controller is
+   for.
+2. **Its timers become calendar jobs in the same change.** Each `next*`
+   field and the `Think` that tests it go; the object adds its job to
+   `Controller.calendar` under a system of its own, with its interval as
+   the period. That is §6's step 3 for the hooks' private intervals, done
+   a part at a time. A job's work that changes on events (`Survey`, §5.4)
+   can later be `Wake`d by the event instead of polled.
+3. **A live reload keeps the state and takes the new methods.** The root
+   keeps each object's table across a reload (`Controller.hazards =
+   Controller.hazards or Hazards.New (...)`), and sets its metatable to the
+   part's class as it loads, every time. Without that line, a reload
+   leaves the live object on the old class, the gap §4 records for
+   `BotSoldier`. A test holds it: every object field the root declares is
+   re-pointed in the root.
+4. **The checks that hold it.** `tests/feature_parts_test.lua` (h) already
+   refuses a field a method assigns that the root does not declare; an
+   object's own fields are then declared in its class, and (h) is pointed
+   at classes too. Each part's own tests move with it.
+
+### The order
+
+One part a commit, each with its tests first, run through the war group
+and checked live with `dev.reload`:
+
+1. `sv_bots.lua`'s looks (`lookFighters`, `lookFightersAt`, and the
+   calendar's looks system): the change in flight, and the smallest.
+2. `sv_hazards.lua`: the most fields (8), one timer, few readers.
+3. `sv_slots.lua`, `sv_marks.lua`, `sv_report.lua`, `sv_rooms.lua`'s debug:
+   a timer each, small.
+4. `sv_obstacles.lua`, then `sv_field.lua` with its `Think` (the `Survey`,
+   the largest timer by cost, §6.2).
+5. The hooks with no state: `sv_intel.lua`, `sv_gestures.lua`,
+   `sv_responserules.lua`, as jobs only.
+6. What is left on the root is then measured again against the 26.
+
+### Questions for the operator
+
+- The systems' weights: one system per part, or a few by kind (sight,
+  field, talk, debug), so §8.3's scan stays over four or five?
+- `sv_enlist.lua`'s `Tick` (the moves, every tick, 17 ms/s at 16v16): a
+  calendar job with the tick as its period, or left on its hook as
+  `Drive` is (§8.1)?
+- The looks change is in the working tree, not yet committed: tests pass
+  (the war group at its known 38 failures), not yet checked live. That
+  needs a Windows `gmsv_foundation` (`cargo xwin build --release --target
+  x86_64-pc-windows-msvc`) and the dev server restarted on it. Commit it
+  first as it is, or fold it into step 1 above?
+
 ## 7. Pitfalls met in this work
 
 - Run the `features` group after any change to a bot soldier:
