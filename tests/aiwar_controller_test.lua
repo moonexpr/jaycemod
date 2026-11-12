@@ -1500,7 +1500,6 @@ local function ControllerBattle (w, mode)
 	battle.war, battle.scenario = controller.war, controller.scenario
 	function battle:Command ()
 		w.now = self.now
-		controller.nextThink = 0
 		controller:Think (self.now)
 	end
 	battle:Enlist (RED,  SOLDIERS)
@@ -1697,6 +1696,21 @@ T.test ("the carts and the doors are part objects, which a reload keeps and give
 	T.eq (controller.carts,                    carts, "the same carts")
 	T.eq (controller.doors,                    doors, "the same doors")
 	T.eq (controller.doors:ShutIn (area, RED), false, "their methods back")
+end)
+
+T.test ("the field's think, its relations and its watch are jobs of the field system, with no next time of their own", function ()
+	local w = World ()
+	local controller = Load (w)
+	T.eq (controller.calendar:Report ().field.jobs, 3,   "the think, the relations, the watch")
+	T.eq (controller.nextThink,                     nil, "no next think")
+	T.eq (controller.nextRelations,                 nil, "no next relations")
+	local relations = controller.jobs ["field.relations"]
+	local due = controller.calendar:Job (relations).at
+	w.now = due - 0.5
+	controller:Hurry ("field.relations")
+	T.eq (controller.calendar:Job (relations).at, w.now, "hurried: due now, not at its time")
+	Reload (w, controller)
+	T.eq (controller.calendar:Report ().field.jobs, 3, "still the three")
 end)
 
 T.finish ()

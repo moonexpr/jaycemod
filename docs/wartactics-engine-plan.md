@@ -470,6 +470,23 @@ and checked live with `dev.reload`:
    ejecting from a cart and the spawn doors stay the controller's (no state
    of their own). Checked after a clean map load: a door noted shut to RED
    closes its area to RED alone, and `Forget` opens it.
+   `sv_field.lua`'s timers done the same day: its think (0.25 s), relations
+   (1 s) and watch (2 s) are three jobs of the calendar's `field` system;
+   the `Think` hook `ws_aiwar` is gone, and the two places that forced the
+   relations (`nextRelations = 0`) call `Controller:Hurry`, a `Wake` of the
+   job. Relations and watch run only while the war acts on a whole field
+   (`Acting`), as they did inside the think. On the 16v16 bench, against a
+   fresh before (507 ± 22 ms/s, p99 35.8 ± 1.8): at the calendar's 3 ms a
+   tick the war seemed to drop to about 458, but the calendar's report
+   showed why: the field's think is one job of 13 to 18 ms that fills its
+   tick, and the looks fell 12 % behind their rate. The jobs ask about 3.5
+   ms a tick on average (looks 2.4, field 1.1), so the budget is now 5 ms,
+   to cap the peaks and not ration the mean; at 5 ms (three replications
+   at 32 soldiers; two others had the war idle and are left out) the war
+   was 487 to 492 ms/s, p99 26 to 39 ms: no difference, as a move should
+   make. The think's 13 to 18 ms in one job is what to split next (§6
+   step 5). The field's three caches (`tracks`, `cartEntities`,
+   `waypointCache`) are still on the root.
 5. The hooks with no state: `sv_intel.lua`, `sv_gestures.lua`,
    `sv_responserules.lua`, as jobs only.
 6. What is left on the root is then measured again against the 26.
@@ -640,7 +657,13 @@ plan's direction; its details are still to be written where it is built.
    (§4.3), which still uses `RouteCost` and `Navigator`. Then it goes whole,
    switch and all: a comparison nobody runs only rots.
 
-6. **The target is 32 bots, 16 a team, on the operator's MacBook Pro
+6. **Changed 2026-11-12: the target is now 12v12, at 20 ms the most a
+   frame for the war and NextSoldier together** (the operator, who is
+   changing the benchmark to it). The 16v16 figures in this document stay as
+   the record of the runs made at that size; comparisons from here are
+   against the 12v12 bench once it exists. The original target, kept for
+   the record:
+   **The target is 32 bots, 16 a team, on the operator's MacBook Pro
    (M1 Pro), without the server slowing to a crawl.** The pass line is
    §4.4's benchmark on a saved 16v16 scenario: the war's p99 a tick under
    10 ms, and no tick over the 15 ms tick. At about 18 ms/s a bot (§2), 32
