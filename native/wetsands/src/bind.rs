@@ -734,7 +734,7 @@ unsafe fn module(l: L) {
 /// foundation's indexes run, where the index's Twin keeps it.
 #[no_mangle]
 pub unsafe extern "C-unwind" fn gmod13_open(l: L) -> c_int {
-    if foundation::lua::open().is_err() {
+    if foundation::lua::open_or_raise(l).is_none() {
         return 0;
     }
     module(l);
@@ -756,7 +756,7 @@ pub unsafe extern "C-unwind" fn gmod13_close(_l: L) -> c_int {
 /// beside it as the oracle.
 #[no_mangle]
 pub unsafe extern "C-unwind" fn luaopen_wetsands(l: L) -> c_int {
-    if foundation::lua::open().is_err() {
+    if foundation::lua::open_or_raise(l).is_none() {
         return 0;
     }
     l.createtable(0, 2);

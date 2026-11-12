@@ -108,7 +108,7 @@ unsafe fn provide(l: L) {
 /// indexes run.
 #[no_mangle]
 pub unsafe extern "C-unwind" fn gmod13_open(l: L) -> c_int {
-    if crate::lua::open().is_err() {
+    if crate::lua::open_or_raise(l).is_none() {
         return 0;
     }
     provide(l);
@@ -125,7 +125,7 @@ pub unsafe extern "C-unwind" fn gmod13_close(_l: L) -> c_int {
 /// stay beside it as the oracle.
 #[no_mangle]
 pub unsafe extern "C-unwind" fn luaopen_foundation(l: L) -> c_int {
-    if crate::lua::open().is_err() {
+    if crate::lua::open_or_raise(l).is_none() {
         return 0;
     }
     module(l);

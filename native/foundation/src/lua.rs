@@ -351,6 +351,36 @@ pub fn open() -> Result<&'static Api, String> {
     Ok(API.get_or_init(|| api))
 }
 
+/// `open`, from a module's entry point: when the API cannot be resolved,
+/// the reason is raised as a Lua error, so the `require` loading the module
+/// stops the load with it rather than leaving the server on the Lua twins
+/// unsaid. None only when not even `lua_pushlstring` and `lua_error` resolve
+/// (no Lua at all), after writing the reason to stderr.
+///
+/// # Safety
+/// `l` is the state calling the entry point.
+pub unsafe fn open_or_raise(l: L) -> Option<&'static Api> {
+    let reason = match open() {
+        Ok(api) => return Some(api),
+        Err(reason) => format!("foundation's native modules cannot load: {reason}"),
+    };
+    type PushString = unsafe extern "C-unwind" fn(L, *const c_char, usize);
+    type Error = unsafe extern "C-unwind" fn(L) -> c_int;
+    if let Ok(find) = finder() {
+        let (push, error) = (find(c"lua_pushlstring"), find(c"lua_error"));
+        if !push.is_null() && !error.is_null() {
+            // SAFETY: Lua 5.1's exports of these names have these signatures.
+            let (push, error) = (std::mem::transmute::<*mut c_void, PushString>(push), std::mem::transmute::<*mut c_void, Error>(error));
+            push(l, reason.as_ptr().cast(), reason.len());
+            drop(reason);
+            error(l);
+            unreachable!("lua_error does not return");
+        }
+    }
+    eprintln!("{reason}");
+    None
+}
+
 /// The API `open` resolved: every Lua-reachable function runs after it.
 pub fn api() -> &'static Api {
     API.get().expect("the module resolved the API before any function was reachable")
