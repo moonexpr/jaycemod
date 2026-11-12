@@ -450,6 +450,16 @@ and checked live with `dev.reload`:
    room helpers (`GiveMission`, `RoomForSquad`, `ExitsAt`) stay too, for the
    simulation move (§6a'). With the camps in the board and `roomHints`
    declared, `feature_parts_test` (h) passes: the known failures are 36.
+   `sv_report.lua`'s overlay and `sv_rooms.lua`'s rooms debug done the same
+   day, as jobs only: two of the `debug` system (0.5 s and 5 s), added once
+   through the root's `Controller:Recurring (key, system, period, fn)`,
+   which a part with no object of its own calls as it loads (the
+   controller's `jobs` table, kept across a reload, holds them by key).
+   The calendar now runs whenever the war does, paused or not, and each job
+   minds the pause itself: a look and the marks' report skip while paused
+   (as they did), the overlay and the slots' sync go on (as they did).
+   Checked live, after a clean map load: every system's jobs in place;
+   paused, 30 look jobs ran and none looked. Step 3 is done.
 4. `sv_obstacles.lua`, then `sv_field.lua` with its `Think` (the `Survey`,
    the largest timer by cost, §6.2).
 5. The hooks with no state: `sv_intel.lua`, `sv_gestures.lua`,

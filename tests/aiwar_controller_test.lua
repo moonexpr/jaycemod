@@ -1673,4 +1673,13 @@ T.test ("the marks are a part object the controller's marking reaches, their rep
 	T.eq (controller.calendar:Report ().marks.jobs, 1,     "still the one job")
 end)
 
+T.test ("the debug overlay and its rooms are jobs of the debug system, which a reload does not add again", function ()
+	local w = World ()
+	local controller = Load (w)
+	T.eq (controller.calendar:Report ().debug.jobs, 2,   "the overlay and the rooms")
+	T.eq (controller.nextDebug,                     nil, "no timer of their own")
+	Reload (w, controller)
+	T.eq (controller.calendar:Report ().debug.jobs, 2, "still the two")
+end)
+
 T.finish ()
