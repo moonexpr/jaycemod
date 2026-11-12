@@ -6,7 +6,8 @@ tactics engine found, what was changed and measured, what is left of that
 work, and the plan for the restructure the operator wants to discuss next.
 
 Nothing in §5 onward is built. The operator has agreed to its direction in
-conversation, not to its details: treat each open question in §8 as his.
+conversation, not to its details; §8 records his answers to the questions
+it left open.
 
 ## 1. What the review found
 
@@ -222,8 +223,8 @@ fire-team table.
 ## 6. A suggested order
 
 1. §4.1 to §4.4: finish and verify what is in flight, with the benchmark.
-2. §5.2's calendar in foundation, Lua twin first, then the looks and the
-   route plans moved onto it.
+2. §5.2's calendar in foundation (§8.3's policy), Lua twin first, then the
+   looks and the route plans moved onto it.
 3. §5.1's mesh columns, the room column first, then body fit as data.
 4. The look split into its jobs, the sight pass made native.
 5. `docs/places-plan.md`'s room graph and occupation on §5.1.
@@ -243,13 +244,63 @@ fire-team table.
 - A measurement on the dev server changes it. Check that the war is
   thinking (`C.nextThink` close to `CurTime()`) before believing a number.
 
-## 8. Open questions for the operator
+## 8. The operator's answers, 2026-11-11
 
-1. Is the war's bot players' driving (`Drive`, the look) in the tactics
-   engine's scope, or NextSoldier's? It is the largest steady cost.
-2. Does the no-threads decision stand for the native sight pass?
-3. Should the work buffer be one for the whole server, or one a system (the
-   war's, the route searches', the transactions')?
-4. Which comes first: the calendar (§5.2) or the mesh columns (§5.1)?
-5. May the engine path for bot routes be deleted once two more maps are
-   walked, or should the switch stay?
+The questions this section held, answered in conversation. Each is now the
+plan's direction; its details are still to be written where it is built.
+
+1. **`Drive` is NextSoldier's.** The tactics engine decides what a bot is
+   to do; driving its keys is the body's (`nextsoldier.body.player_body`
+   already holds a bot player's moves, aim and fire as keys). The cost stays
+   the largest steady one, so NextSoldier's driving takes a share of the
+   tick's calendar as a system of its own (point 3), or its peaks land in
+   the war's ticks from outside. Before it moves, profile it: about 95 µs a
+   call is much for pressing keys. A usercmd is due every tick, but what
+   steering computes need not be: computed at 10 to 20 Hz and the last
+   command replayed between is the likely saving.
+2. **No threads, for the sight pass too.** Not raised against, so it
+   stands; correct it here if not. Sixteen bots' range and cone tests
+   against sixteen enemies are microseconds of arithmetic; the cost is the
+   traces, which stay on the engine's thread whatever is decided.
+3. **One calendar, fair across systems, earliest deadline within.** Neither
+   one flat queue (the looks would starve the transactions) nor a buffer a
+   system (no system would know what the others spent, and their peaks
+   would meet in one tick, as the 8v8 tail did). The policy:
+   - each system (the war, the route searches, the transactions,
+     NextSoldier's driving) has a weight and a virtual runtime, charged its
+     actual spend over its weight, and a tick serves the one furthest
+     behind: the group fairness of Linux's CFS. With four or five systems
+     this is a scan, not a tree;
+   - within a system, its periodic jobs on `tree.heap` by due time, the
+     earliest first (EDF), as §5.2 has it;
+   - lateness is reported a job and a system.
+   CFS alone was considered and not taken: it shares among tasks always
+   ready to run, and has no notion of a job not yet due, which is most of
+   ours. Nor is it needed for O(log N): the heap already is, and at tens to
+   hundreds of jobs the bound is not where the time goes. Being
+   cooperative, the calendar charges a job only after it overruns, so its
+   fairness holds only for jobs bounded by construction (§4.5).
+4. **The calendar first, with §4.5's stopgap now.** Lateness as output makes
+   every later change a number to read. The calendar cannot bound one
+   search step of 15.7 ms, so the smaller step for a request with a body
+   goes in at once, until body fit as data (§5.1) removes the cause. Both
+   wait on §4.4's benchmark: with single runs and noise of about 30 ms/s,
+   neither could be shown to help.
+5. **The engine path is deleted once three things hold, not on maps
+   walked by eye:** a bot seen climbing a ladder route with a round running
+   (§4.2); the benchmark's scenario showing the asynchronous search at
+   parity with the engine's on routes found and bots stuck, not only on
+   time; and `sv_next_soldiers.lua`'s soldier moved off the engine's search
+   (§4.3), which still uses `RouteCost` and `Navigator`. Then it goes whole,
+   switch and all: a comparison nobody runs only rots.
+
+Raised in the same conversation, not yet answered:
+
+- Every measure in this plan is time. None says whether squads play better,
+  and §5.2's attention span changes how soon a soldier sees a new enemy,
+  which nothing measures. The benchmark wants a measure of play beside its
+  milliseconds (time to first sight of a new enemy, objectives taken)
+  before the looks move onto the calendar.
+- The war averages about 4.3 ms of a 15 ms tick. The restructure is
+  justified by its structure and by §5.3's problems more than by the tick;
+  §5.4's roll-forward is the part most at risk of growing without a result.
