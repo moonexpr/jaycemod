@@ -438,6 +438,51 @@ and checked live with `dev.reload`:
   benchmark (§6 step 3); step 1 above is then only its two fields moved off
   the root into a looks object.
 
+## 6b. A soldier's attention by its stress (planned, not built)
+
+The operator, 2026-11-12: the rates should adapt to how stressed a unit
+is. One sitting in its spawn or its team's stronghold needs few updates;
+one in the wilds, and most of all in ground its enemy occupies, should ask
+for more.
+
+The calendar already allows it: a look's job answers how long until it is
+due again (§6 step 3), so an adaptive rate is only a different answer from
+`LookJob`. Nothing in the scheduling changes. What is to be built is the
+answer:
+
+- **A stress, from what is known.** In order of what can be read today:
+  - where it stands, by room class (`wartactics.classes`): its team's
+    restricted rooms and spawn are calm, its stronghold quiet, commons and
+    highways the wilds, the enemy's stronghold and restricted rooms the most
+    stressed;
+  - whom it fights: a contact seen or heard lately (`vision`), hurt lately
+    (`attackedAt`), an order under way that expects one (an assault, a
+    breach);
+  - what its team knows of the room (`wartactics.intel`, how strongly the
+    enemy holds it), until `docs/places-plan.md`'s occupation by room is
+    built and replaces it.
+- **A span from the stress**, between a floor and a ceiling (about 0.1 s
+  in contact or in the enemy's ground, about 1 s in its spawn; the present
+  0.2 s between), with hysteresis so a soldier on a room's edge does not
+  flap: the span shortens at once on a contact and lengthens only after a
+  quiet while.
+- **Woken on an event, not waiting out a long span**: hurt, a heard shot,
+  a teammate's contact call, a door opening in its room: `Wake` brings the
+  look to now. A long span is safe only because of this.
+- **Its cost judged by the calendar's report** (§8.6: play quality is out
+  of this pass, so by cost alone): the looks' spend and lateness at 16v16
+  on the benchmark, against the fixed 0.2 s.
+
+The same answer serves every thinking job that moves onto the calendar
+(§6a): a soldier's repath, its weapon checks; a part's survey can take the
+war's stress as a whole in the same way.
+
+Open before building: where the stress is computed (a model in
+`wartactics`, from what a soldier's state and the classes give, so it is
+tested without the engine), and whether the floor holds at 16v16 when
+both teams are in contact at once (32 looks every 0.1 s is 320 a second,
+about twice today's, against the calendar's 3 ms a tick).
+
 ## 7. Pitfalls met in this work
 
 - Run the `features` group after any change to a bot soldier:
