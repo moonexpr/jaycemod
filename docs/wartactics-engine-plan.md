@@ -414,6 +414,11 @@ and checked live with `dev.reload`:
 
 1. `sv_bots.lua`'s looks (`lookFighters`, `lookFightersAt`, and the
    calendar's looks system): the change in flight, and the smallest.
+   Done 2026-11-12: `Controller.looks`, `features.aiwar.looks`' `New` and
+   `Adopt`, set again at every load of the root (checked live with
+   `dev.reload`). On the way: `sv_marks.lua`'s `NoteKill` assigns
+   `self.camps`, which the root does not declare (`feature_parts_test` (h),
+   already failing): a part's own field, for its step.
 2. `sv_hazards.lua`: the most fields (8), one timer, few readers.
 3. `sv_slots.lua`, `sv_marks.lua`, `sv_report.lua`, `sv_rooms.lua`'s debug:
    a timer each, small.
