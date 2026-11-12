@@ -391,12 +391,28 @@ local function Load (w)
 	local chunk = assert (loadfile (SOURCE))
 	local controller = setfenv (chunk, Env (w)) ()
 	controller.slotStore = MemoryStore ()
-	controller.hazardStore = MemoryStore ()
+	controller.hazardWatch.store = MemoryStore ()
 	controller.PlaceSpawnBases = function ()
 		if w.placeSpawnBases then return w.placeSpawnBases () end
 		return 0
 	end
 	return controller
+end
+
+-- The root loaded again over a live controller, as dev.reload does (sandcastle_dev's sv_reload.lua):
+-- its `local Controller = {` is the live table, the fresh literal's keys filling only those it
+-- lacks.
+local function Reload (w, live)
+	local source, count = io.open (SOURCE):read ("*a"):gsub ("\nlocal Controller =%s*{", "\nlocal Controller = __dev_adopt {", 1)
+	T.eq (count, 1, "the root has a controller literal to adopt")
+	local env = Env (w)
+	rawset (env, "__dev_adopt", function (fresh)
+		for key, value in pairs (fresh) do
+			if live [key] == nil then live [key] = value end
+		end
+		return live
+	end)
+	return setfenv (assert (loadstring (source, "@" .. SOURCE)), env) ()
 end
 
 -- A scenario variant standing in for package B's, registered for a rounds
@@ -1605,6 +1621,21 @@ T.test ("the controller never reads the map's name for its scenario", function (
 	for _, name in ipairs ({ "game.GetMap", '"koth_', '"cp_', '"pl_' }) do
 		T.eq (text:find (name, 1, true), nil, name)
 	end
+end)
+
+-- The controller's parts with state of their own ----------------------------------------
+
+T.test ("the map's nav hazards are a part object, read from its store, which a reload keeps and gives its class again", function ()
+	local w = World ()
+	local controller = Load (w)
+	local hazards = controller.hazardWatch
+	local model = hazards:Model ()
+	T.eq (#model:Entries (),     0,   "read from its store: nothing saved")
+	T.eq (controller.NoteHazard, nil, "noting one is the part's, not the controller's")
+	setmetatable (hazards, nil) -- as a live object is left on the old class
+	T.eq (Reload (w, controller),          controller, "the live controller")
+	T.eq (controller.hazardWatch,          hazards,    "the same object")
+	T.eq (controller.hazardWatch:Model (), model,      "its state kept, its methods back")
 end)
 
 T.finish ()

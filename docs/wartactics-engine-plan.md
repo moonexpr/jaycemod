@@ -420,6 +420,17 @@ and checked live with `dev.reload`:
    `self.camps`, which the root does not declare (`feature_parts_test` (h),
    already failing): a part's own field, for its step.
 2. `sv_hazards.lua`: the most fields (8), one timer, few readers.
+   Done 2026-11-12: `Controller.hazardWatch`, the part's class returned by
+   `sv_hazards.lua` (`New(store)`, `Adopt`), its eight fields and the
+   store in it; the other parts call `Note`, `NoteFooting`, `Apply`,
+   `ApplySaved` on it. It had no timer after all (`separationAgain` is a
+   judge-again flag, `HazardsThink` runs once). `tests/aiwar_controller_test.lua`
+   reloads the root as `dev.reload` does (`Reload`) to hold the object kept
+   and re-pointed. Checked live: the map's 96 saved entries read, the
+   footing of 30 soldiers noted. Found on the way: after the bench, Red had
+   won the round and had no spawns for its stage, so the field waited on
+   "bases" and nothing past `Survey` ran; a bench scenario reloaded fixes
+   it. The controller is reached live with `WS.Feature ("aiwar")`.
 3. `sv_slots.lua`, `sv_marks.lua`, `sv_report.lua`, `sv_rooms.lua`'s debug:
    a timer each, small.
 4. `sv_obstacles.lua`, then `sv_field.lua` with its `Think` (the `Survey`,

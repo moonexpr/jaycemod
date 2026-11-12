@@ -13,7 +13,7 @@ RunConsoleCommand ("mp_timelimit",     "0")
 RunConsoleCommand ("mp_maxrounds",     "0")
 War:SetSlotCount (WS.TEAM_RED,  0)
 War:SetSlotCount (WS.TEAM_BLUE, BLU_SIZE)
-War:Hazards ()
+War.hazardWatch:Model ()
 RunConsoleCommand ("ns_hazards_clear", "all")
 
 file.Write (FILE, "")
@@ -49,8 +49,10 @@ hook.Add ("WSRoundWin", "ns_war_round", function (winner, reason)
 end)
 hook.Add ("WSMatchWin", "ns_war_round", function (winner) Note ("MATCH WON by team " .. tostring (winner)) end)
 
-local NoteHazard = War.NoteHazard
-function War:NoteHazard (ent, cause)
+-- Each recovery, as the hazards' part notes it (an override on the live object, gone with the map).
+local Hazards = War.hazardWatch
+local NoteHazard = Hazards.Note
+function Hazards:Note (ent, cause)
 	Note (string.format ("recovered %s at %s, from %s, %s", tostring (cause), tostring (ent:GetPos ()), Terminal (ent), Going (ent)))
 	return NoteHazard (self, ent, cause)
 end
