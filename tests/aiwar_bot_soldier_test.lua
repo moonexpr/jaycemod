@@ -422,7 +422,7 @@ end)
 
 -- The war's own search (the npc controller's RequestRoute and RouteWaypoints), a fake that keeps
 -- what it was asked and answers when the test says.
-local function Searching ()
+local function Searching (plans)
 	local asked = { requests = 0 }
 	local clearance = { Area = function () return true end, Link = function () return true end }
 	local npcs =
@@ -432,8 +432,13 @@ local function Searching ()
 			asked.requests = asked.requests + 1
 			asked.request = request
 		end,
-		RouteWaypoints = function (_, areas, to, found, from)
-			asked.waypoints = { areas = areas, to = to, found = found, from = from }
+		RouteWaypoints = function (_, areas, to, found, from, middles, going)
+			-- an area's points a millisecond: asked whether to go on after each, as the real one is
+			for _ in ipairs (areas) do
+				if asked.clock then asked.clock.at = asked.clock.at + 0.001 end
+				if going and not going () then return nil end
+			end
+			asked.waypoints = { areas = areas, to = to, found = found, from = from, middles = middles }
 			return { { x = 200, y = 50, z = 0 }, to }
 		end
 	}
@@ -454,7 +459,7 @@ local function Searching ()
 	environment.WS.NavLinkCrossable = function () return true end
 	environment.GetConVarNumber = function () return 800 end
 	environment.gameplay.movement.JumpReach = function (power) return power / 4 end
-	local soldier = NewSoldier (nil)
+	local soldier = NewSoldier (nil, nil, plans)
 	soldier.team = 3
 	soldier.RouteCost = nil
 	soldier.Navigator = function () error ("a bot that plans on the mesh needs no navigator") end
@@ -505,6 +510,64 @@ T.test ("the search's answer is its route, walked from where it stood", function
 	T.eq (soldier.plan,                                          nil, "and it may ask for its next")
 	soldier:Steer (1.2)
 	T.eq (soldier.steer.x, 200, "on its way to the first point")
+	Done ()
+end)
+
+-- The war's planning time, on a clock the fake search's areas advance.
+local function PlanningTime ()
+	local clock = { at = 0 }
+	function clock:Now () return self.at end
+	return list.schedule.New (clock), clock
+end
+
+T.test ("the search's answer is laid out as points in the war's planning time, not in the search's", function ()
+	local plans = PlanningTime ()
+	local soldier, asked, _, Done = Searching (plans)
+	soldier:Steer (1)
+	asked.request.onDone ({ "an area", "another" }, true)
+	T.eq (asked.waypoints, nil, "the search's own time lays out nothing")
+	while plans:Count () > 0 do plans:Run (PLANNING_SLICE) end
+	T.eq (asked.waypoints ~= nil, true, "the planning time does")
+	T.eq (soldier.walk ~= nil,    true, "and the route is its to walk")
+	Done ()
+end)
+
+T.test ("a long route's points are laid out over as many slices as they need, none of them much over", function ()
+	local plans, clock = PlanningTime ()
+	local soldier, asked, _, Done = Searching (plans)
+	asked.clock = clock
+	soldier:Steer (1)
+	local areas = {}
+	for i = 1, 20 do areas [i] = "area " .. i end
+	asked.request.onDone (areas, true)
+	local runs, longest = 0, 0
+	while plans:Count () > 0 do
+		local began = clock.at
+		plans:Run (PLANNING_SLICE)
+		runs, longest = runs + 1, math.max (longest, clock.at - began)
+	end
+	T.eq (asked.waypoints ~= nil, true, "laid out")
+	T.eq (runs > 1,               true, "over more than one slice")
+	-- a millisecond an area: a slice lets through the areas its time holds and the one that spends it
+	T.eq (longest <= PLANNING_SLICE + 0.001 + 1e-9, true, "no slice ran on past its time")
+	Done ()
+end)
+
+T.test ("a plan dropped while its points are laid out lays out no more of them", function ()
+	local plans, clock = PlanningTime ()
+	local soldier, asked, _, Done = Searching (plans)
+	asked.clock = clock
+	soldier:Steer (1)
+	local areas = {}
+	for i = 1, 20 do areas [i] = "area " .. i end
+	asked.request.onDone (areas, true)
+	plans:Run (PLANNING_SLICE)
+	soldier.plan = nil
+	local before = clock.at
+	while plans:Count () > 0 do plans:Run (PLANNING_SLICE) end
+	T.eq (clock.at - before <= 0.001 + 1e-9, true, "at most the area it was on")
+	T.eq (asked.waypoints,                   nil,  "no points kept")
+	T.eq (soldier.walk,                      nil,  "and no route walked")
 	Done ()
 end)
 
