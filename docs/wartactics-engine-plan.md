@@ -257,10 +257,34 @@ fire-team table.
 1. §4.1 to §4.4: finish and verify what is in flight, with the benchmark.
    Done but §4.2 (a bot seen on a ladder) and §4.3; the bench still lacks
    §8.5's count of routes found and bots stuck.
-2. Where the war's own 450 to 500 ms/s goes at 16v16, by the probe's
-   `Methods` on the benchmark's scenario, before the calendar is shaped:
-   §2's per-bot figures are 8v8's, and `Drive`'s share (§8.1) is the
-   first to confirm.
+2. Done 2026-11-12: where the war's time goes at 16v16 (the probe's
+   `Methods`, 30 s on the benchmark's scenario, 458 ± 25 ms/s; inclusive,
+   so nested rows overlap; `.devtools/artifacts/aiwar_probe_16v16.txt`):
+
+   | Where | ms/s | Calls | Mean |
+   |---|---|---|---|
+   | `Drive`, a bot's keys every tick | 158 | 57,383 | 83 µs |
+   | `Look` (within `LookAround`, 170) | 136 | 4,102 | 1.0 ms |
+   | of which `Steer` | 51 | 4,102 | 372 µs |
+   | The planning time (the bots' `Think` less `LookAround`) | about 52 | | |
+   | The controller's `Think` | 43 | 2,001 | 642 µs |
+   | of which `Fighters` (every tick) | 18 | 1,977 | 277 µs |
+   | of which `Survey` (four times a second) | 17.5 | 118 | 4.5 ms |
+   | `Tick/ws_aiwar_move` | 17 | 2,001 | 261 µs |
+
+   `Drive` profiled (§8.1): 65 to 95 µs a call in the tick. NextSoldier's
+   `player_body` `Command` is 27 µs of it and builds a new output table
+   each call (0.57 KB); gathering the senses is about 13 µs warm and more
+   in the tick; in all `Drive` allocates 1.38 KB a call, 3 MB/s.
+
+   What it means for the order: the war is 6.9 ms in every tick on
+   average. A calendar spreads work and cannot lower that mean, and the
+   pass line's p99 under 10 ms leaves about 3 ms for everything uneven. So
+   the total must come down as well as be spread: `Drive` at 10 to 20 Hz
+   with the last command replayed (§8.1; its turn and aim, cheap, could
+   still run each tick) is the largest single cut, then the look's split
+   (step 5). The calendar (step 3) still comes first, since it is what
+   gives `Drive`'s lower rate and the look's jobs their places.
 3. §5.2's calendar in foundation (§8.3's policy), Lua twin first, then the
    looks and the route plans moved onto it.
 4. §5.1's mesh columns, the room column first, then body fit as data.
