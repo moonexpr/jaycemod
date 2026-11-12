@@ -661,7 +661,9 @@ pub unsafe fn push_modules(l: L) {
     (api.setfield)(l, -2, c"select".as_ptr());
     module::push(l, &[(c"New", window_new)], None);
     (api.setfield)(l, -2, c"window".as_ptr());
+    super::calendar::push_module(l);
+    (api.setfield)(l, -2, c"calendar".as_ptr());
 }
 
 /// The names push_modules sets, for provide.
-pub const NAMES: &[&CStr] = &[c"queue", c"ring", c"slots", c"chain", c"schedule", c"select", c"window"];
+pub const NAMES: &[&CStr] = &[c"queue", c"ring", c"slots", c"chain", c"schedule", c"select", c"window", c"calendar"];

@@ -5,6 +5,7 @@
 mod analysis;
 mod avl;
 mod cache;
+mod calendar;
 mod codec;
 mod configstore;
 mod core;

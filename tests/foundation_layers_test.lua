@@ -50,6 +50,7 @@ local CATEGORY = {
 	["math/box"] = "structures",
 	["math/choice"] = "formalisms",
 	["list/schedule"] = "formalisms",
+	["list/calendar"] = "formalisms",
 	["list/select"] = "formalisms",
 	["list/window"] = "structures",
 	["math/geometry"] = "structures",

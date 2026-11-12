@@ -102,6 +102,35 @@ On `main`, pushed. Each has its tests, written first.
    `RouteCost`, `Navigator`, `PrepareRoutes`, and the `ws_bot_navigator`
    entity. A bot's body has no ladder handling of its own: it walks the two
    points and relies on a player's own climb.
+
+   The map to check it on is gm_construct_13_beta (the operator, 2026-11-12):
+   it has ladders, and some need a crouch to get on or off. That is the
+   body's to handle (`nextsoldier.body.player_body`), not the war's. Today
+   the body ducks only on a nav crouch area under its feet
+   (`sense.crouchArea`), under a lintel it senses ahead, or in a crouch jump.
+   On a ladder it stands on no area, so none of those fire. A climb wants
+   the duck held while the ladder's top or bottom opens onto a crouch area,
+   or while the headroom past the rung is under a standing hull.
+
+   **Run-jumps, from the systems there are** (the operator, 2026-11-12: no
+   run-jump model of its own). The case is cp_steel's last point, which the
+   attackers can capture and the defenders cannot reach: their routes run
+   into its glass instead. What exists to build it from:
+   - `nextsoldier.world.nav_gaps` finds pairs of areas a seam apart (up to
+     `GAP_MAX`, a sample step or two) with where to cross, and the server
+     sweeps a walker across before it links them (`ws/sv_nav.lua`). A
+     run-jump is the same candidate at a run's reach, its sweep an arc, its
+     link marked a jump;
+   - the path costs already price a jump (`wetsands.path`'s
+     `JUMP_PENALTY`, the walker's own in `native/wetsands`), so a marked
+     link is priced without a new rule;
+   - `nextsoldier.body.player_body` jumps when its orders ask (`sense.hop`)
+     and crouches in the air after (`CROUCH_JUMP_TIME`). What it lacks is
+     arriving at the lip at a run: not at a walk, facing the landing, the
+     hop pressed at the lip's edge and not before.
+   Still to find out on cp_steel: whether the defenders' way to the point
+   is a gap or a ledge, and why their routes cross the glass (a window the
+   rooms count as a passage, or a link through it priced as open).
 3. **`sv_next_soldiers.lua`'s soldier** still plans in its look with the
    engine's search. Move it onto the same `PlanRoute` and `MeshSearch`, which
    belong in `features/npc/bot_steering.lua` beside `StandOnRoute`, not in
@@ -286,7 +315,12 @@ fire-team table.
    (step 5). The calendar (step 3) still comes first, since it is what
    gives `Drive`'s lower rate and the look's jobs their places.
 3. §5.2's calendar in foundation (§8.3's policy), Lua twin first, then the
-   looks and the route plans moved onto it.
+   looks and the route plans moved onto it. Built 2026-11-12: `list.calendar`,
+   both twins (`tests/list_calendar_test.lua`, both passes). A job's answer
+   sets its next time (nil: its period, phase kept; seconds: an attention
+   span; false: done); `Wake` brings one sooner (a repath on need). Not yet
+   built on: the looks, the route plans and the hooks' intervals are still
+   their own.
 4. §5.1's mesh columns, the room column first, then body fit as data.
 5. The look split into its jobs, the sight pass made native.
 6. `docs/places-plan.md`'s room graph and occupation on §5.1.
