@@ -5,7 +5,7 @@
 //! and memory the caller's ports.
 
 use super::util::{each_item, number};
-use crate::lua::{api, push_str, raise_where, string_at, tostring, CFunction, GLOBALSINDEX, L, TFUNCTION, TNIL, TNUMBER, TSTRING, TTABLE};
+use crate::lua::{push_str, raise_where, string_at, tostring, CFunction, GLOBALSINDEX, L, TFUNCTION, TNIL, TNUMBER, TSTRING, TTABLE};
 use crate::module;
 use crate::userdata::{self, Native};
 use std::collections::HashMap;
@@ -33,113 +33,109 @@ fn hash_nodes(count: f64) -> f64 {
 
 /// The number of upvalues of the function at `f` (debug.getinfo's nups).
 unsafe fn upvalues(l: L, f: c_int) -> f64 {
-    let api = api();
-    (api.getfield)(l, GLOBALSINDEX, c"debug".as_ptr());
-    (api.getfield)(l, -1, c"getinfo".as_ptr());
-    (api.pushvalue)(l, f);
+    l.getfield(GLOBALSINDEX, c"debug");
+    l.getfield(-1, c"getinfo");
+    l.pushvalue(f);
     push_str(l, "u");
-    (api.call)(l, 2, 1);
-    (api.getfield)(l, -1, c"nups".as_ptr());
-    let n = (api.tonumber)(l, -1);
-    (api.settop)(l, -4);
+    l.call(2, 1);
+    l.getfield(-1, c"nups");
+    let n = l.tonumber(-1);
+    l.settop(-4);
     n
 }
 
 /// The bytes of the value at `root` not yet counted (seen at `seen`),
 /// marking what it counts. Work waits on a Lua table used as a stack.
 unsafe fn walk(l: L, root: c_int, seen: c_int) -> f64 {
-    let api = api();
-    (api.createtable)(l, 0, 0);
-    let stack = (api.gettop)(l);
+    l.createtable(0, 0);
+    let stack = l.gettop();
     let mut depth: c_int = 1;
-    (api.pushvalue)(l, root);
-    (api.rawseti)(l, stack, 1);
+    l.pushvalue(root);
+    l.rawseti(stack, 1);
     let mut bytes = 0.0;
     while depth > 0 {
-        (api.rawgeti)(l, stack, depth);
-        (api.pushnil)(l);
-        (api.rawseti)(l, stack, depth);
+        l.rawgeti(stack, depth);
+        l.pushnil();
+        l.rawseti(stack, depth);
         depth -= 1;
-        let value = (api.gettop)(l);
-        let kind = (api.type_of)(l, value);
+        let value = l.gettop();
+        let kind = l.type_of(value);
         let counted = matches!(kind, TTABLE | TSTRING | TFUNCTION);
         if counted {
-            (api.pushvalue)(l, value);
-            (api.rawget)(l, seen);
-            let already = (api.type_of)(l, -1) != TNIL;
-            (api.settop)(l, value);
+            l.pushvalue(value);
+            l.rawget(seen);
+            let already = l.type_of(-1) != TNIL;
+            l.settop(value);
             if !already {
-                (api.pushvalue)(l, value);
-                (api.pushboolean)(l, 1);
-                (api.rawset)(l, seen);
+                l.pushvalue(value);
+                l.pushboolean(1);
+                l.rawset(seen);
                 match kind {
-                    TSTRING => bytes += STRING + (api.objlen)(l, value) as f64 + 1.0,
+                    TSTRING => bytes += STRING + l.objlen(value) as f64 + 1.0,
                     TFUNCTION => bytes += FUNCTION + UPVALUE * upvalues(l, value),
                     _ => {
-                        let length = (api.objlen)(l, value) as f64;
+                        let length = l.objlen(value) as f64;
                         let mut entries = 0.0;
-                        (api.pushnil)(l);
-                        while (api.next)(l, value) != 0 {
+                        l.pushnil();
+                        while l.next(value) != 0 {
                             entries += 1.0;
                             depth += 1;
-                            (api.rawseti)(l, stack, depth);
+                            l.rawseti(stack, depth);
                             depth += 1;
-                            (api.pushvalue)(l, -1);
-                            (api.rawseti)(l, stack, depth);
+                            l.pushvalue(-1);
+                            l.rawseti(stack, depth);
                         }
                         bytes += TABLE + length * ARRAY_SLOT + hash_nodes(entries - length) * HASH_NODE;
-                        if (api.getmetatable)(l, value) != 0 {
+                        if l.getmetatable(value) != 0 {
                             depth += 1;
-                            (api.rawseti)(l, stack, depth);
+                            l.rawseti(stack, depth);
                         }
                     }
                 }
             }
         }
-        (api.settop)(l, value - 1);
+        l.settop(value - 1);
     }
-    (api.settop)(l, stack - 1);
+    l.settop(stack - 1);
     bytes
 }
 
 /// analysis.memory.Measure(roots) -> { rows = { name, bytes }s, total }
 unsafe extern "C-unwind" fn measure(l: L) -> c_int {
-    let api = api();
-    (api.checktype)(l, 1, TTABLE);
-    (api.settop)(l, 1);
-    (api.createtable)(l, 0, 0);
-    let seen = (api.gettop)(l);
-    (api.createtable)(l, 0, 0);
-    let rows = (api.gettop)(l);
+    l.checktype(1, TTABLE);
+    l.settop(1);
+    l.createtable(0, 0);
+    let seen = l.gettop();
+    l.createtable(0, 0);
+    let rows = l.gettop();
     let mut total = 0.0;
     let mut i = 0;
     each_item(l, 1, |l, root| {
-        (api.rawgeti)(l, root, 2);
-        let value = (api.gettop)(l);
+        l.rawgeti(root, 2);
+        let value = l.gettop();
         let bytes = walk(l, value, seen);
         total += bytes;
         i += 1;
-        (api.createtable)(l, 0, 2);
-        (api.rawgeti)(l, root, 1);
-        (api.setfield)(l, -2, c"name".as_ptr());
-        (api.pushnumber)(l, bytes);
-        (api.setfield)(l, -2, c"bytes".as_ptr());
-        (api.rawseti)(l, rows, i);
+        l.createtable(0, 2);
+        l.rawgeti(root, 1);
+        l.setfield(-2, c"name");
+        l.pushnumber(bytes);
+        l.setfield(-2, c"bytes");
+        l.rawseti(rows, i);
     });
-    (api.createtable)(l, 0, 2);
-    (api.pushvalue)(l, rows);
-    (api.setfield)(l, -2, c"rows".as_ptr());
-    (api.pushnumber)(l, total);
-    (api.setfield)(l, -2, c"total".as_ptr());
+    l.createtable(0, 2);
+    l.pushvalue(rows);
+    l.setfield(-2, c"rows");
+    l.pushnumber(total);
+    l.setfield(-2, c"total");
     1
 }
 
 unsafe fn push_lines(l: L, lines: &[String]) -> c_int {
-    let api = api();
-    (api.createtable)(l, lines.len() as c_int, 0);
+    l.createtable(lines.len() as c_int, 0);
     for (i, line) in lines.iter().enumerate() {
         push_str(l, line);
-        (api.rawseti)(l, -2, i as c_int + 1);
+        l.rawseti(-2, i as c_int + 1);
     }
     1
 }
@@ -151,20 +147,18 @@ unsafe fn field(l: L, t: c_int, name: &CStr) -> f64 {
 
 /// A string (or number) field of the table at `t`, as text.
 unsafe fn text_field(l: L, t: c_int, name: &CStr) -> String {
-    let api = api();
-    (api.getfield)(l, t, name.as_ptr());
+    l.getfield(t, name);
     let text = tostring(l, -1);
-    (api.settop)(l, -2);
+    l.settop(-2);
     text
 }
 
 /// analysis.memory.Format(report, rows) -> lines
 unsafe extern "C-unwind" fn memory_format(l: L) -> c_int {
-    let api = api();
-    (api.checktype)(l, 1, TTABLE);
-    let limit = (api.checknumber)(l, 2);
-    (api.getfield)(l, 1, c"rows".as_ptr());
-    let rows_at = (api.gettop)(l);
+    l.checktype(1, TTABLE);
+    let limit = l.checknumber(2);
+    l.getfield(1, c"rows");
+    let rows_at = l.gettop();
     let mut rows = Vec::new();
     each_item(l, rows_at, |l, row| rows.push((text_field(l, row, c"name"), field(l, row, c"bytes"))));
     let total = field(l, 1, c"total");
@@ -256,27 +250,25 @@ impl Native for Analytics {
 
 /// port:method() of the port kept in the analytics' environment.
 unsafe fn ask(l: L, port: &CStr, method: &CStr) -> f64 {
-    let api = api();
     super::util::env_field(l, 1, port);
-    (api.getfield)(l, -1, method.as_ptr());
-    (api.pushvalue)(l, -2);
-    (api.call)(l, 1, 1);
-    let n = (api.tonumber)(l, -1);
-    (api.settop)(l, -3);
+    l.getfield(-1, method);
+    l.pushvalue(-2);
+    l.call(1, 1);
+    let n = l.tonumber(-1);
+    l.settop(-3);
     n
 }
 
 unsafe extern "C-unwind" fn new(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
+    l.settop(2);
     userdata::push(l, Analytics::fresh());
     super::slots::fresh_environment(l, -1);
-    (api.getfenv)(l, -1);
-    (api.pushvalue)(l, 1);
-    (api.setfield)(l, -2, c"clock".as_ptr());
-    (api.pushvalue)(l, 2);
-    (api.setfield)(l, -2, c"memory".as_ptr());
-    (api.settop)(l, -2);
+    l.getfenv(-1);
+    l.pushvalue(1);
+    l.setfield(-2, c"clock");
+    l.pushvalue(2);
+    l.setfield(-2, c"memory");
+    l.settop(-2);
     1
 }
 
@@ -321,37 +313,35 @@ unsafe fn stop_span(l: L, name: c_int, started: f64) {
 }
 
 unsafe extern "C-unwind" fn stop(l: L) -> c_int {
-    let started = (api().checknumber)(l, 3);
+    let started = l.checknumber(3);
     stop_span(l, 2, started);
     0
 }
 
 /// a:Time(name, fn, ...) -> fn's results, the call timed under name
 unsafe extern "C-unwind" fn time(l: L) -> c_int {
-    let api = api();
-    let n = (api.gettop)(l);
+    let n = l.gettop();
     userdata::check::<Analytics>(l, 1).depth += 1;
     let started = ask(l, c"clock", c"Now");
-    (api.pushvalue)(l, 3);
+    l.pushvalue(3);
     for i in 4..=n {
-        (api.pushvalue)(l, i);
+        l.pushvalue(i);
     }
-    (api.call)(l, (n - 3).max(0), -1);
-    let results = (api.gettop)(l) - n;
+    l.call((n - 3).max(0), -1);
+    let results = l.gettop() - n;
     stop_span(l, 2, started);
     results
 }
 
 unsafe extern "C-unwind" fn count(l: L) -> c_int {
-    let api = api();
-    let n = if (api.type_of)(l, 3) == TNUMBER { (api.tonumber)(l, 3) } else { 1.0 };
+    let n = if l.type_of(3) == TNUMBER { l.tonumber(3) } else { 1.0 };
     let key = string_at(l, 2).map(<[u8]>::to_vec).unwrap_or_else(|| tostring(l, 2).into_bytes());
     *userdata::check::<Analytics>(l, 1).counters.entry(key).or_insert(0.0) += n;
     0
 }
 
 unsafe extern "C-unwind" fn frame(l: L) -> c_int {
-    let budget = (api().checknumber)(l, 2);
+    let budget = l.checknumber(2);
     let kb = ask(l, c"memory", c"Kilobytes");
     let now = ask(l, c"clock", c"Now");
     let a = userdata::check::<Analytics>(l, 1);
@@ -381,18 +371,17 @@ fn percentile(mut values: Vec<f64>, p: f64) -> f64 {
 }
 
 unsafe fn set(l: L, name: &CStr, value: f64) {
-    (api().pushnumber)(l, value);
-    (api().setfield)(l, -2, name.as_ptr());
+    l.pushnumber(value);
+    l.setfield(-2, name);
 }
 
 unsafe extern "C-unwind" fn report(l: L) -> c_int {
-    let api = api();
     let a = userdata::check::<Analytics>(l, 1);
-    (api.createtable)(l, 0, 4);
-    (api.createtable)(l, 0, a.timers.len() as c_int);
+    l.createtable(0, 4);
+    l.createtable(0, a.timers.len() as c_int);
     for (name, t) in &a.timers {
-        (api.pushlstring)(l, name.as_ptr().cast(), name.len());
-        (api.createtable)(l, 0, 7);
+        l.pushlstring(name.as_ptr().cast(), name.len());
+        l.createtable(0, 7);
         set(l, c"count", t.count);
         set(l, c"total", t.total);
         set(l, c"mean", t.total / t.count);
@@ -400,27 +389,27 @@ unsafe extern "C-unwind" fn report(l: L) -> c_int {
         set(l, c"max", t.max);
         set(l, c"last", t.last);
         set(l, c"p95", percentile(t.samples.ordered(), PERCENTILE));
-        (api.rawset)(l, -3);
+        l.rawset(-3);
     }
-    (api.setfield)(l, -2, c"timers".as_ptr());
-    (api.createtable)(l, 0, a.counters.len() as c_int);
+    l.setfield(-2, c"timers");
+    l.createtable(0, a.counters.len() as c_int);
     for (name, n) in &a.counters {
-        (api.pushlstring)(l, name.as_ptr().cast(), name.len());
-        (api.pushnumber)(l, *n);
-        (api.rawset)(l, -3);
+        l.pushlstring(name.as_ptr().cast(), name.len());
+        l.pushnumber(*n);
+        l.rawset(-3);
     }
-    (api.setfield)(l, -2, c"counters".as_ptr());
+    l.setfield(-2, c"counters");
     let pressures = a.pressure.ordered();
-    (api.createtable)(l, 0, 5);
+    l.createtable(0, 5);
     set(l, c"frames", a.frames);
     set(l, c"last", pressures.last().copied().unwrap_or(0.0));
     let mean = if pressures.is_empty() { 0.0 } else { pressures.iter().fold(0.0, |s, v| s + v) / pressures.len() as f64 };
     set(l, c"mean", mean);
     set(l, c"peak", a.pressure_peak);
     set(l, c"overBudget", a.over_budget);
-    (api.setfield)(l, -2, c"pressure".as_ptr());
+    l.setfield(-2, c"pressure");
     let (times, kbs) = (a.memory_times.ordered(), a.memory_kb.ordered());
-    (api.createtable)(l, 0, 4);
+    l.createtable(0, 4);
     let mut growth = 0.0;
     if let (Some(&last), Some(&first)) = (kbs.last(), kbs.first()) {
         set(l, c"kb", last);
@@ -432,24 +421,23 @@ unsafe extern "C-unwind" fn report(l: L) -> c_int {
         }
     }
     set(l, c"growthPerSecond", growth);
-    (api.setfield)(l, -2, c"memory".as_ptr());
+    l.setfield(-2, c"memory");
     1
 }
 
 /// The keys of the table at `t` with their table or number values, read
 /// by `read` (pushed value at the top).
 unsafe fn entries_of<T>(l: L, t: c_int, mut read: impl FnMut(L, c_int) -> T) -> Vec<(Vec<u8>, T)> {
-    let api = api();
     let mut out = Vec::new();
-    if (api.type_of)(l, t) != TTABLE {
+    if l.type_of(t) != TTABLE {
         return out;
     }
-    (api.pushnil)(l);
-    while (api.next)(l, t) != 0 {
+    l.pushnil();
+    while l.next(t) != 0 {
         let key = string_at(l, -2).map(<[u8]>::to_vec).unwrap_or_else(|| tostring(l, -2).into_bytes());
-        let value = (api.gettop)(l);
+        let value = l.gettop();
         out.push((key, read(l, value)));
-        (api.settop)(l, -2);
+        l.settop(-2);
     }
     out
 }
@@ -461,12 +449,11 @@ fn whole(n: f64) -> i64 {
 
 /// analytics.Format(report) -> console lines
 unsafe extern "C-unwind" fn format_report(l: L) -> c_int {
-    let api = api();
-    (api.checktype)(l, 1, TTABLE);
-    (api.getfield)(l, 1, c"pressure".as_ptr());
-    let p = (api.gettop)(l);
-    (api.getfield)(l, 1, c"memory".as_ptr());
-    let m = (api.gettop)(l);
+    l.checktype(1, TTABLE);
+    l.getfield(1, c"pressure");
+    let p = l.gettop();
+    l.getfield(1, c"memory");
+    let m = l.gettop();
     let mut lines = vec![format!(
         "pressure: {} frames, last {:.1}%, mean {:.1}%, peak {:.1}%, {} over budget",
         whole(field(l, p, c"frames")),
@@ -486,8 +473,8 @@ unsafe extern "C-unwind" fn format_report(l: L) -> c_int {
     } else {
         lines.push("memory: no frame sampled yet".into());
     }
-    (api.getfield)(l, 1, c"timers".as_ptr());
-    let timers_at = (api.gettop)(l);
+    l.getfield(1, c"timers");
+    let timers_at = l.gettop();
     let mut timers = entries_of(l, timers_at, |l, t| {
         [field(l, t, c"count"), field(l, t, c"total"), field(l, t, c"mean"), field(l, t, c"p95"), field(l, t, c"max")]
     });
@@ -504,9 +491,9 @@ unsafe extern "C-unwind" fn format_report(l: L) -> c_int {
         ));
     }
     drop(timers);
-    (api.getfield)(l, 1, c"counters".as_ptr());
-    let counters_at = (api.gettop)(l);
-    let mut counters = entries_of(l, counters_at, |l, v| (api.tonumber)(l, v));
+    l.getfield(1, c"counters");
+    let counters_at = l.gettop();
+    let mut counters = entries_of(l, counters_at, |l, v| l.tonumber(v));
     counters.sort_by(|a, b| a.0.cmp(&b.0));
     for (name, n) in &counters {
         lines.push(format!("  {}: {}", String::from_utf8_lossy(name), whole(*n)));
@@ -519,32 +506,30 @@ unsafe extern "C-unwind" fn format_report(l: L) -> c_int {
 
 /// Pushes { name, count, share }s, largest first (ties by name), the top n.
 unsafe fn push_rows(l: L, counts: &[(Vec<u8>, f64)], total: f64, n: usize) {
-    let api = api();
     let mut rows: Vec<&(Vec<u8>, f64)> = counts.iter().collect();
     rows.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal).then_with(|| a.0.cmp(&b.0)));
-    (api.createtable)(l, rows.len().min(n) as c_int, 0);
+    l.createtable(rows.len().min(n) as c_int, 0);
     for (i, (name, count)) in rows.iter().take(n).enumerate() {
-        (api.createtable)(l, 0, 3);
-        (api.pushlstring)(l, name.as_ptr().cast(), name.len());
-        (api.setfield)(l, -2, c"name".as_ptr());
+        l.createtable(0, 3);
+        l.pushlstring(name.as_ptr().cast(), name.len());
+        l.setfield(-2, c"name");
         set(l, c"count", *count);
         set(l, c"share", if total > 0.0 { count / total } else { 0.0 });
-        (api.rawseti)(l, -2, i as c_int + 1);
+        l.rawseti(-2, i as c_int + 1);
     }
 }
 
 /// analytics.SampleReport(sampled, n) -> the profiler's report, top n each
 unsafe extern "C-unwind" fn sample_report(l: L) -> c_int {
-    let api = api();
-    (api.checktype)(l, 1, TTABLE);
-    let n = (api.checknumber)(l, 2).max(0.0) as usize;
+    l.checktype(1, TTABLE);
+    let n = l.checknumber(2).max(0.0) as usize;
     let total = field(l, 1, c"samples");
-    (api.getfield)(l, 1, c"states".as_ptr());
-    let states_at = (api.gettop)(l);
-    let states = entries_of(l, states_at, |l, v| (api.tonumber)(l, v));
-    (api.getfield)(l, 1, c"stacks".as_ptr());
-    let stacks_at = (api.gettop)(l);
-    let stacks = entries_of(l, stacks_at, |l, v| (api.tonumber)(l, v));
+    l.getfield(1, c"states");
+    let states_at = l.gettop();
+    let states = entries_of(l, states_at, |l, v| l.tonumber(v));
+    l.getfield(1, c"stacks");
+    let stacks_at = l.gettop();
+    let stacks = entries_of(l, stacks_at, |l, v| l.tonumber(v));
     let mut leaves: HashMap<Vec<u8>, f64> = HashMap::new();
     let mut inclusive: HashMap<Vec<u8>, f64> = HashMap::new();
     for (stack, count) in &stacks {
@@ -562,24 +547,23 @@ unsafe extern "C-unwind" fn sample_report(l: L) -> c_int {
     }
     let leaves: Vec<_> = leaves.into_iter().collect();
     let inclusive: Vec<_> = inclusive.into_iter().collect();
-    (api.createtable)(l, 0, 5);
+    l.createtable(0, 5);
     set(l, c"samples", total);
     push_rows(l, &states, total, n);
-    (api.setfield)(l, -2, c"states".as_ptr());
+    l.setfield(-2, c"states");
     push_rows(l, &leaves, total, n);
-    (api.setfield)(l, -2, c"self".as_ptr());
+    l.setfield(-2, c"self");
     push_rows(l, &inclusive, total, n);
-    (api.setfield)(l, -2, c"inclusive".as_ptr());
+    l.setfield(-2, c"inclusive");
     push_rows(l, &stacks, total, n);
-    (api.setfield)(l, -2, c"stacks".as_ptr());
+    l.setfield(-2, c"stacks");
     drop((states, stacks, leaves, inclusive));
     1
 }
 
 /// analytics.FormatSamples(report) -> console lines
 unsafe extern "C-unwind" fn format_samples(l: L) -> c_int {
-    let api = api();
-    (api.checktype)(l, 1, TTABLE);
+    l.checktype(1, TTABLE);
     let mut lines = vec![format!("samples: {}", whole(field(l, 1, c"samples")))];
     for (title, key) in [
         ("-- VM state", c"states"),
@@ -588,9 +572,9 @@ unsafe extern "C-unwind" fn format_samples(l: L) -> c_int {
         ("-- stacks", c"stacks"),
     ] {
         lines.push(title.into());
-        (api.getfield)(l, 1, key.as_ptr());
-        let rows = (api.gettop)(l);
-        if (api.type_of)(l, rows) == TTABLE {
+        l.getfield(1, key);
+        let rows = l.gettop();
+        if l.type_of(rows) == TTABLE {
             each_item(l, rows, |l, row| {
                 lines.push(format!(
                     "{:6.1}% {:7}  {}",
@@ -600,7 +584,7 @@ unsafe extern "C-unwind" fn format_samples(l: L) -> c_int {
                 ));
             });
         }
-        (api.settop)(l, rows - 1);
+        l.settop(rows - 1);
     }
     let pushed = push_lines(l, &lines);
     drop(lines);

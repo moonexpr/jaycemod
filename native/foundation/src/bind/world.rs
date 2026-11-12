@@ -5,7 +5,7 @@
 
 use super::slots::{fresh_environment, ValueSlots};
 use super::util::{absent, boolean, each_item, env_field, env_table, nothing, number, number_at};
-use crate::lua::{api, raise_at, raise_where, string_at, tostring, CFunction, GLOBALSINDEX, L, TNIL, TTABLE};
+use crate::lua::{raise_at, raise_where, string_at, tostring, CFunction, GLOBALSINDEX, L, TNIL, TTABLE};
 use crate::module;
 use crate::userdata::{self, Native};
 use std::collections::{HashMap, HashSet};
@@ -49,8 +49,7 @@ unsafe extern "C-unwind" fn pairmap_unordered(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn pairmap_get(l: L) -> c_int {
-    let api = api();
-    let (a, b) = ((api.checknumber)(l, 2), (api.checknumber)(l, 3));
+    let (a, b) = (l.checknumber(2), l.checknumber(3));
     let map = userdata::check::<PairMap>(l, 1);
     match map.keys.get(&pair_key(map.unordered, a, b)) {
         Some(&slot) => {
@@ -72,7 +71,7 @@ unsafe fn pair_part(l: L, index: c_int) -> f64 {
 }
 
 unsafe extern "C-unwind" fn pairmap_set(l: L) -> c_int {
-    (api().settop)(l, 4);
+    l.settop(4);
     let (a, b) = (pair_part(l, 2), pair_part(l, 3));
     let map = userdata::check::<PairMap>(l, 1);
     let key = pair_key(map.unordered, a, b);
@@ -147,7 +146,7 @@ unsafe extern "C-unwind" fn bucket_new(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn bucket_take(l: L) -> c_int {
-    let now = (api().checknumber)(l, 2);
+    let now = l.checknumber(2);
     let bucket = userdata::check::<Bucket>(l, 1);
     let tokens = bucket.refill(now);
     if tokens < 1.0 {
@@ -158,7 +157,7 @@ unsafe extern "C-unwind" fn bucket_take(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn bucket_tokens(l: L) -> c_int {
-    let now = (api().checknumber)(l, 2);
+    let now = l.checknumber(2);
     number(l, userdata::check::<Bucket>(l, 1).refill(now))
 }
 
@@ -181,7 +180,7 @@ impl Native for Leases {
 unsafe extern "C-unwind" fn lease_new(l: L) -> c_int {
     userdata::push(l, Leases);
     fresh_environment(l, -1);
-    let ud = (api().gettop)(l);
+    let ud = l.gettop();
     env_table(l, ud, c"holders");
     env_table(l, ud, c"expires");
     1
@@ -189,90 +188,85 @@ unsafe extern "C-unwind" fn lease_new(l: L) -> c_int {
 
 /// Pushes the live holder of the key at 2 at time `now`, or nil.
 unsafe fn push_holder(l: L, now: f64) {
-    let api = api();
     env_field(l, 1, c"holders");
-    (api.pushvalue)(l, 2);
-    (api.rawget)(l, -2);
-    if (api.type_of)(l, -1) != TNIL {
+    l.pushvalue(2);
+    l.rawget(-2);
+    if l.type_of(-1) != TNIL {
         env_field(l, 1, c"expires");
-        (api.pushvalue)(l, 2);
-        (api.rawget)(l, -2);
-        let expires = (api.tonumber)(l, -1);
-        (api.settop)(l, -3);
+        l.pushvalue(2);
+        l.rawget(-2);
+        let expires = l.tonumber(-1);
+        l.settop(-3);
         if now >= expires {
-            (api.settop)(l, -2);
-            (api.pushnil)(l);
+            l.settop(-2);
+            l.pushnil();
         }
     }
-    (api.remove)(l, -2);
+    l.remove(-2);
 }
 
 unsafe extern "C-unwind" fn lease_holder(l: L) -> c_int {
     userdata::check::<Leases>(l, 1);
-    let now = (api().checknumber)(l, 3);
-    (api().settop)(l, 3);
+    let now = l.checknumber(3);
+    l.settop(3);
     push_holder(l, now);
     1
 }
 
 /// Whether the key at 2 is free for the holder at 3 at time `now`.
 unsafe fn free_for(l: L, now: f64) -> bool {
-    let api = api();
     push_holder(l, now);
-    let free = (api.type_of)(l, -1) == TNIL || (api.equal)(l, -1, 3) != 0;
-    (api.settop)(l, -2);
+    let free = l.type_of(-1) == TNIL || l.equal(-1, 3) != 0;
+    l.settop(-2);
     free
 }
 
 unsafe extern "C-unwind" fn lease_free_for(l: L) -> c_int {
     userdata::check::<Leases>(l, 1);
-    let now = (api().checknumber)(l, 4);
-    (api().settop)(l, 4);
+    let now = l.checknumber(4);
+    l.settop(4);
     boolean(l, free_for(l, now))
 }
 
 unsafe extern "C-unwind" fn lease_take(l: L) -> c_int {
-    let api = api();
     userdata::check::<Leases>(l, 1);
-    let now = (api.checknumber)(l, 4);
-    let term = (api.checknumber)(l, 5);
-    (api.settop)(l, 5);
+    let now = l.checknumber(4);
+    let term = l.checknumber(5);
+    l.settop(5);
     if !free_for(l, now) {
         return boolean(l, false);
     }
     env_field(l, 1, c"holders");
-    (api.pushvalue)(l, 2);
-    (api.pushvalue)(l, 3);
-    (api.rawset)(l, -3);
+    l.pushvalue(2);
+    l.pushvalue(3);
+    l.rawset(-3);
     env_field(l, 1, c"expires");
-    (api.pushvalue)(l, 2);
-    (api.pushnumber)(l, now + term);
-    (api.rawset)(l, -3);
-    (api.settop)(l, 5);
+    l.pushvalue(2);
+    l.pushnumber(now + term);
+    l.rawset(-3);
+    l.settop(5);
     boolean(l, true)
 }
 
 /// Clears the lease of the key at `key` (absolute).
 unsafe fn clear_lease(l: L, key: c_int) {
-    let api = api();
     for name in [c"holders", c"expires"] {
         env_field(l, 1, name);
-        (api.pushvalue)(l, key);
-        (api.pushnil)(l);
-        (api.rawset)(l, -3);
-        (api.settop)(l, -2);
+        l.pushvalue(key);
+        l.pushnil();
+        l.rawset(-3);
+        l.settop(-2);
     }
 }
 
 unsafe extern "C-unwind" fn lease_release(l: L) -> c_int {
-    let api = api();
     userdata::check::<Leases>(l, 1);
-    (api.settop)(l, 3);
+    l.settop(3);
     env_field(l, 1, c"holders");
-    (api.pushvalue)(l, 2);
-    (api.rawget)(l, -2);
-    let own = (api.type_of)(l, -1) != TNIL && (api.equal)(l, -1, 3) != 0;
-    (api.settop)(l, 3);
+    l.pushvalue(2);
+    l.rawget(-2);
+    let own = l.type_of(-1) != TNIL && l.equal(-1, 3) != 0;
+    l.settop(3);
     if own {
         clear_lease(l, 2);
     }
@@ -280,22 +274,21 @@ unsafe extern "C-unwind" fn lease_release(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn lease_release_all(l: L) -> c_int {
-    let api = api();
     userdata::check::<Leases>(l, 1);
-    (api.settop)(l, 2);
+    l.settop(2);
     env_field(l, 1, c"holders");
-    let holders = (api.gettop)(l);
-    (api.createtable)(l, 0, 0);
-    let own = (api.gettop)(l);
+    let holders = l.gettop();
+    l.createtable(0, 0);
+    let own = l.gettop();
     let mut n = 0;
-    (api.pushnil)(l);
-    while (api.next)(l, holders) != 0 {
-        if (api.equal)(l, -1, 2) != 0 {
+    l.pushnil();
+    while l.next(holders) != 0 {
+        if l.equal(-1, 2) != 0 {
             n += 1;
-            (api.pushvalue)(l, -2);
-            (api.rawseti)(l, own, n);
+            l.pushvalue(-2);
+            l.rawseti(own, n);
         }
-        (api.settop)(l, -2);
+        l.settop(-2);
     }
     each_item(l, own, |l, key| clear_lease(l, key));
     0
@@ -334,7 +327,7 @@ unsafe extern "C-unwind" fn grid_new(l: L) -> c_int {
     let size = cell_size(l, 1);
     userdata::push(l, Grid { size });
     fresh_environment(l, -1);
-    let ud = (api().gettop)(l);
+    let ud = l.gettop();
     env_table(l, ud, c"cells");
     1
 }
@@ -351,24 +344,23 @@ unsafe fn xy(l: L, index: c_int) -> (f64, f64) {
 
 /// Appends the value at `item` to the cell `key` of the cells at `cells`.
 unsafe fn add(l: L, cells: c_int, key: f64, item: c_int) {
-    let api = api();
-    (api.pushnumber)(l, key);
-    (api.rawget)(l, cells);
-    if (api.type_of)(l, -1) != TTABLE {
-        (api.settop)(l, -2);
-        (api.createtable)(l, 1, 0);
-        (api.pushnumber)(l, key);
-        (api.pushvalue)(l, -2);
-        (api.rawset)(l, cells);
+    l.pushnumber(key);
+    l.rawget(cells);
+    if l.type_of(-1) != TTABLE {
+        l.settop(-2);
+        l.createtable(1, 0);
+        l.pushnumber(key);
+        l.pushvalue(-2);
+        l.rawset(cells);
     }
-    let n = (api.objlen)(l, -1) as c_int;
-    (api.pushvalue)(l, item);
-    (api.rawseti)(l, -2, n + 1);
-    (api.settop)(l, -2);
+    let n = l.objlen(-1) as c_int;
+    l.pushvalue(item);
+    l.rawseti(-2, n + 1);
+    l.settop(-2);
 }
 
 unsafe extern "C-unwind" fn grid_put(l: L) -> c_int {
-    (api().settop)(l, 3);
+    l.settop(3);
     let size = userdata::check::<Grid>(l, 1).size;
     let (x, y) = xy(l, 2);
     env_field(l, 1, c"cells");
@@ -377,7 +369,7 @@ unsafe extern "C-unwind" fn grid_put(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn grid_put_box(l: L) -> c_int {
-    (api().settop)(l, 4);
+    l.settop(4);
     let size = userdata::check::<Grid>(l, 1).size;
     let (lx, ly) = xy(l, 2);
     let (hx, hy) = xy(l, 3);
@@ -396,54 +388,51 @@ unsafe extern "C-unwind" fn grid_put_box(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn grid_near(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 3);
+    l.settop(3);
     let size = userdata::check::<Grid>(l, 1).size;
     let (x, y) = xy(l, 2);
     env_field(l, 1, c"cells");
-    let cells = (api.gettop)(l);
+    let cells = l.gettop();
     let (cx, cy) = ((x / size).floor(), (y / size).floor());
     for dx in [-1.0, 0.0, 1.0] {
         for dy in [-1.0, 0.0, 1.0] {
-            (api.pushnumber)(l, cell_key(cx + dx, cy + dy));
-            (api.rawget)(l, cells);
-            if (api.type_of)(l, -1) == TTABLE {
-                let list = (api.gettop)(l);
+            l.pushnumber(cell_key(cx + dx, cy + dy));
+            l.rawget(cells);
+            if l.type_of(-1) == TTABLE {
+                let list = l.gettop();
                 let mut hit = false;
                 each_item(l, list, |l, item| {
                     if !hit {
-                        (api.pushvalue)(l, 3);
-                        (api.pushvalue)(l, item);
-                        (api.call)(l, 1, 1);
-                        hit = (api.toboolean)(l, -1) != 0;
+                        l.pushvalue(3);
+                        l.pushvalue(item);
+                        l.call(1, 1);
+                        hit = l.toboolean(-1) != 0;
                     }
                 });
                 if hit {
                     return boolean(l, true);
                 }
             }
-            (api.settop)(l, cells);
+            l.settop(cells);
         }
     }
     boolean(l, false)
 }
 
 unsafe extern "C-unwind" fn grid_buckets(l: L) -> c_int {
-    let api = api();
     userdata::check::<Grid>(l, 1);
-    (api.getfield)(l, GLOBALSINDEX, c"next".as_ptr());
+    l.getfield(GLOBALSINDEX, c"next");
     env_field(l, 1, c"cells");
-    (api.pushnil)(l);
+    l.pushnil();
     3
 }
 
 /// world.grid.Thin(points, size) -> the first of points in each cube
 unsafe extern "C-unwind" fn grid_thin(l: L) -> c_int {
-    let api = api();
     let size = cell_size(l, 2);
-    (api.checktype)(l, 1, TTABLE);
-    (api.createtable)(l, 0, 0);
-    let kept = (api.gettop)(l);
+    l.checktype(1, TTABLE);
+    l.createtable(0, 0);
+    let kept = l.gettop();
     let mut taken = HashSet::new();
     let mut n = 0;
     each_item(l, 1, |l, p| {
@@ -453,12 +442,12 @@ unsafe extern "C-unwind" fn grid_thin(l: L) -> c_int {
         let cube = ((x / size).floor() as i64, (y / size).floor() as i64, (z / size).floor() as i64);
         if taken.insert(cube) {
             n += 1;
-            (api.pushvalue)(l, p);
-            (api.rawseti)(l, kept, n);
+            l.pushvalue(p);
+            l.rawseti(kept, n);
         }
     });
     drop(taken);
-    (api.settop)(l, kept);
+    l.settop(kept);
     1
 }
 
@@ -476,9 +465,8 @@ unsafe extern "C-unwind" fn grid_isolated(l: L) -> c_int {
 
 /// The scan both share; `everyone`: every item seen is remembered for the next, not only those kept.
 unsafe fn scan(l: L, everyone: bool) -> c_int {
-    let api = api();
     let spacing = cell_size(l, 2);
-    (api.checktype)(l, 1, TTABLE);
+    l.checktype(1, TTABLE);
     let limit = if absent(l, 3) {
         None
     } else {
@@ -493,7 +481,7 @@ unsafe fn scan(l: L, everyone: bool) -> c_int {
     let position = if absent(l, 4) {
         None
     } else {
-        (api.checktype)(l, 4, crate::lua::TFUNCTION);
+        l.checktype(4, crate::lua::TFUNCTION);
         Some(4)
     };
     let mut cells: HashMap<(i64, i64), Vec<[f64; 3]>> = HashMap::new();
@@ -508,11 +496,11 @@ unsafe fn scan(l: L, everyone: bool) -> c_int {
         let at = match position {
             None => super::math::point_at(l, item),
             Some(f) => {
-                (api.pushvalue)(l, f);
-                (api.pushvalue)(l, item);
-                (api.call)(l, 1, 1);
-                let at = super::math::point_at(l, (api.gettop)(l));
-                (api.settop)(l, item);
+                l.pushvalue(f);
+                l.pushvalue(item);
+                l.call(1, 1);
+                let at = super::math::point_at(l, l.gettop());
+                l.settop(item);
                 at
             }
         };
@@ -537,10 +525,10 @@ unsafe fn scan(l: L, everyone: bool) -> c_int {
             }
         }
     });
-    (api.createtable)(l, places.len() as c_int, 0);
+    l.createtable(places.len() as c_int, 0);
     for (i, p) in places.iter().enumerate() {
-        (api.rawgeti)(l, 1, *p);
-        (api.rawseti)(l, -2, i as c_int + 1);
+        l.rawgeti(1, *p);
+        l.rawseti(-2, i as c_int + 1);
     }
     1
 }
@@ -563,103 +551,100 @@ impl Native for NamedSet {
 
 /// world.sets.Named(name, members) -> a named set
 unsafe extern "C-unwind" fn sets_named(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
+    l.settop(2);
     let name = string_at(l, 1).filter(|n| !n.is_empty()).map(|n| String::from_utf8_lossy(n).into_owned());
     let Some(name) = name else {
         let given = tostring(l, 1);
         raise_where(l, format!("named set {given}: needs a name"));
     };
-    if (api.type_of)(l, 2) != TTABLE || (api.objlen)(l, 2) == 0 {
+    if l.type_of(2) != TTABLE || l.objlen(2) == 0 {
         raise_where(l, format!("named set {name}: {name}: lists no members"));
     }
     userdata::push(l, NamedSet);
     fresh_environment(l, -1);
-    let ud = (api.gettop)(l);
-    (api.getfenv)(l, ud);
-    let env = (api.gettop)(l);
-    (api.pushvalue)(l, 1);
-    (api.setfield)(l, env, c"name".as_ptr());
-    (api.createtable)(l, 0, 0);
-    let list = (api.gettop)(l);
-    (api.createtable)(l, 0, 0);
-    let has = (api.gettop)(l);
+    let ud = l.gettop();
+    l.getfenv(ud);
+    let env = l.gettop();
+    l.pushvalue(1);
+    l.setfield(env, c"name");
+    l.createtable(0, 0);
+    let list = l.gettop();
+    l.createtable(0, 0);
+    let has = l.gettop();
     let mut twice = None;
     let mut n = 0;
     each_item(l, 2, |l, member| {
         if twice.is_some() {
             return;
         }
-        (api.pushvalue)(l, member);
-        (api.rawget)(l, has);
-        let seen = (api.type_of)(l, -1) != TNIL;
-        (api.settop)(l, -2);
+        l.pushvalue(member);
+        l.rawget(has);
+        let seen = l.type_of(-1) != TNIL;
+        l.settop(-2);
         if seen {
             twice = Some(tostring(l, member));
             return;
         }
-        (api.pushvalue)(l, member);
-        (api.pushboolean)(l, 1);
-        (api.rawset)(l, has);
+        l.pushvalue(member);
+        l.pushboolean(1);
+        l.rawset(has);
         n += 1;
-        (api.pushvalue)(l, member);
-        (api.rawseti)(l, list, n);
+        l.pushvalue(member);
+        l.rawseti(list, n);
     });
     if let Some(member) = twice {
         raise_where(l, format!("named set {name}: {name}: lists {member} twice"));
     }
     drop(name);
-    (api.pushvalue)(l, has);
-    (api.setfield)(l, env, c"has".as_ptr());
-    (api.pushvalue)(l, list);
-    (api.setfield)(l, env, c"list".as_ptr());
-    (api.settop)(l, ud);
+    l.pushvalue(has);
+    l.setfield(env, c"has");
+    l.pushvalue(list);
+    l.setfield(env, c"list");
+    l.settop(ud);
     1
 }
 
 /// Whether the value at 2 is a member of the set at 1.
 unsafe fn member(l: L) -> bool {
-    let api = api();
-    if (api.type_of)(l, 2) <= TNIL {
+    if l.type_of(2) <= TNIL {
         return false;
     }
     env_field(l, 1, c"has");
-    (api.pushvalue)(l, 2);
-    (api.rawget)(l, -2);
-    let has = (api.toboolean)(l, -1) != 0;
-    (api.settop)(l, -3);
+    l.pushvalue(2);
+    l.rawget(-2);
+    let has = l.toboolean(-1) != 0;
+    l.settop(-3);
     has
 }
 
 unsafe extern "C-unwind" fn set_has(l: L) -> c_int {
     userdata::check::<NamedSet>(l, 1);
-    (api().settop)(l, 2);
+    l.settop(2);
     boolean(l, member(l))
 }
 
 unsafe extern "C-unwind" fn set_check(l: L) -> c_int {
     userdata::check::<NamedSet>(l, 1);
-    (api().settop)(l, 2);
+    l.settop(2);
     if !member(l) {
         env_field(l, 1, c"name");
         let name = tostring(l, -1);
         let given = tostring(l, 2);
         raise_at(l, 2, format!("{name}: unknown {given}"));
     }
-    (api().pushvalue)(l, 2);
+    l.pushvalue(2);
     1
 }
 
 unsafe extern "C-unwind" fn set_match(l: L) -> c_int {
-    let api = api();
     userdata::check::<NamedSet>(l, 1);
-    (api.checktype)(l, 2, crate::lua::TSTRING);
+    l.checktype(2, crate::lua::TSTRING);
     let wanted = string_at(l, 2).unwrap_or_default().to_ascii_uppercase();
     if wanted.is_empty() {
         return nothing(l);
     }
     env_field(l, 1, c"list");
-    let list = (api.gettop)(l);
+    let list = l.gettop();
     let (mut found, mut i) = (None, 0);
     each_item(l, list, |l, m| {
         i += 1;
@@ -674,7 +659,7 @@ unsafe extern "C-unwind" fn set_match(l: L) -> c_int {
     drop(wanted);
     match found {
         Some(i) => {
-            (api.rawgeti)(l, list, i);
+            l.rawgeti(list, i);
             1
         }
         None => nothing(l),
@@ -682,17 +667,16 @@ unsafe extern "C-unwind" fn set_match(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn set_members(l: L) -> c_int {
-    let api = api();
     userdata::check::<NamedSet>(l, 1);
     env_field(l, 1, c"list");
-    let list = (api.gettop)(l);
-    (api.createtable)(l, 0, 0);
-    let copy = (api.gettop)(l);
+    let list = l.gettop();
+    l.createtable(0, 0);
+    let copy = l.gettop();
     let mut n = 0;
     each_item(l, list, |l, m| {
         n += 1;
-        (api.pushvalue)(l, m);
-        (api.rawseti)(l, copy, n);
+        l.pushvalue(m);
+        l.rawseti(copy, n);
     });
     1
 }
@@ -705,49 +689,46 @@ unsafe extern "C-unwind" fn set_name(l: L) -> c_int {
 
 /// Each key of the table at `t` (absolute), pushed for `visit` at the top.
 unsafe fn each_key(l: L, t: c_int, mut visit: impl FnMut(L, c_int)) {
-    let api = api();
-    (api.pushnil)(l);
-    while (api.next)(l, t) != 0 {
-        (api.settop)(l, -2);
-        let key = (api.gettop)(l);
+    l.pushnil();
+    while l.next(t) != 0 {
+        l.settop(-2);
+        let key = l.gettop();
         visit(l, key);
-        (api.settop)(l, key);
+        l.settop(key);
     }
 }
 
 /// set[value at `value`] = true, the set at `set`.
 unsafe fn add_member(l: L, set: c_int, value: c_int) {
-    let api = api();
-    (api.pushvalue)(l, value);
-    (api.pushboolean)(l, 1);
-    (api.rawset)(l, set);
+    l.pushvalue(value);
+    l.pushboolean(1);
+    l.rawset(set);
 }
 
 unsafe fn new_set(l: L) -> c_int {
-    (api().createtable)(l, 0, 0);
-    (api().gettop)(l)
+    l.createtable(0, 0);
+    l.gettop()
 }
 
 unsafe extern "C-unwind" fn sets_of(l: L) -> c_int {
-    (api().checktype)(l, 1, TTABLE);
+    l.checktype(1, TTABLE);
     let set = new_set(l);
     each_item(l, 1, |l, v| add_member(l, set, v));
     1
 }
 
 unsafe extern "C-unwind" fn sets_copy(l: L) -> c_int {
-    (api().checktype)(l, 1, TTABLE);
+    l.checktype(1, TTABLE);
     let set = new_set(l);
     each_key(l, 1, |l, k| add_member(l, set, k));
     1
 }
 
 unsafe extern "C-unwind" fn sets_union(l: L) -> c_int {
-    let api = api();
-    let n = (api.gettop)(l);
+    let n = l.gettop();
     let set = new_set(l);
     for i in 1..=n {
-        (api.checktype)(l, i, TTABLE);
+        l.checktype(i, TTABLE);
         each_key(l, i, |l, k| add_member(l, set, k));
     }
     1
@@ -755,17 +736,16 @@ unsafe extern "C-unwind" fn sets_union(l: L) -> c_int {
 
 /// Whether b[value at `key`] is truthy, b at `b`.
 unsafe fn holds(l: L, b: c_int, key: c_int) -> bool {
-    let api = api();
-    (api.pushvalue)(l, key);
-    (api.gettable)(l, b);
-    let truthy = (api.toboolean)(l, -1) != 0;
-    (api.settop)(l, -2);
+    l.pushvalue(key);
+    l.gettable(b);
+    let truthy = l.toboolean(-1) != 0;
+    l.settop(-2);
     truthy
 }
 
 unsafe extern "C-unwind" fn sets_intersect(l: L) -> c_int {
-    (api().checktype)(l, 1, TTABLE);
-    (api().settop)(l, 2);
+    l.checktype(1, TTABLE);
+    l.settop(2);
     let set = new_set(l);
     each_key(l, 1, |l, k| {
         if holds(l, 2, k) {
@@ -776,8 +756,8 @@ unsafe extern "C-unwind" fn sets_intersect(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn sets_subtract(l: L) -> c_int {
-    (api().checktype)(l, 1, TTABLE);
-    (api().settop)(l, 2);
+    l.checktype(1, TTABLE);
+    l.settop(2);
     let set = new_set(l);
     each_key(l, 1, |l, k| {
         if !holds(l, 2, k) {
@@ -788,36 +768,34 @@ unsafe extern "C-unwind" fn sets_subtract(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn sets_count(l: L) -> c_int {
-    (api().checktype)(l, 1, TTABLE);
+    l.checktype(1, TTABLE);
     let mut n = 0;
     each_key(l, 1, |_, _| n += 1);
     number(l, n as f64)
 }
 
 unsafe extern "C-unwind" fn sets_sorted(l: L) -> c_int {
-    let api = api();
-    (api.checktype)(l, 1, TTABLE);
+    l.checktype(1, TTABLE);
     let list = new_set(l);
     let mut n = 0;
     each_key(l, 1, |l, k| {
         n += 1;
-        (api.pushvalue)(l, k);
-        (api.rawseti)(l, list, n);
+        l.pushvalue(k);
+        l.rawseti(list, n);
     });
-    (api.getfield)(l, GLOBALSINDEX, c"table".as_ptr());
-    (api.getfield)(l, -1, c"sort".as_ptr());
-    (api.pushvalue)(l, list);
-    (api.call)(l, 1, 0);
-    (api.settop)(l, list);
+    l.getfield(GLOBALSINDEX, c"table");
+    l.getfield(-1, c"sort");
+    l.pushvalue(list);
+    l.call(1, 0);
+    l.settop(list);
     1
 }
 
 /// Pushes the pairmap module table.
 unsafe fn push_pairmap_module(l: L) {
-    let api = api();
     module::push(l, &[(c"New", pairmap_new), (c"Unordered", pairmap_unordered)], None);
-    (api.pushnumber)(l, MAX_KEY);
-    (api.setfield)(l, -2, c"MAX_KEY".as_ptr());
+    l.pushnumber(MAX_KEY);
+    l.setfield(-2, c"MAX_KEY");
 }
 
 /// Pushes the lease module table.

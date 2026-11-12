@@ -3,7 +3,7 @@
 //! tag (a hash of its type's name), so a method checks its argument's type
 //! with two API calls rather than luaL_checkudata's registry lookup by name.
 
-use crate::lua::{api, raise_owned, set_function, CFunction, L, TUSERDATA};
+use crate::lua::{raise_owned, set_function, CFunction, L, TUSERDATA};
 use std::ffi::{c_int, CStr};
 
 /// A Rust type Lua holds as a userdata handle.
@@ -49,16 +49,15 @@ unsafe extern "C-unwind" fn collect<T: Native>(l: L) -> c_int {
 /// `l` is a live state, after `lua::open`.
 pub unsafe fn push<T: Native>(l: L, value: T) {
     const { assert!(std::mem::align_of::<Tagged<T>>() <= 8, "Lua aligns userdata to 8 bytes") };
-    let api = api();
-    let slot = (api.newuserdata)(l, std::mem::size_of::<Tagged<T>>()).cast::<Tagged<T>>();
+    let slot = l.newuserdata(std::mem::size_of::<Tagged<T>>()).cast::<Tagged<T>>();
     // SAFETY: newuserdata returned the size of a Tagged<T>, aligned to 8.
     slot.write(Tagged { tag: tag_of(T::NAME), value });
-    if (api.newmetatable)(l, T::NAME.as_ptr()) != 0 {
+    if l.newmetatable(T::NAME) != 0 {
         match T::INDEX {
             Some(index) => set_function(l, c"__index", index),
             None => {
-                (api.pushvalue)(l, -1);
-                (api.setfield)(l, -2, c"__index".as_ptr());
+                l.pushvalue(-1);
+                l.setfield(-2, c"__index");
             }
         }
         set_function(l, c"__gc", collect::<T>);
@@ -66,7 +65,7 @@ pub unsafe fn push<T: Native>(l: L, value: T) {
             set_function(l, name, *function);
         }
     }
-    (api.setmetatable)(l, -2);
+    l.setmetatable(-2);
 }
 
 /// The userdata of type T at `index`, to change; anything else is a Lua
@@ -93,13 +92,12 @@ pub unsafe fn get<'a, T: Native>(l: L, index: c_int) -> &'a T {
 }
 
 unsafe fn value_at<T: Native>(l: L, index: c_int) -> *mut T {
-    let api = api();
-    if (api.type_of)(l, index) == TUSERDATA {
-        let tagged = (api.touserdata)(l, index).cast::<Tagged<T>>();
+    if l.type_of(index) == TUSERDATA {
+        let tagged = l.touserdata(index).cast::<Tagged<T>>();
         // SAFETY: every userdata at least 8 bytes long that this module
         // pushed starts with its tag; a userdata of another module is read
         // only if at least that long, checked first.
-        if (api.objlen)(l, index) >= std::mem::size_of::<Tagged<T>>() && (*tagged).tag == tag_of(T::NAME) {
+        if l.objlen(index) >= std::mem::size_of::<Tagged<T>>() && (*tagged).tag == tag_of(T::NAME) {
             return std::ptr::addr_of_mut!((*tagged).value);
         }
     }

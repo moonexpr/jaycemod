@@ -5,7 +5,7 @@
 
 use super::slots::fresh_environment;
 use super::util::{boolean, each_item, env_field, nothing, number, number_at};
-use crate::lua::{api, raise_where, string_at, tostring, CFunction, GLOBALSINDEX, L, TNIL, TSTRING, TTABLE};
+use crate::lua::{raise_where, string_at, tostring, CFunction, GLOBALSINDEX, L, TNIL, TSTRING, TTABLE};
 use crate::module;
 use crate::userdata::{self, Native};
 use std::ffi::{c_int, CStr};
@@ -17,17 +17,16 @@ extern "C" {
 
 /// Pushes `bytes` as a Lua string; one result.
 unsafe fn bytes(l: L, data: &[u8]) -> c_int {
-    (api().pushlstring)(l, data.as_ptr().cast(), data.len());
+    l.pushlstring(data.as_ptr().cast(), data.len());
     1
 }
 
 /// The string at `index` (a number reads as Lua's tostring of it), or a
 /// Lua error naming what was wanted.
 unsafe fn text_at<'a>(l: L, index: c_int, what: &str) -> &'a [u8] {
-    let api = api();
-    if (api.type_of)(l, index) == crate::lua::TNUMBER {
+    if l.type_of(index) == crate::lua::TNUMBER {
         let mut len = 0usize;
-        let s = (api.tolstring)(l, index, &mut len);
+        let s = l.tolstring(index, &mut len);
         return std::slice::from_raw_parts(s.cast::<u8>(), len);
     }
     match string_at(l, index) {
@@ -142,7 +141,7 @@ unsafe fn varint(l: L, index: c_int, out: &mut Vec<u8>) {
 }
 
 unsafe fn byte_value(l: L, index: c_int) -> u8 {
-    let n = (api().checknumber)(l, index);
+    let n = l.checknumber(index);
     if !(0.0..256.0).contains(&n) {
         raise_where(l, "bad argument to 'char' (invalid value)".into());
     }
@@ -155,15 +154,15 @@ unsafe extern "C-unwind" fn buffer_byte(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn buffer_int16(l: L) -> c_int {
-    bytes(l, &int16((api().checknumber)(l, 1)))
+    bytes(l, &int16(l.checknumber(1)))
 }
 
 unsafe extern "C-unwind" fn buffer_int32(l: L) -> c_int {
-    bytes(l, &int32((api().checknumber)(l, 1)))
+    bytes(l, &int32(l.checknumber(1)))
 }
 
 unsafe extern "C-unwind" fn buffer_float32(l: L) -> c_int {
-    bytes(l, &float32((api().checknumber)(l, 1)))
+    bytes(l, &float32(l.checknumber(1)))
 }
 
 unsafe extern "C-unwind" fn buffer_varint(l: L) -> c_int {
@@ -177,7 +176,7 @@ unsafe extern "C-unwind" fn buffer_varint(l: L) -> c_int {
 unsafe extern "C-unwind" fn buffer_string(l: L) -> c_int {
     let s = text_at(l, 1, "a buffer's string");
     let mut out = Vec::with_capacity(s.len() + 5);
-    (api().pushnumber)(l, s.len() as f64);
+    l.pushnumber(s.len() as f64);
     varint(l, -1, &mut out);
     out.extend_from_slice(s);
     let pushed = bytes(l, &out);
@@ -187,7 +186,7 @@ unsafe extern "C-unwind" fn buffer_string(l: L) -> c_int {
 
 unsafe extern "C-unwind" fn buffer_utf8(l: L) -> c_int {
     let mut out = Vec::with_capacity(4);
-    utf8((api().checknumber)(l, 1), &mut out);
+    utf8(l.checknumber(1), &mut out);
     let pushed = bytes(l, &out);
     drop(out);
     pushed
@@ -231,19 +230,19 @@ unsafe extern "C-unwind" fn writer_byte(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn writer_int16(l: L) -> c_int {
-    let b = int16((api().checknumber)(l, 2));
+    let b = int16(l.checknumber(2));
     userdata::check::<Writer>(l, 1).data.extend(b);
     0
 }
 
 unsafe extern "C-unwind" fn writer_int32(l: L) -> c_int {
-    let b = int32((api().checknumber)(l, 2));
+    let b = int32(l.checknumber(2));
     userdata::check::<Writer>(l, 1).data.extend(b);
     0
 }
 
 unsafe extern "C-unwind" fn writer_float32(l: L) -> c_int {
-    let b = float32((api().checknumber)(l, 2));
+    let b = float32(l.checknumber(2));
     userdata::check::<Writer>(l, 1).data.extend(b);
     0
 }
@@ -257,7 +256,7 @@ unsafe extern "C-unwind" fn writer_varint(l: L) -> c_int {
 unsafe extern "C-unwind" fn writer_string(l: L) -> c_int {
     let s = text_at(l, 2, "a buffer's string");
     let w = userdata::check::<Writer>(l, 1);
-    (api().pushnumber)(l, s.len() as f64);
+    l.pushnumber(s.len() as f64);
     varint(l, -1, &mut w.data);
     w.data.extend_from_slice(s);
     0
@@ -442,11 +441,10 @@ unsafe extern "C-unwind" fn cursor_new(l: L) -> c_int {
     let length = text_at(l, 1, "a cursor's text").len();
     userdata::push(l, Cursor { at: 0, saved: Vec::new(), length });
     fresh_environment(l, -1);
-    let api = api();
-    (api.getfenv)(l, -1);
-    (api.pushvalue)(l, 1);
-    (api.setfield)(l, -2, c"text".as_ptr());
-    (api.settop)(l, -2);
+    l.getfenv(-1);
+    l.pushvalue(1);
+    l.setfield(-2, c"text");
+    l.settop(-2);
     1
 }
 
@@ -458,7 +456,7 @@ unsafe fn cursor_text<'a>(l: L) -> &'a [u8] {
 
 unsafe extern "C-unwind" fn cursor_literal(l: L) -> c_int {
     let s = text_at(l, 2, "a literal").to_vec();
-    let ignore_case = (api().toboolean)(l, 3) != 0;
+    let ignore_case = l.toboolean(3) != 0;
     let text = cursor_text(l);
     let c = userdata::check::<Cursor>(l, 1);
     let end = (c.at + s.len()).min(text.len());
@@ -475,35 +473,33 @@ unsafe extern "C-unwind" fn cursor_literal(l: L) -> c_int {
 
 /// Runs string.find(text, "^" .. p, at): the number of results it left.
 unsafe fn find_here(l: L, pattern: c_int, at: usize, base: c_int) -> c_int {
-    let api = api();
-    (api.getfield)(l, GLOBALSINDEX, c"string".as_ptr());
-    (api.getfield)(l, -1, c"find".as_ptr());
-    (api.remove)(l, -2);
+    l.getfield(GLOBALSINDEX, c"string");
+    l.getfield(-1, c"find");
+    l.remove(-2);
     env_field(l, 1, c"text");
     crate::lua::push_str(l, "^");
-    (api.pushvalue)(l, pattern);
-    (api.concat)(l, 2);
-    (api.pushnumber)(l, (at + 1) as f64);
-    (api.call)(l, 3, -1);
-    (api.gettop)(l) - base
+    l.pushvalue(pattern);
+    l.concat(2);
+    l.pushnumber((at + 1) as f64);
+    l.call(3, -1);
+    l.gettop() - base
 }
 
 /// Pattern and Peek: the captures, or the whole match, or nil.
 unsafe fn matched(l: L, moves: bool) -> c_int {
-    let api = api();
-    (api.checktype)(l, 2, TSTRING);
-    (api.settop)(l, 2);
+    l.checktype(2, TSTRING);
+    l.settop(2);
     let at = userdata::check::<Cursor>(l, 1).at;
     let n = find_here(l, 2, at, 2);
-    if n == 0 || (api.type_of)(l, 3) == TNIL {
+    if n == 0 || l.type_of(3) == TNIL {
         return nothing(l);
     }
-    let last = (api.tonumber)(l, 4) as usize;
+    let last = l.tonumber(4) as usize;
     if moves {
         userdata::check::<Cursor>(l, 1).at = last;
     }
     if n == 2 {
-        let first = (api.tonumber)(l, 3) as usize;
+        let first = l.tonumber(3) as usize;
         env_field(l, 1, c"text");
         let text = string_at(l, -1).unwrap_or_default();
         return bytes(l, &text[first - 1..last]);
@@ -631,11 +627,10 @@ fn next_item(text: &[u8], mut i: usize) -> (Option<Item>, usize) {
 }
 
 unsafe extern "C-unwind" fn keyvalues_read(l: L) -> c_int {
-    let api = api();
     let text = text_at(l, 1, "KeyValues text");
-    (api.settop)(l, 2);
-    (api.createtable)(l, 0, 0);
-    let path = (api.gettop)(l);
+    l.settop(2);
+    l.createtable(0, 0);
+    let path = l.gettop();
     let mut depth: c_int = 0;
     let mut key: Option<Vec<u8>> = None;
     let mut i = 0;
@@ -647,12 +642,12 @@ unsafe extern "C-unwind" fn keyvalues_read(l: L) -> c_int {
             Item::Open => {
                 depth += 1;
                 bytes(l, key.take().as_deref().unwrap_or_default());
-                (api.rawseti)(l, path, depth);
+                l.rawseti(path, depth);
             }
             Item::Close => {
                 if depth > 0 {
-                    (api.pushnil)(l);
-                    (api.rawseti)(l, path, depth);
+                    l.pushnil();
+                    l.rawseti(path, depth);
                     depth -= 1;
                 }
                 key = None;
@@ -660,13 +655,13 @@ unsafe extern "C-unwind" fn keyvalues_read(l: L) -> c_int {
             Item::Text(value) => match key.take() {
                 None => key = Some(value),
                 Some(k) => {
-                    (api.pushvalue)(l, 2);
-                    (api.pushvalue)(l, path);
+                    l.pushvalue(2);
+                    l.pushvalue(path);
                     bytes(l, &k);
                     bytes(l, &value);
                     drop(k);
                     drop(value);
-                    (api.call)(l, 3, 0);
+                    l.call(3, 0);
                 }
             },
         }
@@ -721,11 +716,10 @@ fn commands(text: &[u8]) -> (Vec<&[u8]>, Vec<&[u8]>) {
 }
 
 unsafe fn push_strings(l: L, list: &[&[u8]]) {
-    let api = api();
-    (api.createtable)(l, list.len() as c_int, 0);
+    l.createtable(list.len() as c_int, 0);
     for (i, s) in list.iter().enumerate() {
         bytes(l, s);
-        (api.rawseti)(l, -2, i as c_int + 1);
+        l.rawseti(-2, i as c_int + 1);
     }
 }
 
@@ -742,19 +736,18 @@ unsafe extern "C-unwind" fn consolecfg_commands(l: L) -> c_int {
 // encoding.cvarfile -----------------------------------------------------------
 
 unsafe extern "C-unwind" fn cvarfile_write(l: L) -> c_int {
-    let api = api();
-    (api.checktype)(l, 1, TTABLE);
-    (api.checktype)(l, 2, TTABLE);
+    l.checktype(1, TTABLE);
+    l.checktype(2, TTABLE);
     let mut out = Vec::new();
     let mut missing = None;
     each_item(l, 1, |l, name| {
         if missing.is_some() {
             return;
         }
-        (api.pushvalue)(l, name);
-        (api.gettable)(l, 2);
-        let value = (api.gettop)(l);
-        if (api.type_of)(l, value) != TSTRING && (api.type_of)(l, value) != crate::lua::TNUMBER {
+        l.pushvalue(name);
+        l.gettable(2);
+        let value = l.gettop();
+        if l.type_of(value) != TSTRING && l.type_of(value) != crate::lua::TNUMBER {
             missing = Some(tostring(l, name));
             return;
         }
@@ -784,36 +777,35 @@ fn split(command: &[u8]) -> (&[u8], &[u8]) {
 }
 
 unsafe extern "C-unwind" fn cvarfile_read(l: L) -> c_int {
-    let api = api();
     let text = text_at(l, 1, "cfg text");
-    (api.checktype)(l, 2, TTABLE);
-    (api.settop)(l, 2);
-    (api.createtable)(l, 0, 0);
-    let wanted = (api.gettop)(l);
+    l.checktype(2, TTABLE);
+    l.settop(2);
+    l.createtable(0, 0);
+    let wanted = l.gettop();
     each_item(l, 2, |l, name| {
-        (api.pushvalue)(l, name);
-        (api.pushboolean)(l, 1);
-        (api.rawset)(l, wanted);
+        l.pushvalue(name);
+        l.pushboolean(1);
+        l.rawset(wanted);
     });
-    (api.createtable)(l, 0, 0);
-    let values = (api.gettop)(l);
+    l.createtable(0, 0);
+    let values = l.gettop();
     let (found, _) = commands(text);
     for command in &found {
         let (name, value) = split(command);
         bytes(l, name);
-        (api.pushvalue)(l, -1);
-        (api.rawget)(l, wanted);
-        let is_wanted = (api.type_of)(l, -1) != TNIL;
-        (api.settop)(l, -2);
+        l.pushvalue(-1);
+        l.rawget(wanted);
+        let is_wanted = l.type_of(-1) != TNIL;
+        l.settop(-2);
         if is_wanted {
             bytes(l, value);
-            (api.rawset)(l, values);
+            l.rawset(values);
         } else {
-            (api.settop)(l, -2);
+            l.settop(-2);
         }
     }
     drop(found);
-    (api.settop)(l, values);
+    l.settop(values);
     1
 }
 
@@ -825,9 +817,8 @@ fn uint64(n: f64) -> [u8; 8] {
 }
 
 unsafe extern "C-unwind" fn gma_write(l: L) -> c_int {
-    let api = api();
     let name = text_at(l, 1, "an archive's name").to_vec();
-    (api.checktype)(l, 2, TTABLE);
+    l.checktype(2, TTABLE);
     let mut body = b"GMAD".to_vec();
     body.push(3);
     body.extend(uint64(0.0));
@@ -841,9 +832,9 @@ unsafe extern "C-unwind" fn gma_write(l: L) -> c_int {
     let mut i = 0.0;
     each_item(l, 2, |l, f| {
         i += 1.0;
-        (api.getfield)(l, f, c"path".as_ptr());
+        l.getfield(f, c"path");
         let path = text_at(l, -1, "a file's path").to_vec();
-        (api.getfield)(l, f, c"data".as_ptr());
+        l.getfield(f, c"data");
         let data = text_at(l, -1, "a file's data").to_vec();
         body.extend(int32(i));
         body.extend_from_slice(&path);
@@ -865,7 +856,6 @@ unsafe extern "C-unwind" fn gma_write(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn gma_read(l: L) -> c_int {
-    let api = api();
     let data = text_at(l, 1, "an archive");
     if !data.starts_with(b"GMAD") {
         raise_where(l, "not a GMA archive".into());
@@ -905,20 +895,20 @@ unsafe extern "C-unwind" fn gma_read(l: L) -> c_int {
         Some((name, files))
     })();
     let Some((name, files)) = parsed else { raise_where(l, "a GMA archive cut short".into()) };
-    (api.createtable)(l, 0, 2);
+    l.createtable(0, 2);
     bytes(l, name);
-    (api.setfield)(l, -2, c"name".as_ptr());
-    (api.createtable)(l, files.len() as c_int, 0);
+    l.setfield(-2, c"name");
+    l.createtable(files.len() as c_int, 0);
     for (i, (path, file)) in files.iter().enumerate() {
-        (api.createtable)(l, 0, 2);
+        l.createtable(0, 2);
         bytes(l, path);
-        (api.setfield)(l, -2, c"path".as_ptr());
+        l.setfield(-2, c"path");
         bytes(l, file);
-        (api.setfield)(l, -2, c"data".as_ptr());
-        (api.rawseti)(l, -2, i as c_int + 1);
+        l.setfield(-2, c"data");
+        l.rawseti(-2, i as c_int + 1);
     }
     drop(files);
-    (api.setfield)(l, -2, c"files".as_ptr());
+    l.setfield(-2, c"files");
     1
 }
 
@@ -974,12 +964,11 @@ unsafe fn push_cvarfile_module(l: L) {
 
 /// Pushes the gma module table.
 unsafe fn push_gma_module(l: L) {
-    let api = api();
     module::push(l, &[(c"Write", gma_write), (c"Read", gma_read)], None);
     crate::lua::push_str(l, "GMAD");
-    (api.setfield)(l, -2, c"MAGIC".as_ptr());
-    (api.pushnumber)(l, 3.0);
-    (api.setfield)(l, -2, c"VERSION".as_ptr());
+    l.setfield(-2, c"MAGIC");
+    l.pushnumber(3.0);
+    l.setfield(-2, c"VERSION");
 }
 
 /// This namespace's native modules, by name: what pushes each one's table.

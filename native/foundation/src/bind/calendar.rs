@@ -11,7 +11,7 @@
 use super::slots::fresh_environment;
 use super::util::{absent, env_field, nothing, number};
 use crate::heap::Heap;
-use crate::lua::{api, push_str, raise_where, tostring, CFunction, L, TBOOLEAN, TFUNCTION, TNUMBER, TSTRING};
+use crate::lua::{push_str, raise_where, tostring, CFunction, L, TBOOLEAN, TFUNCTION, TNUMBER, TSTRING};
 use crate::module;
 use crate::userdata::{self, Native};
 use std::collections::HashMap;
@@ -141,62 +141,57 @@ impl Calendar {
 
 /// field:Now() of the calendar at 1's environment.
 unsafe fn now_of(l: L, field: &CStr) -> f64 {
-    let api = api();
     env_field(l, 1, field);
-    (api.getfield)(l, -1, c"Now".as_ptr());
-    (api.pushvalue)(l, -2);
-    (api.call)(l, 1, 1);
-    let t = (api.tonumber)(l, -1);
-    (api.settop)(l, -3);
+    l.getfield(-1, c"Now");
+    l.pushvalue(-2);
+    l.call(1, 1);
+    let t = l.tonumber(-1);
+    l.settop(-3);
     t
 }
 
 /// env.fns[id] = the value at `index` (absolute), or nil when `index` is 0.
 unsafe fn set_fn(l: L, id: u32, index: c_int) {
-    let api = api();
     env_field(l, 1, c"fns");
     if index == 0 {
-        (api.pushnil)(l);
+        l.pushnil();
     } else {
-        (api.pushvalue)(l, index);
+        l.pushvalue(index);
     }
-    (api.rawseti)(l, -2, id as c_int);
-    (api.settop)(l, -2);
+    l.rawseti(-2, id as c_int);
+    l.settop(-2);
 }
 
 /// list.calendar.New(clock, timer) -> a calendar
 unsafe extern "C-unwind" fn new(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
+    l.settop(2);
     userdata::push(l, Calendar::default());
     fresh_environment(l, -1);
-    (api.getfenv)(l, -1);
-    (api.pushvalue)(l, 1);
-    (api.setfield)(l, -2, c"clock".as_ptr());
-    (api.pushvalue)(l, 2);
-    (api.setfield)(l, -2, c"timer".as_ptr());
-    (api.createtable)(l, 0, 0);
-    (api.setfield)(l, -2, c"fns".as_ptr());
-    (api.settop)(l, -2);
+    l.getfenv(-1);
+    l.pushvalue(1);
+    l.setfield(-2, c"clock");
+    l.pushvalue(2);
+    l.setfield(-2, c"timer");
+    l.createtable(0, 0);
+    l.setfield(-2, c"fns");
+    l.settop(-2);
     1
 }
 
 /// The string at `index`, as bytes, or None for any other value.
 unsafe fn string_at(l: L, index: c_int) -> Option<Vec<u8>> {
-    let api = api();
-    if (api.type_of)(l, index) != TSTRING {
+    if l.type_of(index) != TSTRING {
         return None;
     }
-    Some(CStr::from_ptr((api.tolstring)(l, index, std::ptr::null_mut())).to_bytes().to_vec())
+    Some(CStr::from_ptr(l.tolstring(index, std::ptr::null_mut())).to_bytes().to_vec())
 }
 
 /// calendar:System(name, weight)
 unsafe extern "C-unwind" fn system(l: L) -> c_int {
-    let api = api();
     let Some(name) = string_at(l, 2) else {
         raise_where(l, format!("a system's name is a string, not {}", tostring(l, 2)))
     };
-    let weight = ((api.type_of)(l, 3) == TNUMBER).then(|| (api.tonumber)(l, 3)).filter(|w| *w > 0.0);
+    let weight = (l.type_of(3) == TNUMBER).then(|| l.tonumber(3)).filter(|w| *w > 0.0);
     let Some(weight) = weight else {
         raise_where(l, format!("a system's weight is a number above 0, not {}", tostring(l, 3)))
     };
@@ -219,17 +214,16 @@ unsafe extern "C-unwind" fn system(l: L) -> c_int {
 
 /// calendar:Every(system, period, fn[, at]) -> the job
 unsafe extern "C-unwind" fn every(l: L) -> c_int {
-    let api = api();
     let found = string_at(l, 2).and_then(|name| userdata::check::<Calendar>(l, 1).system_named(&name));
     let Some(s) = found else { raise_where(l, format!("no system is named {}", tostring(l, 2))) };
-    let period = ((api.type_of)(l, 3) == TNUMBER).then(|| (api.tonumber)(l, 3)).filter(|p| *p > 0.0);
+    let period = (l.type_of(3) == TNUMBER).then(|| l.tonumber(3)).filter(|p| *p > 0.0);
     let Some(period) = period else {
         raise_where(l, format!("a job's period is a number above 0, not {}", tostring(l, 3)))
     };
-    if (api.type_of)(l, 4) != TFUNCTION {
+    if l.type_of(4) != TFUNCTION {
         raise_where(l, format!("a job is a function, not {}", tostring(l, 4)));
     }
-    let at = if absent(l, 5) { now_of(l, c"clock") } else { (api.checknumber)(l, 5) };
+    let at = if absent(l, 5) { now_of(l, c"clock") } else { l.checknumber(5) };
     let calendar = userdata::check::<Calendar>(l, 1);
     calendar.next_job += 1;
     let id = calendar.next_job;
@@ -242,22 +236,20 @@ unsafe extern "C-unwind" fn every(l: L) -> c_int {
 
 /// A job number at `index`, or None.
 unsafe fn id_at(l: L, index: c_int) -> Option<u32> {
-    let api = api();
-    if (api.type_of)(l, index) != TNUMBER {
+    if l.type_of(index) != TNUMBER {
         return None;
     }
-    let n = (api.tonumber)(l, index);
+    let n = l.tonumber(index);
     (n >= 1.0 && n.fract() == 0.0 && n <= u32::MAX as f64).then_some(n as u32)
 }
 
 /// calendar:Wake(job[, at])
 unsafe extern "C-unwind" fn wake(l: L) -> c_int {
-    let api = api();
     let Some(id) = id_at(l, 2) else { return 0 };
     if !userdata::check::<Calendar>(l, 1).jobs.contains_key(&id) {
         return 0;
     }
-    let at = if absent(l, 3) { now_of(l, c"clock") } else { (api.checknumber)(l, 3) };
+    let at = if absent(l, 3) { now_of(l, c"clock") } else { l.checknumber(3) };
     let calendar = userdata::check::<Calendar>(l, 1);
     if calendar.running == Some(id) {
         let job = calendar.jobs.get_mut(&id).expect("known");
@@ -282,10 +274,9 @@ unsafe extern "C-unwind" fn cancel(l: L) -> c_int {
 /// When a job due at `at` that ran at `now` is due next, by its answer at
 /// `answer`: None, it leaves.
 unsafe fn next_at(l: L, answer: c_int, period: f64, at: f64, now: f64) -> Option<f64> {
-    let api = api();
-    match (api.type_of)(l, answer) {
-        TBOOLEAN if (api.toboolean)(l, answer) == 0 => None,
-        TNUMBER => Some(now + (api.tonumber)(l, answer)),
+    match l.type_of(answer) {
+        TBOOLEAN if l.toboolean(answer) == 0 => None,
+        TNUMBER => Some(now + l.tonumber(answer)),
         _ => {
             let next = at + period;
             Some(if next <= now { at + period * (((now - at) / period).floor() + 1.0) } else { next })
@@ -295,10 +286,9 @@ unsafe fn next_at(l: L, answer: c_int, period: f64, at: f64, now: f64) -> Option
 
 /// calendar:Run(seconds[, count]) -> how many jobs ran
 unsafe extern "C-unwind" fn run(l: L) -> c_int {
-    let api = api();
-    let seconds = (api.checknumber)(l, 2);
-    let count = if absent(l, 3) { None } else { Some((api.checknumber)(l, 3)) };
-    (api.settop)(l, 3);
+    let seconds = l.checknumber(2);
+    let count = if absent(l, 3) { None } else { Some(l.checknumber(3)) };
+    l.settop(3);
     let now = now_of(l, c"clock");
     let started = now_of(l, c"timer");
     let mut t = started;
@@ -319,12 +309,12 @@ unsafe extern "C-unwind" fn run(l: L) -> c_int {
         }
         calendar.running = Some(id);
         env_field(l, 1, c"fns");
-        (api.rawgeti)(l, -1, id as c_int);
-        (api.remove)(l, -2);
-        (api.pushnumber)(l, id as f64);
-        (api.pushnumber)(l, now);
-        let failed = (api.pcall)(l, 2, 1, 0) != 0;
-        let answer = (api.gettop)(l);
+        l.rawgeti(-1, id as c_int);
+        l.remove(-2);
+        l.pushnumber(id as f64);
+        l.pushnumber(now);
+        let failed = l.pcall(2, 1, 0) != 0;
+        let answer = l.gettop();
         let after = now_of(l, c"timer");
         let spent = after - t;
         t = after;
@@ -337,9 +327,9 @@ unsafe extern "C-unwind" fn run(l: L) -> c_int {
         system.counts.add(spent, late);
         let Some(job) = calendar.jobs.get_mut(&id) else {
             if failed {
-                (api.error)(l);
+                l.error();
             }
-            (api.settop)(l, answer - 1);
+            l.settop(answer - 1);
             continue;
         };
         job.runs += 1;
@@ -352,8 +342,8 @@ unsafe extern "C-unwind" fn run(l: L) -> c_int {
         if failed {
             calendar.cancel(id);
             set_fn(l, id, 0);
-            (api.settop)(l, answer);
-            (api.error)(l);
+            l.settop(answer);
+            l.error();
         }
         let next = next_at(l, answer, period, at, now);
         let next = match (next, woken) {
@@ -361,7 +351,7 @@ unsafe extern "C-unwind" fn run(l: L) -> c_int {
             (None, Some(w)) => Some(w),
             (n, None) => n,
         };
-        (api.settop)(l, answer - 1);
+        l.settop(answer - 1);
         let calendar = userdata::check::<Calendar>(l, 1);
         match next {
             Some(n) => calendar.queue(id, n),
@@ -385,19 +375,17 @@ unsafe extern "C-unwind" fn run(l: L) -> c_int {
 }
 
 unsafe fn set_number(l: L, name: &CStr, n: f64) {
-    let api = api();
-    (api.pushnumber)(l, n);
-    (api.setfield)(l, -2, name.as_ptr());
+    l.pushnumber(n);
+    l.setfield(-2, name);
 }
 
 /// calendar:Report([reset]) -> { [system] = { weight, jobs, runs, spent, late, lateMax, behind } }
 unsafe extern "C-unwind" fn report(l: L) -> c_int {
-    let api = api();
-    let reset = (api.toboolean)(l, 2) != 0;
+    let reset = l.toboolean(2) != 0;
     let calendar = userdata::check::<Calendar>(l, 1);
-    (api.createtable)(l, 0, calendar.systems.len() as c_int);
+    l.createtable(0, calendar.systems.len() as c_int);
     for system in &mut calendar.systems {
-        (api.createtable)(l, 0, 7);
+        l.createtable(0, 7);
         set_number(l, c"weight", system.weight);
         set_number(l, c"jobs", system.jobs as f64);
         set_number(l, c"runs", system.counts.runs as f64);
@@ -405,7 +393,7 @@ unsafe extern "C-unwind" fn report(l: L) -> c_int {
         set_number(l, c"late", system.counts.late);
         set_number(l, c"lateMax", system.counts.late_max);
         set_number(l, c"behind", system.behind as f64);
-        (api.setfield)(l, -2, system.name.as_ptr());
+        l.setfield(-2, &system.name);
         if reset {
             system.counts = Counts::default();
         }
@@ -415,12 +403,11 @@ unsafe extern "C-unwind" fn report(l: L) -> c_int {
 
 /// calendar:Job(job) -> { system, period, at, runs, late, lateMax }, or nil
 unsafe extern "C-unwind" fn job(l: L) -> c_int {
-    let api = api();
     let calendar = userdata::check::<Calendar>(l, 1);
     let Some(job) = id_at(l, 2).and_then(|id| calendar.jobs.get(&id)) else { return nothing(l) };
-    (api.createtable)(l, 0, 6);
+    l.createtable(0, 6);
     push_str(l, &calendar.systems[job.system].name.to_string_lossy());
-    (api.setfield)(l, -2, c"system".as_ptr());
+    l.setfield(-2, c"system");
     set_number(l, c"period", job.period);
     set_number(l, c"at", job.at);
     set_number(l, c"runs", job.runs as f64);

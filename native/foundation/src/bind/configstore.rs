@@ -7,7 +7,7 @@
 
 use super::slots::fresh_environment;
 use super::util::{boolean, env_field, nothing, number, number_at};
-use crate::lua::{api, push_str, raise_where, set_function, string_at, tostring, CFunction, GLOBALSINDEX, L, TNIL};
+use crate::lua::{push_str, raise_where, set_function, string_at, tostring, CFunction, GLOBALSINDEX, L, TNIL};
 use crate::module;
 use crate::userdata::{self, Native};
 use std::collections::BTreeMap;
@@ -55,11 +55,10 @@ unsafe extern "C-unwind" fn new(l: L) -> c_int {
     };
     userdata::push(l, Store { name, entries: BTreeMap::new() });
     fresh_environment(l, -1);
-    let api = api();
-    (api.getfenv)(l, -1);
-    (api.createtable)(l, 0, 0);
-    (api.setfield)(l, -2, c"entries".as_ptr());
-    (api.settop)(l, -2);
+    l.getfenv(-1);
+    l.createtable(0, 0);
+    l.setfield(-2, c"entries");
+    l.settop(-2);
     1
 }
 
@@ -70,24 +69,22 @@ unsafe fn name_at(l: L, index: c_int) -> Option<Vec<u8>> {
 
 /// The read-only entry proxy { min, max, guard }, pushed.
 unsafe fn push_entry(l: L, min: f64, max: f64, guard: c_int) {
-    let api = api();
-    (api.createtable)(l, 0, 0);
-    (api.createtable)(l, 0, 2);
-    (api.createtable)(l, 0, 3);
-    (api.pushnumber)(l, min);
-    (api.setfield)(l, -2, c"min".as_ptr());
-    (api.pushnumber)(l, max);
-    (api.setfield)(l, -2, c"max".as_ptr());
-    (api.pushvalue)(l, guard);
-    (api.setfield)(l, -2, c"guard".as_ptr());
-    (api.setfield)(l, -2, c"__index".as_ptr());
+    l.createtable(0, 0);
+    l.createtable(0, 2);
+    l.createtable(0, 3);
+    l.pushnumber(min);
+    l.setfield(-2, c"min");
+    l.pushnumber(max);
+    l.setfield(-2, c"max");
+    l.pushvalue(guard);
+    l.setfield(-2, c"guard");
+    l.setfield(-2, c"__index");
     set_function(l, c"__newindex", read_only);
-    (api.setmetatable)(l, -2);
+    l.setmetatable(-2);
 }
 
 /// Stores the key at 2 for min..max, guarded by the value at `guard`.
 unsafe fn add(l: L, min: Option<f64>, max: Option<f64>, guard: c_int) -> c_int {
-    let api = api();
     let store = userdata::check::<Store>(l, 1);
     let name = store.name.clone();
     let Some(key) = name_at(l, 2) else {
@@ -111,38 +108,37 @@ unsafe fn add(l: L, min: Option<f64>, max: Option<f64>, guard: c_int) -> c_int {
     drop(name);
     drop(shown);
     env_field(l, 1, c"entries");
-    (api.pushvalue)(l, 2);
+    l.pushvalue(2);
     push_entry(l, lo, hi, guard);
-    (api.rawset)(l, -3);
-    (api.settop)(l, -2);
+    l.rawset(-3);
+    l.settop(-2);
     userdata::check::<Store>(l, 1).entries.insert(key, Entry { min: lo, max: hi });
-    (api.pushvalue)(l, 1);
+    l.pushvalue(1);
     1
 }
 
 unsafe extern "C-unwind" fn range(l: L) -> c_int {
-    (api().settop)(l, 5);
+    l.settop(5);
     add(l, number_at(l, 3), number_at(l, 4), 5)
 }
 
 unsafe extern "C-unwind" fn switch(l: L) -> c_int {
-    (api().settop)(l, 3);
+    l.settop(3);
     add(l, Some(0.0), Some(1.0), 3)
 }
 
 /// Pushes the entry of the key at `key`, or nil.
 unsafe fn push_entry_of(l: L, key: c_int) -> c_int {
-    let api = api();
     env_field(l, 1, c"entries");
-    (api.pushvalue)(l, key);
-    (api.rawget)(l, -2);
-    (api.remove)(l, -2);
+    l.pushvalue(key);
+    l.rawget(-2);
+    l.remove(-2);
     1
 }
 
 unsafe extern "C-unwind" fn get(l: L) -> c_int {
     userdata::check::<Store>(l, 1);
-    (api().settop)(l, 2);
+    l.settop(2);
     push_entry_of(l, 2)
 }
 
@@ -158,7 +154,6 @@ unsafe extern "C-unwind" fn size(l: L) -> c_int {
 
 /// The walk Keys gives: (store, key) -> the next key in order, its entry.
 unsafe extern "C-unwind" fn step(l: L) -> c_int {
-    let api = api();
     let store = userdata::check::<Store>(l, 1);
     let after = string_at(l, 2).map(<[u8]>::to_vec);
     let next = match &after {
@@ -167,77 +162,73 @@ unsafe extern "C-unwind" fn step(l: L) -> c_int {
     };
     let Some(next) = next.cloned() else { return nothing(l) };
     drop(after);
-    (api.pushlstring)(l, next.as_ptr().cast(), next.len());
+    l.pushlstring(next.as_ptr().cast(), next.len());
     drop(next);
-    let key = (api.gettop)(l);
+    let key = l.gettop();
     push_entry_of(l, key);
     2
 }
 
 unsafe extern "C-unwind" fn keys(l: L) -> c_int {
-    let api = api();
     userdata::check::<Store>(l, 1);
-    (api.pushcclosure)(l, step, 0);
-    (api.pushvalue)(l, 1);
-    (api.pushnil)(l);
+    l.pushcclosure(step, 0);
+    l.pushvalue(1);
+    l.pushnil();
     3
 }
 
 unsafe extern "C-unwind" fn allowed(l: L) -> c_int {
-    let api = api();
     userdata::check::<Store>(l, 1);
-    (api.settop)(l, 3);
+    l.settop(3);
     push_entry_of(l, 2);
-    if (api.type_of)(l, -1) == TNIL {
+    if l.type_of(-1) == TNIL {
         return boolean(l, false);
     }
-    (api.getfield)(l, -1, c"guard".as_ptr());
-    let guard = (api.gettop)(l);
-    (api.pushvalue)(l, 3);
-    (api.pushvalue)(l, guard);
-    (api.call)(l, 1, 1);
-    let yes = (api.type_of)(l, -1) == crate::lua::TBOOLEAN && (api.toboolean)(l, -1) != 0;
+    l.getfield(-1, c"guard");
+    let guard = l.gettop();
+    l.pushvalue(3);
+    l.pushvalue(guard);
+    l.call(1, 1);
+    let yes = l.type_of(-1) == crate::lua::TBOOLEAN && l.toboolean(-1) != 0;
     boolean(l, yes)
 }
 
 /// Pushes string.format(fmt, ...) of the values at `args`.
 unsafe fn format_lua(l: L, fmt: &str, args: &[c_int]) {
-    let api = api();
-    (api.getfield)(l, GLOBALSINDEX, c"string".as_ptr());
-    (api.getfield)(l, -1, c"format".as_ptr());
-    (api.remove)(l, -2);
+    l.getfield(GLOBALSINDEX, c"string");
+    l.getfield(-1, c"format");
+    l.remove(-2);
     push_str(l, fmt);
     for &a in args {
-        (api.pushvalue)(l, a);
+        l.pushvalue(a);
     }
-    (api.call)(l, args.len() as c_int + 1, 1);
+    l.call(args.len() as c_int + 1, 1);
 }
 
 unsafe extern "C-unwind" fn parse(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 3);
+    l.settop(3);
     let store = userdata::check::<Store>(l, 1);
     let entry = string_at(l, 2).and_then(|k| store.entries.get(k)).map(|e| (e.min, e.max));
     let Some((min, max)) = entry else {
         let (key, name) = (tostring(l, 2), store.name.clone());
-        (api.pushnil)(l);
+        l.pushnil();
         push_str(l, &format!("{key} is not one of {name}"));
         return 2;
     };
-    (api.getfield)(l, GLOBALSINDEX, c"tonumber".as_ptr());
-    (api.pushvalue)(l, 3);
-    (api.call)(l, 1, 1);
+    l.getfield(GLOBALSINDEX, c"tonumber");
+    l.pushvalue(3);
+    l.call(1, 1);
     let Some(n) = number_at(l, -1) else {
-        (api.pushnil)(l);
+        l.pushnil();
         crate::lua::push_tostring(l, 3);
-        let shown = (api.gettop)(l);
+        let shown = l.gettop();
         format_lua(l, "%s takes a number, not %q", &[2, shown]);
-        (api.remove)(l, shown);
+        l.remove(shown);
         return 2;
     };
     let value = (n + 0.5).floor();
     if value < min || value > max {
-        (api.pushnil)(l);
+        l.pushnil();
         let key = tostring(l, 2);
         push_str(l, &format!("{key} takes {} to {}", min as i64, max as i64));
         return 2;
@@ -255,14 +246,13 @@ unsafe extern "C-unwind" fn to_string(l: L) -> c_int {
 
 /// store[key]: a method, else the key's entry.
 unsafe extern "C-unwind" fn index(l: L) -> c_int {
-    let api = api();
-    (api.getmetatable)(l, 1);
-    (api.pushvalue)(l, 2);
-    (api.rawget)(l, -2);
-    if (api.type_of)(l, -1) != TNIL {
+    l.getmetatable(1);
+    l.pushvalue(2);
+    l.rawget(-2);
+    if l.type_of(-1) != TNIL {
         return 1;
     }
-    (api.settop)(l, 2);
+    l.settop(2);
     push_entry_of(l, 2)
 }
 

@@ -7,18 +7,17 @@
 
 use super::math::point_at;
 use super::util::absent;
-use crate::lua::{api, raise_where, tostring, CFunction, L, TFUNCTION, TNIL, TNUMBER, TTABLE};
+use crate::lua::{raise_where, tostring, CFunction, L, TFUNCTION, TNIL, TNUMBER, TTABLE};
 use crate::module;
 use std::ffi::{c_int, CStr};
 
 /// How many items the list at `list` has, as ipairs counts: up to the first nil.
 unsafe fn count_items(l: L, list: c_int) -> usize {
-    let api = api();
     let mut n = 0;
     loop {
-        (api.rawgeti)(l, list, (n + 1) as c_int);
-        let end = (api.type_of)(l, -1) == TNIL;
-        (api.settop)(l, -2);
+        l.rawgeti(list, (n + 1) as c_int);
+        let end = l.type_of(-1) == TNIL;
+        l.settop(-2);
         if end {
             return n;
         }
@@ -28,26 +27,24 @@ unsafe fn count_items(l: L, list: c_int) -> usize {
 
 /// Whether the function at `f` says list[a] goes strictly before list[b].
 unsafe fn before(l: L, list: c_int, f: c_int, a: usize, b: usize) -> bool {
-    let api = api();
-    (api.pushvalue)(l, f);
-    (api.rawgeti)(l, list, a as c_int);
-    (api.rawgeti)(l, list, b as c_int);
-    (api.call)(l, 2, 1);
-    let answer = (api.toboolean)(l, -1) != 0;
-    (api.settop)(l, -2);
+    l.pushvalue(f);
+    l.rawgeti(list, a as c_int);
+    l.rawgeti(list, b as c_int);
+    l.call(2, 1);
+    let answer = l.toboolean(-1) != 0;
+    l.settop(-2);
     answer
 }
 
 /// Whether the keep function at `keep` (when there is one) wants the item on top of the stack at `item`, at `place`.
 unsafe fn kept(l: L, keep: Option<c_int>, item: c_int, place: usize) -> bool {
     let Some(keep) = keep else { return true };
-    let api = api();
-    (api.pushvalue)(l, keep);
-    (api.pushvalue)(l, item);
-    (api.pushnumber)(l, place as f64);
-    (api.call)(l, 2, 1);
-    let answer = (api.toboolean)(l, -1) != 0;
-    (api.settop)(l, item);
+    l.pushvalue(keep);
+    l.pushvalue(item);
+    l.pushnumber(place as f64);
+    l.call(2, 1);
+    let answer = l.toboolean(-1) != 0;
+    l.settop(item);
     answer
 }
 
@@ -55,51 +52,49 @@ unsafe fn keep_at(l: L, index: c_int) -> Option<c_int> {
     if absent(l, index) {
         return None;
     }
-    (api().checktype)(l, index, TFUNCTION);
+    l.checktype(index, TFUNCTION);
     Some(index)
 }
 
 /// Pushes the best item, its measure and its place; three nils for none.
 unsafe fn push_best(l: L, best: Option<(usize, f64)>) -> c_int {
-    let api = api();
     match best {
         None => {
-            (api.pushnil)(l);
-            (api.pushnil)(l);
-            (api.pushnil)(l);
+            l.pushnil();
+            l.pushnil();
+            l.pushnil();
         }
         Some((place, measure)) => {
-            (api.rawgeti)(l, 1, place as c_int);
-            (api.pushnumber)(l, measure);
-            (api.pushnumber)(l, place as f64);
+            l.rawgeti(1, place as c_int);
+            l.pushnumber(measure);
+            l.pushnumber(place as f64);
         }
     }
     3
 }
 
 unsafe fn pick(l: L, highest: bool) -> c_int {
-    let api = api();
-    (api.checktype)(l, 1, TTABLE);
-    (api.checktype)(l, 2, TFUNCTION);
+    l.checktype(1, TTABLE);
+    l.checktype(2, TFUNCTION);
     let keep = keep_at(l, 3);
     let mut best: Option<(usize, f64)> = None;
     let mut place = 1;
     loop {
-        (api.rawgeti)(l, 1, place as c_int);
-        if (api.type_of)(l, -1) == TNIL {
-            (api.settop)(l, -2);
+        l.rawgeti(1, place as c_int);
+        if l.type_of(-1) == TNIL {
+            l.settop(-2);
             break;
         }
-        let item = (api.gettop)(l);
+        let item = l.gettop();
         if kept(l, keep, item, place) {
-            (api.pushvalue)(l, 2);
-            (api.pushvalue)(l, item);
-            (api.call)(l, 1, 1);
-            if (api.type_of)(l, -1) != TNUMBER {
+            l.pushvalue(2);
+            l.pushvalue(item);
+            l.call(1, 1);
+            if l.type_of(-1) != TNUMBER {
                 raise_where(l, "a score is a number".into());
             }
-            let score = (api.tonumber)(l, -1);
-            (api.settop)(l, item);
+            let score = l.tonumber(-1);
+            l.settop(item);
             let better = match best {
                 None => true,
                 Some((_, held)) => (highest && score > held) || (!highest && score < held),
@@ -108,7 +103,7 @@ unsafe fn pick(l: L, highest: bool) -> c_int {
                 best = Some((place, score));
             }
         }
-        (api.settop)(l, item - 1);
+        l.settop(item - 1);
         place += 1;
     }
     push_best(l, best)
@@ -123,29 +118,28 @@ unsafe extern "C-unwind" fn highest(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn nearest(l: L) -> c_int {
-    let api = api();
-    (api.checktype)(l, 1, TTABLE);
+    l.checktype(1, TTABLE);
     let from = point_at(l, 2);
     let position = keep_at(l, 3);
     let keep = keep_at(l, 4);
     let mut best: Option<(usize, f64)> = None;
     let mut place = 1;
     loop {
-        (api.rawgeti)(l, 1, place as c_int);
-        if (api.type_of)(l, -1) == TNIL {
-            (api.settop)(l, -2);
+        l.rawgeti(1, place as c_int);
+        if l.type_of(-1) == TNIL {
+            l.settop(-2);
             break;
         }
-        let item = (api.gettop)(l);
+        let item = l.gettop();
         if kept(l, keep, item, place) {
             let at = match position {
                 None => point_at(l, item),
                 Some(f) => {
-                    (api.pushvalue)(l, f);
-                    (api.pushvalue)(l, item);
-                    (api.call)(l, 1, 1);
-                    let at = point_at(l, (api.gettop)(l));
-                    (api.settop)(l, item);
+                    l.pushvalue(f);
+                    l.pushvalue(item);
+                    l.call(1, 1);
+                    let at = point_at(l, l.gettop());
+                    l.settop(item);
                     at
                 }
             };
@@ -155,7 +149,7 @@ unsafe extern "C-unwind" fn nearest(l: L) -> c_int {
                 best = Some((place, distance));
             }
         }
-        (api.settop)(l, item - 1);
+        l.settop(item - 1);
         place += 1;
     }
     push_best(l, best)
@@ -203,63 +197,60 @@ unsafe fn order_places(l: L, list: c_int, f: c_int) -> Vec<usize> {
 }
 
 unsafe extern "C-unwind" fn order(l: L) -> c_int {
-    let api = api();
-    (api.checktype)(l, 1, TTABLE);
-    (api.checktype)(l, 2, TFUNCTION);
+    l.checktype(1, TTABLE);
+    l.checktype(2, TFUNCTION);
     let places = order_places(l, 1, 2);
-    (api.createtable)(l, places.len() as c_int, 0);
+    l.createtable(places.len() as c_int, 0);
     for (i, place) in places.iter().enumerate() {
-        (api.pushnumber)(l, *place as f64);
-        (api.rawseti)(l, -2, (i + 1) as c_int);
+        l.pushnumber(*place as f64);
+        l.rawseti(-2, (i + 1) as c_int);
     }
     1
 }
 
 unsafe extern "C-unwind" fn ranks(l: L) -> c_int {
-    let api = api();
-    (api.checktype)(l, 1, TTABLE);
-    (api.checktype)(l, 2, TFUNCTION);
+    l.checktype(1, TTABLE);
+    l.checktype(2, TFUNCTION);
     let places = order_places(l, 1, 2);
-    (api.createtable)(l, places.len() as c_int, 0);
+    l.createtable(places.len() as c_int, 0);
     for (rank, place) in places.iter().enumerate() {
-        (api.pushnumber)(l, (rank + 1) as f64);
-        (api.rawseti)(l, -2, *place as c_int);
+        l.pushnumber((rank + 1) as f64);
+        l.rawseti(-2, *place as c_int);
     }
     1
 }
 
 unsafe extern "C-unwind" fn top_k(l: L) -> c_int {
-    let api = api();
-    (api.checktype)(l, 1, TTABLE);
-    (api.checktype)(l, 3, TFUNCTION);
-    let wanted = if (api.type_of)(l, 2) == TNUMBER { (api.tonumber)(l, 2) } else { f64::NAN };
+    l.checktype(1, TTABLE);
+    l.checktype(3, TFUNCTION);
+    let wanted = if l.type_of(2) == TNUMBER { l.tonumber(2) } else { f64::NAN };
     if !(wanted >= 0.0) || wanted.fract() != 0.0 {
         raise_where(l, format!("TopK takes a whole number of at least 0, not {}", tostring(l, 2)));
     }
     let k = wanted as usize;
     if k == 0 {
         // The first none: the list is not read, nor `before` called.
-        (api.createtable)(l, 0, 0);
+        l.createtable(0, 0);
         return 1;
     }
     let mut top: Vec<usize> = Vec::new();
     let mut place = 1;
     loop {
-        (api.rawgeti)(l, 1, place as c_int);
-        if (api.type_of)(l, -1) == TNIL {
-            (api.settop)(l, -2);
+        l.rawgeti(1, place as c_int);
+        if l.type_of(-1) == TNIL {
+            l.settop(-2);
             break;
         }
-        let item = (api.gettop)(l);
+        let item = l.gettop();
         let (mut low, mut high) = (0, top.len());
         while low < high {
             let middle = (low + high) / 2;
-            (api.pushvalue)(l, 3);
-            (api.pushvalue)(l, item);
-            (api.rawgeti)(l, 1, top[middle] as c_int);
-            (api.call)(l, 2, 1);
-            let goes_before = (api.toboolean)(l, -1) != 0;
-            (api.settop)(l, item);
+            l.pushvalue(3);
+            l.pushvalue(item);
+            l.rawgeti(1, top[middle] as c_int);
+            l.call(2, 1);
+            let goes_before = l.toboolean(-1) != 0;
+            l.settop(item);
             if goes_before {
                 high = middle;
             } else {
@@ -270,13 +261,13 @@ unsafe extern "C-unwind" fn top_k(l: L) -> c_int {
             top.insert(low, place);
             top.truncate(k);
         }
-        (api.settop)(l, item - 1);
+        l.settop(item - 1);
         place += 1;
     }
-    (api.createtable)(l, top.len() as c_int, 0);
+    l.createtable(top.len() as c_int, 0);
     for (i, place) in top.iter().enumerate() {
-        (api.rawgeti)(l, 1, *place as c_int);
-        (api.rawseti)(l, -2, (i + 1) as c_int);
+        l.rawgeti(1, *place as c_int);
+        l.rawseti(-2, (i + 1) as c_int);
     }
     1
 }

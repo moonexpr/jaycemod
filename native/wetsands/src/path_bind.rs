@@ -4,7 +4,7 @@
 //! parts loaded by name (WS.require), not globals, so the module preloads
 //! them into package.loaded, which WS.require reads first.
 
-use foundation::lua::{api, field_number, field_truthy, set_function, CFunction, GLOBALSINDEX, L, TNIL, TTABLE};
+use foundation::lua::{field_number, field_truthy, set_function, CFunction, GLOBALSINDEX, L, TNIL, TTABLE};
 use std::ffi::{c_int, CStr};
 
 const IMPASSABLE: f64 = -1.0;
@@ -21,7 +21,7 @@ const DEFAULT_ROUTE: f64 = 0.0;
 const NOBODY: f64 = 0.0;
 
 unsafe fn number(l: L, n: f64) -> c_int {
-    (api().pushnumber)(l, n);
+    l.pushnumber(n);
     1
 }
 
@@ -72,38 +72,36 @@ fn preference(ent_index: f64, area_id: f64, now: f64) -> f64 {
 
 /// path.Walkable(deltaZ, limits) -> bool
 unsafe extern "C-unwind" fn path_walkable(l: L) -> c_int {
-    let dz = (api().checknumber)(l, 1);
+    let dz = l.checknumber(1);
     let limits = limits_at(l, 2);
-    (api().pushboolean)(l, walkable(dz, &limits) as c_int);
+    l.pushboolean(walkable(dz, &limits) as c_int);
     1
 }
 
 /// Pushes Path.Model(limits at `limits`, ...): the limits; the caller adds
 /// its fields.
 unsafe fn push_model(l: L, limits: c_int) {
-    let api = api();
-    (api.createtable)(l, 0, 12);
+    l.createtable(0, 12);
     for key in [c"stepHeight", c"jumpHeight", c"deathDropHeight"] {
-        (api.getfield)(l, limits, key.as_ptr());
-        (api.setfield)(l, -2, key.as_ptr());
+        l.getfield(limits, key);
+        l.setfield(-2, key);
     }
     for key in [c"crouches", c"ladders"] {
-        (api.pushboolean)(l, field_truthy(l, limits, key) as c_int);
-        (api.setfield)(l, -2, key.as_ptr());
+        l.pushboolean(field_truthy(l, limits, key) as c_int);
+        l.setfield(-2, key);
     }
 }
 
 /// path.Model(limits, fields) -> a walker model
 unsafe extern "C-unwind" fn path_model(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
+    l.settop(2);
     push_model(l, 1);
-    if (api.type_of)(l, 2) == TTABLE {
-        (api.pushnil)(l);
-        while (api.next)(l, 2) != 0 {
-            (api.pushvalue)(l, -2);
-            (api.insert)(l, -2);
-            (api.rawset)(l, -4);
+    if l.type_of(2) == TTABLE {
+        l.pushnil();
+        while l.next(2) != 0 {
+            l.pushvalue(-2);
+            l.insert(-2);
+            l.rawset(-4);
         }
     }
     1
@@ -131,7 +129,7 @@ unsafe fn weighted(l: L, step: c_int, limits: &Limits, pref: f64) -> f64 {
 
 unsafe extern "C-unwind" fn ground_weighted(l: L) -> c_int {
     let limits = limits_at(l, 2);
-    let pref = (api().checknumber)(l, 3);
+    let pref = l.checknumber(3);
     number(l, weighted(l, 1, &limits, pref))
 }
 
@@ -142,16 +140,15 @@ unsafe extern "C-unwind" fn ground_cost(l: L) -> c_int {
 
 unsafe extern "C-unwind" fn ground_model(l: L) -> c_int {
     push_model(l, 1);
-    (api().pushnumber)(l, JUMP_PENALTY);
-    (api().setfield)(l, -2, c"jumpAdded".as_ptr());
+    l.pushnumber(JUMP_PENALTY);
+    l.setfield(-2, c"jumpAdded");
     1
 }
 
 // path.scatter ------------------------------------------------------------------
 
 unsafe extern "C-unwind" fn scatter_preference(l: L) -> c_int {
-    let api = api();
-    number(l, preference((api.checknumber)(l, 1), (api.checknumber)(l, 2), (api.checknumber)(l, 3)))
+    number(l, preference(l.checknumber(1), l.checknumber(2), l.checknumber(3)))
 }
 
 unsafe extern "C-unwind" fn scatter_cost(l: L) -> c_int {
@@ -164,26 +161,24 @@ unsafe extern "C-unwind" fn scatter_cost(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn scatter_model(l: L) -> c_int {
-    let api = api();
     ground_model(l);
-    (api.pushboolean)(l, 1);
-    (api.setfield)(l, -2, c"scatter".as_ptr());
-    (api.getfield)(l, 2, c"entIndex".as_ptr());
-    (api.setfield)(l, -2, c"entIndex".as_ptr());
-    (api.getfield)(l, 2, c"now".as_ptr());
-    (api.setfield)(l, -2, c"now".as_ptr());
+    l.pushboolean(1);
+    l.setfield(-2, c"scatter");
+    l.getfield(2, c"entIndex");
+    l.setfield(-2, c"entIndex");
+    l.getfield(2, c"now");
+    l.setfield(-2, c"now");
     1
 }
 
 // path.tfbot --------------------------------------------------------------------
 
 unsafe fn in_enemy_spawn_room(l: L, step: c_int, bot: c_int) -> bool {
-    let api = api();
     let room = num(l, step, c"spawnRoomTeam", NOBODY);
-    (api.getfield)(l, bot, c"team".as_ptr());
-    let team = (api.tonumber)(l, -1);
-    let has_team = (api.type_of)(l, -1) != TNIL;
-    (api.settop)(l, -2);
+    l.getfield(bot, c"team");
+    let team = l.tonumber(-1);
+    let has_team = l.type_of(-1) != TNIL;
+    l.settop(-2);
     if room == NOBODY || (has_team && room == team) {
         return false;
     }
@@ -222,31 +217,30 @@ unsafe extern "C-unwind" fn tfbot_cost(l: L) -> c_int {
 }
 
 unsafe fn push_tfbot_model(l: L) {
-    let api = api();
     push_model(l, 1);
-    (api.pushnumber)(l, TFBOT_JUMP_PENALTY);
-    (api.setfield)(l, -2, c"jumpScaled".as_ptr());
-    (api.pushboolean)(l, 1);
-    (api.setfield)(l, -2, c"rooms".as_ptr());
-    (api.getfield)(l, 2, c"team".as_ptr());
-    (api.setfield)(l, -2, c"team".as_ptr());
-    (api.getfield)(l, 2, c"team".as_ptr());
-    let team = (api.tonumber)(l, -1);
-    (api.settop)(l, -2);
+    l.pushnumber(TFBOT_JUMP_PENALTY);
+    l.setfield(-2, c"jumpScaled");
+    l.pushboolean(1);
+    l.setfield(-2, c"rooms");
+    l.getfield(2, c"team");
+    l.setfield(-2, c"team");
+    l.getfield(2, c"team");
+    let team = l.tonumber(-1);
+    l.settop(-2);
     let winners = field_truthy(l, 2, c"roundWon") && num(l, 2, c"winningTeam", f64::NAN) == team;
-    (api.pushboolean)(l, winners as c_int);
-    (api.setfield)(l, -2, c"winners".as_ptr());
+    l.pushboolean(winners as c_int);
+    l.setfield(-2, c"winners");
     let scatter = num(l, 2, c"route", f64::NAN) == DEFAULT_ROUTE && !field_truthy(l, 2, c"miniBoss");
-    (api.pushboolean)(l, scatter as c_int);
-    (api.setfield)(l, -2, c"scatter".as_ptr());
-    (api.getfield)(l, 2, c"entIndex".as_ptr());
-    (api.setfield)(l, -2, c"entIndex".as_ptr());
-    (api.getfield)(l, 2, c"now".as_ptr());
-    (api.setfield)(l, -2, c"now".as_ptr());
+    l.pushboolean(scatter as c_int);
+    l.setfield(-2, c"scatter");
+    l.getfield(2, c"entIndex");
+    l.setfield(-2, c"entIndex");
+    l.getfield(2, c"now");
+    l.setfield(-2, c"now");
 }
 
 unsafe extern "C-unwind" fn tfbot_model(l: L) -> c_int {
-    (api().settop)(l, 2);
+    l.settop(2);
     push_tfbot_model(l);
     1
 }
@@ -261,8 +255,8 @@ fn uncrossable(attributes: u32, limits: &Limits) -> bool {
 }
 
 unsafe extern "C-unwind" fn hl2_must_crouch(l: L) -> c_int {
-    let attributes = (api().checknumber)(l, 1) as u32;
-    (api().pushboolean)(l, (attributes & NAV_MESH_CROUCH != 0) as c_int);
+    let attributes = l.checknumber(1) as u32;
+    l.pushboolean((attributes & NAV_MESH_CROUCH != 0) as c_int);
     1
 }
 
@@ -275,37 +269,35 @@ unsafe extern "C-unwind" fn hl2_cost(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn hl2_model(l: L) -> c_int {
-    (api().settop)(l, 2);
+    l.settop(2);
     push_tfbot_model(l);
-    (api().pushboolean)(l, 1);
-    (api().setfield)(l, -2, c"attributeRule".as_ptr());
+    l.pushboolean(1);
+    l.setfield(-2, c"attributeRule");
     1
 }
 
 unsafe fn push_limits(l: L, step: f64, jump: f64, drop: f64, soldier: bool) {
-    let api = api();
-    (api.createtable)(l, 0, 5);
+    l.createtable(0, 5);
     for (key, value) in [(c"stepHeight", step), (c"jumpHeight", jump), (c"deathDropHeight", drop)] {
-        (api.pushnumber)(l, value);
-        (api.setfield)(l, -2, key.as_ptr());
+        l.pushnumber(value);
+        l.setfield(-2, key);
     }
     if soldier {
         for key in [c"crouches", c"ladders"] {
-            (api.pushboolean)(l, 1);
-            (api.setfield)(l, -2, key.as_ptr());
+            l.pushboolean(1);
+            l.setfield(-2, key);
         }
     }
 }
 
 unsafe fn module(l: L, functions: &[(&CStr, CFunction)], numbers: &[(&CStr, f64)]) {
-    let api = api();
-    (api.createtable)(l, 0, (functions.len() + numbers.len()) as c_int);
+    l.createtable(0, (functions.len() + numbers.len()) as c_int);
     for (name, f) in functions {
         set_function(l, name, *f);
     }
     for (name, n) in numbers {
-        (api.pushnumber)(l, *n);
-        (api.setfield)(l, -2, name.as_ptr());
+        l.pushnumber(*n);
+        l.setfield(-2, name);
     }
 }
 
@@ -324,7 +316,6 @@ pub const PARTS: &[&CStr] = &[
 
 /// Pushes the part named PARTS[i].
 pub unsafe fn push_part(l: L, i: usize) {
-    let api = api();
     match i {
         0 => module(l, &[(c"Weighted", ground_weighted), (c"Cost", ground_cost), (c"Model", ground_model)], &[]),
         1 => module(l, &[(c"Preference", scatter_preference), (c"Cost", scatter_cost), (c"Model", scatter_model)], &[]),
@@ -345,21 +336,20 @@ pub unsafe fn push_part(l: L, i: usize) {
                 ],
             );
             push_limits(l, STEP_HEIGHT, STEP_HEIGHT, STEP_HEIGHT, false);
-            (api.setfield)(l, -2, c"LIMITS".as_ptr());
+            l.setfield(-2, c"LIMITS");
             push_limits(l, STEP_HEIGHT, SOLDIER_JUMP_HEIGHT, SOLDIER_DROP_HEIGHT, true);
-            (api.setfield)(l, -2, c"SOLDIER_LIMITS".as_ptr());
+            l.setfield(-2, c"SOLDIER_LIMITS");
         }
     }
 }
 
 /// Preloads each part into package.loaded, unless already loaded there.
 pub unsafe fn preload(l: L) {
-    let api = api();
-    (api.getfield)(l, GLOBALSINDEX, c"package".as_ptr());
-    (api.getfield)(l, -1, c"loaded".as_ptr());
+    l.getfield(GLOBALSINDEX, c"package");
+    l.getfield(-1, c"loaded");
     for (i, name) in PARTS.iter().enumerate() {
         push_part(l, i);
-        (api.setfield)(l, -2, name.as_ptr());
+        l.setfield(-2, name);
     }
-    (api.settop)(l, -3);
+    l.settop(-3);
 }

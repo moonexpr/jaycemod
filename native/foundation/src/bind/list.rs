@@ -3,29 +3,28 @@
 //! the userdata's environment.
 
 use super::slots::{fresh_environment, ValueSlots};
-use crate::lua::{api, push_str, raise_where, tostring, CFunction, L, TNUMBER};
+use crate::lua::{push_str, raise_where, tostring, CFunction, L, TNUMBER};
 use crate::module;
 use crate::userdata::{self, Native};
 use std::collections::VecDeque;
 use std::ffi::{c_int, CStr};
 
 unsafe fn number(l: L, n: f64) -> c_int {
-    (api().pushnumber)(l, n);
+    l.pushnumber(n);
     1
 }
 
 unsafe fn nothing(l: L) -> c_int {
-    (api().pushnil)(l);
+    l.pushnil();
     1
 }
 
 /// A whole number of at least 1 at `index`, or None.
 unsafe fn whole_at(l: L, index: c_int) -> Option<u32> {
-    let api = api();
-    if (api.type_of)(l, index) != TNUMBER {
+    if l.type_of(index) != TNUMBER {
         return None;
     }
-    let n = (api.tonumber)(l, index);
+    let n = l.tonumber(index);
     (n >= 1.0 && n.fract() == 0.0 && n <= u32::MAX as f64).then_some(n as u32)
 }
 
@@ -59,7 +58,7 @@ unsafe extern "C-unwind" fn queue_new(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn queue_push_back(l: L) -> c_int {
-    (api().settop)(l, 2);
+    l.settop(2);
     let q = userdata::check::<Queue>(l, 1);
     let slot = q.values.store(l, 2);
     q.slots.push_back(slot);
@@ -67,7 +66,7 @@ unsafe extern "C-unwind" fn queue_push_back(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn queue_push_front(l: L) -> c_int {
-    (api().settop)(l, 2);
+    l.settop(2);
     let q = userdata::check::<Queue>(l, 1);
     let slot = q.values.store(l, 2);
     q.slots.push_front(slot);
@@ -121,22 +120,20 @@ unsafe extern "C-unwind" fn queue_size(l: L) -> c_int {
 
 /// The iterator Values gives: (queue, i) -> i + 1, the value there.
 unsafe extern "C-unwind" fn queue_step(l: L) -> c_int {
-    let api = api();
-    let i = (api.tonumber)(l, 2) as usize;
+    let i = l.tonumber(2) as usize;
     let q = userdata::check::<Queue>(l, 1);
     let Some(&slot) = q.slots.get(i) else { return nothing(l) };
-    (api.pushnumber)(l, (i + 1) as f64);
+    l.pushnumber((i + 1) as f64);
     ValueSlots::push(l, slot);
     2
 }
 
 /// queue:Values() -> an iterator front to back (i, value)
 unsafe extern "C-unwind" fn queue_values(l: L) -> c_int {
-    let api = api();
     userdata::check::<Queue>(l, 1);
-    (api.pushcclosure)(l, queue_step, 0);
-    (api.pushvalue)(l, 1);
-    (api.pushnumber)(l, 0.0);
+    l.pushcclosure(queue_step, 0);
+    l.pushvalue(1);
+    l.pushnumber(0.0);
     3
 }
 
@@ -167,7 +164,7 @@ unsafe extern "C-unwind" fn ring_new(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn ring_push(l: L) -> c_int {
-    (api().settop)(l, 2);
+    l.settop(2);
     let ring = userdata::check::<Ring>(l, 1);
     if let Some(old) = ring.slots[ring.next].take() {
         ring.values.release(l, old);
@@ -201,15 +198,14 @@ unsafe extern "C-unwind" fn ring_newest(l: L) -> c_int {
 
 /// ring:Ordered() -> the values, oldest first, a fresh list
 unsafe extern "C-unwind" fn ring_ordered(l: L) -> c_int {
-    let api = api();
     let ring = userdata::check::<Ring>(l, 1);
     let capacity = ring.slots.len();
     let start = if ring.size < capacity { 0 } else { ring.next };
-    (api.createtable)(l, ring.size as c_int, 0);
+    l.createtable(ring.size as c_int, 0);
     for i in 0..ring.size {
         if let Some(slot) = ring.slots[(start + i) % capacity] {
             ValueSlots::push(l, slot);
-            (api.rawseti)(l, -2, i as c_int + 1);
+            l.rawseti(-2, i as c_int + 1);
         }
     }
     1
@@ -252,7 +248,7 @@ impl Window {
 }
 
 unsafe extern "C-unwind" fn window_new(l: L) -> c_int {
-    let span = if (api().type_of)(l, 1) == TNUMBER { (api().tonumber)(l, 1) } else { f64::NAN };
+    let span = if l.type_of(1) == TNUMBER { l.tonumber(1) } else { f64::NAN };
     if !(span > 0.0) {
         let given = tostring(l, 1);
         raise_where(l, format!("a window's span is a number above 0, not {given}"));
@@ -262,8 +258,7 @@ unsafe extern "C-unwind" fn window_new(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn window_add(l: L) -> c_int {
-    let api = api();
-    let (at, value) = ((api.checknumber)(l, 2), (api.checknumber)(l, 3));
+    let (at, value) = (l.checknumber(2), l.checknumber(3));
     let window = userdata::check::<Window>(l, 1);
     if let Some(&(last, _)) = window.entries.back() {
         if at < last {
@@ -277,14 +272,14 @@ unsafe extern "C-unwind" fn window_add(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn window_sum(l: L) -> c_int {
-    let now = (api().checknumber)(l, 2);
+    let now = l.checknumber(2);
     let window = userdata::check::<Window>(l, 1);
     window.drop_aged(now);
     number(l, window.sum)
 }
 
 unsafe extern "C-unwind" fn window_count(l: L) -> c_int {
-    let now = (api().checknumber)(l, 2);
+    let now = l.checknumber(2);
     let window = userdata::check::<Window>(l, 1);
     window.drop_aged(now);
     number(l, window.entries.len() as f64)
@@ -365,7 +360,7 @@ unsafe extern "C-unwind" fn slots_free(l: L) -> c_int {
 unsafe extern "C-unwind" fn slots_in_use(l: L) -> c_int {
     let pool = userdata::check::<Slots>(l, 1);
     let used = whole_at(l, 2).is_some_and(|s| pool.used.get(s as usize).copied().unwrap_or(false));
-    (api().pushboolean)(l, used as c_int);
+    l.pushboolean(used as c_int);
     1
 }
 
@@ -580,16 +575,15 @@ unsafe extern "C-unwind" fn chain_before(l: L) -> c_int {
 unsafe extern "C-unwind" fn chain_has(l: L) -> c_int {
     let chain = userdata::check::<Chain>(l, 1);
     let has = whole_at(l, 2).is_some_and(|s| chain.linked(s));
-    (api().pushboolean)(l, has as c_int);
+    l.pushboolean(has as c_int);
     1
 }
 
 unsafe fn push_list(l: L, list: &[u32]) {
-    let api = api();
-    (api.createtable)(l, list.len() as c_int, 0);
+    l.createtable(list.len() as c_int, 0);
     for (i, &slot) in list.iter().enumerate() {
-        (api.pushnumber)(l, slot as f64);
-        (api.rawseti)(l, -2, i as c_int + 1);
+        l.pushnumber(slot as f64);
+        l.rawseti(-2, i as c_int + 1);
     }
 }
 
@@ -612,26 +606,24 @@ unsafe extern "C-unwind" fn chain_clear(l: L) -> c_int {
 /// in its closure (upvalue 1: the chain; 2: the next slot), so a member
 /// unlinked behind the walk leaves it on course, as the Lua twin's does.
 unsafe extern "C-unwind" fn chain_walk_step(l: L) -> c_int {
-    let api = api();
     let up_chain = crate::lua::GLOBALSINDEX - 1;
     let up_slot = crate::lua::GLOBALSINDEX - 2;
-    let slot = (api.tonumber)(l, up_slot) as u32;
+    let slot = l.tonumber(up_slot) as u32;
     if slot == NONE {
         return nothing(l);
     }
     let chain = userdata::check::<Chain>(l, up_chain);
     let next = chain.next.get(slot as usize).copied().filter(|&n| n != OUT).unwrap_or(NONE);
-    (api.pushnumber)(l, next as f64);
-    (api.replace)(l, up_slot);
+    l.pushnumber(next as f64);
+    l.replace(up_slot);
     number(l, slot as f64)
 }
 
 unsafe extern "C-unwind" fn chain_walk(l: L) -> c_int {
-    let api = api();
     let front = userdata::check::<Chain>(l, 1).front;
-    (api.pushvalue)(l, 1);
-    (api.pushnumber)(l, front as f64);
-    (api.pushcclosure)(l, chain_walk_step, 2);
+    l.pushvalue(1);
+    l.pushnumber(front as f64);
+    l.pushcclosure(chain_walk_step, 2);
     1
 }
 

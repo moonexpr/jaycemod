@@ -1,7 +1,7 @@
 //! Module tables as foundation's Lua twins publish them, and where a server
 //! puts them: at their globals before the indexes run, each a whole module.
 
-use crate::lua::{api, set_function, CFunction, GLOBALSINDEX, L, TTABLE};
+use crate::lua::{set_function, CFunction, GLOBALSINDEX, L, TTABLE};
 use std::ffi::{c_int, CStr};
 
 /// A module whose table, called, constructs: `Heap()` as `Heap.New()`.
@@ -14,7 +14,7 @@ pub trait Constructor {
 /// # Safety
 /// Called by Lua as a metamethod, with the module table first.
 pub unsafe extern "C-unwind" fn call<C: Constructor>(l: L) -> c_int {
-    (api().remove)(l, 1);
+    l.remove(1);
     (C::NEW)(l)
 }
 
@@ -23,15 +23,14 @@ pub unsafe extern "C-unwind" fn call<C: Constructor>(l: L) -> c_int {
 /// # Safety
 /// `l` is a live state, after `lua::open`.
 pub unsafe fn push(l: L, functions: &[(&CStr, CFunction)], call: Option<CFunction>) {
-    let api = api();
-    (api.createtable)(l, 0, functions.len() as c_int);
+    l.createtable(0, functions.len() as c_int);
     for (name, function) in functions {
         set_function(l, name, *function);
     }
     if let Some(call) = call {
-        (api.createtable)(l, 0, 1);
+        l.createtable(0, 1);
         set_function(l, c"__call", call);
-        (api.setmetatable)(l, -2);
+        l.setmetatable(-2);
     }
 }
 
@@ -44,20 +43,19 @@ pub unsafe fn push(l: L, functions: &[(&CStr, CFunction)], call: Option<CFunctio
 /// # Safety
 /// `l` is a live state with a module table at the top, after `lua::open`.
 pub unsafe fn provide(l: L, namespace: Option<&CStr>, key: &CStr) {
-    let api = api();
     match namespace {
-        None => (api.setfield)(l, GLOBALSINDEX, key.as_ptr()),
+        None => l.setfield(GLOBALSINDEX, key),
         Some(namespace) => {
-            (api.getfield)(l, GLOBALSINDEX, namespace.as_ptr());
-            if (api.type_of)(l, -1) != TTABLE {
-                (api.settop)(l, -2);
-                (api.createtable)(l, 0, 4);
-                (api.pushvalue)(l, -1);
-                (api.setfield)(l, GLOBALSINDEX, namespace.as_ptr());
+            l.getfield(GLOBALSINDEX, namespace);
+            if l.type_of(-1) != TTABLE {
+                l.settop(-2);
+                l.createtable(0, 4);
+                l.pushvalue(-1);
+                l.setfield(GLOBALSINDEX, namespace);
             }
-            (api.pushvalue)(l, -2);
-            (api.setfield)(l, -2, key.as_ptr());
-            (api.settop)(l, -3);
+            l.pushvalue(-2);
+            l.setfield(-2, key);
+            l.settop(-3);
         }
     }
 }

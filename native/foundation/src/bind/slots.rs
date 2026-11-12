@@ -1,7 +1,7 @@
 //! Lua values kept by slot in a userdata's environment table: a native
 //! structure holds the slot (a number), the table holds what it stands for.
 
-use crate::lua::{api, L};
+use crate::lua::L;
 use std::ffi::c_int;
 
 #[derive(Default)]
@@ -21,11 +21,10 @@ impl ValueSlots {
             self.next += 1;
             self.next
         });
-        let api = api();
-        (api.getfenv)(l, 1);
-        (api.pushvalue)(l, value);
-        (api.rawseti)(l, -2, slot as c_int);
-        (api.settop)(l, -2);
+        l.getfenv(1);
+        l.pushvalue(value);
+        l.rawseti(-2, slot as c_int);
+        l.settop(-2);
         slot
     }
 
@@ -34,10 +33,9 @@ impl ValueSlots {
     /// # Safety
     /// As store.
     pub unsafe fn push(l: L, slot: u32) {
-        let api = api();
-        (api.getfenv)(l, 1);
-        (api.rawgeti)(l, -1, slot as c_int);
-        (api.remove)(l, -2);
+        l.getfenv(1);
+        l.rawgeti(-1, slot as c_int);
+        l.remove(-2);
     }
 
     /// Lets `slot` go, its value with it.
@@ -45,11 +43,10 @@ impl ValueSlots {
     /// # Safety
     /// As store.
     pub unsafe fn release(&mut self, l: L, slot: u32) {
-        let api = api();
-        (api.getfenv)(l, 1);
-        (api.pushnil)(l);
-        (api.rawseti)(l, -2, slot as c_int);
-        (api.settop)(l, -2);
+        l.getfenv(1);
+        l.pushnil();
+        l.rawseti(-2, slot as c_int);
+        l.settop(-2);
         self.free.push(slot);
     }
 
@@ -68,7 +65,6 @@ impl ValueSlots {
 /// # Safety
 /// `l` is a live state with a userdata at `index` (absolute or -1).
 pub unsafe fn fresh_environment(l: L, index: c_int) {
-    let api = api();
-    (api.createtable)(l, 0, 0);
-    (api.setfenv)(l, if index < 0 { index - 1 } else { index });
+    l.createtable(0, 0);
+    l.setfenv(if index < 0 { index - 1 } else { index });
 }

@@ -4,7 +4,7 @@
 //! here), so the doubles agree.
 
 use super::util::{each_item, nothing, number, number_at};
-use crate::lua::{api, field_number, raise_at, raise_where, tostring, CFunction, L, TTABLE};
+use crate::lua::{field_number, raise_at, raise_where, tostring, CFunction, L, TTABLE};
 use crate::module;
 use crate::userdata::{self, Native};
 use std::ffi::{c_int, CStr};
@@ -24,15 +24,14 @@ pub(super) unsafe fn point_at(l: L, index: c_int) -> [f64; 3] {
 
 /// Pushes { x, y, z } (z left out when None); one result.
 unsafe fn push_point(l: L, x: f64, y: f64, z: Option<f64>) -> c_int {
-    let api = api();
-    (api.createtable)(l, 0, 3);
-    (api.pushnumber)(l, x);
-    (api.setfield)(l, -2, c"x".as_ptr());
-    (api.pushnumber)(l, y);
-    (api.setfield)(l, -2, c"y".as_ptr());
+    l.createtable(0, 3);
+    l.pushnumber(x);
+    l.setfield(-2, c"x");
+    l.pushnumber(y);
+    l.setfield(-2, c"y");
     if let Some(z) = z {
-        (api.pushnumber)(l, z);
-        (api.setfield)(l, -2, c"z".as_ptr());
+        l.pushnumber(z);
+        l.setfield(-2, c"z");
     }
     1
 }
@@ -55,9 +54,8 @@ unsafe extern "C-unwind" fn distance2d(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn toward(l: L) -> c_int {
-    let api = api();
     let (from, to) = (point_at(l, 1), point_at(l, 2));
-    let d = (api.checknumber)(l, 3);
+    let d = l.checknumber(3);
     let length = distance_2d(&from, &to);
     if length <= d || length == 0.0 {
         return push_point(l, to[0], to[1], field_number(l, 2, c"z"));
@@ -78,7 +76,7 @@ unsafe extern "C-unwind" fn sub(l: L) -> c_int {
 
 unsafe extern "C-unwind" fn scale(l: L) -> c_int {
     let a = point_at(l, 1);
-    let s = (api().checknumber)(l, 2);
+    let s = l.checknumber(2);
     push_point(l, a[0] * s, a[1] * s, Some(a[2] * s))
 }
 
@@ -131,9 +129,8 @@ unsafe extern "C-unwind" fn left2d(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn offset2d(l: L) -> c_int {
-    let api = api();
     let (p, from) = (point_at(l, 1), point_at(l, 2));
-    let (along, across) = ((api.checknumber)(l, 3), (api.checknumber)(l, 4));
+    let (along, across) = (l.checknumber(3), l.checknumber(4));
     let (dx, dy) = (p[0] - from[0], p[1] - from[1]);
     let length = (dx * dx + dy * dy).sqrt();
     if length == 0.0 {
@@ -159,32 +156,30 @@ fn polar_of(center: &Point, radius: f64, angle: f64) -> Point {
 }
 
 unsafe extern "C-unwind" fn polar(l: L) -> c_int {
-    let api = api();
     let center = point_at(l, 1);
-    let (radius, angle) = ((api.checknumber)(l, 2), (api.checknumber)(l, 3));
+    let (radius, angle) = (l.checknumber(2), l.checknumber(3));
     let at = polar_of(&center, radius, angle);
     push_point(l, at[0], at[1], Some(at[2]))
 }
 
 unsafe extern "C-unwind" fn circle(l: L) -> c_int {
-    let api = api();
     let center = point_at(l, 1);
-    let (radius, count, start) = ((api.checknumber)(l, 2), (api.checknumber)(l, 3), (api.checknumber)(l, 4));
+    let (radius, count, start) = (l.checknumber(2), l.checknumber(3), l.checknumber(4));
     if !(count >= 1.0) || count.floor() != count {
         raise_where(l, format!("a circle's count is a whole number of at least 1, not {}", tostring(l, 3)));
     }
-    (api.createtable)(l, count as c_int, 0);
+    l.createtable(count as c_int, 0);
     for i in 0..count as c_int {
         let at = polar_of(&center, radius, start + (i as f64 * (2.0 * std::f64::consts::PI)) / count);
         push_point(l, at[0], at[1], Some(at[2]));
-        (api.rawseti)(l, -2, i + 1);
+        l.rawseti(-2, i + 1);
     }
     1
 }
 
 /// A whole count of at least 1 at `index`, else raised naming `what`.
 unsafe fn count_at(l: L, index: c_int, what: &str) -> c_int {
-    let count = (api().checknumber)(l, index);
+    let count = l.checknumber(index);
     if !(count >= 1.0) || count.floor() != count {
         raise_where(l, format!("{what} is a whole number of at least 1, not {}", tostring(l, index)));
     }
@@ -205,33 +200,31 @@ fn crossed(a: &Point, b: &Point) -> Point {
 }
 
 unsafe extern "C-unwind" fn sphere(l: L) -> c_int {
-    let api = api();
     let center = point_at(l, 1);
-    let radius = (api.checknumber)(l, 2);
+    let radius = l.checknumber(2);
     let count = count_at(l, 3, "a sphere's count");
     let golden = std::f64::consts::PI * (3.0 - 5f64.sqrt());
     let n = count as f64;
-    (api.createtable)(l, count, 0);
+    l.createtable(count, 0);
     for i in 0..count {
         let z = 1.0 - (2.0 * i as f64 + 1.0) / n;
         let (across, turn) = ((1.0 - z * z).sqrt(), i as f64 * golden);
         push_point(l, center[0] + turn.cos() * across * radius, center[1] + turn.sin() * across * radius, Some(center[2] + z * radius));
-        (api.rawseti)(l, -2, i + 1);
+        l.rawseti(-2, i + 1);
     }
     1
 }
 
 unsafe extern "C-unwind" fn frustum(l: L) -> c_int {
-    let api = api();
     let (eye, forward) = (point_at(l, 1), point_at(l, 2));
-    let (hfov, vfov, range) = ((api.checknumber)(l, 3), (api.checknumber)(l, 4), (api.checknumber)(l, 5));
+    let (hfov, vfov, range) = (l.checknumber(3), l.checknumber(4), l.checknumber(5));
     let cols = count_at(l, 6, "a frustum's columns");
     let rows = count_at(l, 7, "a frustum's rows");
     let Some(ahead) = normalized(&forward) else { raise_where(l, "a frustum's forward has no direction".into()) };
     let right = normalized(&crossed(&ahead, &[0.0, 0.0, 1.0])).unwrap_or([0.0, -1.0, 0.0]);
     let up = crossed(&right, &ahead);
     let (across, high) = ((hfov / 2.0).tan(), (vfov / 2.0).tan());
-    (api.createtable)(l, cols * rows, 0);
+    l.createtable(cols * rows, 0);
     let mut at = 0;
     for row in 0..rows {
         let v = if rows == 1 { 0.0 } else { (1.0 - 2.0 * row as f64 / (rows - 1) as f64) * high };
@@ -240,7 +233,7 @@ unsafe extern "C-unwind" fn frustum(l: L) -> c_int {
             let p: Vec<f64> = (0..3).map(|k| eye[k] + (ahead[k] + right[k] * u + up[k] * v) * range).collect();
             push_point(l, p[0], p[1], Some(p[2]));
             at += 1;
-            (api.rawseti)(l, -2, at);
+            l.rawseti(-2, at);
         }
     }
     1
@@ -249,8 +242,7 @@ unsafe extern "C-unwind" fn frustum(l: L) -> c_int {
 // math.scalar ---------------------------------------------------------------
 
 unsafe extern "C-unwind" fn clamp(l: L) -> c_int {
-    let api = api();
-    let (value, low, high) = ((api.checknumber)(l, 1), (api.checknumber)(l, 2), (api.checknumber)(l, 3));
+    let (value, low, high) = (l.checknumber(1), l.checknumber(2), l.checknumber(3));
     if low > high {
         let (lo, hi) = (tostring(l, 2), tostring(l, 3));
         raise_where(l, format!("an empty range: {lo} above {hi}"));
@@ -263,20 +255,18 @@ fn saturate_of(value: f64) -> f64 {
 }
 
 unsafe extern "C-unwind" fn saturate(l: L) -> c_int {
-    number(l, saturate_of((api().checknumber)(l, 1)))
+    number(l, saturate_of(l.checknumber(1)))
 }
 
 unsafe extern "C-unwind" fn lerp(l: L) -> c_int {
-    let api = api();
-    let (a, b, t) = ((api.checknumber)(l, 1), (api.checknumber)(l, 2), (api.checknumber)(l, 3));
+    let (a, b, t) = (l.checknumber(1), l.checknumber(2), l.checknumber(3));
     number(l, a + (b - a) * t)
 }
 
 /// The fraction of the span `a..b` that `value` covers, held to [0, 1]; a span with no length is
 /// the caller's mistake, raised at the caller's line.
 unsafe fn span_fraction(l: L, value: f64, a_index: c_int) -> f64 {
-    let api = api();
-    let (a, b) = ((api.checknumber)(l, a_index), (api.checknumber)(l, a_index + 1));
+    let (a, b) = (l.checknumber(a_index), l.checknumber(a_index + 1));
     if a == b {
         let (from, to) = (tostring(l, a_index), tostring(l, a_index + 1));
         raise_where(l, format!("a span with no length: {from} to {to}"));
@@ -285,31 +275,28 @@ unsafe fn span_fraction(l: L, value: f64, a_index: c_int) -> f64 {
 }
 
 unsafe extern "C-unwind" fn inverse_lerp(l: L) -> c_int {
-    let value = (api().checknumber)(l, 3);
+    let value = l.checknumber(3);
     number(l, span_fraction(l, value, 1))
 }
 
 unsafe extern "C-unwind" fn remap(l: L) -> c_int {
-    let api = api();
-    let value = (api.checknumber)(l, 1);
+    let value = l.checknumber(1);
     let t = span_fraction(l, value, 2);
-    let (c, d) = ((api.checknumber)(l, 4), (api.checknumber)(l, 5));
+    let (c, d) = (l.checknumber(4), l.checknumber(5));
     number(l, c + (d - c) * t)
 }
 
 // math.interval -------------------------------------------------------------
 
 unsafe extern "C-unwind" fn interval_overlaps(l: L) -> c_int {
-    let api = api();
-    let (alo, ahi, blo, bhi) = ((api.checknumber)(l, 1), (api.checknumber)(l, 2), (api.checknumber)(l, 3), (api.checknumber)(l, 4));
+    let (alo, ahi, blo, bhi) = (l.checknumber(1), l.checknumber(2), l.checknumber(3), l.checknumber(4));
     super::util::boolean(l, alo <= bhi && blo <= ahi)
 }
 
 unsafe extern "C-unwind" fn interval_intersect(l: L) -> c_int {
-    let api = api();
-    let (alo, ahi, blo, bhi) = ((api.checknumber)(l, 1), (api.checknumber)(l, 2), (api.checknumber)(l, 3), (api.checknumber)(l, 4));
-    (api.pushnumber)(l, if alo > blo { alo } else { blo });
-    (api.pushnumber)(l, if ahi < bhi { ahi } else { bhi });
+    let (alo, ahi, blo, bhi) = (l.checknumber(1), l.checknumber(2), l.checknumber(3), l.checknumber(4));
+    l.pushnumber(if alo > blo { alo } else { blo });
+    l.pushnumber(if ahi < bhi { ahi } else { bhi });
     2
 }
 
@@ -327,7 +314,7 @@ unsafe extern "C-unwind" fn box_contains(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn box_extent(l: L) -> c_int {
-    (api().checktype)(l, 1, TTABLE);
+    l.checktype(1, TTABLE);
     let mut corners: Option<(Point, Point)> = None;
     each_item(l, 1, |l, p| {
         let at = point_at(l, p);
@@ -356,15 +343,14 @@ unsafe extern "C-unwind" fn box_extent(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn box_centered(l: L) -> c_int {
-    let half = (api().checknumber)(l, 1) / 2.0;
+    let half = l.checknumber(1) / 2.0;
     push_point(l, -half, -half, Some(-half));
     push_point(l, half, half, Some(half));
     2
 }
 
 unsafe extern "C-unwind" fn box_standing(l: L) -> c_int {
-    let api = api();
-    let (half, height) = ((api.checknumber)(l, 1) / 2.0, (api.checknumber)(l, 2));
+    let (half, height) = (l.checknumber(1) / 2.0, l.checknumber(2));
     push_point(l, -half, -half, Some(0.0));
     push_point(l, half, half, Some(height));
     2
@@ -380,74 +366,70 @@ unsafe extern "C-unwind" fn box_longest_axis_2d(l: L) -> c_int {
 
 /// A place from 1 to n, drawn by the function at `source`; an answer outside that is our bug, refused.
 unsafe fn place(l: L, source: c_int, n: usize) -> usize {
-    let api = api();
-    (api.pushvalue)(l, source);
-    (api.pushnumber)(l, 1.0);
-    (api.pushnumber)(l, n as f64);
-    (api.call)(l, 2, 1);
+    l.pushvalue(source);
+    l.pushnumber(1.0);
+    l.pushnumber(n as f64);
+    l.call(2, 1);
     let k = number_at(l, -1).unwrap_or(f64::NAN);
     if !(k >= 1.0 && k <= n as f64) || k.fract() != 0.0 {
         let given = tostring(l, -1);
         raise_where(l, format!("the random source gave {given} for 1 to {n}"));
     }
-    (api.settop)(l, -2);
+    l.settop(-2);
     k as usize
 }
 
 /// Pushes a new list holding the items of the list at `list` (up to the first nil); its length.
 unsafe fn copy_list(l: L, list: c_int) -> usize {
-    let api = api();
-    (api.createtable)(l, 0, 0);
-    let copy = (api.gettop)(l);
+    l.createtable(0, 0);
+    let copy = l.gettop();
     let mut n = 0;
     each_item(l, list, |l, item| {
         n += 1;
-        (api.pushvalue)(l, item);
-        (api.rawseti)(l, copy, n as c_int);
+        l.pushvalue(item);
+        l.rawseti(copy, n as c_int);
     });
     n
 }
 
 unsafe extern "C-unwind" fn choice_shuffle(l: L) -> c_int {
-    let api = api();
-    (api.checktype)(l, 1, TTABLE);
-    (api.checktype)(l, 2, crate::lua::TFUNCTION);
+    l.checktype(1, TTABLE);
+    l.checktype(2, crate::lua::TFUNCTION);
     let mut n = copy_list(l, 1);
-    let out = (api.gettop)(l);
+    let out = l.gettop();
     while n > 1 {
         let k = place(l, 2, n);
-        (api.rawgeti)(l, out, n as c_int);
-        (api.rawgeti)(l, out, k as c_int);
-        (api.rawseti)(l, out, n as c_int);
-        (api.rawseti)(l, out, k as c_int);
+        l.rawgeti(out, n as c_int);
+        l.rawgeti(out, k as c_int);
+        l.rawseti(out, n as c_int);
+        l.rawseti(out, k as c_int);
         n -= 1;
     }
     1
 }
 
 unsafe extern "C-unwind" fn choice_draw(l: L) -> c_int {
-    let api = api();
-    (api.checktype)(l, 1, TTABLE);
-    (api.checktype)(l, 3, crate::lua::TFUNCTION);
+    l.checktype(1, TTABLE);
+    l.checktype(3, crate::lua::TFUNCTION);
     let count = number_at(l, 2).unwrap_or(f64::NAN);
     if !(count >= 0.0) || count.fract() != 0.0 {
         let given = tostring(l, 2);
         raise_where(l, format!("a draw's count is a whole number of at least 0, not {given}"));
     }
     let mut left = copy_list(l, 1);
-    let pool = (api.gettop)(l);
-    (api.createtable)(l, 0, 0);
-    let out = (api.gettop)(l);
+    let pool = l.gettop();
+    l.createtable(0, 0);
+    let out = l.gettop();
     let mut taken = 0usize;
     while left > 0 && (taken as f64) < count {
         let k = place(l, 3, left);
-        (api.rawgeti)(l, pool, k as c_int);
+        l.rawgeti(pool, k as c_int);
         taken += 1;
-        (api.rawseti)(l, out, taken as c_int);
-        (api.rawgeti)(l, pool, left as c_int);
-        (api.rawseti)(l, pool, k as c_int);
-        (api.pushnil)(l);
-        (api.rawseti)(l, pool, left as c_int);
+        l.rawseti(out, taken as c_int);
+        l.rawgeti(pool, left as c_int);
+        l.rawseti(pool, k as c_int);
+        l.pushnil();
+        l.rawseti(pool, left as c_int);
         left -= 1;
     }
     1
@@ -457,7 +439,7 @@ unsafe extern "C-unwind" fn choice_draw(l: L) -> c_int {
 
 /// The numbers of the list at `index`, in order until the first nil.
 unsafe fn numbers(l: L, index: c_int) -> Vec<f64> {
-    (api().checktype)(l, index, TTABLE);
+    l.checktype(index, TTABLE);
     let mut out = Vec::new();
     each_item(l, index, |l, v| {
         let n = number_at(l, v);
@@ -467,7 +449,7 @@ unsafe fn numbers(l: L, index: c_int) -> Vec<f64> {
 }
 
 unsafe extern "C-unwind" fn mean(l: L) -> c_int {
-    let n = (api().objlen)(l, 1);
+    let n = l.objlen(1);
     if n == 0 {
         return number(l, 0.0);
     }
@@ -478,8 +460,7 @@ unsafe extern "C-unwind" fn mean(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn percentile(l: L) -> c_int {
-    let api = api();
-    let p = (api.checknumber)(l, 2);
+    let p = l.checknumber(2);
     let mut sorted = numbers(l, 1);
     if sorted.is_empty() {
         return number(l, 0.0);
@@ -498,24 +479,22 @@ unsafe extern "C-unwind" fn percentile(l: L) -> c_int {
 
 /// Weight(item at `item`), the weight function at 2.
 unsafe fn weight(l: L, item: c_int) -> f64 {
-    let api = api();
-    (api.pushvalue)(l, 2);
-    (api.pushvalue)(l, item);
-    (api.call)(l, 1, 1);
-    let w = (api.tonumber)(l, -1);
-    (api.settop)(l, -2);
+    l.pushvalue(2);
+    l.pushvalue(item);
+    l.call(1, 1);
+    let w = l.tonumber(-1);
+    l.settop(-2);
     w
 }
 
 unsafe extern "C-unwind" fn pick_weighted(l: L) -> c_int {
-    let api = api();
-    (api.checktype)(l, 1, TTABLE);
-    let r = (api.checknumber)(l, 3);
-    (api.settop)(l, 3);
+    l.checktype(1, TTABLE);
+    let r = l.checknumber(3);
+    l.settop(3);
     let mut total = 0.0;
     each_item(l, 1, |l, item| total += weight(l, item));
     if total <= 0.0 {
-        (api.rawgeti)(l, 1, 1);
+        l.rawgeti(1, 1);
         return 1;
     }
     let mut target = r * total;
@@ -530,8 +509,8 @@ unsafe extern "C-unwind" fn pick_weighted(l: L) -> c_int {
             }
         }
     });
-    let at = if picked > 0 { picked } else { (api.objlen)(l, 1) as c_int };
-    (api.rawgeti)(l, 1, at);
+    let at = if picked > 0 { picked } else { l.objlen(1) as c_int };
+    l.rawgeti(1, at);
     1
 }
 
@@ -540,7 +519,7 @@ unsafe extern "C-unwind" fn pick_weighted(l: L) -> c_int {
 const EPSILON: f64 = 1e-12;
 
 unsafe extern "C-unwind" fn evaluate(l: L) -> c_int {
-    let x = (api().checknumber)(l, 2);
+    let x = l.checknumber(2);
     let c = numbers(l, 1);
     let sum = c.iter().rev().fold(0.0, |sum, &ci| sum * x + ci);
     drop(c);
@@ -548,11 +527,10 @@ unsafe extern "C-unwind" fn evaluate(l: L) -> c_int {
 }
 
 unsafe fn push_list(l: L, values: &[f64]) -> c_int {
-    let api = api();
-    (api.createtable)(l, values.len() as c_int, 0);
+    l.createtable(values.len() as c_int, 0);
     for (i, &v) in values.iter().enumerate() {
-        (api.pushnumber)(l, v);
-        (api.rawseti)(l, -2, i as c_int + 1);
+        l.pushnumber(v);
+        l.rawseti(-2, i as c_int + 1);
     }
     1
 }
@@ -689,31 +667,30 @@ unsafe fn push_matrix(l: L, rows: usize, cols: usize, data: Vec<f64>) -> c_int {
 }
 
 unsafe extern "C-unwind" fn matrix_new(l: L) -> c_int {
-    let api = api();
-    if (api.type_of)(l, 1) != TTABLE || (api.objlen)(l, 1) == 0 {
+    if l.type_of(1) != TTABLE || l.objlen(1) == 0 {
         raise_where(l, "a matrix needs at least one row".into());
     }
-    let rows = (api.objlen)(l, 1);
-    (api.rawgeti)(l, 1, 1);
-    let cols = if (api.type_of)(l, -1) == TTABLE { (api.objlen)(l, -1) } else { 0 };
-    (api.settop)(l, -2);
+    let rows = l.objlen(1);
+    l.rawgeti(1, 1);
+    let cols = if l.type_of(-1) == TTABLE { l.objlen(-1) } else { 0 };
+    l.settop(-2);
     let mut data = Vec::with_capacity(rows * cols);
     let mut ragged = None;
     for i in 1..=rows {
-        (api.rawgeti)(l, 1, i as c_int);
-        let row = (api.gettop)(l);
-        let len = if (api.type_of)(l, row) == TTABLE { (api.objlen)(l, row) } else { 0 };
+        l.rawgeti(1, i as c_int);
+        let row = l.gettop();
+        let len = if l.type_of(row) == TTABLE { l.objlen(row) } else { 0 };
         if len != cols || cols == 0 {
             ragged = Some((i, len));
-            (api.settop)(l, -2);
+            l.settop(-2);
             break;
         }
         for j in 1..=cols {
-            (api.rawgeti)(l, row, j as c_int);
-            data.push((api.tonumber)(l, -1));
-            (api.settop)(l, -2);
+            l.rawgeti(row, j as c_int);
+            data.push(l.tonumber(-1));
+            l.settop(-2);
         }
-        (api.settop)(l, -2);
+        l.settop(-2);
     }
     if let Some((i, len)) = ragged {
         drop(data);
@@ -723,7 +700,7 @@ unsafe extern "C-unwind" fn matrix_new(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn matrix_identity(l: L) -> c_int {
-    let n = (api().checknumber)(l, 1).max(0.0) as usize;
+    let n = l.checknumber(1).max(0.0) as usize;
     let data = (0..n * n).map(|k| if k / n == k % n { 1.0 } else { 0.0 }).collect();
     push_matrix(l, n, n, data)
 }
@@ -737,9 +714,8 @@ unsafe extern "C-unwind" fn matrix_cols(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn matrix_get(l: L) -> c_int {
-    let api = api();
     let m = userdata::check::<Matrix>(l, 1);
-    let (i, j) = ((api.checknumber)(l, 2), (api.checknumber)(l, 3));
+    let (i, j) = (l.checknumber(2), l.checknumber(3));
     let inside = i >= 1.0 && j >= 1.0 && i.fract() == 0.0 && j.fract() == 0.0 && (i as usize) <= m.rows && (j as usize) <= m.cols;
     if !inside {
         return nothing(l);
@@ -847,12 +823,11 @@ unsafe extern "C-unwind" fn matrix_inverse(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn matrix_solve(l: L) -> c_int {
-    let api = api();
     let m = userdata::check::<Matrix>(l, 1);
     square(l, m, "solving");
     let n = m.rows;
-    (api.checktype)(l, 2, TTABLE);
-    let given = (api.objlen)(l, 2);
+    l.checktype(2, TTABLE);
+    let given = l.objlen(2);
     if given != n {
         raise_where(l, format!("solving needs {n} right-hand values, not {given}"));
     }
@@ -920,7 +895,7 @@ impl Polyline {
 }
 
 unsafe extern "C-unwind" fn polyline_new(l: L) -> c_int {
-    (api().checktype)(l, 1, TTABLE);
+    l.checktype(1, TTABLE);
     let mut points = Vec::new();
     each_item(l, 1, |l, p| points.push(point_at(l, p)));
     let mut at = vec![0.0];
@@ -939,22 +914,21 @@ unsafe extern "C-unwind" fn polyline_length(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn polyline_leg(l: L) -> c_int {
-    let d = (api().checknumber)(l, 2);
+    let d = l.checknumber(2);
     let (i, t) = userdata::check::<Polyline>(l, 1).leg(d);
-    (api().pushnumber)(l, (i + 1) as f64);
-    (api().pushnumber)(l, t);
+    l.pushnumber((i + 1) as f64);
+    l.pushnumber(t);
     2
 }
 
 unsafe extern "C-unwind" fn polyline_point_at(l: L) -> c_int {
-    let d = (api().checknumber)(l, 2);
+    let d = l.checknumber(2);
     let p = userdata::check::<Polyline>(l, 1).point_at(d);
     push_point(l, p[0], p[1], Some(p[2]))
 }
 
 unsafe extern "C-unwind" fn polyline_offset(l: L) -> c_int {
-    let api = api();
-    let (d, lateral) = ((api.checknumber)(l, 2), (api.checknumber)(l, 3));
+    let (d, lateral) = (l.checknumber(2), l.checknumber(3));
     let line = userdata::check::<Polyline>(l, 1);
     let mut p = line.point_at(d);
     let (a, b) = line.ends(line.leg(d).0);

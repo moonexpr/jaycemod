@@ -5,7 +5,7 @@
 
 use super::state_chart::class;
 use super::util::{boolean, number};
-use crate::lua::{api, CFunction, GLOBALSINDEX, L, TTABLE};
+use crate::lua::{CFunction, GLOBALSINDEX, L, TTABLE};
 use std::ffi::{c_int, CStr};
 
 const REGISTRY: c_int = -10000;
@@ -18,28 +18,25 @@ const UNSTARTED: f64 = -1.0;
 
 /// clock:Now(), of the timer at index 1.
 unsafe fn now(l: L) -> f64 {
-    let api = api();
-    (api.getfield)(l, 1, c"clock".as_ptr());
-    (api.getfield)(l, -1, c"Now".as_ptr());
-    (api.pushvalue)(l, -2);
-    (api.call)(l, 1, 1);
-    let time = (api.tonumber)(l, -1);
-    (api.settop)(l, -3);
+    l.getfield(1, c"clock");
+    l.getfield(-1, c"Now");
+    l.pushvalue(-2);
+    l.call(1, 1);
+    let time = l.tonumber(-1);
+    l.settop(-3);
     time
 }
 
 unsafe fn field(l: L, name: &CStr) -> f64 {
-    let api = api();
-    (api.getfield)(l, 1, name.as_ptr());
-    let value = (api.tonumber)(l, -1);
-    (api.settop)(l, -2);
+    l.getfield(1, name);
+    let value = l.tonumber(-1);
+    l.settop(-2);
     value
 }
 
 unsafe fn set_field(l: L, name: &CStr, value: f64) {
-    let api = api();
-    (api.pushnumber)(l, value);
-    (api.setfield)(l, 1, name.as_ptr());
+    l.pushnumber(value);
+    l.setfield(1, name);
 }
 
 fn class_upvalue() -> c_int {
@@ -48,19 +45,18 @@ fn class_upvalue() -> c_int {
 
 /// A new timer on the clock at index 1, of the class in upvalue 1.
 unsafe fn new_timer(l: L, duration: bool) -> c_int {
-    let api = api();
-    (api.settop)(l, 1);
-    (api.createtable)(l, 0, 3);
-    (api.pushvalue)(l, 1);
-    (api.setfield)(l, -2, c"clock".as_ptr());
-    (api.pushnumber)(l, UNSTARTED);
-    (api.setfield)(l, -2, c"timestamp".as_ptr());
+    l.settop(1);
+    l.createtable(0, 3);
+    l.pushvalue(1);
+    l.setfield(-2, c"clock");
+    l.pushnumber(UNSTARTED);
+    l.setfield(-2, c"timestamp");
     if duration {
-        (api.pushnumber)(l, 0.0);
-        (api.setfield)(l, -2, c"duration".as_ptr());
+        l.pushnumber(0.0);
+        l.setfield(-2, c"duration");
     }
-    (api.pushvalue)(l, class_upvalue());
-    (api.setmetatable)(l, -2);
+    l.pushvalue(class_upvalue());
+    l.setmetatable(-2);
     1
 }
 
@@ -86,7 +82,7 @@ unsafe extern "C-unwind" fn countdown_reset(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn countdown_start(l: L) -> c_int {
-    let duration = (api().checknumber)(l, 2);
+    let duration = l.checknumber(2);
     let time = now(l) + duration;
     set_field(l, c"timestamp", time);
     set_field(l, c"duration", duration);
@@ -134,12 +130,12 @@ unsafe extern "C-unwind" fn interval_elapsed_time(l: L) -> c_int {
 
 // The names keep util_shared.h's "Then".
 unsafe extern "C-unwind" fn interval_is_less_then(l: L) -> c_int {
-    let duration = (api().checknumber)(l, 2);
+    let duration = l.checknumber(2);
     boolean(l, now(l) - field(l, c"timestamp") < duration)
 }
 
 unsafe extern "C-unwind" fn interval_is_greater_then(l: L) -> c_int {
-    let duration = (api().checknumber)(l, 2);
+    let duration = l.checknumber(2);
     boolean(l, now(l) - field(l, c"timestamp") > duration)
 }
 
@@ -147,23 +143,21 @@ unsafe extern "C-unwind" fn interval_is_greater_then(l: L) -> c_int {
 
 /// Pushes a module whose New is `new`, closed over a class of `methods`.
 unsafe fn timer_module(l: L, new: CFunction, methods: &[(&CStr, CFunction)]) {
-    let api = api();
     crate::module::push(l, &[], None);
     class(l, methods);
-    (api.pushcclosure)(l, new, 1);
-    (api.setfield)(l, -2, c"New".as_ptr());
+    l.pushcclosure(new, 1);
+    l.setfield(-2, c"New");
 }
 
 /// Pushes the table of both modules, one set a Lua state, kept in the registry:
 /// generator.state_chart hands on these very constructors.
 unsafe fn push_shared(l: L) {
-    let api = api();
-    (api.getfield)(l, REGISTRY, SHARED.as_ptr());
-    if (api.type_of)(l, -1) == TTABLE {
+    l.getfield(REGISTRY, SHARED);
+    if l.type_of(-1) == TTABLE {
         return;
     }
-    (api.settop)(l, -2);
-    (api.createtable)(l, 0, 2);
+    l.settop(-2);
+    l.createtable(0, 2);
     timer_module(
         l,
         countdown_new,
@@ -178,7 +172,7 @@ unsafe fn push_shared(l: L) {
             (c"GetCountdownDuration", countdown_duration),
         ],
     );
-    (api.setfield)(l, -2, c"countdown".as_ptr());
+    l.setfield(-2, c"countdown");
     timer_module(
         l,
         interval_new,
@@ -192,35 +186,33 @@ unsafe fn push_shared(l: L) {
             (c"IsGreaterThen", interval_is_greater_then),
         ],
     );
-    (api.pushnumber)(l, INTERVAL_UNSTARTED);
-    (api.setfield)(l, -2, c"INTERVAL_UNSTARTED".as_ptr());
-    (api.setfield)(l, -2, c"interval".as_ptr());
-    (api.pushvalue)(l, -1);
-    (api.setfield)(l, REGISTRY, SHARED.as_ptr());
+    l.pushnumber(INTERVAL_UNSTARTED);
+    l.setfield(-2, c"INTERVAL_UNSTARTED");
+    l.setfield(-2, c"interval");
+    l.pushvalue(-1);
+    l.setfield(REGISTRY, SHARED);
 }
 
 /// Pushes the constructor of a timer module: `countdown` or `interval`.
 pub(super) unsafe fn push_new(l: L, module: &CStr) {
-    let api = api();
     push_shared(l);
-    (api.getfield)(l, -1, module.as_ptr());
-    (api.getfield)(l, -1, c"New".as_ptr());
-    (api.replace)(l, -3);
-    (api.settop)(l, -2);
+    l.getfield(-1, module);
+    l.getfield(-1, c"New");
+    l.replace(-3);
+    l.settop(-2);
 }
 
 /// Pushes interval's INTERVAL_UNSTARTED.
 pub(super) unsafe fn push_interval_unstarted(l: L) {
-    (api().pushnumber)(l, INTERVAL_UNSTARTED);
+    l.pushnumber(INTERVAL_UNSTARTED);
 }
 
 /// Pushes timer module `name` from the shared table, so both are made once
 /// and state_chart's CountdownTimer and IntervalTimer are these.
 unsafe fn push_shared_module(l: L, name: &CStr) {
-    let api = api();
     push_shared(l);
-    (api.getfield)(l, -1, name.as_ptr());
-    (api.remove)(l, -2);
+    l.getfield(-1, name);
+    l.remove(-2);
 }
 
 unsafe fn push_countdown_module(l: L) {

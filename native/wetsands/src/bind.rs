@@ -13,7 +13,7 @@ use crate::search::{RouteSearch, Rules};
 use crate::walker::{Jump, Limits, Preference, Rooms, Step, Walker};
 use foundation::astar::Status;
 use foundation::lua::{
-    api, each, field_number, field_truthy, push_str, raise, raise_owned, set_function, string_at, CFunction,
+    each, field_number, field_truthy, push_str, raise, raise_owned, set_function, string_at, CFunction,
     L, TFUNCTION, TNIL, TNUMBER, TTABLE, TUSERDATA,
 };
 use foundation::userdata::{self, Native};
@@ -72,7 +72,7 @@ impl Native for SearchHandle {
 
 /// The whole number at `index` (an area id, a budget), or a Lua error.
 unsafe fn check_whole(l: L, index: c_int) -> u32 {
-    let value = (api().checknumber)(l, index);
+    let value = l.checknumber(index);
     if !(0.0..=u32::MAX as f64).contains(&value) || value.fract() != 0.0 {
         raise_owned(l, format!("argument {index}: a whole number from 0 is wanted, not {value}"));
     }
@@ -92,7 +92,7 @@ unsafe fn push_status(l: L, status: Status) -> c_int {
 }
 
 unsafe fn number(l: L, value: f64) -> c_int {
-    (api().pushnumber)(l, value);
+    l.pushnumber(value);
     1
 }
 
@@ -120,9 +120,8 @@ unsafe fn sealed(l: L, index: c_int) -> Arc<NavMesh> {
 
 /// mesh:Area(id, x, y, z, attributes)
 unsafe extern "C-unwind" fn mesh_area(l: L) -> c_int {
-    let api = api();
     let id = check_whole(l, 2);
-    let center = [(api.checknumber)(l, 3), (api.checknumber)(l, 4), (api.checknumber)(l, 5)];
+    let center = [l.checknumber(3), l.checknumber(4), l.checknumber(5)];
     let attributes = check_whole(l, 6);
     if let Err(e) = building(l).area(id, center, attributes) {
         raise_owned(l, e.to_string());
@@ -132,9 +131,8 @@ unsafe extern "C-unwind" fn mesh_area(l: L) -> c_int {
 
 /// mesh:Link(fromId, toId, distance, rise): from's next link, in order.
 unsafe extern "C-unwind" fn mesh_link(l: L) -> c_int {
-    let api = api();
     let (from, to) = (check_whole(l, 2), check_whole(l, 3));
-    let (distance, rise) = ((api.checknumber)(l, 4), (api.checknumber)(l, 5));
+    let (distance, rise) = (l.checknumber(4), l.checknumber(5));
     if let Err(e) = building(l).link(from, to, distance, rise) {
         raise_owned(l, e.to_string());
     }
@@ -143,9 +141,8 @@ unsafe extern "C-unwind" fn mesh_link(l: L) -> c_int {
 
 /// mesh:Ladder(fromId, toId, length): a nav ladder from one area to another.
 unsafe extern "C-unwind" fn mesh_ladder(l: L) -> c_int {
-    let api = api();
     let (from, to) = (check_whole(l, 2), check_whole(l, 3));
-    let length = (api.checknumber)(l, 4);
+    let length = l.checknumber(4);
     if let Err(e) = building(l).ladder(from, to, length) {
         raise_owned(l, e.to_string());
     }
@@ -168,7 +165,7 @@ unsafe extern "C-unwind" fn mesh_seal(l: L) -> c_int {
 /// mesh:Sealed() -> whether searches may begin.
 unsafe extern "C-unwind" fn mesh_sealed(l: L) -> c_int {
     let is_sealed = matches!(userdata::check::<Mesh>(l, 1), Mesh::Sealed(_));
-    (api().pushboolean)(l, is_sealed as c_int);
+    l.pushboolean(is_sealed as c_int);
     1
 }
 
@@ -190,7 +187,7 @@ unsafe fn required(l: L, index: c_int, name: &CStr) -> f64 {
 /// jumpScaled; attributeRule; rooms (team, winners); scatter (entIndex,
 /// now); lanePenalty.
 unsafe fn walker_from(l: L, index: c_int) -> Walker {
-    (api().checktype)(l, index, TTABLE);
+    l.checktype(index, TTABLE);
     let limits = Limits {
         step_height: required(l, index, c"stepHeight"),
         jump_height: required(l, index, c"jumpHeight"),
@@ -232,16 +229,15 @@ unsafe extern "C-unwind" fn walker_new(l: L) -> c_int {
 
 /// walker:Price(traversable, room, attributes, distance, rise, soFar, areaId, penalized) -> cost
 unsafe extern "C-unwind" fn walker_price(l: L) -> c_int {
-    let api = api();
     let step = Step {
-        traversable: (api.toboolean)(l, 2) != 0,
-        room: (api.checknumber)(l, 3) as i32,
+        traversable: l.toboolean(2) != 0,
+        room: l.checknumber(3) as i32,
         attributes: check_whole(l, 4),
-        distance: (api.checknumber)(l, 5),
-        rise: (api.checknumber)(l, 6),
-        so_far: (api.checknumber)(l, 7),
+        distance: l.checknumber(5),
+        rise: l.checknumber(6),
+        so_far: l.checknumber(7),
         area_id: check_whole(l, 8),
-        penalized: (api.toboolean)(l, 9) != 0,
+        penalized: l.toboolean(9) != 0,
         ladder: false,
     };
     let cost = userdata::check::<WalkerHandle>(l, 1).0.price(&step);
@@ -261,8 +257,7 @@ unsafe fn search<'a>(l: L) -> &'a mut RouteSearch {
 
 /// The area id a told table's key (at -2) or value (at -1) holds.
 unsafe fn id_at(l: L, index: c_int, what: &str) -> u32 {
-    let api = api();
-    let value = if (api.type_of)(l, index) == TNUMBER { (api.tonumber)(l, index) } else { -1.0 };
+    let value = if l.type_of(index) == TNUMBER { l.tonumber(index) } else { -1.0 };
     if !(0.0..=u32::MAX as f64).contains(&value) || value.fract() != 0.0 {
         raise_owned(l, format!("{what}: area ids are whole numbers"));
     }
@@ -272,12 +267,11 @@ unsafe fn id_at(l: L, index: c_int, what: &str) -> u32 {
 /// `t[name]` of the table at `index` (absolute), pushed, when it is a table;
 /// its absolute index, or None (nothing left pushed).
 unsafe fn subtable_at(l: L, index: c_int, name: &CStr) -> Option<c_int> {
-    let api = api();
-    (api.getfield)(l, index, name.as_ptr());
-    if (api.type_of)(l, -1) == TTABLE {
-        return Some((api.gettop)(l));
+    l.getfield(index, name);
+    if l.type_of(-1) == TTABLE {
+        return Some(l.gettop());
     }
-    (api.settop)(l, -2);
+    l.settop(-2);
     None
 }
 
@@ -286,31 +280,31 @@ unsafe fn tell(l: L, handle: *mut SearchHandle, told: c_int) {
     let search = &mut (*handle).search;
     if let Some(closed) = subtable_at(l, told, c"closed") {
         each(l, closed, |l| told_ok(l, search.close(id_at(l, -2, "told.closed"))));
-        (api().settop)(l, -2);
+        l.settop(-2);
     }
     if let Some(uncrossable) = subtable_at(l, told, c"uncrossable") {
         each(l, uncrossable, |l| {
             let from = id_at(l, -2, "told.uncrossable");
-            if (api().type_of)(l, -1) == TTABLE {
-                let tos = (api().gettop)(l);
+            if l.type_of(-1) == TTABLE {
+                let tos = l.gettop();
                 each(l, tos, |l| told_ok(l, search.close_link(from, id_at(l, -2, "told.uncrossable"))));
             }
         });
-        (api().settop)(l, -2);
+        l.settop(-2);
     }
     if let Some(rooms) = subtable_at(l, told, c"rooms") {
         each(l, rooms, |l| {
-            let team = (api().tonumber)(l, -1) as i32;
+            let team = l.tonumber(-1) as i32;
             told_ok(l, search.room(id_at(l, -2, "told.rooms"), team));
         });
-        (api().settop)(l, -2);
+        l.settop(-2);
     }
     if let Some(estimates) = subtable_at(l, told, c"estimates") {
         each(l, estimates, |l| {
-            let estimate = (api().tonumber)(l, -1);
+            let estimate = l.tonumber(-1);
             told_ok(l, search.estimate(id_at(l, -2, "told.estimates"), estimate));
         });
-        (api().settop)(l, -2);
+        l.settop(-2);
     }
 }
 
@@ -325,17 +319,16 @@ unsafe fn told_ok(l: L, result: Result<(), crate::search::SearchError>) {
 /// the same mesh; goalPos is anything with x and y (and z) to read: a
 /// table, or GMod's Vector.
 unsafe extern "C-unwind" fn search_new(l: L) -> c_int {
-    let api = api();
     userdata::check::<Mesh>(l, 1);
-    (api.checktype)(l, 2, TTABLE);
-    (api.getfield)(l, 2, c"Model".as_ptr());
-    if (api.type_of)(l, -1) != TFUNCTION {
+    l.checktype(2, TTABLE);
+    l.getfield(2, c"Model");
+    if l.type_of(-1) != TFUNCTION {
         raise(l, c"the strategy has no Model(limits, bot): it cannot run natively");
     }
-    (api.pushvalue)(l, 3);
-    (api.pushvalue)(l, 4);
-    (api.call)(l, 2, 1);
-    let model = (api.gettop)(l);
+    l.pushvalue(3);
+    l.pushvalue(4);
+    l.call(2, 1);
+    let model = l.gettop();
     let walker = walker_from(l, model);
     let (start, goal, max_expanded) = (check_whole(l, 5), check_whole(l, 6), check_whole(l, 8));
     let goal_pos = [
@@ -348,13 +341,13 @@ unsafe extern "C-unwind" fn search_new(l: L) -> c_int {
         Err(e) => raise_owned(l, e.to_string()),
     };
     userdata::push(l, SearchHandle { search, busy: false });
-    let ud = (api.gettop)(l);
+    let ud = l.gettop();
     let handle: *mut SearchHandle = userdata::check::<SearchHandle>(l, ud);
     if let Some(penalized) = subtable_at(l, model, c"penalized") {
         each(l, penalized, |l| told_ok(l, (*handle).search.penalize(id_at(l, -2, "model.penalized"))));
-        (api.settop)(l, -2);
+        l.settop(-2);
     }
-    match (api.type_of)(l, 9) {
+    match l.type_of(9) {
         TTABLE => tell(l, handle, 9),
         TUSERDATA => {
             let known = Arc::clone(&userdata::check::<KnownHandle>(l, 9).0);
@@ -362,19 +355,19 @@ unsafe extern "C-unwind" fn search_new(l: L) -> c_int {
         }
         _ => {}
     }
-    (api.createtable)(l, 0, 2);
-    if (api.type_of)(l, 10) == TTABLE {
+    l.createtable(0, 2);
+    if l.type_of(10) == TTABLE {
         for name in [c"traversable", c"crossable", c"room"] {
-            (api.getfield)(l, 10, name.as_ptr());
-            if (api.type_of)(l, -1) == TFUNCTION {
-                (api.setfield)(l, -2, name.as_ptr());
+            l.getfield(10, name);
+            if l.type_of(-1) == TFUNCTION {
+                l.setfield(-2, name);
             } else {
-                (api.settop)(l, -2);
+                l.settop(-2);
             }
         }
     }
-    (api.setfenv)(l, ud);
-    (api.pushvalue)(l, ud);
+    l.setfenv(ud);
+    l.pushvalue(ud);
     1
 }
 
@@ -389,24 +382,22 @@ struct LuaRules {
 }
 
 unsafe fn ask_number(l: L, function: c_int, area: u32) -> f64 {
-    let api = api();
-    (api.pushvalue)(l, function);
-    (api.pushnumber)(l, area as f64);
-    (api.call)(l, 1, 1);
-    let answer = (api.tonumber)(l, -1);
-    (api.settop)(l, -2);
+    l.pushvalue(function);
+    l.pushnumber(area as f64);
+    l.call(1, 1);
+    let answer = l.tonumber(-1);
+    l.settop(-2);
     answer
 }
 
 unsafe fn ask(l: L, function: c_int, args: &[u32]) -> bool {
-    let api = api();
-    (api.pushvalue)(l, function);
+    l.pushvalue(function);
     for &arg in args {
-        (api.pushnumber)(l, arg as f64);
+        l.pushnumber(arg as f64);
     }
-    (api.call)(l, args.len() as c_int, 1);
-    let answer = (api.toboolean)(l, -1) != 0;
-    (api.settop)(l, -2);
+    l.call(args.len() as c_int, 1);
+    let answer = l.toboolean(-1) != 0;
+    l.settop(-2);
     answer
 }
 
@@ -430,18 +421,16 @@ impl Rules for LuaRules {
 /// The rule `name` in the environment table at `env`, pushed; its index
 /// when it is a function.
 unsafe fn rule(l: L, env: c_int, name: &CStr) -> Option<c_int> {
-    let api = api();
-    (api.getfield)(l, env, name.as_ptr());
-    ((api.type_of)(l, -1) == TFUNCTION).then(|| (api.gettop)(l))
+    l.getfield(env, name);
+    (l.type_of(-1) == TFUNCTION).then(|| l.gettop())
 }
 
 /// search:Step(budget) -> "running", "found" or "failed"
 unsafe extern "C-unwind" fn search_step(l: L) -> c_int {
-    let api = api();
     let budget = check_whole(l, 2);
     search(l);
-    (api.settop)(l, 2);
-    (api.getfenv)(l, 1);
+    l.settop(2);
+    l.getfenv(1);
     let mut rules = LuaRules {
         l,
         traversable: rule(l, 3, c"traversable"),
@@ -461,15 +450,14 @@ unsafe extern "C-unwind" fn search_step(l: L) -> c_int {
 /// The search's fields (graph.pathfinder's): status, expanded, maxExpanded,
 /// start, goal, closest, parent; its methods first.
 unsafe extern "C-unwind" fn search_index(l: L) -> c_int {
-    let api = api();
-    (api.getmetatable)(l, 1);
-    (api.pushvalue)(l, 2);
-    (api.rawget)(l, -2);
-    if (api.type_of)(l, -1) != TNIL {
+    l.getmetatable(1);
+    l.pushvalue(2);
+    l.rawget(-2);
+    if l.type_of(-1) != TNIL {
         return 1;
     }
     let Some(key) = string_at(l, 2) else {
-        (api.pushnil)(l);
+        l.pushnil();
         return 1;
     };
     let search = search(l);
@@ -482,7 +470,7 @@ unsafe extern "C-unwind" fn search_index(l: L) -> c_int {
         b"closest" => number(l, search.closest() as f64),
         b"parent" => push_parents(l, search),
         _ => {
-            (api.pushnil)(l);
+            l.pushnil();
             1
         }
     }
@@ -490,16 +478,15 @@ unsafe extern "C-unwind" fn search_index(l: L) -> c_int {
 
 /// search:Route([lastId]) -> the area ids from the start
 unsafe extern "C-unwind" fn search_route(l: L) -> c_int {
-    let api = api();
-    let last = ((api.type_of)(l, 2) == TNUMBER).then(|| check_whole(l, 2));
+    let last = (l.type_of(2) == TNUMBER).then(|| check_whole(l, 2));
     let route = match search(l).route(last) {
         Ok(route) => route,
         Err(e) => raise_owned(l, e.to_string()),
     };
-    (api.createtable)(l, route.len() as c_int, 0);
+    l.createtable(route.len() as c_int, 0);
     for (i, &id) in route.iter().enumerate() {
-        (api.pushnumber)(l, id as f64);
-        (api.rawseti)(l, -2, i as c_int + 1);
+        l.pushnumber(id as f64);
+        l.rawseti(-2, i as c_int + 1);
     }
     drop(route);
     1
@@ -511,7 +498,7 @@ unsafe extern "C-unwind" fn search_cost_so_far(l: L) -> c_int {
     match search(l).cost_so_far(id) {
         Ok(Some(cost)) => number(l, cost),
         Ok(None) => {
-            (api().pushnil)(l);
+            l.pushnil();
             1
         }
         Err(e) => raise_owned(l, e.to_string()),
@@ -520,12 +507,11 @@ unsafe extern "C-unwind" fn search_cost_so_far(l: L) -> c_int {
 
 /// areaId -> the id of the area it was reached from
 unsafe fn push_parents(l: L, search: &RouteSearch) -> c_int {
-    let api = api();
     let parents = search.parents();
-    (api.createtable)(l, 0, parents.len() as c_int);
+    l.createtable(0, parents.len() as c_int);
     for &(id, parent) in &parents {
-        (api.pushnumber)(l, parent as f64);
-        (api.rawseti)(l, -2, id as c_int);
+        l.pushnumber(parent as f64);
+        l.rawseti(-2, id as c_int);
     }
     drop(parents);
     1
@@ -537,11 +523,10 @@ unsafe fn push_parents(l: L, search: &RouteSearch) -> c_int {
 
 /// The whole number at `index`, or None for any other value.
 unsafe fn whole_at(l: L, index: c_int) -> Option<u32> {
-    let api = api();
-    if (api.type_of)(l, index) != TNUMBER {
+    if l.type_of(index) != TNUMBER {
         return None;
     }
-    let value = (api.tonumber)(l, index);
+    let value = l.tonumber(index);
     ((0.0..=u32::MAX as f64).contains(&value) && value.fract() == 0.0).then_some(value as u32)
 }
 
@@ -549,16 +534,15 @@ unsafe fn whole_at(l: L, index: c_int) -> Option<u32> {
 /// the mesh (1), starts (2), told (`told`, a table index, if any).
 unsafe fn walks_of(l: L, limit: f64, limits: (f64, f64, bool), told: Option<c_int>) -> Result<Vec<(u32, f64)>, String> {
     let (jump, drop, ladders) = limits;
-    let api = api();
     let mesh = match userdata::check::<Mesh>(l, 1) {
         Mesh::Sealed(mesh) => Arc::clone(mesh),
         Mesh::Building(_) => return Err("the mesh is not sealed yet".into()),
     };
     let mut starts = Vec::new();
-    for i in 1..=(api.objlen)(l, 2) {
-        (api.rawgeti)(l, 2, i as c_int);
+    for i in 1..=l.objlen(2) {
+        l.rawgeti(2, i as c_int);
         let id = whole_at(l, -1);
-        (api.settop)(l, -2);
+        l.settop(-2);
         let start = id.and_then(|id| mesh.index_of(id));
         starts.push(start.ok_or_else(|| format!("no area {} in the mesh", id.map_or("?".into(), |id| id.to_string())))?);
     }
@@ -566,14 +550,14 @@ unsafe fn walks_of(l: L, limit: f64, limits: (f64, f64, bool), told: Option<c_in
     if let Some(uncrossable) = told.and_then(|told| subtable_at(l, told, c"uncrossable")) {
         each(l, uncrossable, |l| {
             let from = whole_at(l, -2).and_then(|id| mesh.index_of(id));
-            if from.is_none() || (api.type_of)(l, -1) != TTABLE {
+            if from.is_none() || l.type_of(-1) != TTABLE {
                 return;
             }
-            let tos = (api.gettop)(l);
+            let tos = l.gettop();
             each(l, tos, |l| {
                 let to = whole_at(l, -2).and_then(|id| mesh.index_of(id));
                 if let (Some(from), Some(to)) = (from, to) {
-                    if (api.toboolean)(l, -1) != 0 {
+                    if l.toboolean(-1) != 0 {
                         if let Some(link) = mesh.link_between(from, to) {
                             refused[link] = true;
                         }
@@ -581,7 +565,7 @@ unsafe fn walks_of(l: L, limit: f64, limits: (f64, f64, bool), told: Option<c_in
                 }
             });
         });
-        (api.settop)(l, -2);
+        l.settop(-2);
     }
     // a ladder is a way only for a walker whose limits say ladders
     let crossable = |link: usize| !refused[link] && (ladders || !mesh.ladder(link));
@@ -592,22 +576,21 @@ unsafe fn walks_of(l: L, limit: f64, limits: (f64, f64, bool), told: Option<c_in
 /// navsearch.Distances(mesh, starts, limit, limits[, told]) -> area id ->
 /// the cheapest walk to it from the nearest start
 unsafe extern "C-unwind" fn distances(l: L) -> c_int {
-    let api = api();
-    (api.checktype)(l, 2, TTABLE);
-    let limit = (api.checknumber)(l, 3);
-    (api.checktype)(l, 4, TTABLE);
+    l.checktype(2, TTABLE);
+    let limit = l.checknumber(3);
+    l.checktype(4, TTABLE);
     let jump = field_number(l, 4, c"jumpHeight").unwrap_or_else(|| raise(l, c"limits need a number jumpHeight"));
     let drop = field_number(l, 4, c"deathDropHeight").unwrap_or_else(|| raise(l, c"limits need a number deathDropHeight"));
-    let told = ((api.type_of)(l, 5) == TTABLE).then_some(5);
+    let told = (l.type_of(5) == TTABLE).then_some(5);
     let ladders = field_truthy(l, 4, c"ladders");
     let walks = match walks_of(l, limit, (jump, drop, ladders), told) {
         Ok(walks) => walks,
         Err(message) => raise_owned(l, message),
     };
-    (api.createtable)(l, 0, walks.len() as c_int);
+    l.createtable(0, walks.len() as c_int);
     for &(id, walk) in &walks {
-        (api.pushnumber)(l, walk);
-        (api.rawseti)(l, -2, id as c_int);
+        l.pushnumber(walk);
+        l.rawseti(-2, id as c_int);
     }
     1
 }
@@ -625,37 +608,36 @@ unsafe fn calculator_ok<T>(l: L, result: Result<T, crate::calculator::Calculator
 /// told's closed areas, uncrossable links and spawn rooms (only the entries
 /// whose value holds), refusing an area or link the mesh lacks.
 unsafe extern "C-unwind" fn told_new(l: L) -> c_int {
-    let api = api();
     let mut known = Known::new(sealed(l, 1));
-    if (api.type_of)(l, 2) == TTABLE {
+    if l.type_of(2) == TTABLE {
         if let Some(closed) = subtable_at(l, 2, c"closed") {
             each(l, closed, |l| {
-                if (api.toboolean)(l, -1) != 0 {
+                if l.toboolean(-1) != 0 {
                     calculator_ok(l, known.close(id_at(l, -2, "told.closed")));
                 }
             });
-            (api.settop)(l, -2);
+            l.settop(-2);
         }
         if let Some(uncrossable) = subtable_at(l, 2, c"uncrossable") {
             each(l, uncrossable, |l| {
                 let from = id_at(l, -2, "told.uncrossable");
-                if (api.type_of)(l, -1) == TTABLE {
-                    let tos = (api.gettop)(l);
+                if l.type_of(-1) == TTABLE {
+                    let tos = l.gettop();
                     each(l, tos, |l| {
-                        if (api.toboolean)(l, -1) != 0 {
+                        if l.toboolean(-1) != 0 {
                             calculator_ok(l, known.close_link(from, id_at(l, -2, "told.uncrossable")));
                         }
                     });
                 }
             });
-            (api.settop)(l, -2);
+            l.settop(-2);
         }
         if let Some(rooms) = subtable_at(l, 2, c"rooms") {
             each(l, rooms, |l| {
-                let team = (api.tonumber)(l, -1) as i32;
+                let team = l.tonumber(-1) as i32;
                 calculator_ok(l, known.room(id_at(l, -2, "told.rooms"), team));
             });
-            (api.settop)(l, -2);
+            l.settop(-2);
         }
     }
     userdata::push(l, KnownHandle(Arc::new(known)));
@@ -664,19 +646,18 @@ unsafe extern "C-unwind" fn told_new(l: L) -> c_int {
 
 /// object:name([the value at arg]) -> its number.
 unsafe fn ask_method(l: L, object: c_int, name: &CStr, arg: Option<c_int>) -> f64 {
-    let api = api();
-    (api.getfield)(l, object, name.as_ptr());
-    (api.pushvalue)(l, object);
+    l.getfield(object, name);
+    l.pushvalue(object);
     let nargs = match arg {
         Some(arg) => {
-            (api.pushvalue)(l, arg);
+            l.pushvalue(arg);
             2
         }
         None => 1,
     };
-    (api.call)(l, nargs, 1);
-    let value = (api.tonumber)(l, -1);
-    (api.settop)(l, -2);
+    l.call(nargs, 1);
+    let value = l.tonumber(-1);
+    l.settop(-2);
     value
 }
 
@@ -693,19 +674,18 @@ unsafe fn area_id(l: L, area: c_int) -> u32 {
 /// fromArea, ladder, elevator, length, optional hull-fit verdict) -> cost,
 /// as Path:Compute calls it.
 unsafe extern "C-unwind" fn calculate(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 6);
-    if (api.type_of)(l, 2) == TNIL {
+    l.settop(6);
+    if l.type_of(2) == TNIL {
         return number(l, 0.0);
     }
     let (from, to) = (area_id(l, 2), area_id(l, 1));
-    let step = if (api.type_of)(l, 3) != TNIL {
+    let step = if l.type_of(3) != TNIL {
         Move::Ladder { length: ask_method(l, 3, c"GetLength", None) }
     } else {
-        Move::Floor { length: (api.tonumber)(l, 5) }
+        Move::Floor { length: l.tonumber(5) }
     };
     let so_far = ask_method(l, 2, c"GetCostSoFar", None);
-    let fits = (api.type_of)(l, 6) == TNIL || (api.toboolean)(l, 6) != 0;
+    let fits = l.type_of(6) == TNIL || l.toboolean(6) != 0;
     let calculator = &userdata::check::<CalculatorHandle>(l, foundation::lua::GLOBALSINDEX - 1).0;
     let cost = calculator_ok(l, calculator.price(from, to, so_far, step, fits));
     number(l, cost)
@@ -714,40 +694,38 @@ unsafe extern "C-unwind" fn calculate(l: L) -> c_int {
 /// navsearch.Calculator(known, strategy, limits, bot) -> the cost function
 /// Path:Compute takes, pricing by strategy.Model(limits, bot) over a Told.
 unsafe extern "C-unwind" fn calculator_new(l: L) -> c_int {
-    let api = api();
     let known = Arc::clone(&userdata::check::<KnownHandle>(l, 1).0);
-    (api.checktype)(l, 2, TTABLE);
-    (api.getfield)(l, 2, c"Model".as_ptr());
-    if (api.type_of)(l, -1) != TFUNCTION {
+    l.checktype(2, TTABLE);
+    l.getfield(2, c"Model");
+    if l.type_of(-1) != TFUNCTION {
         raise(l, c"the strategy has no Model(limits, bot): it cannot run natively");
     }
-    (api.pushvalue)(l, 3);
-    (api.pushvalue)(l, 4);
-    (api.call)(l, 2, 1);
-    let model = (api.gettop)(l);
+    l.pushvalue(3);
+    l.pushvalue(4);
+    l.call(2, 1);
+    let model = l.gettop();
     let mut calculator = Calculator::new(known, walker_from(l, model));
     if let Some(penalized) = subtable_at(l, model, c"penalized") {
         each(l, penalized, |l| calculator_ok(l, calculator.penalize(id_at(l, -2, "model.penalized"))));
-        (api.settop)(l, -2);
+        l.settop(-2);
     }
     userdata::push(l, CalculatorHandle(calculator));
-    (api.pushcclosure)(l, calculate, 1);
+    l.pushcclosure(calculate, 1);
     1
 }
 
 /// Pushes the module's table: navsearch's contract (Mesh, New, Distances)
 /// and Walker, a single model's pricing for the tests.
 unsafe fn module(l: L) {
-    let api = api();
-    (api.createtable)(l, 0, 4);
+    l.createtable(0, 4);
     set_function(l, c"Mesh", mesh_new);
     set_function(l, c"New", search_new);
     set_function(l, c"Distances", distances);
     set_function(l, c"Told", told_new);
     set_function(l, c"Calculator", calculator_new);
     set_function(l, c"Walker", walker_new);
-    (api.pushnumber)(l, crate::walker::NO_ROOM as f64);
-    (api.setfield)(l, -2, c"NO_ROOM".as_ptr());
+    l.pushnumber(crate::walker::NO_ROOM as f64);
+    l.setfield(-2, c"NO_ROOM");
 }
 
 /// GMod's entry point: provides the module at `wetsands.navsearch` before
@@ -779,20 +757,19 @@ pub unsafe extern "C-unwind" fn luaopen_wetsands(l: L) -> c_int {
     if foundation::lua::open().is_err() {
         return 0;
     }
-    let api = api();
-    (api.createtable)(l, 0, 2);
-    (api.createtable)(l, 0, 2);
+    l.createtable(0, 2);
+    l.createtable(0, 2);
     module(l);
-    (api.setfield)(l, -2, c"navsearch".as_ptr());
+    l.setfield(-2, c"navsearch");
     crate::path_bind::push_path(l);
-    (api.setfield)(l, -2, c"path".as_ptr());
-    (api.setfield)(l, -2, c"wetsands".as_ptr());
+    l.setfield(-2, c"path");
+    l.setfield(-2, c"wetsands");
     // the parts WS.require loads by name, for package.loaded
-    (api.createtable)(l, 0, crate::path_bind::PARTS.len() as c_int);
+    l.createtable(0, crate::path_bind::PARTS.len() as c_int);
     for (i, name) in crate::path_bind::PARTS.iter().enumerate() {
         crate::path_bind::push_part(l, i);
-        (api.setfield)(l, -2, name.as_ptr());
+        l.setfield(-2, name);
     }
-    (api.setfield)(l, -2, c"preload".as_ptr());
+    l.setfield(-2, c"preload");
     1
 }

@@ -28,7 +28,7 @@ mod select;
 mod slots;
 mod transaction;
 
-use crate::lua::{api, set_function, CFunction, L};
+use crate::lua::{set_function, CFunction, L};
 use std::ffi::{c_int, CStr};
 
 /// probe.Nothing(): the cost of a call across the boundary and nothing else.
@@ -38,19 +38,17 @@ unsafe extern "C-unwind" fn probe_nothing(_l: L) -> c_int {
 
 /// probe.Add(a, b) -> a + b: a call that reads two numbers and returns one.
 unsafe extern "C-unwind" fn probe_add(l: L) -> c_int {
-    let api = api();
-    let sum = (api.checknumber)(l, 1) + (api.checknumber)(l, 2);
-    (api.pushnumber)(l, sum);
+    let sum = l.checknumber(1) + l.checknumber(2);
+    l.pushnumber(sum);
     1
 }
 
 unsafe fn library(l: L, name: &CStr, functions: &[(&CStr, CFunction)]) {
-    let api = api();
-    (api.createtable)(l, 0, functions.len() as c_int);
+    l.createtable(0, functions.len() as c_int);
     for (function_name, function) in functions {
         set_function(l, function_name, *function);
     }
-    (api.setfield)(l, -2, name.as_ptr());
+    l.setfield(-2, name);
 }
 
 /// A namespace's native modules, by name: what pushes each one's table.
@@ -90,18 +88,17 @@ const NAMESPACES: &[Namespace] = &[
 /// Pushes the module's table, laid out as foundation's globals are
 /// (`.tree.heap`, `.nodegraph`), with the boundary probes, for the tests and the bench.
 unsafe fn module(l: L) {
-    let api = api();
-    (api.createtable)(l, 0, NAMESPACES.len() as c_int);
+    l.createtable(0, NAMESPACES.len() as c_int);
     for (namespace, modules) in NAMESPACES {
         if namespace.is_some() {
-            (api.createtable)(l, 0, modules.len() as c_int);
+            l.createtable(0, modules.len() as c_int);
         }
         for (name, push) in *modules {
             push(l);
-            (api.setfield)(l, -2, name.as_ptr());
+            l.setfield(-2, name);
         }
         if let Some(namespace) = namespace {
-            (api.setfield)(l, -2, namespace.as_ptr());
+            l.setfield(-2, namespace);
         }
     }
     library(l, c"probe", &[(c"Nothing", probe_nothing), (c"Add", probe_add)]);

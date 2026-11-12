@@ -2,9 +2,11 @@
 //! opens: from GMod's `lua_shared.dll` on Windows, from the host process (the
 //! `luajit` the tests run in) elsewhere.
 //!
-//! Every function is `C-unwind`: a Lua error unwinds through Rust frames, so
-//! a function calling one that can raise keeps nothing alive that needs a
-//! destructor.
+//! Every function is `C-unwind`: a Lua error unwinds through the Rust frames
+//! between it and the `pcall` catching it, and their destructors run
+//! (`tests/native_boundary_test.lua`). A Rust panic must never reach Lua:
+//! the runtime aborts the process when foreign code catches one. Bindings
+//! keep panics inside `exchange::respond`.
 
 use std::ffi::{c_char, c_int, c_void, CStr};
 use std::sync::OnceLock;
@@ -13,7 +15,22 @@ use std::sync::OnceLock;
 pub struct State {
     _private: [u8; 0],
 }
-pub type L = *mut State;
+
+/// A Lua state, as the running C function was handed it: the transport a
+/// binding reads its request from and writes its response to. Lua's C API
+/// is its methods, named as the manual names them without `lua_`.
+///
+/// Every method is unsafe under one contract: the state is the one Lua is
+/// running this call in, and every stack index names a live slot (or, for
+/// those that take one, an absolute index or pseudo-index). LuaJIT grows the
+/// stack on a push, so pushes need no `checkstack`.
+///
+/// Not `Send`: a handler that must not touch Lua (`exchange::respond`) is
+/// held to it by that bound.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub struct L(*mut State);
+
 pub type CFunction = unsafe extern "C-unwind" fn(L) -> c_int;
 
 pub const GLOBALSINDEX: c_int = -10002;
@@ -99,6 +116,200 @@ api! {
     error: fn(L) -> c_int = c"lua_error";
 }
 
+/// The C API as methods: each forwards to the function `open` resolved.
+/// Those taking a field or type name take it as a `&CStr`.
+#[allow(clippy::missing_safety_doc, reason = "one contract for all, on `L`")]
+impl L {
+    #[inline(always)]
+    pub unsafe fn gettop(self) -> c_int {
+        (api().gettop)(self)
+    }
+    #[inline(always)]
+    pub unsafe fn settop(self, index: c_int) {
+        (api().settop)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn remove(self, index: c_int) {
+        (api().remove)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn pushvalue(self, index: c_int) {
+        (api().pushvalue)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn type_of(self, index: c_int) -> c_int {
+        (api().type_of)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn tonumber(self, index: c_int) -> f64 {
+        (api().tonumber)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn objlen(self, index: c_int) -> usize {
+        (api().objlen)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn pushnil(self) {
+        (api().pushnil)(self)
+    }
+    #[inline(always)]
+    pub unsafe fn pushnumber(self, n: f64) {
+        (api().pushnumber)(self, n)
+    }
+    #[inline(always)]
+    pub unsafe fn pushboolean(self, b: c_int) {
+        (api().pushboolean)(self, b)
+    }
+    #[inline(always)]
+    pub unsafe fn toboolean(self, index: c_int) -> c_int {
+        (api().toboolean)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn call(self, args: c_int, results: c_int) {
+        (api().call)(self, args, results)
+    }
+    #[inline(always)]
+    pub unsafe fn pcall(self, args: c_int, results: c_int, handler: c_int) -> c_int {
+        (api().pcall)(self, args, results, handler)
+    }
+    #[inline(always)]
+    pub unsafe fn pushcclosure(self, function: CFunction, upvalues: c_int) {
+        (api().pushcclosure)(self, function, upvalues)
+    }
+    #[inline(always)]
+    pub unsafe fn createtable(self, array: c_int, hash: c_int) {
+        (api().createtable)(self, array, hash)
+    }
+    #[inline(always)]
+    pub unsafe fn getfield(self, index: c_int, name: &CStr) {
+        (api().getfield)(self, index, name.as_ptr())
+    }
+    #[inline(always)]
+    pub unsafe fn setfield(self, index: c_int, name: &CStr) {
+        (api().setfield)(self, index, name.as_ptr())
+    }
+    #[inline(always)]
+    pub unsafe fn settable(self, index: c_int) {
+        (api().settable)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn iscfunction(self, index: c_int) -> c_int {
+        (api().iscfunction)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn rawgeti(self, index: c_int, n: c_int) {
+        (api().rawgeti)(self, index, n)
+    }
+    #[inline(always)]
+    pub unsafe fn rawget(self, index: c_int) {
+        (api().rawget)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn rawset(self, index: c_int) {
+        (api().rawset)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn concat(self, n: c_int) {
+        (api().concat)(self, n)
+    }
+    #[inline(always)]
+    pub unsafe fn replace(self, index: c_int) {
+        (api().replace)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn insert(self, index: c_int) {
+        (api().insert)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn gettable(self, index: c_int) {
+        (api().gettable)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn yield_(self, results: c_int) -> c_int {
+        (api().yield_)(self, results)
+    }
+    #[inline(always)]
+    pub unsafe fn pushthread(self) -> c_int {
+        (api().pushthread)(self)
+    }
+    #[inline(always)]
+    pub unsafe fn equal(self, a: c_int, b: c_int) -> c_int {
+        (api().equal)(self, a, b)
+    }
+    #[inline(always)]
+    pub unsafe fn rawequal(self, a: c_int, b: c_int) -> c_int {
+        (api().rawequal)(self, a, b)
+    }
+    #[inline(always)]
+    pub unsafe fn lessthan(self, a: c_int, b: c_int) -> c_int {
+        (api().lessthan)(self, a, b)
+    }
+    #[inline(always)]
+    pub unsafe fn where_(self, level: c_int) {
+        (api().where_)(self, level)
+    }
+    #[inline(always)]
+    pub unsafe fn next(self, index: c_int) -> c_int {
+        (api().next)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn getmetatable(self, index: c_int) -> c_int {
+        (api().getmetatable)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn getfenv(self, index: c_int) {
+        (api().getfenv)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn setfenv(self, index: c_int) -> c_int {
+        (api().setfenv)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn tolstring(self, index: c_int, len: *mut usize) -> *const c_char {
+        (api().tolstring)(self, index, len)
+    }
+    #[inline(always)]
+    pub unsafe fn rawseti(self, index: c_int, n: c_int) {
+        (api().rawseti)(self, index, n)
+    }
+    #[inline(always)]
+    pub unsafe fn newuserdata(self, size: usize) -> *mut c_void {
+        (api().newuserdata)(self, size)
+    }
+    #[inline(always)]
+    pub unsafe fn touserdata(self, index: c_int) -> *mut c_void {
+        (api().touserdata)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn setmetatable(self, index: c_int) -> c_int {
+        (api().setmetatable)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn newmetatable(self, name: &CStr) -> c_int {
+        (api().newmetatable)(self, name.as_ptr())
+    }
+    #[inline(always)]
+    pub unsafe fn checkudata(self, index: c_int, name: &CStr) -> *mut c_void {
+        (api().checkudata)(self, index, name.as_ptr())
+    }
+    #[inline(always)]
+    pub unsafe fn checknumber(self, index: c_int) -> f64 {
+        (api().checknumber)(self, index)
+    }
+    #[inline(always)]
+    pub unsafe fn checktype(self, index: c_int, kind: c_int) {
+        (api().checktype)(self, index, kind)
+    }
+    #[inline(always)]
+    pub unsafe fn pushlstring(self, text: *const c_char, len: usize) {
+        (api().pushlstring)(self, text, len)
+    }
+    #[inline(always)]
+    pub unsafe fn error(self) -> c_int {
+        (api().error)(self)
+    }
+}
+
 static API: OnceLock<Api> = OnceLock::new();
 
 #[cfg(windows)]
@@ -150,9 +361,8 @@ pub fn api() -> &'static Api {
 /// # Safety
 /// `l` is a live state with a table at the top, after `open`.
 pub unsafe fn set_function(l: L, name: &CStr, function: CFunction) {
-    let api = api();
-    (api.pushcclosure)(l, function, 0);
-    (api.setfield)(l, -2, name.as_ptr());
+    l.pushcclosure(function, 0);
+    l.setfield(-2, name);
 }
 
 /// Pushes `text` as a Lua string.
@@ -160,7 +370,7 @@ pub unsafe fn set_function(l: L, name: &CStr, function: CFunction) {
 /// # Safety
 /// `l` is a live state, after `open`.
 pub unsafe fn push_str(l: L, text: &str) {
-    (api().pushlstring)(l, text.as_ptr().cast(), text.len());
+    l.pushlstring(text.as_ptr().cast(), text.len());
 }
 
 /// The number in `table[name]` (the table at `index`), or None when absent.
@@ -168,10 +378,9 @@ pub unsafe fn push_str(l: L, text: &str) {
 /// # Safety
 /// `l` is a live state with a table at `index` (an absolute index), after `open`.
 pub unsafe fn field_number(l: L, index: c_int, name: &CStr) -> Option<f64> {
-    let api = api();
-    (api.getfield)(l, index, name.as_ptr());
-    let value = ((api.type_of)(l, -1) == TNUMBER).then(|| (api.tonumber)(l, -1));
-    (api.settop)(l, -2);
+    l.getfield(index, name);
+    let value = (l.type_of(-1) == TNUMBER).then(|| l.tonumber(-1));
+    l.settop(-2);
     value
 }
 
@@ -180,10 +389,9 @@ pub unsafe fn field_number(l: L, index: c_int, name: &CStr) -> Option<f64> {
 /// # Safety
 /// `l` is a live state with a table at `index` (an absolute index), after `open`.
 pub unsafe fn field_truthy(l: L, index: c_int, name: &CStr) -> bool {
-    let api = api();
-    (api.getfield)(l, index, name.as_ptr());
-    let value = (api.toboolean)(l, -1) != 0;
-    (api.settop)(l, -2);
+    l.getfield(index, name);
+    let value = l.toboolean(-1) != 0;
+    l.settop(-2);
     value
 }
 
@@ -193,12 +401,11 @@ pub unsafe fn field_truthy(l: L, index: c_int, name: &CStr) -> bool {
 /// `l` is a live state, after `open`; the bytes live while the value stays
 /// on the stack.
 pub unsafe fn string_at<'a>(l: L, index: c_int) -> Option<&'a [u8]> {
-    let api = api();
-    if (api.type_of)(l, index) != TSTRING {
+    if l.type_of(index) != TSTRING {
         return None;
     }
     let mut len = 0usize;
-    let text = (api.tolstring)(l, index, &mut len);
+    let text = l.tolstring(index, &mut len);
     Some(std::slice::from_raw_parts(text.cast::<u8>(), len))
 }
 
@@ -209,11 +416,10 @@ pub unsafe fn string_at<'a>(l: L, index: c_int) -> Option<&'a [u8]> {
 /// `l` is a live state with a table at `index`, after `open`; `visit` leaves
 /// the stack as it found it.
 pub unsafe fn each(l: L, index: c_int, mut visit: impl FnMut(L)) {
-    let api = api();
-    (api.pushnil)(l);
-    while (api.next)(l, index) != 0 {
+    l.pushnil();
+    while l.next(index) != 0 {
         visit(l);
-        (api.settop)(l, -2);
+        l.settop(-2);
     }
 }
 
@@ -224,7 +430,7 @@ pub unsafe fn each(l: L, index: c_int, mut visit: impl FnMut(L)) {
 pub unsafe fn raise_owned(l: L, message: String) -> ! {
     push_str(l, &message);
     drop(message);
-    (api().error)(l);
+    l.error();
     unreachable!("lua_error does not return")
 }
 
@@ -234,10 +440,9 @@ pub unsafe fn raise_owned(l: L, message: String) -> ! {
 /// `l` is a live state, after `open`; the caller holds nothing that needs a
 /// destructor, since the error unwinds past it.
 pub unsafe fn raise(l: L, message: &CStr) -> ! {
-    let api = api();
     let bytes = message.to_bytes();
-    (api.pushlstring)(l, bytes.as_ptr().cast(), bytes.len());
-    (api.error)(l);
+    l.pushlstring(bytes.as_ptr().cast(), bytes.len());
+    l.error();
     unreachable!("lua_error does not return")
 }
 
@@ -258,12 +463,11 @@ pub unsafe fn raise_where(l: L, message: String) -> ! {
 /// # Safety
 /// As `raise`.
 pub unsafe fn raise_at(l: L, level: c_int, message: String) -> ! {
-    let api = api();
-    (api.where_)(l, level);
+    l.where_(level);
     push_str(l, &message);
     drop(message);
-    (api.concat)(l, 2);
-    (api.error)(l);
+    l.concat(2);
+    l.error();
     unreachable!("lua_error does not return")
 }
 
@@ -272,11 +476,10 @@ pub unsafe fn raise_at(l: L, level: c_int, message: String) -> ! {
 /// # Safety
 /// `l` is a live state, after `open`.
 pub unsafe fn push_tostring(l: L, index: c_int) {
-    let api = api();
-    let index = if index < 0 && index > GLOBALSINDEX { (api.gettop)(l) + index + 1 } else { index };
-    (api.getfield)(l, GLOBALSINDEX, c"tostring".as_ptr());
-    (api.pushvalue)(l, index);
-    (api.call)(l, 1, 1);
+    let index = if index < 0 && index > GLOBALSINDEX { l.gettop() + index + 1 } else { index };
+    l.getfield(GLOBALSINDEX, c"tostring");
+    l.pushvalue(index);
+    l.call(1, 1);
 }
 
 /// tostring(value at `index`), as an owned string.
@@ -286,6 +489,6 @@ pub unsafe fn push_tostring(l: L, index: c_int) {
 pub unsafe fn tostring(l: L, index: c_int) -> String {
     push_tostring(l, index);
     let text = string_at(l, -1).map(|b| String::from_utf8_lossy(b).into_owned()).unwrap_or_default();
-    (api().settop)(l, -2);
+    l.settop(-2);
     text
 }

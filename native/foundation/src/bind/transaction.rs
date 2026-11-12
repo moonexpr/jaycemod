@@ -15,7 +15,7 @@
 
 use super::schedule;
 use super::util::boolean;
-use crate::lua::{api, push_str, raise_where, set_function, tostring, CFunction, GLOBALSINDEX, L, TFUNCTION, TNIL, TTABLE, TUSERDATA};
+use crate::lua::{push_str, raise_where, set_function, tostring, CFunction, GLOBALSINDEX, L, TFUNCTION, TNIL, TTABLE, TUSERDATA};
 use std::ffi::{c_int, CStr};
 
 const TX: &CStr = c"foundation.transaction.tx";
@@ -35,10 +35,9 @@ fn upvalue(i: c_int) -> c_int {
 }
 
 unsafe fn metatable(l: L, name: &CStr, methods: &[(&CStr, CFunction)]) {
-    let api = api();
-    if (api.newmetatable)(l, name.as_ptr()) != 0 {
-        (api.pushvalue)(l, -1);
-        (api.setfield)(l, -2, c"__index".as_ptr());
+    if l.newmetatable(name) != 0 {
+        l.pushvalue(-1);
+        l.setfield(-2, c"__index");
         for (n, f) in methods {
             set_function(l, n, *f);
         }
@@ -49,60 +48,56 @@ unsafe fn metatable(l: L, name: &CStr, methods: &[(&CStr, CFunction)]) {
 
 /// Pushes { refusal = true, kind, detail } of the values at `kind`, `detail`.
 unsafe fn push_refusal(l: L, kind: c_int, detail: c_int) {
-    let api = api();
-    (api.createtable)(l, 0, 3);
-    (api.pushboolean)(l, 1);
-    (api.setfield)(l, -2, c"refusal".as_ptr());
-    (api.pushvalue)(l, kind);
-    (api.setfield)(l, -2, c"kind".as_ptr());
-    (api.pushvalue)(l, detail);
-    (api.setfield)(l, -2, c"detail".as_ptr());
+    l.createtable(0, 3);
+    l.pushboolean(1);
+    l.setfield(-2, c"refusal");
+    l.pushvalue(kind);
+    l.setfield(-2, c"kind");
+    l.pushvalue(detail);
+    l.setfield(-2, c"detail");
 }
 
 unsafe extern "C-unwind" fn refuse(l: L) -> c_int {
-    (api().settop)(l, 2);
+    l.settop(2);
     push_refusal(l, 1, 2);
-    (api().error)(l);
+    l.error();
     0
 }
 
 /// Whether the value at `index` is any refusal.
 unsafe fn is_any_refusal(l: L, index: c_int) -> bool {
-    let api = api();
-    if (api.type_of)(l, index) != TTABLE {
+    if l.type_of(index) != TTABLE {
         return false;
     }
-    (api.getfield)(l, index, c"refusal".as_ptr());
-    let yes = (api.type_of)(l, -1) == crate::lua::TBOOLEAN && (api.toboolean)(l, -1) != 0;
-    (api.settop)(l, -2);
+    l.getfield(index, c"refusal");
+    let yes = l.type_of(-1) == crate::lua::TBOOLEAN && l.toboolean(-1) != 0;
+    l.settop(-2);
     yes
 }
 
 /// Whether the value at `err` is a refusal of one of the kinds at `kinds`.
 unsafe fn is_refusal_of(l: L, err: c_int, kinds: c_int) -> bool {
-    let api = api();
     if !is_any_refusal(l, err) {
         return false;
     }
-    (api.getfield)(l, err, c"kind".as_ptr());
-    (api.gettable)(l, kinds);
-    let yes = (api.type_of)(l, -1) == crate::lua::TBOOLEAN && (api.toboolean)(l, -1) != 0;
-    (api.settop)(l, -2);
+    l.getfield(err, c"kind");
+    l.gettable(kinds);
+    let yes = l.type_of(-1) == crate::lua::TBOOLEAN && l.toboolean(-1) != 0;
+    l.settop(-2);
     yes
 }
 
 unsafe extern "C-unwind" fn is_refusal(l: L) -> c_int {
-    (api().settop)(l, 2);
+    l.settop(2);
     boolean(l, is_refusal_of(l, 1, 2))
 }
 
 /// Pushes err.kind .. ": " .. err.detail.
 unsafe fn push_message(l: L, err: c_int) {
-    let api = api();
-    (api.getfield)(l, err, c"kind".as_ptr());
+    l.getfield(err, c"kind");
     push_str(l, ": ");
-    (api.getfield)(l, err, c"detail".as_ptr());
-    (api.concat)(l, 3);
+    l.getfield(err, c"detail");
+    l.concat(3);
 }
 
 unsafe extern "C-unwind" fn message(l: L) -> c_int {
@@ -112,11 +107,10 @@ unsafe extern "C-unwind" fn message(l: L) -> c_int {
 
 /// Rethrows the value at 1 unless it is a refusal of the kinds at 2.
 unsafe fn refusal_or_rethrow(l: L) {
-    let api = api();
-    (api.settop)(l, 2);
+    l.settop(2);
     if !is_refusal_of(l, 1, 2) {
-        (api.pushvalue)(l, 1);
-        (api.error)(l);
+        l.pushvalue(1);
+        l.error();
     }
 }
 
@@ -128,7 +122,7 @@ unsafe extern "C-unwind" fn explain(l: L) -> c_int {
 
 unsafe extern "C-unwind" fn detail(l: L) -> c_int {
     refusal_or_rethrow(l);
-    (api().getfield)(l, 1, c"detail".as_ptr());
+    l.getfield(1, c"detail");
     1
 }
 
@@ -136,12 +130,11 @@ unsafe extern "C-unwind" fn detail(l: L) -> c_int {
 
 /// Pushes a new pending transaction.
 unsafe fn push_tx(l: L) {
-    let api = api();
-    (api.createtable)(l, 0, 3);
+    l.createtable(0, 3);
     push_str(l, PENDING);
-    (api.setfield)(l, -2, c"state".as_ptr());
-    (api.createtable)(l, 0, 0);
-    (api.setfield)(l, -2, c"callbacks".as_ptr());
+    l.setfield(-2, c"state");
+    l.createtable(0, 0);
+    l.setfield(-2, c"callbacks");
     metatable(
         l,
         TX,
@@ -159,7 +152,7 @@ unsafe fn push_tx(l: L) {
             (c"Remaining", remaining),
         ],
     );
-    (api.setmetatable)(l, -2);
+    l.setmetatable(-2);
 }
 
 unsafe extern "C-unwind" fn new(l: L) -> c_int {
@@ -169,63 +162,61 @@ unsafe extern "C-unwind" fn new(l: L) -> c_int {
 
 /// The state of the transaction at `tx`, as text.
 unsafe fn state_of(l: L, tx: c_int) -> String {
-    let api = api();
-    (api.getfield)(l, tx, c"state".as_ptr());
+    l.getfield(tx, c"state");
     let s = tostring(l, -1);
-    (api.settop)(l, -2);
+    l.settop(-2);
     s
 }
 
 /// Settles the transaction at `tx` as `state`, tx[field] = the value at
 /// `value`, then runs its callbacks; settling twice is the caller's bug.
 unsafe fn settle(l: L, tx: c_int, state: &str, field: &CStr, value: c_int) {
-    let api = api();
     let now = state_of(l, tx);
     if now != PENDING {
         raise_where(l, format!("a {now} transaction cannot settle again"));
     }
     push_str(l, state);
-    (api.setfield)(l, tx, c"state".as_ptr());
-    (api.pushvalue)(l, value);
-    (api.setfield)(l, tx, field.as_ptr());
-    (api.getfield)(l, tx, c"callbacks".as_ptr());
-    let callbacks = (api.gettop)(l);
-    (api.pushnil)(l);
-    (api.setfield)(l, tx, c"callbacks".as_ptr());
+    l.setfield(tx, c"state");
+    l.pushvalue(value);
+    l.setfield(tx, field);
+    l.getfield(tx, c"callbacks");
+    let callbacks = l.gettop();
+    l.pushnil();
+    l.setfield(tx, c"callbacks");
     let mut i = 1;
     loop {
-        (api.rawgeti)(l, callbacks, i);
-        if (api.type_of)(l, -1) == TNIL {
+        l.rawgeti(callbacks, i);
+        if l.type_of(-1) == TNIL {
             break;
         }
-        (api.pushvalue)(l, tx);
-        (api.call)(l, 1, 0);
+        l.pushvalue(tx);
+        l.call(1, 0);
         i += 1;
     }
-    (api.settop)(l, callbacks - 1);
+    l.settop(callbacks - 1);
 }
 
 unsafe extern "C-unwind" fn commit(l: L) -> c_int {
-    (api().settop)(l, 2);
+    l.settop(2);
     settle(l, 1, COMMITTED, c"value", 2);
     0
 }
 
 unsafe extern "C-unwind" fn decline(l: L) -> c_int {
-    (api().settop)(l, 3);
+    l.settop(3);
     push_refusal(l, 2, 3);
     settle(l, 1, DECLINED, c"refusal", 4);
     0
 }
 
 unsafe extern "C-unwind" fn fail(l: L) -> c_int {
-    (api().settop)(l, 2);
+    l.settop(2);
     settle(l, 1, FAILED, c"err", 2);
     0
 }
 
 unsafe fn field(l: L, name: &CStr) -> c_int {
-    (api().getfield)(l, 1, name.as_ptr());
+    l.getfield(1, name);
     1
 }
 
@@ -246,17 +237,16 @@ unsafe extern "C-unwind" fn error_of(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn on_settle(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
+    l.settop(2);
     if state_of(l, 1) == PENDING {
-        (api.getfield)(l, 1, c"callbacks".as_ptr());
-        let n = (api.objlen)(l, -1) as c_int;
-        (api.pushvalue)(l, 2);
-        (api.rawseti)(l, -2, n + 1);
+        l.getfield(1, c"callbacks");
+        let n = l.objlen(-1) as c_int;
+        l.pushvalue(2);
+        l.rawseti(-2, n + 1);
     } else {
-        (api.pushvalue)(l, 2);
-        (api.pushvalue)(l, 1);
-        (api.call)(l, 1, 0);
+        l.pushvalue(2);
+        l.pushvalue(1);
+        l.call(1, 0);
     }
     0
 }
@@ -264,17 +254,16 @@ unsafe extern "C-unwind" fn on_settle(l: L) -> c_int {
 /// The settled transaction at 1's outcome: its value returned, or its
 /// refusal or error raised.
 unsafe fn outcome(l: L) -> c_int {
-    let api = api();
     match state_of(l, 1).as_str() {
         COMMITTED => field(l, c"value"),
         DECLINED => {
-            (api.getfield)(l, 1, c"refusal".as_ptr());
-            (api.error)(l);
+            l.getfield(1, c"refusal");
+            l.error();
             0
         }
         _ => {
-            (api.getfield)(l, 1, c"err".as_ptr());
-            (api.error)(l);
+            l.getfield(1, c"err");
+            l.error();
             0
         }
     }
@@ -282,23 +271,21 @@ unsafe fn outcome(l: L) -> c_int {
 
 /// tx:Await(scheduler), in a task of the native list.schedule
 unsafe extern "C-unwind" fn await_tx(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
+    l.settop(2);
     if state_of(l, 1) != PENDING {
         return outcome(l);
     }
     // the scheduler at 1 and the transaction at 2, as park_on reads them
-    (api.insert)(l, 1);
+    l.insert(1);
     schedule::park_on(l)
 }
 
 // Work -----------------------------------------------------------------------------
 
 unsafe fn push_work(l: L) {
-    let api = api();
-    (api.createtable)(l, 0, 1);
-    (api.createtable)(l, 0, 0);
-    (api.setfield)(l, -2, c"undos".as_ptr());
+    l.createtable(0, 1);
+    l.createtable(0, 0);
+    l.setfield(-2, c"undos");
     metatable(
         l,
         WORK,
@@ -312,47 +299,45 @@ unsafe fn push_work(l: L) {
             (c"Remaining", work_remaining),
         ],
     );
-    (api.setmetatable)(l, -2);
+    l.setmetatable(-2);
 }
 
 unsafe extern "C-unwind" fn undo(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
-    (api.getfield)(l, 1, c"undos".as_ptr());
-    let n = (api.objlen)(l, -1) as c_int;
-    (api.pushvalue)(l, 2);
-    (api.rawseti)(l, -2, n + 1);
+    l.settop(2);
+    l.getfield(1, c"undos");
+    let n = l.objlen(-1) as c_int;
+    l.pushvalue(2);
+    l.rawseti(-2, n + 1);
     0
 }
 
 /// Replaces the work at 1 with its scheduler; a transaction run at once
 /// has none, which is our bug.
 unsafe fn scheduler_for_work(l: L) {
-    let api = api();
-    (api.getfield)(l, 1, c"scheduler".as_ptr());
-    if (api.type_of)(l, -1) == TNIL {
+    l.getfield(1, c"scheduler");
+    if l.type_of(-1) == TNIL {
         raise_where(l, "this transaction runs at once: it has no scheduler to yield on".into());
     }
-    (api.replace)(l, 1);
+    l.replace(1);
 }
 
 /// work:Yield(): the running task gives up its turn.
 unsafe extern "C-unwind" fn work_yield(l: L) -> c_int {
-    (api().settop)(l, 1);
+    l.settop(1);
     scheduler_for_work(l);
     schedule::yield_turn(l)
 }
 
 /// work:CheckYield(): yields once the scheduler's slice is spent.
 unsafe extern "C-unwind" fn work_check_yield(l: L) -> c_int {
-    (api().settop)(l, 1);
+    l.settop(1);
     scheduler_for_work(l);
     schedule::check_yield(l)
 }
 
 /// work:Wait(ready): parks until ready() holds.
 unsafe extern "C-unwind" fn work_wait(l: L) -> c_int {
-    (api().settop)(l, 2);
+    l.settop(2);
     scheduler_for_work(l);
     schedule::wait(l)
 }
@@ -360,34 +345,31 @@ unsafe extern "C-unwind" fn work_wait(l: L) -> c_int {
 /// The condition of work:WaitFor: upvalue 1 the countdown; whether it has
 /// elapsed.
 unsafe extern "C-unwind" fn elapsed(l: L) -> c_int {
-    let api = api();
-    (api.pushvalue)(l, upvalue(1));
-    (api.getfield)(l, -1, c"IsElapsed".as_ptr());
-    (api.pushvalue)(l, -2);
-    (api.call)(l, 1, 1);
+    l.pushvalue(upvalue(1));
+    l.getfield(-1, c"IsElapsed");
+    l.pushvalue(-2);
+    l.call(1, 1);
     1
 }
 
 /// work:WaitFor(countdown): parks until the countdown has elapsed.
 unsafe extern "C-unwind" fn work_wait_for(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
-    (api.pushvalue)(l, 2);
-    (api.pushcclosure)(l, elapsed, 1);
+    l.settop(2);
+    l.pushvalue(2);
+    l.pushcclosure(elapsed, 1);
     scheduler_for_work(l);
     // scheduler, countdown, condition: the countdown is not wanted
-    (api.remove)(l, 2);
+    l.remove(2);
     schedule::wait(l)
 }
 
 /// work:Await(tx): parks until tx settles, then its value; its refusal or
 /// error ends this task.
 unsafe extern "C-unwind" fn work_await(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
+    l.settop(2);
     scheduler_for_work(l);
     if state_of(l, 2) != PENDING {
-        (api.remove)(l, 1);
+        l.remove(1);
         return outcome(l);
     }
     schedule::park_on(l)
@@ -396,35 +378,33 @@ unsafe extern "C-unwind" fn work_await(l: L) -> c_int {
 /// Pushes the seconds left on the countdown of the transaction at `tx`,
 /// math.huge with no deadline.
 unsafe fn push_remaining(l: L, tx: c_int) {
-    let api = api();
-    (api.getfield)(l, tx, c"countdown".as_ptr());
-    if (api.type_of)(l, -1) == TNIL {
-        (api.settop)(l, -2);
-        (api.pushnumber)(l, f64::INFINITY);
+    l.getfield(tx, c"countdown");
+    if l.type_of(-1) == TNIL {
+        l.settop(-2);
+        l.pushnumber(f64::INFINITY);
         return;
     }
-    (api.getfield)(l, -1, c"GetRemainingTime".as_ptr());
-    (api.pushvalue)(l, -2);
-    (api.call)(l, 1, 1);
-    (api.remove)(l, -2);
+    l.getfield(-1, c"GetRemainingTime");
+    l.pushvalue(-2);
+    l.call(1, 1);
+    l.remove(-2);
 }
 
 /// work:Remaining(): the seconds left to its transaction.
 unsafe extern "C-unwind" fn work_remaining(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 1);
-    (api.getfield)(l, 1, c"tx".as_ptr());
-    if (api.type_of)(l, -1) == TNIL {
-        (api.pushnumber)(l, f64::INFINITY);
+    l.settop(1);
+    l.getfield(1, c"tx");
+    if l.type_of(-1) == TNIL {
+        l.pushnumber(f64::INFINITY);
         return 1;
     }
-    push_remaining(l, (api.gettop)(l));
+    push_remaining(l, l.gettop());
     1
 }
 
 /// tx:Remaining(): the seconds left to it, math.huge with no deadline.
 unsafe extern "C-unwind" fn remaining(l: L) -> c_int {
-    (api().settop)(l, 1);
+    l.settop(1);
     push_remaining(l, 1);
     1
 }
@@ -432,193 +412,185 @@ unsafe extern "C-unwind" fn remaining(l: L) -> c_int {
 /// Whether the value at `index` is a started countdown, as a deadline is
 /// read: it says IsElapsed, GetRemainingTime and HasStarted, and has started.
 unsafe fn is_started_countdown(l: L, index: c_int) -> bool {
-    let api = api();
-    let kind = (api.type_of)(l, index);
+    let kind = l.type_of(index);
     if kind != TTABLE && kind != TUSERDATA {
         return false;
     }
     for name in [c"IsElapsed", c"GetRemainingTime", c"HasStarted"] {
-        (api.getfield)(l, index, name.as_ptr());
-        let function = (api.type_of)(l, -1) == TFUNCTION;
-        (api.settop)(l, -2);
+        l.getfield(index, name);
+        let function = l.type_of(-1) == TFUNCTION;
+        l.settop(-2);
         if !function {
             return false;
         }
     }
-    (api.getfield)(l, index, c"HasStarted".as_ptr());
-    (api.pushvalue)(l, index);
-    (api.call)(l, 1, 1);
-    let started = (api.toboolean)(l, -1) != 0;
-    (api.settop)(l, -2);
+    l.getfield(index, c"HasStarted");
+    l.pushvalue(index);
+    l.call(1, 1);
+    let started = l.toboolean(-1) != 0;
+    l.settop(-2);
     started
 }
 
 /// A task the scheduler ended for want of time (upvalue 1 the transaction):
 /// the work undone, the transaction declined as timed out.
 unsafe extern "C-unwind" fn ran_out(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 0);
-    (api.pushvalue)(l, upvalue(1));
-    let tx = (api.gettop)(l);
+    l.settop(0);
+    l.pushvalue(upvalue(1));
+    let tx = l.gettop();
     if state_of(l, tx) != PENDING {
         return 0;
     }
-    (api.getfield)(l, tx, c"work".as_ptr());
-    let work = (api.gettop)(l);
+    l.getfield(tx, c"work");
+    let work = l.gettop();
     push_str(l, TIMED_OUT);
     push_str(l, RAN_OUT_DETAIL);
     push_refusal(l, work + 1, work + 2);
-    let refusal = (api.gettop)(l);
+    let refusal = l.gettop();
     conclude(l, tx, work, false, refusal);
     0
 }
 
 /// tx:Within(countdown) -> tx: a time to settle in (see the Lua twin).
 unsafe extern "C-unwind" fn within(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
+    l.settop(2);
     let now = state_of(l, 1);
     if now != PENDING {
         raise_where(l, format!("a {now} transaction has no time left to limit"));
     }
-    (api.getfield)(l, 1, c"task".as_ptr());
-    let task = (api.type_of)(l, -1) != TNIL;
-    (api.settop)(l, 2);
+    l.getfield(1, c"task");
+    let task = l.type_of(-1) != TNIL;
+    l.settop(2);
     if !task {
         raise_where(l, "only a spawned transaction has a task to limit".into());
     }
-    (api.getfield)(l, 1, c"countdown".as_ptr());
-    let limited = (api.type_of)(l, -1) != TNIL;
-    (api.settop)(l, 2);
+    l.getfield(1, c"countdown");
+    let limited = l.type_of(-1) != TNIL;
+    l.settop(2);
     if limited {
         raise_where(l, "a transaction has one deadline".into());
     }
     if !is_started_countdown(l, 2) {
         raise_where(l, "a deadline is a started countdown (an unstarted one has elapsed)".into());
     }
-    (api.pushvalue)(l, 2);
-    (api.setfield)(l, 1, c"countdown".as_ptr());
+    l.pushvalue(2);
+    l.setfield(1, c"countdown");
     // scheduler:Limit(task, countdown, ran_out)
-    (api.getfield)(l, 1, c"scheduler".as_ptr());
-    let scheduler = (api.gettop)(l);
-    (api.getfield)(l, scheduler, c"Limit".as_ptr());
-    (api.pushvalue)(l, scheduler);
-    (api.getfield)(l, 1, c"task".as_ptr());
-    (api.pushvalue)(l, 2);
-    (api.pushvalue)(l, 1);
-    (api.pushcclosure)(l, ran_out, 1);
-    (api.call)(l, 4, 0);
-    (api.settop)(l, 1);
+    l.getfield(1, c"scheduler");
+    let scheduler = l.gettop();
+    l.getfield(scheduler, c"Limit");
+    l.pushvalue(scheduler);
+    l.getfield(1, c"task");
+    l.pushvalue(2);
+    l.pushvalue(1);
+    l.pushcclosure(ran_out, 1);
+    l.call(4, 0);
+    l.settop(1);
     1
 }
 
 /// Runs the work at `work`'s undos newest first; pushes the first error
 /// one raised, or nil.
 unsafe fn rollback(l: L, work: c_int) {
-    let api = api();
-    (api.getfield)(l, work, c"undos".as_ptr());
-    let undos = (api.gettop)(l);
-    let n = (api.objlen)(l, undos) as c_int;
+    l.getfield(work, c"undos");
+    let undos = l.gettop();
+    let n = l.objlen(undos) as c_int;
     for i in (1..=n).rev() {
-        (api.rawgeti)(l, undos, i);
-        if (api.pcall)(l, 0, 0, 0) != 0 {
-            (api.remove)(l, undos);
+        l.rawgeti(undos, i);
+        if l.pcall(0, 0, 0) != 0 {
+            l.remove(undos);
             return;
         }
     }
-    (api.settop)(l, undos - 1);
-    (api.pushnil)(l);
+    l.settop(undos - 1);
+    l.pushnil();
 }
 
 /// Settles the transaction at `tx` by the work's outcome: ok with the
 /// value at `result`, else the error at `result` after the undos.
 unsafe fn conclude(l: L, tx: c_int, work: c_int, ok: bool, result: c_int) {
-    let api = api();
     if ok {
         settle(l, tx, COMMITTED, c"value", result);
         return;
     }
     rollback(l, work);
-    let broken = (api.gettop)(l);
-    if (api.type_of)(l, broken) != TNIL {
+    let broken = l.gettop();
+    if l.type_of(broken) != TNIL {
         let text = format!("{}; then undoing failed: {}", tostring(l, result), tostring(l, broken));
         push_str(l, &text);
-        let msg = (api.gettop)(l);
+        let msg = l.gettop();
         settle(l, tx, FAILED, c"err", msg);
     } else if is_any_refusal(l, result) {
         settle(l, tx, DECLINED, c"refusal", result);
     } else {
         settle(l, tx, FAILED, c"err", result);
     }
-    (api.settop)(l, broken - 1);
+    l.settop(broken - 1);
 }
 
 /// transaction.Run(fn, ...) -> tx: fn(work, ...) now
 unsafe extern "C-unwind" fn run(l: L) -> c_int {
-    let api = api();
-    let n = (api.gettop)(l);
+    let n = l.gettop();
     push_tx(l);
-    let tx = (api.gettop)(l);
+    let tx = l.gettop();
     push_work(l);
-    let work = (api.gettop)(l);
-    (api.pushvalue)(l, tx);
-    (api.setfield)(l, work, c"tx".as_ptr());
-    (api.pushvalue)(l, 1);
-    (api.pushvalue)(l, work);
+    let work = l.gettop();
+    l.pushvalue(tx);
+    l.setfield(work, c"tx");
+    l.pushvalue(1);
+    l.pushvalue(work);
     for i in 2..=n {
-        (api.pushvalue)(l, i);
+        l.pushvalue(i);
     }
-    let ok = (api.pcall)(l, n, 1, 0) == 0;
-    let result = (api.gettop)(l);
+    let ok = l.pcall(n, 1, 0) == 0;
+    let result = l.gettop();
     conclude(l, tx, work, ok, result);
-    (api.settop)(l, tx);
+    l.settop(tx);
     1
 }
 
 /// A spawned transaction's finish handler: upvalue 1 the transaction, 2 its
 /// work; called with (ok, results or error).
 unsafe extern "C-unwind" fn finished(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
-    let ok = (api.toboolean)(l, 1) != 0;
-    (api.pushvalue)(l, upvalue(1));
-    let tx = (api.gettop)(l);
-    (api.pushvalue)(l, upvalue(2));
-    let work = (api.gettop)(l);
+    l.settop(2);
+    let ok = l.toboolean(1) != 0;
+    l.pushvalue(upvalue(1));
+    let tx = l.gettop();
+    l.pushvalue(upvalue(2));
+    let work = l.gettop();
     conclude(l, tx, work, ok, 2);
     0
 }
 
 /// transaction.Spawn(scheduler, fn, ...) -> tx: the same as a task
 unsafe extern "C-unwind" fn spawn(l: L) -> c_int {
-    let api = api();
-    let n = (api.gettop)(l);
+    let n = l.gettop();
     push_tx(l);
     push_work(l);
     // scheduler, fn, work, args..., then tx and work above
-    (api.pushvalue)(l, n + 2);
-    (api.insert)(l, 3);
+    l.pushvalue(n + 2);
+    l.insert(3);
     let tx = n + 2;
-    (api.pushvalue)(l, tx);
-    (api.pushvalue)(l, tx + 1);
-    (api.pushcclosure)(l, finished, 2);
+    l.pushvalue(tx);
+    l.pushvalue(tx + 1);
+    l.pushcclosure(finished, 2);
     // the handler right after the task's values: tx moves up to n + 3
-    (api.insert)(l, n + 2);
+    l.insert(n + 2);
     schedule::spawn_finishing(l, n + 1);
     // the task (spawn_finishing left it on top), the scheduler and the work,
     // kept on the transaction and the other way, as the Lua twin's
-    let (tx, work, thread) = (n + 3, n + 4, (api.gettop)(l));
-    (api.pushvalue)(l, thread);
-    (api.setfield)(l, tx, c"task".as_ptr());
-    (api.pushvalue)(l, 1);
-    (api.setfield)(l, tx, c"scheduler".as_ptr());
-    (api.pushvalue)(l, work);
-    (api.setfield)(l, tx, c"work".as_ptr());
-    (api.pushvalue)(l, tx);
-    (api.setfield)(l, work, c"tx".as_ptr());
-    (api.pushvalue)(l, 1);
-    (api.setfield)(l, work, c"scheduler".as_ptr());
-    (api.pushvalue)(l, tx);
+    let (tx, work, thread) = (n + 3, n + 4, l.gettop());
+    l.pushvalue(thread);
+    l.setfield(tx, c"task");
+    l.pushvalue(1);
+    l.setfield(tx, c"scheduler");
+    l.pushvalue(work);
+    l.setfield(tx, c"work");
+    l.pushvalue(tx);
+    l.setfield(work, c"tx");
+    l.pushvalue(1);
+    l.setfield(work, c"scheduler");
+    l.pushvalue(tx);
     1
 }
 
@@ -627,38 +599,37 @@ unsafe extern "C-unwind" fn spawn(l: L) -> c_int {
 /// The callback each transaction of All runs: upvalue 1 the combined one,
 /// 2 its state { values, left }, 3 the transaction's place.
 unsafe extern "C-unwind" fn all_step(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 1);
-    (api.pushvalue)(l, upvalue(1));
-    let all = (api.gettop)(l);
+    l.settop(1);
+    l.pushvalue(upvalue(1));
+    let all = l.gettop();
     if state_of(l, all) != PENDING {
         return 0;
     }
     match state_of(l, 1).as_str() {
         COMMITTED => {
-            (api.pushvalue)(l, upvalue(2));
-            let own = (api.gettop)(l);
-            (api.getfield)(l, own, c"values".as_ptr());
-            let values = (api.gettop)(l);
-            (api.getfield)(l, 1, c"value".as_ptr());
-            (api.rawseti)(l, values, (api.tonumber)(l, upvalue(3)) as c_int);
-            (api.getfield)(l, own, c"left".as_ptr());
-            let left = (api.tonumber)(l, -1) - 1.0;
-            (api.settop)(l, -2);
-            (api.pushnumber)(l, left);
-            (api.setfield)(l, own, c"left".as_ptr());
+            l.pushvalue(upvalue(2));
+            let own = l.gettop();
+            l.getfield(own, c"values");
+            let values = l.gettop();
+            l.getfield(1, c"value");
+            l.rawseti(values, l.tonumber(upvalue(3)) as c_int);
+            l.getfield(own, c"left");
+            let left = l.tonumber(-1) - 1.0;
+            l.settop(-2);
+            l.pushnumber(left);
+            l.setfield(own, c"left");
             if left == 0.0 {
                 settle(l, all, COMMITTED, c"value", values);
             }
         }
         DECLINED => {
-            (api.getfield)(l, 1, c"refusal".as_ptr());
-            let r = (api.gettop)(l);
+            l.getfield(1, c"refusal");
+            let r = l.gettop();
             settle(l, all, DECLINED, c"refusal", r);
         }
         _ => {
-            (api.getfield)(l, 1, c"err".as_ptr());
-            let e = (api.gettop)(l);
+            l.getfield(1, c"err");
+            let e = l.gettop();
             settle(l, all, FAILED, c"err", e);
         }
     }
@@ -666,168 +637,161 @@ unsafe extern "C-unwind" fn all_step(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn all(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 1);
-    (api.checktype)(l, 1, TTABLE);
+    l.settop(1);
+    l.checktype(1, TTABLE);
     push_tx(l);
-    let combined = (api.gettop)(l);
-    (api.createtable)(l, 0, 0);
-    let values = (api.gettop)(l);
-    let n = (api.objlen)(l, 1);
+    let combined = l.gettop();
+    l.createtable(0, 0);
+    let values = l.gettop();
+    let n = l.objlen(1);
     if n == 0 {
         settle(l, combined, COMMITTED, c"value", values);
-        (api.settop)(l, combined);
+        l.settop(combined);
         return 1;
     }
-    (api.createtable)(l, 0, 2);
-    let own = (api.gettop)(l);
-    (api.pushvalue)(l, values);
-    (api.setfield)(l, own, c"values".as_ptr());
-    (api.pushnumber)(l, n as f64);
-    (api.setfield)(l, own, c"left".as_ptr());
+    l.createtable(0, 2);
+    let own = l.gettop();
+    l.pushvalue(values);
+    l.setfield(own, c"values");
+    l.pushnumber(n as f64);
+    l.setfield(own, c"left");
     for i in 1..=n as c_int {
-        (api.rawgeti)(l, 1, i);
-        let tx = (api.gettop)(l);
-        (api.getfield)(l, tx, c"OnSettle".as_ptr());
-        (api.pushvalue)(l, tx);
-        (api.pushvalue)(l, combined);
-        (api.pushvalue)(l, own);
-        (api.pushnumber)(l, i as f64);
-        (api.pushcclosure)(l, all_step, 3);
-        (api.call)(l, 2, 0);
-        (api.settop)(l, own);
+        l.rawgeti(1, i);
+        let tx = l.gettop();
+        l.getfield(tx, c"OnSettle");
+        l.pushvalue(tx);
+        l.pushvalue(combined);
+        l.pushvalue(own);
+        l.pushnumber(i as f64);
+        l.pushcclosure(all_step, 3);
+        l.call(2, 0);
+        l.settop(own);
     }
-    (api.settop)(l, combined);
+    l.settop(combined);
     1
 }
 
 // Over the wire -------------------------------------------------------------------
 
 unsafe extern "C-unwind" fn reply(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
+    l.settop(2);
     let state = state_of(l, 1);
     if state == PENDING {
         raise_where(l, "a pending transaction has no reply yet".into());
     }
-    (api.createtable)(l, 0, 3);
-    let out = (api.gettop)(l);
+    l.createtable(0, 3);
+    let out = l.gettop();
     if state == DECLINED {
-        (api.getfield)(l, 1, c"refusal".as_ptr());
-        let r = (api.gettop)(l);
-        let theirs = (api.type_of)(l, 2) == TNIL || is_refusal_of(l, r, 2);
+        l.getfield(1, c"refusal");
+        let r = l.gettop();
+        let theirs = l.type_of(2) == TNIL || is_refusal_of(l, r, 2);
         if !theirs {
             push_str(l, FAILED);
-            (api.setfield)(l, out, c"state".as_ptr());
-            (api.settop)(l, out);
+            l.setfield(out, c"state");
+            l.settop(out);
             return 1;
         }
         push_str(l, DECLINED);
-        (api.setfield)(l, out, c"state".as_ptr());
-        (api.getfield)(l, r, c"kind".as_ptr());
-        (api.setfield)(l, out, c"kind".as_ptr());
-        (api.getfield)(l, r, c"detail".as_ptr());
-        (api.setfield)(l, out, c"detail".as_ptr());
-        (api.settop)(l, out);
+        l.setfield(out, c"state");
+        l.getfield(r, c"kind");
+        l.setfield(out, c"kind");
+        l.getfield(r, c"detail");
+        l.setfield(out, c"detail");
+        l.settop(out);
         return 1;
     }
     push_str(l, &state);
-    (api.setfield)(l, out, c"state".as_ptr());
+    l.setfield(out, c"state");
     1
 }
 
 unsafe extern "C-unwind" fn ledger(l: L) -> c_int {
-    let api = api();
-    (api.createtable)(l, 0, 3);
-    (api.createtable)(l, 0, 0);
-    (api.setfield)(l, -2, c"open".as_ptr());
-    (api.pushnumber)(l, 0.0);
-    (api.setfield)(l, -2, c"count".as_ptr());
-    (api.pushnumber)(l, 0.0);
-    (api.setfield)(l, -2, c"nextId".as_ptr());
+    l.createtable(0, 3);
+    l.createtable(0, 0);
+    l.setfield(-2, c"open");
+    l.pushnumber(0.0);
+    l.setfield(-2, c"count");
+    l.pushnumber(0.0);
+    l.setfield(-2, c"nextId");
     metatable(l, LEDGER, &[(c"Open", ledger_open), (c"Settle", ledger_settle), (c"Expire", ledger_expire), (c"Count", ledger_count)]);
-    (api.setmetatable)(l, -2);
+    l.setmetatable(-2);
     1
 }
 
 unsafe fn add_count(l: L, by: f64) {
-    let api = api();
-    (api.getfield)(l, 1, c"count".as_ptr());
-    let n = (api.tonumber)(l, -1) + by;
-    (api.settop)(l, -2);
-    (api.pushnumber)(l, n);
-    (api.setfield)(l, 1, c"count".as_ptr());
+    l.getfield(1, c"count");
+    let n = l.tonumber(-1) + by;
+    l.settop(-2);
+    l.pushnumber(n);
+    l.setfield(1, c"count");
 }
 
 unsafe extern "C-unwind" fn ledger_open(l: L) -> c_int {
-    let api = api();
-    let (now, timeout) = ((api.checknumber)(l, 2), (api.checknumber)(l, 3));
-    (api.getfield)(l, 1, c"nextId".as_ptr());
-    let id = (api.tonumber)(l, -1);
-    (api.settop)(l, -2);
-    (api.pushnumber)(l, (id + 1.0) % 2f64.powf(ID_BITS));
-    (api.setfield)(l, 1, c"nextId".as_ptr());
+    let (now, timeout) = (l.checknumber(2), l.checknumber(3));
+    l.getfield(1, c"nextId");
+    let id = l.tonumber(-1);
+    l.settop(-2);
+    l.pushnumber((id + 1.0) % 2f64.powf(ID_BITS));
+    l.setfield(1, c"nextId");
     push_tx(l);
-    let tx = (api.gettop)(l);
-    (api.getfield)(l, 1, c"open".as_ptr());
-    (api.pushnumber)(l, id);
-    (api.createtable)(l, 0, 2);
-    (api.pushvalue)(l, tx);
-    (api.setfield)(l, -2, c"tx".as_ptr());
-    (api.pushnumber)(l, now + timeout);
-    (api.setfield)(l, -2, c"deadline".as_ptr());
-    (api.rawset)(l, -3);
-    (api.settop)(l, tx);
+    let tx = l.gettop();
+    l.getfield(1, c"open");
+    l.pushnumber(id);
+    l.createtable(0, 2);
+    l.pushvalue(tx);
+    l.setfield(-2, c"tx");
+    l.pushnumber(now + timeout);
+    l.setfield(-2, c"deadline");
+    l.rawset(-3);
+    l.settop(tx);
     add_count(l, 1.0);
-    (api.pushnumber)(l, id);
-    (api.pushvalue)(l, tx);
+    l.pushnumber(id);
+    l.pushvalue(tx);
     2
 }
 
 /// Closes the entry `id` (the number at `id`), pushing its transaction or nil.
 unsafe fn close(l: L, id: c_int) {
-    let api = api();
-    (api.getfield)(l, 1, c"open".as_ptr());
-    let open = (api.gettop)(l);
-    (api.pushvalue)(l, id);
-    (api.rawget)(l, open);
-    if (api.type_of)(l, -1) == TNIL {
-        (api.remove)(l, open);
+    l.getfield(1, c"open");
+    let open = l.gettop();
+    l.pushvalue(id);
+    l.rawget(open);
+    if l.type_of(-1) == TNIL {
+        l.remove(open);
         return;
     }
-    (api.getfield)(l, -1, c"tx".as_ptr());
-    (api.pushvalue)(l, id);
-    (api.pushnil)(l);
-    (api.rawset)(l, open);
-    (api.replace)(l, open);
-    (api.settop)(l, open);
+    l.getfield(-1, c"tx");
+    l.pushvalue(id);
+    l.pushnil();
+    l.rawset(open);
+    l.replace(open);
+    l.settop(open);
     add_count(l, -1.0);
 }
 
 unsafe extern "C-unwind" fn ledger_settle(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 3);
+    l.settop(3);
     close(l, 2);
-    let tx = (api.gettop)(l);
-    if (api.type_of)(l, tx) == TNIL {
+    let tx = l.gettop();
+    if l.type_of(tx) == TNIL {
         return boolean(l, false);
     }
-    (api.getfield)(l, 3, c"state".as_ptr());
+    l.getfield(3, c"state");
     let state = tostring(l, -1);
-    (api.settop)(l, tx);
+    l.settop(tx);
     match state.as_str() {
         COMMITTED => {
-            (api.pushnil)(l);
+            l.pushnil();
             settle(l, tx, COMMITTED, c"value", tx + 1);
         }
         DECLINED => {
-            (api.getfield)(l, 3, c"kind".as_ptr());
-            (api.getfield)(l, 3, c"detail".as_ptr());
+            l.getfield(3, c"kind");
+            l.getfield(3, c"detail");
             push_refusal(l, tx + 1, tx + 2);
             settle(l, tx, DECLINED, c"refusal", tx + 3);
         }
         _ => {
-            (api.getfield)(l, 3, c"state".as_ptr());
+            l.getfield(3, c"state");
             settle(l, tx, FAILED, c"err", tx + 1);
         }
     }
@@ -835,36 +799,35 @@ unsafe extern "C-unwind" fn ledger_settle(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn ledger_expire(l: L) -> c_int {
-    let api = api();
-    let now = (api.checknumber)(l, 2);
-    (api.settop)(l, 2);
-    (api.getfield)(l, 1, c"open".as_ptr());
-    let open = (api.gettop)(l);
-    (api.createtable)(l, 0, 0);
-    let due = (api.gettop)(l);
+    let now = l.checknumber(2);
+    l.settop(2);
+    l.getfield(1, c"open");
+    let open = l.gettop();
+    l.createtable(0, 0);
+    let due = l.gettop();
     let mut n = 0;
-    (api.pushnil)(l);
-    while (api.next)(l, open) != 0 {
-        (api.getfield)(l, -1, c"deadline".as_ptr());
-        let deadline = (api.tonumber)(l, -1);
-        (api.settop)(l, -2);
+    l.pushnil();
+    while l.next(open) != 0 {
+        l.getfield(-1, c"deadline");
+        let deadline = l.tonumber(-1);
+        l.settop(-2);
         if now >= deadline {
             n += 1;
-            (api.pushvalue)(l, -2);
-            (api.rawseti)(l, due, n);
+            l.pushvalue(-2);
+            l.rawseti(due, n);
         }
-        (api.settop)(l, -2);
+        l.settop(-2);
     }
     for i in 1..=n {
-        (api.rawgeti)(l, due, i);
-        let id = (api.gettop)(l);
+        l.rawgeti(due, i);
+        let id = l.gettop();
         close(l, id);
-        let tx = (api.gettop)(l);
+        let tx = l.gettop();
         push_str(l, TIMED_OUT);
         push_str(l, TIMED_OUT_DETAIL);
         push_refusal(l, tx + 1, tx + 2);
         settle(l, tx, DECLINED, c"refusal", tx + 3);
-        (api.settop)(l, due);
+        l.settop(due);
     }
     0
 }
@@ -875,7 +838,6 @@ unsafe extern "C-unwind" fn ledger_count(l: L) -> c_int {
 
 /// Pushes the transaction module table.
 pub unsafe fn push_module(l: L) {
-    let api = api();
     crate::module::push(
         l,
         &[
@@ -903,8 +865,8 @@ pub unsafe fn push_module(l: L) {
         (c"RAN_OUT_DETAIL", RAN_OUT_DETAIL),
     ] {
         push_str(l, v);
-        (api.setfield)(l, -2, name.as_ptr());
+        l.setfield(-2, name);
     }
-    (api.pushnumber)(l, ID_BITS);
-    (api.setfield)(l, -2, c"ID_BITS".as_ptr());
+    l.pushnumber(ID_BITS);
+    l.setfield(-2, c"ID_BITS");
 }

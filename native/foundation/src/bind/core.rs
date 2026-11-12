@@ -7,7 +7,7 @@
 //! apart from its constants, as the Lua twins keep it apart.
 
 use super::util::{boolean, each_item, nothing, number};
-use crate::lua::{api, push_str, raise_at, raise_where, set_function, string_at, tostring, L, TFUNCTION, TNIL, TNUMBER, TSTRING, TTABLE};
+use crate::lua::{push_str, raise_at, raise_where, set_function, string_at, tostring, L, TFUNCTION, TNIL, TNUMBER, TSTRING, TTABLE};
 use std::ffi::{c_int, CStr};
 
 const REGISTRY: c_int = -10000;
@@ -18,29 +18,27 @@ fn upvalue(i: c_int) -> c_int {
 
 /// Pushes the registry's weak-keyed table `name`, made the first time.
 unsafe fn weak_table(l: L, name: &CStr) {
-    let api = api();
-    (api.getfield)(l, REGISTRY, name.as_ptr());
-    if (api.type_of)(l, -1) == TTABLE {
+    l.getfield(REGISTRY, name);
+    if l.type_of(-1) == TTABLE {
         return;
     }
-    (api.settop)(l, -2);
-    (api.createtable)(l, 0, 0);
-    (api.createtable)(l, 0, 1);
+    l.settop(-2);
+    l.createtable(0, 0);
+    l.createtable(0, 1);
     push_str(l, "k");
-    (api.setfield)(l, -2, c"__mode".as_ptr());
-    (api.setmetatable)(l, -2);
-    (api.pushvalue)(l, -1);
-    (api.setfield)(l, REGISTRY, name.as_ptr());
+    l.setfield(-2, c"__mode");
+    l.setmetatable(-2);
+    l.pushvalue(-1);
+    l.setfield(REGISTRY, name);
 }
 
 /// Pushes registry table `name`[value at `key`].
 unsafe fn state_of(l: L, name: &CStr, key: c_int) {
-    let api = api();
-    let key = if key < 0 { (api.gettop)(l) + key + 1 } else { key };
+    let key = if key < 0 { l.gettop() + key + 1 } else { key };
     weak_table(l, name);
-    (api.pushvalue)(l, key);
-    (api.rawget)(l, -2);
-    (api.remove)(l, -2);
+    l.pushvalue(key);
+    l.rawget(-2);
+    l.remove(-2);
 }
 
 // core.class -----------------------------------------------------------------
@@ -67,186 +65,178 @@ const INHERITED: &[&CStr] = &[
 
 /// class.Extend(parent, fields) -> a class
 pub(super) unsafe extern "C-unwind" fn extend(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
-    let has_parent = (api.type_of)(l, 1) == TTABLE;
-    (api.createtable)(l, 0, 4);
-    let class = (api.gettop)(l);
+    l.settop(2);
+    let has_parent = l.type_of(1) == TTABLE;
+    l.createtable(0, 4);
+    let class = l.gettop();
     if has_parent {
         for name in INHERITED {
             push_str(l, &name.to_string_lossy());
-            (api.rawget)(l, 1);
-            if (api.type_of)(l, -1) != TNIL {
+            l.rawget(1);
+            if l.type_of(-1) != TNIL {
                 push_str(l, &name.to_string_lossy());
-                (api.insert)(l, -2);
-                (api.rawset)(l, class);
+                l.insert(-2);
+                l.rawset(class);
             } else {
-                (api.settop)(l, -2);
+                l.settop(-2);
             }
         }
         push_str(l, "__index");
-        (api.rawget)(l, 1);
-        if (api.rawequal)(l, -1, 1) == 0 {
+        l.rawget(1);
+        if l.rawequal(-1, 1) == 0 {
             push_str(l, "__index");
-            (api.insert)(l, -2);
-            (api.rawset)(l, class);
+            l.insert(-2);
+            l.rawset(class);
         } else {
-            (api.settop)(l, -2);
+            l.settop(-2);
         }
     }
-    if (api.type_of)(l, 2) == TTABLE {
-        (api.pushnil)(l);
-        while (api.next)(l, 2) != 0 {
-            (api.pushvalue)(l, -2);
-            (api.insert)(l, -2);
-            (api.rawset)(l, class);
+    if l.type_of(2) == TTABLE {
+        l.pushnil();
+        while l.next(2) != 0 {
+            l.pushvalue(-2);
+            l.insert(-2);
+            l.rawset(class);
         }
     }
     push_str(l, "__index");
-    (api.rawget)(l, class);
-    let own_index = (api.type_of)(l, -1) != TNIL;
-    (api.settop)(l, -2);
+    l.rawget(class);
+    let own_index = l.type_of(-1) != TNIL;
+    l.settop(-2);
     if !own_index {
         push_str(l, "__index");
-        (api.pushvalue)(l, class);
-        (api.rawset)(l, class);
+        l.pushvalue(class);
+        l.rawset(class);
     }
     if has_parent {
-        (api.pushvalue)(l, 1);
-        (api.setmetatable)(l, class);
+        l.pushvalue(1);
+        l.setmetatable(class);
     }
     1
 }
 
 /// class.New(class, fields) -> an instance
 unsafe extern "C-unwind" fn new_instance(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
-    if (api.type_of)(l, 2) != TTABLE {
-        (api.settop)(l, 1);
-        (api.createtable)(l, 0, 0);
+    l.settop(2);
+    if l.type_of(2) != TTABLE {
+        l.settop(1);
+        l.createtable(0, 0);
     }
-    (api.pushvalue)(l, 1);
-    (api.setmetatable)(l, 2);
+    l.pushvalue(1);
+    l.setmetatable(2);
     1
 }
 
 /// class.IsA(value, class) -> whether class is value's class or an ancestor
 unsafe extern "C-unwind" fn is_a(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
-    if (api.type_of)(l, 1) != TTABLE {
+    l.settop(2);
+    if l.type_of(1) != TTABLE {
         return boolean(l, false);
     }
-    (api.pushvalue)(l, 1);
-    while (api.getmetatable)(l, -1) != 0 {
-        if (api.equal)(l, -1, 2) != 0 {
+    l.pushvalue(1);
+    while l.getmetatable(-1) != 0 {
+        if l.equal(-1, 2) != 0 {
             return boolean(l, true);
         }
-        (api.remove)(l, -2);
+        l.remove(-2);
     }
     boolean(l, false)
 }
 
 /// A guard's __newindex: upvalue 1 the check; refusals blame the assignment.
 unsafe extern "C-unwind" fn guarded_newindex(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 3);
-    (api.pushvalue)(l, upvalue(1));
-    (api.pushvalue)(l, 2);
-    (api.pushvalue)(l, 3);
-    (api.call)(l, 2, 1);
-    if (api.toboolean)(l, -1) != 0 {
-        if (api.type_of)(l, -1) == TSTRING || (api.type_of)(l, -1) == TNUMBER {
+    l.settop(3);
+    l.pushvalue(upvalue(1));
+    l.pushvalue(2);
+    l.pushvalue(3);
+    l.call(2, 1);
+    if l.toboolean(-1) != 0 {
+        if l.type_of(-1) == TSTRING || l.type_of(-1) == TNUMBER {
             let why = tostring(l, -1);
             raise_where(l, why);
         }
-        (api.error)(l);
+        l.error();
     }
-    (api.settop)(l, 3);
-    (api.rawset)(l, 1);
+    l.settop(3);
+    l.rawset(1);
     0
 }
 
 /// class.Guard(class, check) -> class
 unsafe extern "C-unwind" fn guard(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
+    l.settop(2);
     push_str(l, "__newindex");
-    (api.pushvalue)(l, 2);
-    (api.pushcclosure)(l, guarded_newindex, 1);
-    (api.rawset)(l, 1);
-    (api.pushvalue)(l, 1);
+    l.pushvalue(2);
+    l.pushcclosure(guarded_newindex, 1);
+    l.rawset(1);
+    l.pushvalue(1);
     1
 }
 
 /// Pushes the own methods called `name` along the line of classes from the
 /// class at `class`, most derived first, as a list; its index.
 unsafe fn line(l: L, class: c_int, name: &str) -> c_int {
-    let api = api();
-    (api.createtable)(l, 0, 0);
-    let list = (api.gettop)(l);
+    l.createtable(0, 0);
+    let list = l.gettop();
     let mut n = 0;
-    (api.pushvalue)(l, class);
-    while (api.type_of)(l, -1) == TTABLE {
+    l.pushvalue(class);
+    while l.type_of(-1) == TTABLE {
         push_str(l, name);
-        (api.rawget)(l, -2);
-        if (api.toboolean)(l, -1) != 0 {
+        l.rawget(-2);
+        if l.toboolean(-1) != 0 {
             n += 1;
-            (api.rawseti)(l, list, n);
+            l.rawseti(list, n);
         } else {
-            (api.settop)(l, -2);
+            l.settop(-2);
         }
-        if (api.getmetatable)(l, -1) == 0 {
-            (api.pushnil)(l);
+        if l.getmetatable(-1) == 0 {
+            l.pushnil();
         }
-        (api.remove)(l, -2);
+        l.remove(-2);
     }
-    (api.settop)(l, list);
+    l.settop(list);
     list
 }
 
 /// class.Construct(class, ...) -> a new instance, each own Init run base first
 unsafe extern "C-unwind" fn construct(l: L) -> c_int {
-    let api = api();
-    let n = (api.gettop)(l);
-    (api.createtable)(l, 0, 0);
-    let instance = (api.gettop)(l);
-    (api.pushvalue)(l, 1);
-    (api.setmetatable)(l, instance);
+    let n = l.gettop();
+    l.createtable(0, 0);
+    let instance = l.gettop();
+    l.pushvalue(1);
+    l.setmetatable(instance);
     let inits = line(l, 1, "Init");
-    let count = (api.objlen)(l, inits) as c_int;
+    let count = l.objlen(inits) as c_int;
     for i in (1..=count).rev() {
-        (api.rawgeti)(l, inits, i);
-        (api.pushvalue)(l, instance);
+        l.rawgeti(inits, i);
+        l.pushvalue(instance);
         for a in 2..=n {
-            (api.pushvalue)(l, a);
+            l.pushvalue(a);
         }
-        (api.call)(l, n, 0);
+        l.call(n, 0);
     }
-    (api.pushvalue)(l, instance);
+    l.pushvalue(instance);
     1
 }
 
 /// class.Destroy(instance, ...): each own Destroy, most derived first
 pub(super) unsafe extern "C-unwind" fn destroy(l: L) -> c_int {
-    let api = api();
-    let n = (api.gettop)(l);
-    if (api.getmetatable)(l, 1) == 0 {
-        (api.pushnil)(l);
+    let n = l.gettop();
+    if l.getmetatable(1) == 0 {
+        l.pushnil();
     }
-    let class = (api.gettop)(l);
+    let class = l.gettop();
     let destroys = line(l, class, "Destroy");
     let mut i = 1;
     loop {
-        (api.rawgeti)(l, destroys, i);
-        if (api.type_of)(l, -1) == TNIL {
+        l.rawgeti(destroys, i);
+        if l.type_of(-1) == TNIL {
             break;
         }
         for a in 1..=n {
-            (api.pushvalue)(l, a);
+            l.pushvalue(a);
         }
-        (api.call)(l, n, 0);
+        l.call(n, 0);
         i += 1;
     }
     0
@@ -258,10 +248,9 @@ const PORT_META: &CStr = c"foundation.core.port";
 
 /// Pushes the port metatable (methods by name, __index itself).
 unsafe fn port_meta(l: L) {
-    let api = api();
-    if (api.newmetatable)(l, PORT_META.as_ptr()) != 0 {
-        (api.pushvalue)(l, -1);
-        (api.setfield)(l, -2, c"__index".as_ptr());
+    if l.newmetatable(PORT_META) != 0 {
+        l.pushvalue(-1);
+        l.setfield(-2, c"__index");
         set_function(l, c"Check", port_check);
         set_function(l, c"Facade", port_facade);
         set_function(l, c"Methods", port_methods);
@@ -271,14 +260,13 @@ unsafe fn port_meta(l: L) {
 
 /// port.New(name, methods) -> a port
 pub(super) unsafe extern "C-unwind" fn port_new(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
+    l.settop(2);
     let name = string_at(l, 1).filter(|n| !n.is_empty()).map(|n| String::from_utf8_lossy(n).into_owned());
     let Some(name) = name else {
         let given = tostring(l, 1);
         raise_where(l, format!("a port needs a name, not {given}"));
     };
-    if (api.type_of)(l, 2) != TTABLE {
+    if l.type_of(2) != TTABLE {
         raise_where(l, format!("port {name} needs a list of methods"));
     }
     let mut problem = None;
@@ -309,112 +297,106 @@ pub(super) unsafe extern "C-unwind" fn port_new(l: L) -> c_int {
         raise_where(l, format!("port {name} declares no methods"));
     }
     drop(name);
-    (api.createtable)(l, 0, 2);
-    let port = (api.gettop)(l);
-    (api.pushvalue)(l, 1);
-    (api.setfield)(l, port, c"name".as_ptr());
-    (api.createtable)(l, 0, 0);
-    let list = (api.gettop)(l);
+    l.createtable(0, 2);
+    let port = l.gettop();
+    l.pushvalue(1);
+    l.setfield(port, c"name");
+    l.createtable(0, 0);
+    let list = l.gettop();
     let mut n = 0;
     each_item(l, 2, |l, m| {
         n += 1;
-        (api.pushvalue)(l, m);
-        (api.rawseti)(l, list, n);
+        l.pushvalue(m);
+        l.rawseti(list, n);
     });
-    (api.setfield)(l, port, c"methods".as_ptr());
+    l.setfield(port, c"methods");
     port_meta(l);
-    (api.setmetatable)(l, port);
+    l.setmetatable(port);
     1
 }
 
 /// port.Is(value) -> whether value is a port
 unsafe extern "C-unwind" fn port_is(l: L) -> c_int {
-    let api = api();
-    if (api.getmetatable)(l, 1) == 0 {
+    if l.getmetatable(1) == 0 {
         return boolean(l, false);
     }
     port_meta(l);
-    let same = (api.rawequal)(l, -1, -2) != 0;
+    let same = l.rawequal(-1, -2) != 0;
     boolean(l, same)
 }
 
 /// Pushes the port at 1's method list.
 unsafe fn methods_of(l: L) -> c_int {
-    let api = api();
-    (api.getfield)(l, 1, c"methods".as_ptr());
-    (api.gettop)(l)
+    l.getfield(1, c"methods");
+    l.gettop()
 }
 
 pub(super) unsafe extern "C-unwind" fn port_check(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
+    l.settop(2);
     let list = methods_of(l);
     let mut missing = Vec::new();
     each_item(l, list, |l, m| {
-        (api.pushvalue)(l, m);
-        (api.gettable)(l, 2);
-        if (api.type_of)(l, -1) != TFUNCTION {
+        l.pushvalue(m);
+        l.gettable(2);
+        if l.type_of(-1) != TFUNCTION {
             missing.push(tostring(l, m));
         }
     });
     if !missing.is_empty() {
-        (api.getfield)(l, 1, c"name".as_ptr());
+        l.getfield(1, c"name");
         let name = tostring(l, -1);
         let text = format!("value is not a {name}: no {}", missing.join(", "));
         drop(missing);
         drop(name);
         raise_at(l, 2, text);
     }
-    (api.pushvalue)(l, 2);
+    l.pushvalue(2);
     1
 }
 
 /// A facade's method: upvalue 1 the value, 2 the method's name.
 unsafe extern "C-unwind" fn facade_call(l: L) -> c_int {
-    let api = api();
-    let n = (api.gettop)(l);
-    (api.pushvalue)(l, upvalue(1));
-    (api.pushvalue)(l, upvalue(2));
-    (api.gettable)(l, -2);
-    (api.insert)(l, 2);
-    (api.insert)(l, 3);
+    let n = l.gettop();
+    l.pushvalue(upvalue(1));
+    l.pushvalue(upvalue(2));
+    l.gettable(-2);
+    l.insert(2);
+    l.insert(3);
     // stack: facade, fn, value, args...
-    (api.call)(l, n, -1);
-    (api.gettop)(l) - 1
+    l.call(n, -1);
+    l.gettop() - 1
 }
 
 unsafe extern "C-unwind" fn port_facade(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
+    l.settop(2);
     let list = methods_of(l);
-    (api.createtable)(l, 0, 0);
-    let facade = (api.gettop)(l);
+    l.createtable(0, 0);
+    let facade = l.gettop();
     each_item(l, list, |l, m| {
-        (api.pushvalue)(l, m);
-        (api.pushvalue)(l, 2);
-        (api.pushvalue)(l, m);
-        (api.pushcclosure)(l, facade_call, 2);
-        (api.rawset)(l, facade);
+        l.pushvalue(m);
+        l.pushvalue(2);
+        l.pushvalue(m);
+        l.pushcclosure(facade_call, 2);
+        l.rawset(facade);
     });
     1
 }
 
 unsafe extern "C-unwind" fn port_methods(l: L) -> c_int {
-    let api = api();
     let list = methods_of(l);
-    (api.createtable)(l, 0, 0);
-    let copy = (api.gettop)(l);
+    l.createtable(0, 0);
+    let copy = l.gettop();
     let mut n = 0;
     each_item(l, list, |l, m| {
         n += 1;
-        (api.pushvalue)(l, m);
-        (api.rawseti)(l, copy, n);
+        l.pushvalue(m);
+        l.rawseti(copy, n);
     });
     1
 }
 
 unsafe extern "C-unwind" fn port_name(l: L) -> c_int {
-    (api().getfield)(l, 1, c"name".as_ptr());
+    l.getfield(1, c"name");
     1
 }
 
@@ -424,36 +406,34 @@ const SET_STATE: &CStr = c"foundation.core.constants.state";
 
 /// The name of the set at `set`, or tostring of it.
 unsafe fn set_name(l: L, set: c_int) -> String {
-    let api = api();
     state_of(l, SET_STATE, set);
-    if (api.type_of)(l, -1) == TTABLE {
-        (api.getfield)(l, -1, c"name".as_ptr());
+    if l.type_of(-1) == TTABLE {
+        l.getfield(-1, c"name");
         let name = tostring(l, -1);
-        (api.settop)(l, -3);
+        l.settop(-3);
         return name;
     }
-    (api.settop)(l, -2);
+    l.settop(-2);
     tostring(l, set)
 }
 
 /// A set's __index: a method along its classes, or the reader's error.
 unsafe extern "C-unwind" fn set_lookup(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
-    if (api.getmetatable)(l, 1) == 0 {
-        (api.pushnil)(l);
+    l.settop(2);
+    if l.getmetatable(1) == 0 {
+        l.pushnil();
     }
-    while (api.type_of)(l, -1) == TTABLE {
-        (api.pushvalue)(l, 2);
-        (api.rawget)(l, -2);
-        if (api.type_of)(l, -1) != TNIL {
+    while l.type_of(-1) == TTABLE {
+        l.pushvalue(2);
+        l.rawget(-2);
+        if l.type_of(-1) != TNIL {
             return 1;
         }
-        (api.settop)(l, -2);
-        if (api.getmetatable)(l, -1) == 0 {
-            (api.pushnil)(l);
+        l.settop(-2);
+        if l.getmetatable(-1) == 0 {
+            l.pushnil();
         }
-        (api.remove)(l, -2);
+        l.remove(-2);
     }
     let name = set_name(l, 1);
     let key = tostring(l, 2);
@@ -467,29 +447,26 @@ unsafe extern "C-unwind" fn set_fixed(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn set_parse(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
-    if (api.type_of)(l, 2) == TNIL {
+    l.settop(2);
+    if l.type_of(2) == TNIL {
         return nothing(l);
     }
-    (api.rawget)(l, 1);
+    l.rawget(1);
     1
 }
 
 unsafe extern "C-unwind" fn set_tostring(l: L) -> c_int {
-    let api = api();
     state_of(l, SET_STATE, 1);
-    if (api.type_of)(l, -1) != TTABLE {
+    if l.type_of(-1) != TTABLE {
         return nothing(l);
     }
-    (api.getfield)(l, -1, c"name".as_ptr());
+    l.getfield(-1, c"name");
     1
 }
 
 unsafe extern "C-unwind" fn set_len(l: L) -> c_int {
-    let api = api();
     state_of(l, SET_STATE, 1);
-    (api.getfield)(l, -1, c"count".as_ptr());
+    l.getfield(-1, c"count");
     1
 }
 
@@ -500,15 +477,14 @@ fn is_constant_name(s: &[u8]) -> bool {
 /// ConstantSet:Init(name, constants), blaming New's caller (three calls up:
 /// Init, Construct, New).
 unsafe extern "C-unwind" fn set_init(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 3);
+    l.settop(3);
     let name = string_at(l, 2).filter(|n| !n.is_empty()).map(|n| String::from_utf8_lossy(n).into_owned());
     let Some(name) = name else { raise_at(l, 3, "a constant set needs a name".into()) };
-    let empty = (api.type_of)(l, 3) != TTABLE || {
-        (api.pushnil)(l);
-        let any = (api.next)(l, 3) != 0;
+    let empty = l.type_of(3) != TTABLE || {
+        l.pushnil();
+        let any = l.next(3) != 0;
         if any {
-            (api.settop)(l, -3);
+            l.settop(-3);
         }
         !any
     };
@@ -517,90 +493,86 @@ unsafe extern "C-unwind" fn set_init(l: L) -> c_int {
     }
     let mut count = 0.0;
     let mut bad = None;
-    (api.pushnil)(l);
-    while (api.next)(l, 3) != 0 {
-        let ok = (api.type_of)(l, -2) == TSTRING && string_at(l, -2).is_some_and(is_constant_name);
+    l.pushnil();
+    while l.next(3) != 0 {
+        let ok = l.type_of(-2) == TSTRING && string_at(l, -2).is_some_and(is_constant_name);
         if !ok && bad.is_none() {
             bad = Some(tostring(l, -2));
         }
         if ok {
-            (api.pushvalue)(l, -2);
-            (api.insert)(l, -2);
-            (api.rawset)(l, 1);
+            l.pushvalue(-2);
+            l.insert(-2);
+            l.rawset(1);
             count += 1.0;
         } else {
-            (api.settop)(l, -2);
+            l.settop(-2);
         }
     }
     if let Some(key) = bad {
         raise_at(l, 3, format!("{name}: a constant's name is upper case, not {key}"));
     }
     weak_table(l, SET_STATE);
-    (api.pushvalue)(l, 1);
-    (api.createtable)(l, 0, 2);
+    l.pushvalue(1);
+    l.createtable(0, 2);
     push_str(l, &name);
-    (api.setfield)(l, -2, c"name".as_ptr());
-    (api.pushnumber)(l, count);
-    (api.setfield)(l, -2, c"count".as_ptr());
-    (api.rawset)(l, -3);
+    l.setfield(-2, c"name");
+    l.pushnumber(count);
+    l.setfield(-2, c"count");
+    l.rawset(-3);
     0
 }
 
 unsafe extern "C-unwind" fn set_has(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
-    if (api.type_of)(l, 2) == TNIL {
+    l.settop(2);
+    if l.type_of(2) == TNIL {
         return boolean(l, false);
     }
-    (api.rawget)(l, 1);
-    let has = (api.type_of)(l, -1) != TNIL;
+    l.rawget(1);
+    let has = l.type_of(-1) != TNIL;
     boolean(l, has)
 }
 
 unsafe extern "C-unwind" fn set_names(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 1);
-    (api.createtable)(l, 0, 0);
-    let names = (api.gettop)(l);
+    l.settop(1);
+    l.createtable(0, 0);
+    let names = l.gettop();
     let mut n = 0;
-    (api.pushnil)(l);
-    while (api.next)(l, 1) != 0 {
-        (api.settop)(l, -2);
+    l.pushnil();
+    while l.next(1) != 0 {
+        l.settop(-2);
         n += 1;
-        (api.pushvalue)(l, -1);
-        (api.rawseti)(l, names, n);
+        l.pushvalue(-1);
+        l.rawseti(names, n);
     }
-    (api.getfield)(l, crate::lua::GLOBALSINDEX, c"table".as_ptr());
-    (api.getfield)(l, -1, c"sort".as_ptr());
-    (api.pushvalue)(l, names);
-    (api.call)(l, 1, 0);
-    (api.settop)(l, names);
+    l.getfield(crate::lua::GLOBALSINDEX, c"table");
+    l.getfield(-1, c"sort");
+    l.pushvalue(names);
+    l.call(1, 0);
+    l.settop(names);
     1
 }
 
 /// Calls core.class.Construct on the class at `class` with the arguments at
 /// `first`..top, as the Lua twin's New does through Class.Construct.
 pub(super) unsafe fn construct_through(l: L, class: c_int, first: c_int) -> c_int {
-    let api = api();
-    let top = (api.gettop)(l);
-    (api.pushcclosure)(l, construct, 0);
-    (api.pushvalue)(l, class);
+    let top = l.gettop();
+    l.pushcclosure(construct, 0);
+    l.pushvalue(class);
     for i in first..=top {
-        (api.pushvalue)(l, i);
+        l.pushvalue(i);
     }
-    (api.call)(l, top - first + 2, 1);
+    l.call(top - first + 2, 1);
     1
 }
 
 /// Pushes the ConstantSet class.
 unsafe fn constant_set_class(l: L) {
-    let api = api();
-    (api.getfield)(l, REGISTRY, c"foundation.core.constants.ConstantSet".as_ptr());
-    if (api.type_of)(l, -1) == TTABLE {
+    l.getfield(REGISTRY, c"foundation.core.constants.ConstantSet");
+    if l.type_of(-1) == TTABLE {
         return;
     }
-    (api.settop)(l, -2);
-    (api.createtable)(l, 0, 10);
+    l.settop(-2);
+    l.createtable(0, 10);
     set_function(l, c"__index", set_lookup);
     set_function(l, c"__newindex", set_fixed);
     set_function(l, c"__call", set_parse);
@@ -610,15 +582,15 @@ unsafe fn constant_set_class(l: L) {
     set_function(l, c"Init", set_init);
     set_function(l, c"Has", set_has);
     set_function(l, c"Names", set_names);
-    (api.pushvalue)(l, -1);
-    (api.setfield)(l, REGISTRY, c"foundation.core.constants.ConstantSet".as_ptr());
+    l.pushvalue(-1);
+    l.setfield(REGISTRY, c"foundation.core.constants.ConstantSet");
 }
 
 /// constants.New(name, constants) -> a constant set
 unsafe extern "C-unwind" fn constants_new(l: L) -> c_int {
-    (api().settop)(l, 2);
+    l.settop(2);
     constant_set_class(l);
-    (api().insert)(l, 1);
+    l.insert(1);
     construct_through(l, 1, 2)
 }
 
@@ -629,17 +601,16 @@ const ENUM_STATE: &CStr = c"foundation.core.enum.state";
 /// Pushes the enumeration at 1's state { first, names, byValue }; its index.
 unsafe fn enum_state(l: L) -> c_int {
     state_of(l, ENUM_STATE, 1);
-    (api().gettop)(l)
+    l.gettop()
 }
 
 unsafe extern "C-unwind" fn enum_index(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
-    if (api.type_of)(l, 2) == TNUMBER {
+    l.settop(2);
+    if l.type_of(2) == TNUMBER {
         let state = enum_state(l);
-        (api.getfield)(l, state, c"byValue".as_ptr());
-        (api.pushvalue)(l, 2);
-        (api.rawget)(l, -2);
+        l.getfield(state, c"byValue");
+        l.pushvalue(2);
+        l.rawget(-2);
         return 1;
     }
     set_lookup(l)
@@ -647,41 +618,39 @@ unsafe extern "C-unwind" fn enum_index(l: L) -> c_int {
 
 /// The value the token at 2 stands for, pushed (or nil).
 unsafe fn enum_parse_value(l: L) {
-    let api = api();
-    if (api.type_of)(l, 2) == TNUMBER {
+    if l.type_of(2) == TNUMBER {
         let state = enum_state(l);
-        (api.getfield)(l, state, c"byValue".as_ptr());
-        (api.pushvalue)(l, 2);
-        (api.rawget)(l, -2);
-        let known = (api.type_of)(l, -1) != TNIL;
-        (api.settop)(l, state - 1);
+        l.getfield(state, c"byValue");
+        l.pushvalue(2);
+        l.rawget(-2);
+        let known = l.type_of(-1) != TNIL;
+        l.settop(state - 1);
         if known {
-            (api.pushvalue)(l, 2);
+            l.pushvalue(2);
         } else {
-            (api.pushnil)(l);
+            l.pushnil();
         }
         return;
     }
-    if (api.type_of)(l, 2) == TNIL {
-        (api.pushnil)(l);
+    if l.type_of(2) == TNIL {
+        l.pushnil();
         return;
     }
-    (api.pushvalue)(l, 2);
-    (api.rawget)(l, 1);
+    l.pushvalue(2);
+    l.rawget(1);
 }
 
 unsafe extern "C-unwind" fn enum_call(l: L) -> c_int {
-    (api().settop)(l, 2);
+    l.settop(2);
     enum_parse_value(l);
     1
 }
 
 unsafe fn enum_count(l: L) -> usize {
-    let api = api();
     let state = enum_state(l);
-    (api.getfield)(l, state, c"names".as_ptr());
-    let n = (api.objlen)(l, -1);
-    (api.settop)(l, state - 1);
+    l.getfield(state, c"names");
+    let n = l.objlen(-1);
+    l.settop(state - 1);
     n
 }
 
@@ -700,21 +669,20 @@ fn words(name: &[u8]) -> Vec<u8> {
 }
 
 unsafe extern "C-unwind" fn enum_describe(l: L) -> c_int {
-    let api = api();
     let state = enum_state(l);
-    (api.getfield)(l, state, c"first".as_ptr());
-    let first = (api.tonumber)(l, -1);
-    (api.getfield)(l, state, c"names".as_ptr());
-    let names = (api.gettop)(l);
+    l.getfield(state, c"first");
+    let first = l.tonumber(-1);
+    l.getfield(state, c"names");
+    let names = l.gettop();
     let mut parts: Vec<Vec<u8>> = Vec::new();
     let mut i = 0.0;
     each_item(l, names, |l, n| {
         let mut part = tostring(l, {
-            (api.pushnumber)(l, first + i);
+            l.pushnumber(first + i);
             -1
         })
         .into_bytes();
-        (api.settop)(l, -2);
+        l.settop(-2);
         part.push(b' ');
         part.extend(words(string_at(l, n).unwrap_or_default()));
         parts.push(part);
@@ -722,64 +690,60 @@ unsafe extern "C-unwind" fn enum_describe(l: L) -> c_int {
     });
     let text = parts.join(&b", "[..]);
     drop(parts);
-    (api.pushlstring)(l, text.as_ptr().cast(), text.len());
+    l.pushlstring(text.as_ptr().cast(), text.len());
     drop(text);
     1
 }
 
 /// Enum's Init(self, name, constants, names, first): its numbering.
 unsafe extern "C-unwind" fn enum_init(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 5);
-    let first = (api.tonumber)(l, 5);
-    (api.createtable)(l, 0, 3);
-    let state = (api.gettop)(l);
-    (api.pushvalue)(l, 5);
-    (api.setfield)(l, state, c"first".as_ptr());
-    (api.pushvalue)(l, 4);
-    (api.setfield)(l, state, c"names".as_ptr());
-    (api.createtable)(l, 0, 0);
-    let by_value = (api.gettop)(l);
+    l.settop(5);
+    let first = l.tonumber(5);
+    l.createtable(0, 3);
+    let state = l.gettop();
+    l.pushvalue(5);
+    l.setfield(state, c"first");
+    l.pushvalue(4);
+    l.setfield(state, c"names");
+    l.createtable(0, 0);
+    let by_value = l.gettop();
     let mut i = 0.0;
     each_item(l, 4, |l, name| {
-        (api.pushnumber)(l, first + i);
-        (api.pushvalue)(l, name);
-        (api.rawset)(l, by_value);
+        l.pushnumber(first + i);
+        l.pushvalue(name);
+        l.rawset(by_value);
         i += 1.0;
     });
-    (api.setfield)(l, state, c"byValue".as_ptr());
+    l.setfield(state, c"byValue");
     weak_table(l, ENUM_STATE);
-    (api.pushvalue)(l, 1);
-    (api.pushvalue)(l, state);
-    (api.rawset)(l, -3);
+    l.pushvalue(1);
+    l.pushvalue(state);
+    l.rawset(-3);
     0
 }
 
 unsafe extern "C-unwind" fn enum_name_of(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
+    l.settop(2);
     let state = enum_state(l);
-    (api.getfield)(l, state, c"byValue".as_ptr());
-    (api.pushvalue)(l, 2);
-    (api.rawget)(l, -2);
+    l.getfield(state, c"byValue");
+    l.pushvalue(2);
+    l.rawget(-2);
     1
 }
 
 unsafe extern "C-unwind" fn enum_valid(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
+    l.settop(2);
     enum_parse_value(l);
-    let valid = (api.type_of)(l, -1) != TNIL;
+    let valid = l.type_of(-1) != TNIL;
     boolean(l, valid)
 }
 
 unsafe extern "C-unwind" fn enum_check(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 2);
-    let ok = (api.type_of)(l, 2) == TNUMBER && {
+    l.settop(2);
+    let ok = l.type_of(2) == TNUMBER && {
         enum_parse_value(l);
-        let v = (api.type_of)(l, -1) != TNIL;
-        (api.settop)(l, 2);
+        let v = l.type_of(-1) != TNIL;
+        l.settop(2);
         v
     };
     if !ok {
@@ -787,58 +751,55 @@ unsafe extern "C-unwind" fn enum_check(l: L) -> c_int {
         let value = tostring(l, 2);
         raise_where(l, format!("{name}: no value {value}"));
     }
-    (api.pushvalue)(l, 2);
+    l.pushvalue(2);
     1
 }
 
 unsafe extern "C-unwind" fn enum_first(l: L) -> c_int {
     let state = enum_state(l);
-    (api().getfield)(l, state, c"first".as_ptr());
+    l.getfield(state, c"first");
     1
 }
 
 unsafe extern "C-unwind" fn enum_last(l: L) -> c_int {
     let count = enum_count(l) as f64;
-    let api = api();
     let state = enum_state(l);
-    (api.getfield)(l, state, c"first".as_ptr());
-    let first = (api.tonumber)(l, -1);
+    l.getfield(state, c"first");
+    let first = l.tonumber(-1);
     number(l, first + count - 1.0)
 }
 
 unsafe extern "C-unwind" fn enum_names(l: L) -> c_int {
-    let api = api();
     let state = enum_state(l);
-    (api.getfield)(l, state, c"names".as_ptr());
-    let names = (api.gettop)(l);
-    (api.createtable)(l, 0, 0);
-    let copy = (api.gettop)(l);
+    l.getfield(state, c"names");
+    let names = l.gettop();
+    l.createtable(0, 0);
+    let copy = l.gettop();
     let mut n = 0;
     each_item(l, names, |l, name| {
         n += 1;
-        (api.pushvalue)(l, name);
-        (api.rawseti)(l, copy, n);
+        l.pushvalue(name);
+        l.rawseti(copy, n);
     });
     1
 }
 
 /// Pushes the Enum class (extending ConstantSet).
 unsafe fn enum_class(l: L) {
-    let api = api();
-    (api.getfield)(l, REGISTRY, c"foundation.core.enum.Enum".as_ptr());
-    if (api.type_of)(l, -1) == TTABLE {
+    l.getfield(REGISTRY, c"foundation.core.enum.Enum");
+    if l.type_of(-1) == TTABLE {
         return;
     }
-    (api.settop)(l, -2);
+    l.settop(-2);
     constant_set_class(l);
-    let parent = (api.gettop)(l);
-    (api.createtable)(l, 0, 16);
+    let parent = l.gettop();
+    l.createtable(0, 16);
     for name in INHERITED {
-        (api.getfield)(l, parent, name.as_ptr());
-        if (api.type_of)(l, -1) != TNIL {
-            (api.setfield)(l, -2, name.as_ptr());
+        l.getfield(parent, name);
+        if l.type_of(-1) != TNIL {
+            l.setfield(-2, name);
         } else {
-            (api.settop)(l, -2);
+            l.settop(-2);
         }
     }
     set_function(l, c"__index", enum_index);
@@ -854,65 +815,64 @@ unsafe fn enum_class(l: L) {
     set_function(l, c"Count", enum_len);
     set_function(l, c"Names", enum_names);
     set_function(l, c"Describe", enum_describe);
-    (api.pushvalue)(l, parent);
-    (api.setmetatable)(l, -2);
-    (api.remove)(l, parent);
-    (api.pushvalue)(l, -1);
-    (api.setfield)(l, REGISTRY, c"foundation.core.enum.Enum".as_ptr());
+    l.pushvalue(parent);
+    l.setmetatable(-2);
+    l.remove(parent);
+    l.pushvalue(-1);
+    l.setfield(REGISTRY, c"foundation.core.enum.Enum");
 }
 
 /// enum.New(name, first, names) -> an enumeration
 unsafe extern "C-unwind" fn enum_new(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 3);
-    let first = (api.type_of)(l, 2) == TNUMBER && {
-        let f = (api.tonumber)(l, 2);
+    l.settop(3);
+    let first = l.type_of(2) == TNUMBER && {
+        let f = l.tonumber(2);
         f.floor() == f
     };
     if !first {
         let (name, given) = (tostring(l, 1), tostring(l, 2));
         raise_where(l, format!("{name}: an enumeration's first value is a whole number, not {given}"));
     }
-    if (api.type_of)(l, 3) != TTABLE || (api.objlen)(l, 3) == 0 {
+    if l.type_of(3) != TTABLE || l.objlen(3) == 0 {
         let name = tostring(l, 1);
         raise_where(l, format!("{name}: an enumeration needs names"));
     }
-    let start = (api.tonumber)(l, 2);
-    (api.createtable)(l, 0, 0);
-    let constants = (api.gettop)(l);
-    (api.createtable)(l, 0, 0);
-    let copy = (api.gettop)(l);
+    let start = l.tonumber(2);
+    l.createtable(0, 0);
+    let constants = l.gettop();
+    l.createtable(0, 0);
+    let copy = l.gettop();
     let mut twice = None;
     let mut i = 0;
     each_item(l, 3, |l, n| {
         if twice.is_some() {
             return;
         }
-        (api.pushvalue)(l, n);
-        (api.rawget)(l, constants);
-        let seen = (api.type_of)(l, -1) != TNIL;
-        (api.settop)(l, -2);
+        l.pushvalue(n);
+        l.rawget(constants);
+        let seen = l.type_of(-1) != TNIL;
+        l.settop(-2);
         if seen {
             twice = Some(tostring(l, n));
             return;
         }
-        (api.pushvalue)(l, n);
-        (api.pushnumber)(l, start + i as f64);
-        (api.rawset)(l, constants);
+        l.pushvalue(n);
+        l.pushnumber(start + i as f64);
+        l.rawset(constants);
         i += 1;
-        (api.pushvalue)(l, n);
-        (api.rawseti)(l, copy, i);
+        l.pushvalue(n);
+        l.rawseti(copy, i);
     });
     if let Some(n) = twice {
         let name = tostring(l, 1);
         raise_where(l, format!("{name}: {n} is named twice"));
     }
     enum_class(l);
-    let class = (api.gettop)(l);
-    (api.pushvalue)(l, 1);
-    (api.pushvalue)(l, constants);
-    (api.pushvalue)(l, copy);
-    (api.pushvalue)(l, 2);
+    let class = l.gettop();
+    l.pushvalue(1);
+    l.pushvalue(constants);
+    l.pushvalue(copy);
+    l.pushvalue(2);
     construct_through(l, class, class + 1)
 }
 
@@ -939,18 +899,16 @@ unsafe fn push_port_module(l: L) {
 
 /// Pushes the constants module table.
 unsafe fn push_constants_module(l: L) {
-    let api = api();
     crate::module::push(l, &[(c"New", constants_new)], None);
     constant_set_class(l);
-    (api.setfield)(l, -2, c"ConstantSet".as_ptr());
+    l.setfield(-2, c"ConstantSet");
 }
 
 /// Pushes the enum module table.
 unsafe fn push_enum_module(l: L) {
-    let api = api();
     crate::module::push(l, &[(c"New", enum_new)], None);
     enum_class(l);
-    (api.setfield)(l, -2, c"Enum".as_ptr());
+    l.setfield(-2, c"Enum");
 }
 
 /// This namespace's native modules, by name: what pushes each one's table.
