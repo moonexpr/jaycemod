@@ -413,18 +413,22 @@ and checked live with `dev.reload`:
    `sv_responserules.lua`, as jobs only.
 6. What is left on the root is then measured again against the 26.
 
-### Questions for the operator
+### The operator's answers, 2026-11-12
 
-- The systems' weights: one system per part, or a few by kind (sight,
-  field, talk, debug), so §8.3's scan stays over four or five?
-- `sv_enlist.lua`'s `Tick` (the moves, every tick, 17 ms/s at 16v16): a
-  calendar job with the tick as its period, or left on its hook as
-  `Drive` is (§8.1)?
-- The looks change is in the working tree, not yet committed: tests pass
-  (the war group at its known 38 failures), not yet checked live. That
-  needs a Windows `gmsv_foundation` (`cargo xwin build --release --target
-  x86_64-pc-windows-msvc`) and the dev server restarted on it. Commit it
-  first as it is, or fold it into step 1 above?
+- **Movement stays on the frame, thinking goes on the calendar.**
+  `sv_enlist.lua`'s `Tick` (the moves) keeps its hook, as `Drive` keeps
+  `StartCommand`; whatever decides rather than moves is a calendar job.
+- **One system per part, or a few by kind: no opinion yet, not enough
+  data.** So the data comes first: each part is made a system of its own
+  as it moves, which costs nothing to merge later (a system is a name and
+  a weight), and `Report` then gives each part's spend and lateness at
+  16v16 on the benchmark. The weights are chosen from those numbers, all
+  1 until then.
+- Still open: whether the looks change in the working tree (tests pass,
+  the war group at its known 38 failures; not checked live) is committed
+  as it is or folded into step 1. Checking it live needs a Windows
+  `gmsv_foundation` (`cargo xwin build --release --target
+  x86_64-pc-windows-msvc`) and the dev server restarted on it.
 
 ## 7. Pitfalls met in this work
 
