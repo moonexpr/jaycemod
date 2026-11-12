@@ -12,6 +12,7 @@
 -- public functions. Entities are keyed by the refs below: map entities by
 -- their map creation id, which a cleanup keeps, players by SteamID64.
 local Diff = dev.require ("sandcastle_dev_diff")
+local Soldiers = dev.require ("sandcastle_dev_soldiers")
 
 local SCHEMA = 1
 dev.SCHEMA = SCHEMA
@@ -340,6 +341,27 @@ end, function (players, _, report)
 end
 )
 
+-- The bot player standing in for each bot soldier saved: a scenario saved in another session names
+-- bots this one does not have (sandcastle_dev_soldiers). Any of the war's bots on the team will do,
+-- one that is no member too: dead, or spawned this tick (the players' section spawns those saved
+-- alive, and a spawn enlists a bot only a tick later); it is spawned if need be and enlisted at
+-- once, and its spawn enlists it again a tick later, its role the war's to choose.
+local function BotStandIns (A, soldiers)
+	local keys = {}
+	for key in pairs (soldiers) do
+		if string.StartWith (key, "bot:") then keys [#keys + 1] = key end
+	end
+	table.sort (keys)
+	local saved, bots = {}, {}
+	for i, key in ipairs (keys) do saved [i] = { name = string.sub (key, 5), team = soldiers [key].team } end
+	for _, ply in ipairs (player.GetBots ()) do
+		if A.bots [ply] then bots [#bots + 1] = { name = ply:Nick (), team = WS.TeamOf (ply), ply = ply } end
+	end
+	local standIn = {}
+	for i, bot in pairs (Soldiers.Pair (saved, bots)) do standIn [keys [i]] = bot.ply end
+	return standIn
+end
+
 Section ("aiwar", function ()
 	if not WS.FeatureLoaded ("aiwar") then return nil end
 	local A = WS.Feature ("aiwar")
@@ -383,8 +405,13 @@ end, function (data, _, report)
 	end
 	local kept, made, removed = 0, 0, 0
 	local wanted = {}
+	local standIn = BotStandIns (A, data.soldiers)
 	for key, s in pairs (data.soldiers) do
-		local ent = Refs:Decode (key)
+		local ent = standIn [key] or Refs:Decode (key)
+		if IsValid (ent) and A.bots [ent] and not (A.war and A.war.members [ent]) then
+			if not ent:Alive () then ent:Spawn () end
+			A:EnlistBot (ent)
+		end
 		local member = IsValid (ent) and A.war and A.war.members [ent]
 		if member and ent:Health () > 0 then
 			wanted [ent] = true
@@ -401,6 +428,11 @@ end, function (data, _, report)
 				if not ok then report:Note ("aiwar: " .. dev.Describe (ent) .. " kept " .. tostring (member.role) .. ": " .. tostring (why)) end
 			end
 			kept = kept + 1
+		elseif s.class == "player" then
+			local why = IsValid (ent) and (dev.Describe (ent) .. (ent:Alive () and " alive" or " dead") .. ", no member")
+				or "none"
+			report:Note ("aiwar: no bot of team " .. tostring (s.team) .. " stands in for " .. key .. " (" .. why .. ")")
+			ent = nil
 		else
 			ent = ents.Create (s.class)
 			if not IsValid (ent) then
@@ -424,8 +456,13 @@ end, function (data, _, report)
 	if A.war then
 		for ent in pairs (A.war.members) do
 			if IsValid (ent) and not wanted [ent] then
-				A:Discharge (ent)
-				ent:Remove ()
+				-- a bot player is the war's for good: one the scenario lacks was dead when it was saved
+				if ent:IsPlayer () then
+					if ent:Alive () then ent:KillSilent () end
+				else
+					A:Discharge (ent)
+					ent:Remove ()
+				end
 				removed = removed + 1
 			end
 		end

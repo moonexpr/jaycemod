@@ -6,6 +6,8 @@
 --   server_lua.py 'return WarProbe.Summary()'             the war's share, with its interval
 --   server_lua.py 'return WarProbe.Hooks()'               each of its hooks
 --   server_lua.py 'return WarProbe.Methods(30)'           the controller's most demanding methods
+--   server_lua.py 'return WarProbe.Start(30, true)'       hooks alone, no method wrapped (the bench's)
+--   server_lua.py 'return WarProbe.Data()'                the window's figures as JSON (aiwar_bench.py)
 --
 -- It wraps the aiwar controller's methods, the bot soldier's (BotSoldier.*)
 -- and its navigator's (Navigator.*), and the war's hooks (inclusive time, calls, worst call). Each tick it notes the
@@ -85,7 +87,7 @@ function P.Unwrap ()
 	run.done = true
 end
 
-function P.Start (seconds)
+function P.Start (seconds, hooksOnly)
 	if P.run and not P.run.done then return "a window is open" end
 	local controller = WS.Feature ("aiwar")
 	if not controller.war then return "no war is running" end
@@ -99,12 +101,14 @@ function P.Start (seconds)
 		hooked = {},
 		started = SysTime (),
 		tick = { now = 0 },
+		search = { now = 0 },
 		warTicks = {},
+		searchTicks = {},
 		tickLengths = {},
 		batches = {}
 	}
 	P.run = run
-	for key, fn in pairs (controller) do
+	for key, fn in pairs (hooksOnly and {} or controller) do
 		if type (fn) == "function" then
 			run.methods [key], run.stats [key] = fn, Stat ()
 			controller [key] = Timed (fn, run.stats [key])
@@ -112,7 +116,8 @@ function P.Start (seconds)
 	end
 	-- the bot soldier's own methods, and its navigator's plan: where a look's steering goes
 	local navigator = scripted_ents.GetStored ("ws_bot_navigator")
-	for prefix, class in pairs ({ BotSoldier = controller.BotSoldier, Navigator = navigator and navigator.t }) do
+	local classes = hooksOnly and {} or { BotSoldier = controller.BotSoldier, Navigator = navigator and navigator.t }
+	for prefix, class in pairs (classes) do
 		for key, fn in pairs (class) do
 			if type (fn) == "function" then
 				local name = prefix .. "." .. key
@@ -123,14 +128,15 @@ function P.Start (seconds)
 		end
 	end
 	WrapHooks (run, WAR_HOOKS,   run.tick)
-	WrapHooks (run, OTHER_HOOKS, nil)
+	WrapHooks (run, OTHER_HOOKS, run.search)
 	local last, batchStarted, batch = SysTime (), SysTime (), 0
 	hook.Add ("Tick", TICK_HOOK, function ()
 		local now = SysTime ()
 		run.warTicks [#run.warTicks + 1] = run.tick.now
+		run.searchTicks [#run.searchTicks + 1] = run.search.now
 		run.tickLengths [#run.tickLengths + 1] = now - last
 		batch = batch + run.tick.now
-		run.tick.now, last = 0, now
+		run.tick.now, run.search.now, last = 0, 0, now
 		if now - batchStarted >= BATCH_SECONDS then
 			run.batches [#run.batches + 1] = batch / (now - batchStarted)
 			batch, batchStarted = 0, now
@@ -218,4 +224,43 @@ function P.Methods (limit)
 	local run, why = Finished ()
 	if not run then return why end
 	return Rows (run.stats, run.elapsed, limit or 30)
+end
+
+-- One window's figures, seconds throughout: what aiwar_bench.py compares replications by. `both` is
+-- the war and its route searches together in a tick, what the tick's budget is judged on.
+function P.Data ()
+	local run, why = Finished ()
+	if not run then return util.TableToJSON ({ error = why }) end
+	local both = {}
+	for i, v in ipairs (run.warTicks) do both [i] = v + run.searchTicks [i] end
+	local war, search, sum = Sorted (run.warTicks), Sorted (run.searchTicks), Sorted (both)
+	local function Total (list)
+		local t = 0
+		for _, v in ipairs (list) do t = t + v end
+		return t
+	end
+	local function Tail (sorted)
+		return
+		{
+			p50 = Percentile (sorted, 0.5),
+			p99 = Percentile (sorted, 0.99),
+			max = sorted [#sorted]
+		}
+	end
+	local interval, over = engine.TickInterval (), 0
+	for _, v in ipairs (both) do
+		if v > interval then over = over + 1 end
+	end
+	return util.TableToJSON (
+		{
+			map = run.map,
+			soldiers = run.soldiers,
+			elapsed = run.elapsed,
+			ticks = #run.warTicks,
+			interval = interval,
+			war = { rate = Total (run.warTicks) / run.elapsed, tail = Tail (war) },
+			search = { rate = Total (run.searchTicks) / run.elapsed, tail = Tail (search) },
+			both = { rate = Total (both) / run.elapsed, tail = Tail (sum), over = over }
+		}
+	)
 end

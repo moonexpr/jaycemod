@@ -1,0 +1,3085 @@
+{
+	"format": 1,
+	"schema": 1,
+	"saved_at": "2026-11-12 05:17:13",
+	"state": {
+		"sections": {
+			"capture": {
+				"pointTimers": [],
+				"hudHidden": [],
+				"cpTimers": [],
+				"set": {
+					"points": {
+						"$map": [
+							[
+								{
+									"$ref": "map:1487"
+								},
+								{
+									"index": 1,
+									"defaultOwner": 2,
+									"warnSound": "ControlPoint.CaptureWarn",
+									"id": {
+										"$ref": "map:1487"
+									},
+									"locked": false,
+									"rank": 0,
+									"printName": "#Dustbowl_cap_1_A",
+									"sounds": {
+										"stop": "Hologram.Stop",
+										"interrupted": "Hologram.Interrupted",
+										"progress": "Hologram.Move",
+										"start": "Hologram.Start"
+									},
+									"previous": {
+										"2": [],
+										"3": [
+											{
+												"$ref": "map:1487"
+											}
+										]
+									},
+									"icons": {
+										"0": "sprites/obj_icons/icon_obj_neutral",
+										"2": "sprites/obj_icons/icon_obj_red",
+										"3": "sprites/obj_icons/icon_obj_blu"
+									},
+									"group": 0,
+									"owner": 3,
+									"spawnflags": 4,
+									"warnOnCap": 0,
+									"capSounds": []
+								}
+							],
+							[
+								{
+									"$ref": "map:1489"
+								},
+								{
+									"index": 3,
+									"defaultOwner": 2,
+									"warnSound": "ControlPoint.CaptureWarn",
+									"id": {
+										"$ref": "map:1489"
+									},
+									"locked": false,
+									"rank": 2,
+									"printName": "#Dustbowl_cap_2_A",
+									"sounds": {
+										"stop": "Hologram.Stop",
+										"interrupted": "Hologram.Interrupted",
+										"progress": "Hologram.Move",
+										"start": "Hologram.Start"
+									},
+									"previous": {
+										"2": [],
+										"3": [
+											{
+												"$ref": "map:1489"
+											}
+										]
+									},
+									"icons": {
+										"0": "sprites/obj_icons/icon_obj_neutral",
+										"2": "sprites/obj_icons/icon_obj_red",
+										"3": "sprites/obj_icons/icon_obj_blu"
+									},
+									"group": 0,
+									"owner": 2,
+									"spawnflags": 4,
+									"warnOnCap": 0,
+									"capSounds": []
+								}
+							],
+							[
+								{
+									"$ref": "map:1491"
+								},
+								{
+									"index": 4,
+									"defaultOwner": 2,
+									"warnSound": "ControlPoint.CaptureWarn",
+									"id": {
+										"$ref": "map:1491"
+									},
+									"locked": false,
+									"rank": 3,
+									"printName": "#Dustbowl_cap_2_B",
+									"sounds": {
+										"stop": "Hologram.Stop",
+										"interrupted": "Hologram.Interrupted",
+										"progress": "Hologram.Move",
+										"start": "Hologram.Start"
+									},
+									"previous": {
+										"2": [],
+										"3": [
+											{
+												"$ref": "map:1489"
+											}
+										]
+									},
+									"icons": {
+										"0": "sprites/obj_icons/icon_obj_neutral",
+										"2": "sprites/obj_icons/icon_obj_red",
+										"3": "sprites/obj_icons/icon_obj_blu"
+									},
+									"group": 0,
+									"owner": 2,
+									"spawnflags": 4,
+									"warnOnCap": 1,
+									"capSounds": []
+								}
+							],
+							[
+								{
+									"$ref": "map:1492"
+								},
+								{
+									"index": 5,
+									"defaultOwner": 2,
+									"warnSound": "ControlPoint.CaptureWarn",
+									"id": {
+										"$ref": "map:1492"
+									},
+									"locked": false,
+									"rank": 4,
+									"printName": "#Dustbowl_cap_3_A",
+									"sounds": {
+										"stop": "Hologram.Stop",
+										"interrupted": "Hologram.Interrupted",
+										"progress": "Hologram.Move",
+										"start": "Hologram.Start"
+									},
+									"previous": {
+										"2": [],
+										"3": [
+											{
+												"$ref": "map:1492"
+											}
+										]
+									},
+									"icons": {
+										"0": "sprites/obj_icons/icon_obj_neutral",
+										"2": "sprites/obj_icons/icon_obj_red",
+										"3": "sprites/obj_icons/icon_obj_blu"
+									},
+									"group": 0,
+									"owner": 2,
+									"spawnflags": 4,
+									"warnOnCap": 0,
+									"capSounds": []
+								}
+							],
+							[
+								{
+									"$ref": "map:1494"
+								},
+								{
+									"index": 6,
+									"defaultOwner": 2,
+									"warnSound": "ControlPoint.CaptureWarn",
+									"id": {
+										"$ref": "map:1494"
+									},
+									"locked": false,
+									"rank": 5,
+									"printName": "#Dustbowl_cap_3_B",
+									"sounds": {
+										"stop": "Hologram.Stop",
+										"interrupted": "Hologram.Interrupted",
+										"progress": "Hologram.Move",
+										"start": "Hologram.Start"
+									},
+									"previous": {
+										"2": [],
+										"3": [
+											{
+												"$ref": "map:1492"
+											}
+										]
+									},
+									"icons": {
+										"0": "sprites/obj_icons/icon_obj_neutral",
+										"2": "sprites/obj_icons/icon_obj_red",
+										"3": "sprites/obj_icons/icon_obj_blu"
+									},
+									"group": 0,
+									"owner": 2,
+									"spawnflags": 4,
+									"warnOnCap": 1,
+									"capSounds": []
+								}
+							],
+							[
+								{
+									"$ref": "map:1761"
+								},
+								{
+									"index": 2,
+									"defaultOwner": 2,
+									"warnSound": "ControlPoint.CaptureWarn",
+									"id": {
+										"$ref": "map:1761"
+									},
+									"locked": false,
+									"rank": 1,
+									"printName": "#Dustbowl_cap_1_B",
+									"sounds": {
+										"stop": "Hologram.Stop",
+										"interrupted": "Hologram.Interrupted",
+										"progress": "Hologram.Move",
+										"start": "Hologram.Start"
+									},
+									"previous": {
+										"2": [],
+										"3": [
+											{
+												"$ref": "map:1487"
+											}
+										]
+									},
+									"icons": {
+										"0": "sprites/obj_icons/icon_obj_neutral",
+										"2": "sprites/obj_icons/icon_obj_red",
+										"3": "sprites/obj_icons/icon_obj_blu"
+									},
+									"group": 0,
+									"owner": 2,
+									"spawnflags": 4,
+									"warnOnCap": 1,
+									"capSounds": []
+								}
+							]
+						]
+					}
+				},
+				"master": {
+					"switchTeams": true,
+					"firstAfterRestart": false,
+					"capLayout": "",
+					"disabled": false,
+					"restrict": 0,
+					"partialCapRate": 0,
+					"current": "round_1",
+					"scoreStyle": 1,
+					"playAllRounds": true
+				},
+				"areas": {
+					"map:1760": {
+						"pointName": "cap_red_2",
+						"enabled": true,
+						"state": {
+							"owner": 2,
+							"lastReduction": -531.7799881137908,
+							"blocked": false,
+							"capturing": false,
+							"cappingTeam": 0,
+							"timeRemaining": 0
+						},
+						"canCap": {
+							"2": false,
+							"3": true
+						}
+					},
+					"map:1488": {
+						"pointName": "cap_red_1",
+						"enabled": true,
+						"state": {
+							"owner": 3,
+							"lastReduction": -64.24499856401235,
+							"blocked": false,
+							"capturing": false,
+							"cappingTeam": 0,
+							"timeRemaining": 0
+						},
+						"canCap": {
+							"2": false,
+							"3": true
+						}
+					},
+					"map:1495": {
+						"pointName": "cap_red_6",
+						"enabled": true,
+						"state": {
+							"owner": 2,
+							"lastReduction": -531.7799881137908,
+							"blocked": false,
+							"capturing": false,
+							"cappingTeam": 0,
+							"timeRemaining": 0
+						},
+						"canCap": {
+							"2": true,
+							"3": true
+						}
+					},
+					"map:1493": {
+						"pointName": "cap_red_5",
+						"enabled": true,
+						"state": {
+							"owner": 2,
+							"lastReduction": -531.7799881137908,
+							"blocked": false,
+							"capturing": false,
+							"cappingTeam": 0,
+							"timeRemaining": 0
+						},
+						"canCap": {
+							"2": false,
+							"3": true
+						}
+					},
+					"map:2073": {
+						"pointName": "cap_red_4",
+						"enabled": true,
+						"state": {
+							"owner": 2,
+							"lastReduction": -531.7799881137908,
+							"blocked": false,
+							"capturing": false,
+							"cappingTeam": 0,
+							"timeRemaining": 0
+						},
+						"canCap": {
+							"2": true,
+							"3": true
+						}
+					},
+					"map:1490": {
+						"pointName": "cap_red_3",
+						"enabled": true,
+						"state": {
+							"owner": 2,
+							"lastReduction": -531.7799881137908,
+							"blocked": false,
+							"capturing": false,
+							"cappingTeam": 0,
+							"timeRemaining": 0
+						},
+						"canCap": {
+							"2": false,
+							"3": true
+						}
+					}
+				}
+			},
+			"toggles": {
+				"map:1828": true,
+				"map:1992": true,
+				"map:1813": true,
+				"map:1506": true,
+				"map:1990": true,
+				"map:2236": true,
+				"map:1504": true,
+				"map:2076": true,
+				"map:2230": true,
+				"map:1814": true,
+				"map:2300": true,
+				"map:1840": true,
+				"map:1993": true,
+				"map:1835": true,
+				"map:1838": true,
+				"map:2296": true,
+				"map:1984": true,
+				"map:1929": true,
+				"map:1912": true,
+				"map:1836": true,
+				"map:1512": true,
+				"map:1910": true,
+				"map:1829": true,
+				"map:1916": true,
+				"map:1915": true,
+				"map:1976": true,
+				"map:1994": true,
+				"map:1815": true,
+				"map:1843": true,
+				"map:1841": true,
+				"map:2250": true,
+				"map:1909": true,
+				"map:2238": true,
+				"map:1928": true,
+				"map:1844": true,
+				"map:1743": true,
+				"map:1510": true,
+				"map:1830": true,
+				"map:1914": true,
+				"map:1921": true,
+				"map:2239": true,
+				"map:1919": true,
+				"map:1917": true,
+				"map:1827": true,
+				"map:1908": true,
+				"map:2299": true,
+				"map:2298": true,
+				"map:2229": true,
+				"map:1845": true,
+				"map:2297": true,
+				"map:2074": true,
+				"map:2293": true,
+				"map:1514": true,
+				"map:1508": true,
+				"map:2104": false,
+				"map:1839": true,
+				"map:1991": true,
+				"map:1833": true,
+				"map:1846": true,
+				"map:2105": false,
+				"map:1502": true,
+				"map:1831": true,
+				"map:1925": true,
+				"map:2103": false,
+				"map:1922": true,
+				"map:1926": true,
+				"map:1918": true,
+				"map:1834": true,
+				"map:1832": true,
+				"map:1842": true,
+				"map:1837": true,
+				"map:1923": true,
+				"map:1920": true,
+				"map:1985": true,
+				"map:1913": true,
+				"map:1924": true,
+				"map:1930": true,
+				"map:1983": true,
+				"map:1825": false,
+				"map:1927": true,
+				"map:1911": true
+			},
+			"convars": {
+				"mp_respawnwavetime": "10.0",
+				"ns_soldiers_paused": "0",
+				"mp_timelimit": "0",
+				"tf_player_movement_restart_freeze": "1",
+				"tf_caplinear": "1",
+				"mp_bonusroundtime": "15",
+				"mp_maxrounds": "0",
+				"ns_squads_min": "3",
+				"mp_blockstyle": "1",
+				"mp_friendlyfire": "0",
+				"ns_soldiers_enabled": "1",
+				"mp_capstyle": "1",
+				"ns_squads_auto_enabled": "1",
+				"mp_enableroundwaittime": "1",
+				"mp_winlimit": "0",
+				"mp_aiwar_team_size": "16",
+				"ns_squads_max": "3",
+				"mp_stalemate_timelimit": "240",
+				"tf_flag_caplimit": "3",
+				"mp_capdeteriorate_time": "90.0",
+				"mp_deathmatch_enable": "1",
+				"mp_stalemate_enable": "0",
+				"mp_match_end_at_timelimit": "1"
+			},
+			"aiwar": {
+				"paused": false,
+				"active": true,
+				"soldiers": {
+					"bot:Spinel": {
+						"health": 100,
+						"pos": {
+							"y": 2571.8076171875,
+							"x": 123.54122924804688,
+							"z": -255.96873474121094
+						},
+						"drafted": false,
+						"role": "capture",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": -15.35519027709961,
+							"r": 0,
+							"p": 0
+						},
+						"team": 3
+					},
+					"bot:Haley": {
+						"health": 71,
+						"pos": {
+							"y": 1666.24462890625,
+							"x": 1995.2821044921875,
+							"z": -206.96875
+						},
+						"drafted": false,
+						"role": "defend",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": 125.75660705566406,
+							"r": 0,
+							"p": 0
+						},
+						"team": 2
+					},
+					"bot:Lancer": {
+						"health": 100,
+						"pos": {
+							"y": 2328.60302734375,
+							"x": 2089.958251953125,
+							"z": -143.96875
+						},
+						"drafted": false,
+						"role": "defend",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": 174.7354736328125,
+							"r": 0,
+							"p": 0
+						},
+						"team": 2
+					},
+					"bot:Mayor Lewis": {
+						"health": 76,
+						"pos": {
+							"y": 2420.234375,
+							"x": 1096.829345703125,
+							"z": -256.95928955078125
+						},
+						"drafted": false,
+						"role": "capture",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": -29.148700714111328,
+							"r": 0,
+							"p": 0
+						},
+						"team": 3
+					},
+					"bot:Ulrich Stern": {
+						"health": 100,
+						"pos": {
+							"y": 1035.5504150390625,
+							"x": 2113.25244140625,
+							"z": -196.43716430664063
+						},
+						"drafted": false,
+						"role": "defend",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": 126.57342529296875,
+							"r": 0,
+							"p": 0
+						},
+						"team": 2
+					},
+					"bot:Witch": {
+						"health": 88,
+						"pos": {
+							"y": 1696.8857421875,
+							"x": 2396.68017578125,
+							"z": -191.96875
+						},
+						"drafted": false,
+						"role": "defend",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": 150.85189819335938,
+							"r": 0,
+							"p": 0
+						},
+						"team": 2
+					},
+					"bot:Miss Pauling": {
+						"health": 100,
+						"pos": {
+							"y": 1525.2607421875,
+							"x": 2553.87646484375,
+							"z": -223.96875
+						},
+						"drafted": false,
+						"role": "defend",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": 159.03607177734375,
+							"r": 0,
+							"p": 0
+						},
+						"team": 2
+					},
+					"bot:Burgerpants": {
+						"health": 76,
+						"pos": {
+							"y": 2403.988525390625,
+							"x": 2185.56005859375,
+							"z": -136.81787109375
+						},
+						"drafted": false,
+						"role": "defend",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": 178.39149475097656,
+							"r": 0,
+							"p": 0
+						},
+						"team": 2
+					},
+					"bot:Franz Hopper": {
+						"health": 100,
+						"pos": {
+							"y": 2665.90576171875,
+							"x": 1960.03125,
+							"z": -191.96875
+						},
+						"drafted": false,
+						"role": "hold",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": -127.37924194335938,
+							"r": 0,
+							"p": 0
+						},
+						"team": 2
+					},
+					"bot:Greater Dog": {
+						"health": 100,
+						"pos": {
+							"y": 2586.1904296875,
+							"x": 508.4569091796875,
+							"z": -246.84718322753906
+						},
+						"drafted": false,
+						"role": "capture",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": -8.952897071838379,
+							"r": 0,
+							"p": 0
+						},
+						"team": 3
+					},
+					"bot:Morris": {
+						"health": 100,
+						"pos": {
+							"y": 2608.03125,
+							"x": 2075.275146484375,
+							"z": -171.4564971923828
+						},
+						"drafted": false,
+						"role": "hold",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": -145.1927032470703,
+							"r": 0,
+							"p": 0
+						},
+						"team": 2
+					},
+					"bot:Gerson": {
+						"health": 94,
+						"pos": {
+							"y": 2383.23388671875,
+							"x": 2253.93359375,
+							"z": -136.81787109375
+						},
+						"drafted": false,
+						"role": "hold",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": 178.16909790039063,
+							"r": 0,
+							"p": 0
+						},
+						"team": 2
+					},
+					"bot:Hiroki Ishiyama": {
+						"health": 100,
+						"pos": {
+							"y": 2617.645751953125,
+							"x": 38.60576629638672,
+							"z": -255.96875
+						},
+						"drafted": false,
+						"role": "capture",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": -5.886288642883301,
+							"r": 0,
+							"p": 0
+						},
+						"team": 3
+					},
+					"bot:William Dunbar": {
+						"health": 29,
+						"pos": {
+							"y": 2483.010986328125,
+							"x": 153.45327758789063,
+							"z": -255.96875
+						},
+						"drafted": false,
+						"role": "capture",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": -12.645363807678223,
+							"r": 0,
+							"p": 0
+						},
+						"team": 3
+					},
+					"bot:Charger": {
+						"health": 100,
+						"pos": {
+							"y": 1342.605224609375,
+							"x": 2135.96875,
+							"z": -185.29034423828125
+						},
+						"drafted": false,
+						"role": "defend",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": 134.2035369873047,
+							"r": 0,
+							"p": 0
+						},
+						"team": 2
+					},
+					"bot:Toriel": {
+						"health": 100,
+						"pos": {
+							"y": 1949.0423583984375,
+							"x": 1961.4747314453125,
+							"z": -206.96875
+						},
+						"drafted": false,
+						"role": "defend",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": 152.02374267578125,
+							"r": 0,
+							"p": 0
+						},
+						"team": 2
+					},
+					"bot:The Engineer": {
+						"health": 44,
+						"pos": {
+							"y": 2105.6728515625,
+							"x": 2332.933349609375,
+							"z": -190.3519744873047
+						},
+						"drafted": false,
+						"role": "defend",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": 159.4801025390625,
+							"r": 0,
+							"p": 0
+						},
+						"team": 2
+					},
+					"bot:Medic Who Heals": {
+						"health": 77,
+						"pos": {
+							"y": 2607.80419921875,
+							"x": 2391.96875,
+							"z": -151.96875
+						},
+						"drafted": false,
+						"role": "hold",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": -163.29942321777344,
+							"r": 0,
+							"p": 0
+						},
+						"team": 2
+					},
+					"bot:XANA": {
+						"health": 100,
+						"pos": {
+							"y": 2524.55224609375,
+							"x": 561.0585327148438,
+							"z": -246.53964233398438
+						},
+						"drafted": false,
+						"role": "capture",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": -17.28468894958496,
+							"r": 0,
+							"p": 0
+						},
+						"team": 3
+					},
+					"bot:Horseless Headless Horsemann": {
+						"health": 100,
+						"pos": {
+							"y": 2527.532958984375,
+							"x": 527.5559692382813,
+							"z": -248.6148223876953
+						},
+						"drafted": false,
+						"role": "capture",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": -31.163686752319336,
+							"r": 0,
+							"p": 0
+						},
+						"team": 3
+					},
+					"bot:Merasmus": {
+						"health": 100,
+						"pos": {
+							"y": 2590.246337890625,
+							"x": 735.06689453125,
+							"z": -255.62623596191406
+						},
+						"drafted": false,
+						"role": "capture",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": -29.400714874267578,
+							"r": 0,
+							"p": 0
+						},
+						"team": 3
+					},
+					"bot:Centipeetle": {
+						"health": 44,
+						"pos": {
+							"y": 2568.83154296875,
+							"x": 830.7334594726563,
+							"z": -253.8457794189453
+						},
+						"drafted": false,
+						"role": "capture",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": -23.98761558532715,
+							"r": 0,
+							"p": 0
+						},
+						"team": 3
+					},
+					"bot:Willy": {
+						"health": 100,
+						"pos": {
+							"y": 2066.248291015625,
+							"x": 2242.037109375,
+							"z": -191.96875
+						},
+						"drafted": false,
+						"role": "defend",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": 162.05628967285156,
+							"r": 0,
+							"p": 0
+						},
+						"team": 2
+					},
+					"bot:Clover": {
+						"health": 100,
+						"pos": {
+							"y": 2494,
+							"x": -3024,
+							"z": -434.760009765625
+						},
+						"drafted": false,
+						"role": "capture",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": 54.54548263549805,
+							"r": 0,
+							"p": 0
+						},
+						"team": 3
+					},
+					"bot:Kiwi": {
+						"health": 100,
+						"pos": {
+							"y": 2518.892578125,
+							"x": -2362.049072265625,
+							"z": -450.7975769042969
+						},
+						"drafted": false,
+						"role": "capture",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": -12.05268669128418,
+							"r": 0,
+							"p": 0
+						},
+						"team": 3
+					},
+					"bot:Francis": {
+						"health": 100,
+						"pos": {
+							"y": 2702.80859375,
+							"x": -41.180389404296875,
+							"z": -247.96875
+						},
+						"drafted": false,
+						"role": "capture",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": -14.849109649658203,
+							"r": 0,
+							"p": 0
+						},
+						"team": 3
+					},
+					"bot:Clown Car": {
+						"health": 100,
+						"pos": {
+							"y": 2680.03125,
+							"x": -277.91033935546875,
+							"z": -246.0089569091797
+						},
+						"drafted": false,
+						"role": "capture",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": -14.37105655670166,
+							"r": 0,
+							"p": 0
+						},
+						"team": 3
+					},
+					"bot:Pearl Universe": {
+						"health": 89,
+						"pos": {
+							"y": 2238.865478515625,
+							"x": 1987.8997802734375,
+							"z": -199.39688110351563
+						},
+						"drafted": false,
+						"role": "defend",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": 167.5823211669922,
+							"r": 0,
+							"p": 0
+						},
+						"team": 2
+					},
+					"bot:Jim Morales": {
+						"health": 100,
+						"pos": {
+							"y": 2485.06298828125,
+							"x": -14.82038402557373,
+							"z": -255.96875
+						},
+						"drafted": false,
+						"role": "capture",
+						"roleByHand": false,
+						"class": "player",
+						"angles": {
+							"y": -11.857100486755371,
+							"r": 0,
+							"p": 0
+						},
+						"team": 3
+					}
+				}
+			},
+			"rounds": {
+				"timers": {
+					"map:1977": {
+						"paused": false,
+						"length": 270,
+						"startPaused": false,
+						"resetTime": false,
+						"lengthSet": 540,
+						"armed": {
+							"1": true,
+							"2": true,
+							"3": true,
+							"4": true,
+							"5": true,
+							"10": true,
+							"120": true,
+							"30": true,
+							"finished": true,
+							"180": true,
+							"240": true,
+							"60": true,
+							"300": true
+						},
+						"endTime": 381.4200035445392,
+						"setupLength": 60,
+						"autoCountdown": true,
+						"disabled": false,
+						"states": "normal",
+						"maxLength": 0,
+						"serial": 4,
+						"nextNag": -531.7799881137908,
+						"timeAfterSetup": 270,
+						"remaining": 270,
+						"showInHud": true
+					}
+				},
+				"round": {
+					"winReason": 0,
+					"allowStalemateAtTimelimit": false,
+					"roundsPlayed": 0,
+					"previousRounds": [
+						"round_1"
+					],
+					"overtime": false,
+					"settings": {
+						"timelimit": 0,
+						"stalemateTimelimit": 240,
+						"stalemateEnable": false,
+						"chattime": 10,
+						"maxrounds": 0,
+						"winlimit": 0,
+						"bonusRoundTime": 15,
+						"deathmatchEnable": true,
+						"mapResetTime": -530.7749881362543,
+						"scrambleWinDifference": 2,
+						"matchEndAtTimelimit": true,
+						"enableRoundWaitTime": 1,
+						"scrambleAuto": true,
+						"respawnWaveTime": 10
+					},
+					"scores": {
+						"2": 0,
+						"3": 1
+					},
+					"mapFresh": false,
+					"teamCounts": {
+						"2": 16,
+						"3": 16
+					},
+					"respawnsDisabled": false,
+					"decideMatch": false,
+					"waveTime": {
+						"2": -1,
+						"3": 2
+					},
+					"changelevelAfterStalemate": false,
+					"originalWaveTime": {
+						"2": -1,
+						"3": 2
+					},
+					"scrambleTeams": false,
+					"switchTeams": false,
+					"nextPeriodic": 0.7000000067055225,
+					"waveScale": {
+						"2": 1,
+						"3": 1
+					},
+					"nextWave": {
+						"2": 1.560004860162735,
+						"3": 1.560004860162735
+					},
+					"adminWaveTime": {
+						"2": -1,
+						"3": -1
+					},
+					"mode": "control_points",
+					"firstRound": "round_1",
+					"restartFullReset": false,
+					"states": 4,
+					"capBuffer": -64.14499856401233,
+					"halted": false,
+					"deathmatch": false,
+					"inSetup": false,
+					"forceMapReset": true,
+					"winningTeam": 0
+				},
+				"scores": {
+					"2": 0,
+					"3": 1
+				},
+				"hudTimer": "map:1977",
+				"goals": {
+					"2": "#Dustbowl_red_setup_goal",
+					"3": "#Dustbowl_blue_setup_goal"
+				},
+				"roles": {
+					"2": 1,
+					"3": 2
+				},
+				"active": true
+			},
+			"players": {
+				"bot:Spinel": {
+					"health": 100,
+					"eyes": {
+						"y": -16.747928619384766,
+						"r": 0,
+						"p": 1.6945252418518066
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2571.8076171875,
+						"x": 123.54122924804688,
+						"z": -255.96873474121094
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 256
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 3,
+					"money": 2000,
+					"conditions": [],
+					"name": "Spinel",
+					"alive": true
+				},
+				"bot:The Engineer": {
+					"health": 44,
+					"eyes": {
+						"y": 165.45535278320313,
+						"r": 0,
+						"p": 6.039773941040039
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2105.6728515625,
+						"x": 2332.933349609375,
+						"z": -190.3519744873047
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 166
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 330
+						}
+					],
+					"team": 2,
+					"money": 2000,
+					"conditions": [],
+					"name": "The Engineer",
+					"alive": true
+				},
+				"bot:Lancer": {
+					"health": 100,
+					"eyes": {
+						"y": 174.7354736328125,
+						"r": 0,
+						"p": 8.244165420532227
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2328.60302734375,
+						"x": 2089.958251953125,
+						"z": -143.96875
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 211
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 2,
+					"money": 2000,
+					"conditions": [],
+					"name": "Lancer",
+					"alive": true
+				},
+				"bot:Mayor Lewis": {
+					"health": 76,
+					"eyes": {
+						"y": -29.148700714111328,
+						"r": 0,
+						"p": -1.3014841079711914
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2420.234375,
+						"x": 1096.829345703125,
+						"z": -256.95928955078125
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 256
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 3,
+					"money": 2000,
+					"conditions": [],
+					"name": "Mayor Lewis",
+					"alive": true
+				},
+				"bot:XANA": {
+					"health": 100,
+					"eyes": {
+						"y": -19.746475219726563,
+						"r": 0,
+						"p": 2.5357162952423096
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2524.55224609375,
+						"x": 561.0585327148438,
+						"z": -246.53964233398438
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 211
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 3,
+					"money": 2000,
+					"conditions": [],
+					"name": "XANA",
+					"alive": true
+				},
+				"bot:Witch": {
+					"health": 88,
+					"eyes": {
+						"y": 150.85189819335938,
+						"r": 0,
+						"p": 3.698730230331421
+					},
+					"armor": 0,
+					"pos": {
+						"y": 1696.8857421875,
+						"x": 2396.68017578125,
+						"z": -191.96875
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 166
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 2,
+					"money": 2000,
+					"conditions": [],
+					"name": "Witch",
+					"alive": true
+				},
+				"bot:Morris": {
+					"health": 100,
+					"eyes": {
+						"y": -145.1976776123047,
+						"r": 0,
+						"p": 14.330039024353027
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2608.03125,
+						"x": 2075.275146484375,
+						"z": -171.4564971923828
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 225
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 2,
+					"money": 2000,
+					"conditions": [],
+					"name": "Morris",
+					"alive": true
+				},
+				"bot:Centipeetle": {
+					"health": 44,
+					"eyes": {
+						"y": -25.755281448364258,
+						"r": 0,
+						"p": 2.6751673221588135
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2568.83154296875,
+						"x": 830.7334594726563,
+						"z": -253.8457794189453
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 180
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 331
+						}
+					],
+					"team": 3,
+					"money": 2000,
+					"conditions": [],
+					"name": "Centipeetle",
+					"alive": true
+				},
+				"bot:Miss Pauling": {
+					"health": 100,
+					"eyes": {
+						"y": 148.6061248779297,
+						"r": 0,
+						"p": 3.404406785964966
+					},
+					"armor": 0,
+					"pos": {
+						"y": 1525.2607421875,
+						"x": 2553.87646484375,
+						"z": -223.96875
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 256
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 2,
+					"money": 2000,
+					"conditions": [],
+					"name": "Miss Pauling",
+					"alive": true
+				},
+				"bot:Clown Car": {
+					"health": 100,
+					"eyes": {
+						"y": -16.45509147644043,
+						"r": 0,
+						"p": 1.6377955675125122
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2680.03125,
+						"x": -277.91033935546875,
+						"z": -246.0089569091797
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 256
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 3,
+					"money": 2000,
+					"conditions": [],
+					"name": "Clown Car",
+					"alive": true
+				},
+				"bot:Haley": {
+					"health": 71,
+					"eyes": {
+						"y": 140.19717407226563,
+						"r": 0,
+						"p": 5.764456748962402
+					},
+					"armor": 0,
+					"pos": {
+						"y": 1666.24462890625,
+						"x": 1995.2821044921875,
+						"z": -206.96875
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 211
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 331
+						}
+					],
+					"team": 2,
+					"money": 2000,
+					"conditions": [],
+					"name": "Haley",
+					"alive": true
+				},
+				"bot:Horseless Headless Horsemann": {
+					"health": 100,
+					"eyes": {
+						"y": -31.163686752319336,
+						"r": 0,
+						"p": 0.6510253548622131
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2527.532958984375,
+						"x": 527.5559692382813,
+						"z": -248.6148223876953
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 256
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 3,
+					"money": 2000,
+					"conditions": [],
+					"name": "Horseless Headless Horsemann",
+					"alive": true
+				},
+				"bot:Greater Dog": {
+					"health": 100,
+					"eyes": {
+						"y": -21.267099380493164,
+						"r": 0,
+						"p": 2.4089317321777344
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2586.1904296875,
+						"x": 508.4569091796875,
+						"z": -246.84718322753906
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 256
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 3,
+					"money": 2000,
+					"conditions": [],
+					"name": "Greater Dog",
+					"alive": true
+				},
+				"bot:Gunther": {
+					"health": -3,
+					"eyes": {
+						"y": -160.61610412597656,
+						"r": 0,
+						"p": 9.411839485168457
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2588.254638671875,
+						"x": 1879.1572265625,
+						"z": -177.96875
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 363
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 225
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 329
+						}
+					],
+					"team": 2,
+					"money": 2000,
+					"conditions": [],
+					"name": "Gunther",
+					"alive": false
+				},
+				"bot:Charger": {
+					"health": 100,
+					"eyes": {
+						"y": 134.20530700683594,
+						"r": 0,
+						"p": 5.354039669036865
+					},
+					"armor": 0,
+					"pos": {
+						"y": 1342.605224609375,
+						"x": 2135.96875,
+						"z": -185.29034423828125
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 121
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 2,
+					"money": 2000,
+					"conditions": [],
+					"name": "Charger",
+					"alive": true
+				},
+				"bot:Burgerpants": {
+					"health": 76,
+					"eyes": {
+						"y": 179.02520751953125,
+						"r": 0,
+						"p": 7.917268753051758
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2403.988525390625,
+						"x": 2185.56005859375,
+						"z": -136.81787109375
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 211
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 331
+						}
+					],
+					"team": 2,
+					"money": 2000,
+					"conditions": [],
+					"name": "Burgerpants",
+					"alive": true
+				},
+				"bot:Francis": {
+					"health": 100,
+					"eyes": {
+						"y": -18.837173461914063,
+						"r": 0,
+						"p": 1.7527284622192383
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2702.80859375,
+						"x": -41.180389404296875,
+						"z": -247.96875
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 256
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 3,
+					"money": 2000,
+					"conditions": [],
+					"name": "Francis",
+					"alive": true
+				},
+				"bot:Gerson": {
+					"health": 94,
+					"eyes": {
+						"y": 178.16909790039063,
+						"r": 0,
+						"p": 7.457212924957275
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2383.23388671875,
+						"x": 2253.93359375,
+						"z": -136.81787109375
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 376
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 328
+						}
+					],
+					"team": 2,
+					"money": 2000,
+					"conditions": [],
+					"name": "Gerson",
+					"alive": true
+				},
+				"bot:Grandpa's Note": {
+					"health": -21,
+					"eyes": {
+						"y": -6.196197986602783,
+						"r": 0,
+						"p": 11.051445960998535
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2382.43212890625,
+						"x": 1706.1107177734375,
+						"z": -192.3971710205078
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 363
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 225
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 3,
+					"money": 2000,
+					"conditions": [],
+					"name": "Grandpa's Note",
+					"alive": false
+				},
+				"bot:Pootis": {
+					"health": -8,
+					"eyes": {
+						"y": -14.801899909973145,
+						"r": 0,
+						"p": 3.119549036026001
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2422.060302734375,
+						"x": 1539.5865478515625,
+						"z": -202.07176208496094
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 256
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 3,
+					"money": 2000,
+					"conditions": [],
+					"name": "Pootis",
+					"alive": false
+				},
+				"bot:Medic Who Heals": {
+					"health": 77,
+					"eyes": {
+						"y": -160.20896911621094,
+						"r": 0,
+						"p": 10.181127548217773
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2607.80419921875,
+						"x": 2391.96875,
+						"z": -151.96875
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 166
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 2,
+					"money": 2000,
+					"conditions": [],
+					"name": "Medic Who Heals",
+					"alive": true
+				},
+				"bot:Ulrich Stern": {
+					"health": 100,
+					"eyes": {
+						"y": 126.57342529296875,
+						"r": 0,
+						"p": 4.314429759979248
+					},
+					"armor": 0,
+					"pos": {
+						"y": 1035.5504150390625,
+						"x": 2113.25244140625,
+						"z": -196.43716430664063
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 166
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 330
+						}
+					],
+					"team": 2,
+					"money": 2000,
+					"conditions": [],
+					"name": "Ulrich Stern",
+					"alive": true
+				},
+				"bot:Hiroki Ishiyama": {
+					"health": 100,
+					"eyes": {
+						"y": -17.294221878051758,
+						"r": 0,
+						"p": 1.6158314943313599
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2617.645751953125,
+						"x": 38.60576629638672,
+						"z": -255.96875
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 256
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 3,
+					"money": 2000,
+					"conditions": [],
+					"name": "Hiroki Ishiyama",
+					"alive": true
+				},
+				"bot:Merasmus": {
+					"health": 100,
+					"eyes": {
+						"y": -28.264541625976563,
+						"r": 0,
+						"p": -0.991733193397522
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2590.246337890625,
+						"x": 735.06689453125,
+						"z": -255.62623596191406
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 256
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 3,
+					"money": 2000,
+					"conditions": [],
+					"name": "Merasmus",
+					"alive": true
+				},
+				"bot:Toriel": {
+					"health": 100,
+					"eyes": {
+						"y": 151.52267456054688,
+						"r": 0,
+						"p": 4.7129740715026855
+					},
+					"armor": 0,
+					"pos": {
+						"y": 1949.0423583984375,
+						"x": 1961.4747314453125,
+						"z": -206.96875
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 225
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 2,
+					"money": 2000,
+					"conditions": [],
+					"name": "Toriel",
+					"alive": true
+				},
+				"bot:Willy": {
+					"health": 100,
+					"eyes": {
+						"y": 162.68894958496094,
+						"r": 0,
+						"p": 4.574601650238037
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2066.248291015625,
+						"x": 2242.037109375,
+						"z": -191.96875
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 211
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 2,
+					"money": 2000,
+					"conditions": [],
+					"name": "Willy",
+					"alive": true
+				},
+				"bot:Clover": {
+					"health": 100,
+					"eyes": {
+						"y": -7.200002670288086,
+						"r": 0,
+						"p": -1.758714199066162
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2494,
+						"x": -3024,
+						"z": -434.760009765625
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 256
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 3,
+					"money": 2000,
+					"conditions": [],
+					"name": "Clover",
+					"alive": true
+				},
+				"bot:Kiwi": {
+					"health": 100,
+					"eyes": {
+						"y": -12.05268669128418,
+						"r": 0,
+						"p": -2.273268699645996
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2518.892578125,
+						"x": -2362.049072265625,
+						"z": -450.7975769042969
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 256
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 3,
+					"money": 2000,
+					"conditions": [],
+					"name": "Kiwi",
+					"alive": true
+				},
+				"bot:Franz Hopper": {
+					"health": 100,
+					"eyes": {
+						"y": -127.34120178222656,
+						"r": 0,
+						"p": 12.952164649963379
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2665.90576171875,
+						"x": 1960.03125,
+						"z": -191.96875
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 286
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 2,
+					"money": 2000,
+					"conditions": [],
+					"name": "Franz Hopper",
+					"alive": true
+				},
+				"bot:William Dunbar": {
+					"health": 29,
+					"eyes": {
+						"y": -14.406737327575684,
+						"r": 0,
+						"p": 1.7390813827514648
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2483.010986328125,
+						"x": 153.45327758789063,
+						"z": -255.96875
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 256
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 3,
+					"money": 2000,
+					"conditions": [],
+					"name": "William Dunbar",
+					"alive": true
+				},
+				"bot:Pearl Universe": {
+					"health": 89,
+					"eyes": {
+						"y": 168.31825256347656,
+						"r": 0,
+						"p": 5.547106742858887
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2238.865478515625,
+						"x": 1987.8997802734375,
+						"z": -199.39688110351563
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 211
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 2,
+					"money": 2000,
+					"conditions": [],
+					"name": "Pearl Universe",
+					"alive": true
+				},
+				"bot:Jim Morales": {
+					"health": 100,
+					"eyes": {
+						"y": -13.314016342163086,
+						"r": 0,
+						"p": 1.6000996828079224
+					},
+					"armor": 0,
+					"pos": {
+						"y": 2485.06298828125,
+						"x": -14.82038402557373,
+						"z": -255.96875
+					},
+					"ammo": [
+						{
+							"name": "357",
+							"count": 332
+						},
+						{
+							"name": "AR2",
+							"count": 100
+						},
+						{
+							"name": "AR2AltFire",
+							"count": 6
+						},
+						{
+							"name": "Buckshot",
+							"count": 364
+						},
+						{
+							"name": "Grenade",
+							"count": 305
+						},
+						{
+							"name": "Pistol",
+							"count": 256
+						},
+						{
+							"name": "RPG_Round",
+							"count": 300
+						},
+						{
+							"name": "SMG1",
+							"count": 256
+						},
+						{
+							"name": "SMG1_Grenade",
+							"count": 5
+						},
+						{
+							"name": "XBowBolt",
+							"count": 332
+						}
+					],
+					"team": 3,
+					"money": 2000,
+					"conditions": [],
+					"name": "Jim Morales",
+					"alive": true
+				}
+			}
+		},
+		"schema": 1,
+		"map": "cp_dustbowl"
+	},
+	"description": "aiwar_bench: 16v16, warmed 60 s, 29 alive",
+	"name": "aiwar_bench_16v16",
+	"map": "cp_dustbowl"
+}
