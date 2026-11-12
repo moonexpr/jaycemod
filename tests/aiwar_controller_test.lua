@@ -192,7 +192,8 @@ local function World ()
 			BlockerChangesSince = function () return w.blockerChanges end,
 			DoorWalls = function () return w.doorWalls or {} end,
 			AreaBlocked = function (_, id) return (w.blockedAreas or {}) [id] == true end,
-			SpawnRoomTeam = function (_, area) return area.room or 0 end
+			SpawnRoomTeam = function (_, area) return area.room or 0 end,
+			SetDisabledAreas = function (_, set) w.disabledAreas = set end
 		}
 	)
 	w:Load ("gamemode",
@@ -320,6 +321,7 @@ local function Env (w)
 		CurTime = function () return w.now end,
 		SetGlobal2Bool = function () end,
 		SetGlobal2Int = function (key, value) w.globals [key] = value end,
+		SetGlobal2String = function (key, value) w.globals [key] = value end,
 		concommand = wiring.concommand,
 		hook =
 		{
@@ -1652,6 +1654,23 @@ T.test ("the slot list is a part object, its viewers synced by one job of the ca
 	T.eq (controller.slotList,                      slots, "the same object")
 	T.eq (controller.slotList:Plan (),              plan,  "its state kept, its methods back")
 	T.eq (controller.calendar:Report ().slots.jobs, 1,     "still the one job")
+end)
+
+T.test ("the marks are a part object the controller's marking reaches, their report a job of the calendar", function ()
+	local Marks = T.require ("features.aiwar.marks")
+	local w = World ()
+	local controller = Load (w)
+	local board = controller.markBoard
+	controller:Mark (Marks.DANGER, RED, { x = 0, y = 0, z = 0 })
+	T.eq (#board:Marks ():All (), 1, "the controller's Mark reaches the board")
+	T.eq (controller:DangerNear (RED, { x = 10, y = 0, z = 0 }).x, 0, "and its DangerNear reads it")
+	T.eq (controller.MarksOf, nil, "the marks are the part's, not the controller's")
+	T.eq (controller.calendar:Report ().marks.jobs, 1, "the enemy marks' report, a job of the marks system")
+	setmetatable (board, nil)
+	Reload (w, controller)
+	T.eq (controller.markBoard,                     board, "the same object")
+	T.eq (#controller.markBoard:Marks ():All (),    1,     "its marks kept, its methods back")
+	T.eq (controller.calendar:Report ().marks.jobs, 1,     "still the one job")
 end)
 
 T.finish ()

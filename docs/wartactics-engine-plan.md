@@ -442,6 +442,14 @@ and checked live with `dev.reload`:
    makes each system once (`SYSTEMS`), so a reload can bring a new one to
    a live calendar. Checked live: 16 slots a side read, the sync running,
    at most a tick late.
+   `sv_marks.lua` done the same day: `Controller.markBoard` (`New(calendar)`)
+   holds the marks and the camps; the enemy marks' report to the squads is a
+   job of the `marks` system every 2 s. `Mark`, `Unmark` and `DangerNear`
+   stay on the controller, handing on to the board: the Path Follower
+   stool, `npc_pathfollower` and the dev tools mark through the feature. The
+   room helpers (`GiveMission`, `RoomForSquad`, `ExitsAt`) stay too, for the
+   simulation move (§6a'). With the camps in the board and `roomHints`
+   declared, `feature_parts_test` (h) passes: the known failures are 36.
 4. `sv_obstacles.lua`, then `sv_field.lua` with its `Think` (the `Survey`,
    the largest timer by cost, §6.2).
 5. The hooks with no state: `sv_intel.lua`, `sv_gestures.lua`,
