@@ -1,5 +1,5 @@
 -- nextsoldier.behavior.ctfbot: TF2's bomb carrier as the engine's Actions. The engine
--- runs them on a server (native/nextsoldier); here each answers a fake soldier.
+-- runs them on a server (addons/nextsoldier/native); here each answers a fake soldier.
 local T = dofile ("tests/harness.lua")
 local Action = nextsoldier.behavior.action
 local CTFBot = nextsoldier.behavior.ctfbot

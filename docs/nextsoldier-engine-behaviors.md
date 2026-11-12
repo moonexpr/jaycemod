@@ -3,7 +3,7 @@
 A soldier's behaviours can run as the engine's own `Action<CLuaNextBot>`s, inside
 its real `IIntention` and `Behavior`, instead of on our statechart. This records
 what was found in GMod's win64 `server.dll` (build 2026.04.29, sha1 `0f0f70162486…`),
-what `native/nextsoldier` proved on a live server, and what stands between that
+what `addons/nextsoldier/native` proved on a live server, and what stands between that
 and soldiers running on it.
 
 ## What GMod actually runs
@@ -30,7 +30,7 @@ slots for `INextBotEventResponder`, 91 for `Action<T>`, 9 for `IContextualQuery`
 
 ## The mechanism: nothing is patched
 
-No detour is needed. `native/nextsoldier` builds objects laid out as
+No detour is needed. `addons/nextsoldier/native` builds objects laid out as
 `Action<CLuaNextBot>`, with a copy of that class's vtable in which the hooks are
 ours, and links one under the bot's `CLuaBehaviour` (`parent` and `child`). The
 engine does the rest, through virtual calls it already makes. No engine code or
@@ -64,7 +64,7 @@ MvM's bomb carrier, as TF2's tree, with no round or wave around it:
 
 ```
 CLuaBehaviour                 GMod's, calling BehaveUpdate
-  TacticalMonitor             Rust (native/nextsoldier: tactical.rs, engine.rs)
+  TacticalMonitor             Rust (addons/nextsoldier/native: tactical.rs, engine.rs)
     DeliverFlag               Lua (nextsoldier.behavior.ctfbot), with the flag
     ScenarioMonitor (buried)  Rust (scenario_monitor.rs), over a registry in Rust (scenarios.rs)
       FetchFlag (buried)      Lua

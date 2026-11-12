@@ -77,10 +77,7 @@ mod hooks {
         (api.checktype)(l, 1, TTABLE);
         (api.getfield)(l, 1, c"initial".as_ptr());
         if (api.type_of)(l, -1) != TTABLE {
-            raise_where(
-                l,
-                "TacticalLeggings needs the action it runs first".into(),
-            );
+            raise_where(l, "TacticalLeggings needs the action it runs first".into());
         }
         (api.settop)(l, 1);
         engine::mark_config(l, NAME);

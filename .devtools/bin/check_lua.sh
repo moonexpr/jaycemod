@@ -47,7 +47,7 @@ echo "compiled $count files"
 # the native modules the tests check against their Lua oracles (T.native)
 (cd native/foundation && cargo build --release --quiet) || status=1
 (cd native/wetsands && cargo build --release --quiet) || status=1
-(cd native/nextsoldier && cargo build --release --quiet) || status=1
+(cd addons/nextsoldier/native && cargo build --release --quiet) || status=1
 # shellcheck disable=SC2086
 out=$(.devtools/bin/run_lua_tests.sh $tests 2>&1) || status=1
 echo "$out" | grep -E '^FAIL'

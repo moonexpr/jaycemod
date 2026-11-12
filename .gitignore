@@ -2,8 +2,9 @@
 __pycache__/
 .DS_Store
 
-# native modules build here (native/<crate>)
+# native modules build here (native/<crate>, an addon's native/)
 native/*/target/
+addons/*/native/target/
 
 # the dev workbench's quicksave slots (named scenarios are kept)
 .devtools/scenarios/*/quick_*.json

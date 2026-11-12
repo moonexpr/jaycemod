@@ -1461,7 +1461,10 @@ unsafe extern "C-unwind" fn group_stack(l: L) -> c_int {
         None
     } else if *(entity as *const usize) == binding().player_vtable {
         let intention = intention_of(entity + PLAYER_INEXTBOT_OFFSET);
-        binding().soldiers.get(&intention).and_then(|s| s.group.as_ref())
+        binding()
+            .soldiers
+            .get(&intention)
+            .and_then(|s| s.group.as_ref())
     } else {
         binding().bot_groups.get(&entity)
     };

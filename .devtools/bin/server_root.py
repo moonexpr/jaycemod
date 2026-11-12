@@ -134,7 +134,7 @@ WATCH_LOG = "sandcastle_watch.txt"  # under the server's data/
 # LuaSocket against lua_shared, the same on either side (luadev_socket.lua)
 SERVER_BINARIES = {"gmsv_luasocket_win64.dll": "gmcl_luasocket_win64.dll"}
 # binary modules built from this repo, linked when built: name in the
-# server's lua/bin -> the build's output (native/<crate>, cargo xwin build
+# server's lua/bin -> the build's output (native/<crate> or an addon's native/, cargo xwin build
 # --release --target x86_64-pc-windows-msvc)
 REPO = Path(__file__).resolve().parents[2]
 # Maps being tried out, which add_map.py lists here (gitignored): every instance
@@ -144,7 +144,7 @@ NATIVE_BINARIES = {
     "gmsv_wsprofile_win64.dll": REPO / "native/ws_profile/target/x86_64-pc-windows-msvc/release/wsprofile.dll",
     "gmsv_foundation_win64.dll": REPO / "native/foundation/target/x86_64-pc-windows-msvc/release/foundation.dll",
     "gmsv_wetsands_win64.dll": REPO / "native/wetsands/target/x86_64-pc-windows-msvc/release/wetsands.dll",
-    "gmsv_nextsoldier_win64.dll": REPO / "native/nextsoldier/target/x86_64-pc-windows-msvc/release/nextsoldier.dll",
+    "gmsv_nextsoldier_win64.dll": REPO / "addons/nextsoldier/native/target/x86_64-pc-windows-msvc/release/nextsoldier.dll",
 }
 # addons built in this repo, linked into the server's addons/: name -> folder
 REPO_ADDONS = {

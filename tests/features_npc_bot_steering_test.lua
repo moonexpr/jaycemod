@@ -1,5 +1,5 @@
 -- features.npc.bot_steering: how a bot player's body takes its group's push, the spacing the
--- engine's tree beside its main one works out (native/nextsoldier's group.rs).
+-- engine's tree beside its main one works out (addons/nextsoldier/native's group.rs).
 local T = dofile ("tests/harness.lua")
 local BotSteering = T.require ("features.npc.bot_steering")
 

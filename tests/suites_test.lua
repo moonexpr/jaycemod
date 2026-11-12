@@ -64,7 +64,7 @@ end)
 T.test ("every Lua and native source file is claimed by a group", function ()
 	local suites = Suites.New (MANIFEST, TESTS)
 	local orphans = {}
-	for _, path in ipairs (Lines ("find addons -name '*.lua'; find native -name '*.rs' -not -path '*/target/*' -not -path '*/vendor/*'")) do
+	for _, path in ipairs (Lines ("find addons -name '*.lua'; find native addons -name '*.rs' -not -path '*/target/*' -not -path '*/vendor/*'")) do
 		if #suites:Changed ({ path }) == 0 then orphans [#orphans + 1] = path end
 	end
 	T.eq (table.concat (orphans, " "), "", "unclaimed files")

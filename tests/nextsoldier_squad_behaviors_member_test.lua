@@ -1,5 +1,5 @@
 -- nextsoldier.squad.behaviors.member: a squad member's main stack, apart from its leggings. The
--- engine runs it on a server (native/nextsoldier); here each action answers a fake soldier on an
+-- engine runs it on a server (addons/nextsoldier/native); here each action answers a fake soldier on an
 -- order.
 local T = dofile ("tests/harness.lua")
 local Action = nextsoldier.behavior.action

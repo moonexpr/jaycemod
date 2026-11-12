@@ -1,5 +1,5 @@
 -- nextsoldier.behavior.group_identity: the tree beside a soldier's main one, as L4D2's legs
--- beside its survivors' behaviour. The engine runs it on a server (native/nextsoldier).
+-- beside its survivors' behaviour. The engine runs it on a server (addons/nextsoldier/native).
 local T = dofile ("tests/harness.lua")
 local Action = nextsoldier.behavior.action
 local GroupIdentity = nextsoldier.behavior.group_identity

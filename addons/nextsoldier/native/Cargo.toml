@@ -9,7 +9,7 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-foundation = { path = "../foundation", default-features = false }
+foundation = { path = "../../../native/foundation", default-features = false }
 
 [profile.release]
 panic = "unwind"

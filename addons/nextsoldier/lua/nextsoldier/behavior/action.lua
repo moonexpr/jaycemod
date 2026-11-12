@@ -1,4 +1,4 @@
--- An action the engine runs (native/nextsoldier's Action<CLuaNextBot>): a class of
+-- An action the engine runs (addons/nextsoldier/native's Action<CLuaNextBot>): a class of
 -- hooks, which the engine calls with the action, then the soldier and what the hook
 -- is told. OnStart, Update, OnSuspend and OnResume answer a result, an event's hook
 -- (OnInjured) a Try result, a query's (ShouldHurry) an answer. NextBotBehavior.h's.

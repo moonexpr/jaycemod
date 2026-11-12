@@ -284,7 +284,7 @@ function ENT:BehaveStart()
 end
 
 -- The first of this class's behaviours as the engine's own Actions (a table of
--- hooks, native/nextsoldier), which needs the binary; none by default.
+-- hooks, addons/nextsoldier/native), which needs the binary; none by default.
 function ENT:NSInitialAction() end
 
 -- Whether an engine action may steer its body: the engine updates one whatever the body

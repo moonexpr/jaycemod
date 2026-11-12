@@ -1,4 +1,4 @@
--- What the engine does with Actions native/nextsoldier builds, checked on a live
+-- What the engine does with Actions addons/nextsoldier/native builds, checked on a live
 -- server with its binary in lua/bin (`gmsv_<module>_win64.dll`), as returned data:
 --   dt gmod lua_run instance=N code="$(cat .devtools/bin/nextsoldier_engine_check.lua)"
 --   (wait five seconds)

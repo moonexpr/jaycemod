@@ -1,4 +1,4 @@
--- Bot players on the engine's own statechart (native/nextsoldier): a bot from
+-- Bot players on the engine's own statechart (addons/nextsoldier/native): a bot from
 -- player.CreateNextSoldier runs nextsoldier.behavior.ctfbot's tree, and this is the
 -- soldier those actions see, its keys pressed each tick as a player's. GMod has no
 -- player locomotion for a NextBotPlayer, so its moves are ours: routes from a navigator

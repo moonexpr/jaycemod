@@ -1,4 +1,4 @@
--- npc_ctfbot: MvM's bomb carrier, on the engine's own statechart (native/nextsoldier):
+-- npc_ctfbot: MvM's bomb carrier, on the engine's own statechart (addons/nextsoldier/native):
 -- nextsoldier.behavior.ctfbot's actions under its native monitors. Spawned, it is
 -- given the map's item_teamflag and runs it to the func_capturezone, with no round or
 -- wave around it. What it does is theirs.
