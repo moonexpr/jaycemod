@@ -256,24 +256,32 @@ def main() -> int:
         for command in HOLD:
             server.rcon(command)
         server.lua_file(PROBE)
-        results = []
-        for i, condition in enumerate(schedule(conditions, args.replications), 1):
-            print(f"[{i}] {condition.name}", flush=True)
-            results.append(replicate(server, condition, args))
-            b = results[-1]["both"]
-            print(f"    {results[-1]['soldiers']} soldiers, war {results[-1]['war']['rate'] * 1e3:.1f} ms/s, "
-                  f"tick p99 {b['tail']['p99'] * 1e3:.2f} max {b['tail']['max'] * 1e3:.2f} ms, over {b['over']}",
-                  flush=True)
-        summary = report(conditions, results, PassLine(args.p99 / 1e3, args.worst / 1e3))
     except BenchError as e:
         print(f"bench failed: {e}", file=sys.stderr)
         return 1
+    # a replication failing ends the bench, but those done are still reported
+    results, failed = [], None
+    for i, condition in enumerate(schedule(conditions, args.replications), 1):
+        print(f"[{i}] {condition.name}", flush=True)
+        try:
+            results.append(replicate(server, condition, args))
+        except BenchError as e:
+            failed = str(e)
+            print(f"bench failed: {e}", file=sys.stderr)
+            break
+        b = results[-1]["both"]
+        print(f"    {results[-1]['soldiers']} soldiers, war {results[-1]['war']['rate'] * 1e3:.1f} ms/s, "
+              f"tick p99 {b['tail']['p99'] * 1e3:.2f} max {b['tail']['max'] * 1e3:.2f} ms, over {b['over']}",
+              flush=True)
+    done = [c for c in conditions if any(r["condition"] == c.name for r in results)]
+    summary = report(done, results, PassLine(args.p99 / 1e3, args.worst / 1e3))
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     path = ARTIFACTS / f"aiwar_bench-{stamp}.json"
-    path.write_text(json.dumps({"args": vars(args), "results": results, "summary": summary}, indent=1))
+    path.write_text(json.dumps({"args": vars(args), "results": results, "summary": summary, "failed": failed},
+                               indent=1))
     print(f"report: {path.relative_to(REPO)}")
-    return 0
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

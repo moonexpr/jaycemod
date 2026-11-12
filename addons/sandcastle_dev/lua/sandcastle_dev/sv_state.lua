@@ -332,7 +332,8 @@ end, function (players, _, report)
 			for cond, left in pairs (p.conditions) do
 				WS.AddCondition (ply, tonumber (cond) or cond, left == "permanent" and Players.PERMANENT or left)
 			end
-			local money = WS.Money (ply)
+			-- with the economy off, money is no part of the game, and spending it is refused
+			local money = WS.EconomyEnabled () and WS.Money (ply) or p.money
 			if money < p.money then WS.GrantMoney (ply, p.money - money) elseif money > p.money then WS.SpendMoney (ply, money - p.money) end
 			restored = restored + 1
 		end
