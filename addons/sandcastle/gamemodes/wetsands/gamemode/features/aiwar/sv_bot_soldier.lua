@@ -145,12 +145,11 @@ end
 -- A player's body plans its own way, as DrGBase's does: the orders give it
 -- the goal itself (their Chase), and it walks a route of its own there
 -- (nextsoldier.locomotion.route_walk), or straight at a goal near and in a clear
--- line. The route is the engine's path search's, through its navigator
--- (ws_bot_navigator), priced by RouteCost, as DrGBase's paths are: the
--- war's own Lua route searches queue behind its lane planning for tens of
--- seconds, which a body waiting on them spends standing still. It is
--- planned again on a timer (REPATH_LEAST to REPATH_MOST), sooner when its orders ask
--- (Repath).
+-- line. The route is asked of the war's own asynchronous search (MeshSearch), or of
+-- the engine's through its navigator (EngineSearch, ns_bots_routes_engine 1), and
+-- cleaned up for its body in the war's planning time (PlanRoute), never in the look
+-- that asks. It is planned again on a timer (REPATH_LEAST to REPATH_MOST), sooner
+-- when its orders ask (Repath).
 function BotSoldier:PlansRoutes () return true end
 
 -- Its navigator, made with its first route and kept with the bot player

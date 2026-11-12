@@ -37,9 +37,9 @@ role, weapon, target, speed and contact.
 | `nextsoldier.senses.vision` | `nextsoldier/senses/vision.lua` | TF2's IVision: an enemy seen at once, recognized after the reaction time, remembered where last seen for a while; the most dangerous recognized one is the contact. Its events are the orders' (`OnSight`, `OnLostSight`, `OnContact`, `OnContactLost`) |
 | `nextsoldier.body.player_body` | `nextsoldier/body/player_body.lua` | TF2's PlayerBody and PlayerLocomotion: from target, gait, look, aim and weapon to a command (move yaw, eye angles turned at `TURN_RATE`, walk, duck, jump, use, attack, reload); crouch jumps when stuck, jumps a low obstacle, ducks under a high one, uses a door ahead (GLambda Players' checks); sent nowhere, closes on or backs off its enemy to its weapon's chase and avoid ranges (DrGBase's own fighting) |
 | `nextsoldier.locomotion.route_walk` | `nextsoldier/locomotion/route_walk.lua` | A route walked waypoint by waypoint, as the orders walk theirs: a waypoint passed within `RADIUS` when the next is in a clear line, one round a corner only within `ON`, and the farthest of the next `LOOKAHEAD` in a clear line made for |
-| `BotSoldier` | `features/aiwar/sv_bot_soldier.lua` | The soldier port over a bot player, a subclass of the DrGBase one. It plans its own way, as DrGBase does (`PlansRoutes` true: the orders give it the goal): its navigator computes the route with the engine's path search, priced by `RouteCost` (blocked and shut areas, enemy spawn rooms, a player's step, crouch jump and safe drop), planned again when the goal moves, the blockers change or the orders ask (`Repath`). Hops only where a crouch jump clears, no seats or poses |
-| `ws_bot_navigator` | `entities/entities/ws_bot_navigator.lua` | A hidden NextBot per bot, standing where its bot stands, so `Path:Compute` (which needs a NextBot) can plan for a player, as GLambda Players' `glace_navigator` does |
-| Controller part | `features/aiwar/sv_bots.lua` | Keeps the quota, enlists bots as they spawn and discharges them as they die, kits them (`KitBot`: model, loadout, ammunition, health), looks every 0.2 s (field of view, line of sight, attackers and anyone within earshot), asks the orders `ShouldAttack` and `SelectMoreDangerousThreat`, and writes each bot's keys in `StartCommand` |
+| `BotSoldier` | `features/aiwar/sv_bot_soldier.lua` | The soldier port over a bot player, a subclass of the DrGBase one. It plans its own way, as DrGBase does (`PlansRoutes` true: the orders give it the goal): its route is asked of the war's own asynchronous search and cleaned up for its body off the look (below), priced as TF2's bots are (blocked and shut areas, enemy spawn rooms, a player's step, crouch jump, safe drop and ladders, its body's fit), planned again on a timer and when the orders ask (`Repath`). Hops only where a crouch jump clears, no seats or poses |
+| `ws_bot_navigator` | `entities/entities/ws_bot_navigator.lua` | A hidden NextBot per bot, standing where its bot stands, so `Path:Compute` (which needs a NextBot) can plan for a player, as GLambda Players' `glace_navigator` does. Made only under `ns_bots_routes_engine 1` |
+| Controller part | `features/aiwar/sv_bots.lua` | Keeps the quota, enlists bots as they spawn and discharges them as they die, kits them (`KitBot`: model, loadout, ammunition, health), looks every 0.2 s, the bots' looks spread over the ticks (field of view, line of sight, attackers and anyone within earshot), asks the orders `ShouldAttack` and `SelectMoreDangerousThreat`, and writes each bot's keys in `StartCommand` |
 
 The rest of the controller treats a bot as a player: the engine and
 DrGBase relate to it by its team, so the relationship passes, factions,
@@ -52,12 +52,20 @@ its head and stayed there.
 Freeform squads explore their lanes and waypoints without waiting for or
 following any player.
 
-Why the bots plan with the engine: the orders' own route walking
-(`PlansRoutes` false, `Travel:FollowRoute`) asks the war's Lua route search,
-whose queue the lane planning keeps 20 to 30 deep on `pl_upward`; a trip the
-orders restart (a fire team's contact ends it) asked afresh and dropped the
-search in flight, so bots stood for minutes. DrGBase soldiers never met it:
-their engine plans their paths.
+How the bots plan (since 2026-11-11, `docs/wartactics-engine-plan.md`): a bot
+asks the war's own asynchronous search (`BotSoldier:MeshSearch`, the npc
+controller's `RequestRoute`), priced as TF2's bots are at its body's limits,
+told the doors shut to its team and its body's fit; the answer's points are
+cleaned up for its body in the war's planning time (`Controller.plans`), not in
+the look that asked. `ns_bots_routes_engine 1` plans with the engine's
+`Path:Compute` through a `ws_bot_navigator` instead, as every bot did before.
+
+Why they planned with the engine until then: the orders' own route walking
+(`PlansRoutes` false, `Travel:FollowRoute`) asked the war's Lua route search
+of the time, whose queue the lane planning kept 20 to 30 deep on `pl_upward`;
+a trip the orders restart (a fire team's contact ends it) asked afresh and
+dropped the search in flight, so bots stood for minutes. The searches are
+native now, and a bot gives up one that has not answered in 5 s and asks again.
 
 ## What a bot player can be made to do
 

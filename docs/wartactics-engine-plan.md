@@ -79,18 +79,26 @@ On `main`, pushed. Each has its tests, written first.
 | `d13ac5d5` | Nav ladders in `wetsands.navsearch`, both twins |
 | `defab284` | The map's ladders in the mesh snapshot, a walker's body as a search rule, ladders as waypoints |
 | `9b027a3b` | A bot's routes come from the war's own asynchronous search (`npcs:RequestRoute`); `ns_bots_routes_engine 1` keeps the engine's for comparison |
+| `5635c827` | No navigator entity is made for a bot that plans on the war's own search |
 
 ## 4. What is left of that work
 
-1. **Rebuild `gmsv_wetsands` and restart the dev server.** The loaded module
-   predates `mesh:Ladder`. On a map with nav ladders the mesh snapshot now
-   calls it, so every route search on such a map fails until the module is
-   rebuilt. cp_dustbowl has none and is unaffected. Restarting is the
-   operator's call.
-2. **Walk the asynchronous search on more maps**, one with ladders (a CS:S
-   map) among them, then delete the engine path: `ns_bots_routes_engine`,
-   `BotSoldier:EngineSearch`, `RouteCost`, `Navigator`, and the
-   `ws_bot_navigator` entity.
+1. **Done 2026-11-11: `gmsv_wetsands` rebuilt, the dev server restarted on
+   it.** Start it with `dt srcds start --gamemode wetsands --map <map>`: the
+   default gamemode is the base `sandcastle`, which has no war. A server
+   elsewhere needs the same rebuild before it loads a map with nav ladders,
+   or every route search on that map fails at the mesh snapshot.
+2. **Bots climbing a ladder in play is not yet seen.** Checked in game on the
+   rebuilt module: cp_dustbowl at 8v8 (every bot with a goal on a route, no
+   navigators, no errors), and on de_nuke the search itself (12 ladder links
+   laid from its 5 ladders; a climber's route goes foot, head, goal up one,
+   a walker that climbs none is refused it). A war on de_nuke stayed between
+   rounds (its defuse scenario gave the bots no goals), so no bot walked a
+   ladder route. Walk one map more with a round running, then delete the
+   engine path: `ns_bots_routes_engine`, `BotSoldier:EngineSearch`,
+   `RouteCost`, `Navigator`, `PrepareRoutes`, and the `ws_bot_navigator`
+   entity. A bot's body has no ladder handling of its own: it walks the two
+   points and relies on a player's own climb.
 3. **`sv_next_soldiers.lua`'s soldier** still plans in its look with the
    engine's search. Move it onto the same `PlanRoute` and `MeshSearch`, which
    belong in `features/npc/bot_steering.lua` beside `StandOnRoute`, not in
@@ -98,14 +106,12 @@ On `main`, pushed. Each has its tests, written first.
 4. **A fixed benchmark.** One saved 8v8 scenario (`dev.scenario.save`),
    replayed several times a condition, so before and after are the same
    fight. Every comparison in §2 lacks this.
-5. **Stale comments.** `BotSoldier:PlansRoutes`'s comment and
-   `docs/aiwar-bots.md` still give the old reason for the engine's search.
-6. **The searches' slice overruns.** With a body's fit asked as a Lua rule,
+5. **The searches' slice overruns.** With a body's fit asked as a Lua rule,
    one step of a search took up to 15.7 ms against its 2 ms slice (a cold
    hull trace an area and a link, sixteen expansions between looks at the
    clock). Body fit as data on the mesh (§5.1) removes it; until then a
    smaller step for a request with a body would bound it.
-7. **Asking costs the look 0.7 ms.** `RequestRoute` finds the nearest areas,
+6. **Asking costs the look 0.7 ms.** `RequestRoute` finds the nearest areas,
    refreshes the blockers and consults the reach memo before it queues. It
    could queue first and do those in the searches' slice.
 
