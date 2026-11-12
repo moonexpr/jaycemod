@@ -623,6 +623,19 @@ T.test ("!print of one of easylua's relative names also shows it to its caller; 
 	T.eq (ran [2].script:find ('Show(me, "there", there)', 1, true) ~= nil, true, "trimmed")
 	commands ["ulx print"].fn (player (), "me:GetPos()")
 	T.eq (ran [3].script, "print(me:GetPos())", "printed only")
+	commands ["ulx print"].fn (player (), "these")
+	T.eq (ran [4].script:find ('Show(me, "these", these)', 1, true) ~= nil, true, "a group of entities is shown")
+end)
+
+T.test ("!print alone clears its caller's overlay", function ()
+	local commands, ran = ulx_module ()
+	local optional = false
+	for _, flag in ipairs (commands ["ulx print"].params [1]) do optional = optional or flag == "optional" end
+	T.eq (optional, true, "its lua may be left out")
+	commands ["ulx print"].fn (player ())
+	T.eq (ran [1].script, 'require("luadev_overlay") luadev_overlay.Clear(me)', "cleared")
+	commands ["ulx print"].fn (player (), "  ")
+	T.eq (ran [2].script, 'require("luadev_overlay") luadev_overlay.Clear(me)', "blank is alone")
 end)
 
 T.test ("each module clients run sends itself to them as it loads", function ()

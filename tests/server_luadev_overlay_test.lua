@@ -73,7 +73,11 @@ T.test ("a NextBot adds its activity, animation and target, and others add their
 end)
 
 T.test ("only easylua's relative names are shown", function ()
-	for _, name in ipairs ({ "me", "this", "we", "there", "here", "trace", "dir", "wep", "veh", "phys" }) do
+	local names = { "me", "this", "we", "there", "here", "trace", "dir", "wep", "veh", "phys" }
+	-- easylua's groups of entities
+	local groups = { "all", "humans", "bots", "afk", "us", "them", "friends", "npcs", "props", "these", "those" }
+	for _, name in ipairs (groups) do names [#names + 1] = name end
+	for _, name in ipairs (names) do
 		T.eq (Show.RELATIVES [name], true, name)
 	end
 	T.eq (Show.RELATIVES ["me:GetPos()"], nil, "an expression is not")
@@ -91,6 +95,26 @@ end)
 
 T.test ("we is a box for each", function ()
 	T.eq (#Show.Shapes ("we", { Entity ({}), Entity ({}) }, EYE, {}), 2, "two")
+end)
+
+-- easylua's group of entities (CreateAllFunction): called, it gives them now.
+local function Group (list) return setmetatable ({}, { __call = function () return list end }) end
+
+T.test ("a group is a box for each of its entities now, the invalid left out", function ()
+	local gone = Entity ({})
+	function gone:IsValid () return false end
+	local shapes = Show.Shapes ("those", Group ({ Entity ({ name = "a" }), gone, Entity ({ name = "b" }) }), EYE, {})
+	T.eq (#shapes,                                             2,                 "the valid two")
+	T.eq (shapes [1].lines [1] .. " " .. shapes [2].lines [1], "name: a name: b", "each")
+end)
+
+T.test ("a group keyed by its entities, as these is, is a box for each once", function ()
+	local a, b = Entity ({}), Entity ({})
+	T.eq (#Show.Shapes ("these", Group ({ [a] = a, [b] = b }), EYE, {}), 2, "two")
+end)
+
+T.test ("an empty group is no shapes", function ()
+	T.eq (#Show.Shapes ("friends", Group ({}), EYE, {}), 0, "none")
 end)
 
 T.test ("a position is a line from the caller's eye to it, with where it is and how far", function ()
