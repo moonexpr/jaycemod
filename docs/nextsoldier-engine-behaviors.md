@@ -64,9 +64,9 @@ MvM's bomb carrier, as TF2's tree, with no round or wave around it:
 
 ```
 CLuaBehaviour                 GMod's, calling BehaveUpdate
-  TacticalMonitor             Rust (addons/nextsoldier/native: tactical.rs, engine.rs)
+  TacticalMonitor             Rust (addons/nextsoldier/native: behavior/monitor_nextsoldier_tactical.rs, engine.rs)
     DeliverFlag               Lua (nextsoldier.behavior.ctfbot), with the flag
-    ScenarioMonitor (buried)  Rust (scenario_monitor.rs), over a registry in Rust (scenarios.rs)
+    ScenarioMonitor (buried)  Rust (behavior/monitor_nextsoldier_scenario.rs), over a registry in Rust (scenarios.rs)
       FetchFlag (buried)      Lua
 ```
 
@@ -162,14 +162,14 @@ the engine runs, logging each change as the layer looks.
 
 ## LOOK_AT: a head in Rust
 
-`look.rs` is `IBody::AimHeadTowards` as `PlayerBody` decides it: a request of a higher priority
+`body/look.rs` is `IBody::AimHeadTowards` as `PlayerBody` decides it: a request of a higher priority
 takes over, a lower one waits for the current to run out, an equal one for the head to settle.
 Lua gives its config once, in `engine.Look(soldier, { settle, steady_rate, turn_rate, interval,
 sources })`, and is asked nothing after. Each tick `INextBot::Upkeep` reaches slot 44 of the
 soldier's intention, which runs the model and sets the eyes, with no Lua in between. Its feet go
 their way under its eyes: `Drive` turns where it walks into forward and side moves.
 
-`reach.rs` reads what it needs from `server.dll`, whose Lua methods are entries in static tables
+`body/reach.rs` reads what it needs from `server.dll`, whose Lua methods are entries in static tables
 (`.devtools/bin/lua_glue.py` disassembles them): `EyePos`, `EyeAngles` and `Alive` give virtual
 slots, `Team` a field, `SetEyeAngles` a function no vtable holds. A binary where these differ is
 refused at bind. The priorities' names and order are from memory of the SDK: GMod's binary holds
@@ -179,19 +179,19 @@ only the `nb_head_aim_*` convars and the `LOOK_AT` debug category.
 players on NextSoldier have a head so far; a threat's source waits for combat, and an NPC's head
 for where it turns (the clients', `nextsoldier.body.gaze`).
 
-## TacticalLeggings: the tree beside the main one
+## NextLegs: the tree beside the main one
 
 A bot player runs two trees, as L4D2's survivors run `SurvivorBehavior` and `SurvivorLegs`:
 
 ```
 TacticalMonitor > ... > FetchFlag        what it is doing
-TacticalLeggings > LegsWait         who it is with, and where that puts its feet
+NextLegs > LegsWait         who it is with, and where that puts its feet
 ```
 
 `engine.InsertGroup(soldier, action[, me])` gives it the second: another `Behavior` and shadow on
 the same soldier. `soldier_update` runs both; `NextContainedResponder` (slot 2 of its intention)
 hands events on from the first to the second, so it hears what the main tree hears. Its root is
-native (`group.rs`, `engine.TacticalLeggings{ initial }`), and `nextsoldier.behavior.group_identity`
+native (`behavior/main_nextlegs.rs`, `engine.NextLegs{ initial }`), and `nextsoldier.behavior.group_identity`
 gives it to NextSoldiers and war bots for the player's whole life, not each spawn. `engine.GroupStack`
 shows it, and the debug layer lists it after the main tree. A `CLuaNextBot`'s intention is the
 engine's own, so its second tree is kept apart (`engine.InsertGroup` on one), run when Lua says

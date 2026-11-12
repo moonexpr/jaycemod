@@ -39,6 +39,7 @@ mod hooks {
     use super::{decode, encode, step, Step};
     use crate::engine::{self, Kind};
     use crate::layout::*;
+    use crate::outcome::{Made, Outcome, Reason};
     use crate::scenarios_bind::{self, CompiledData};
     use foundation::lua::{api, raise_where, string_at, L, TFUNCTION, TNUMBER, TTABLE};
     use foundation::userdata;
@@ -149,7 +150,7 @@ mod hooks {
     }
 
     /// The first interrupt whose `when` holds: its action, and its reason.
-    unsafe fn interrupted(this: *mut LuaAction) -> Option<(*mut Action, *const std::ffi::c_char)> {
+    unsafe fn interrupted(this: *mut LuaAction) -> Option<(Made, Reason)> {
         engine::with_config(this, |l| {
             let api = api();
             (api.getfield)(l, -1, c"interrupts".as_ptr());
@@ -168,13 +169,10 @@ mod hooks {
                 (api.getfield)(l, interrupt, c"when".as_ptr());
                 if engine::call_with_me(l, this, |_| 0) && (api.toboolean)(l, -1) != 0 {
                     (api.getfield)(l, interrupt, c"action".as_ptr());
-                    let action = engine::made_by(l, this);
-                    if action.is_null() {
-                        return None;
-                    }
+                    let made = Made::new(engine::made_by(l, this))?;
                     (api.getfield)(l, interrupt, c"reason".as_ptr());
-                    let reason = string_at(l, -1).map_or(std::ptr::null(), engine::interned);
-                    return Some((action, reason));
+                    let reason = string_at(l, -1).map_or(Reason::NONE, engine::interned);
+                    return Some((made, reason));
                 }
                 i += 1;
             }
@@ -187,30 +185,16 @@ mod hooks {
         _me: *mut u8,
         _interval: f32,
     ) -> *mut ActionResult {
-        let mut result = ActionResult {
-            kind: CONTINUE,
-            action: null_mut(),
-            reason: std::ptr::null(),
+        let outcome = match step(decode((*this).state), chosen(this)) {
+            Step::StartOver => Made::new(engine::same_again(this))
+                .map_or(Outcome::Continue, |made| {
+                    Outcome::ChangeTo(made, Reason::of(c"scenario changed"))
+                }),
+            Step::Interrupts => interrupted(this).map_or(Outcome::Continue, |(made, reason)| {
+                Outcome::SuspendFor(made, reason)
+            }),
         };
-        match step(decode((*this).state), chosen(this)) {
-            Step::StartOver => {
-                result = ActionResult {
-                    kind: CHANGE_TO,
-                    action: engine::same_again(this),
-                    reason: c"scenario changed".as_ptr(),
-                };
-            }
-            Step::Interrupts => {
-                if let Some((action, reason)) = interrupted(this) {
-                    result = ActionResult {
-                        kind: SUSPEND_FOR,
-                        action,
-                        reason,
-                    };
-                }
-            }
-        }
-        ret.write(result);
+        ret.write(outcome.action_result());
         ret
     }
 }

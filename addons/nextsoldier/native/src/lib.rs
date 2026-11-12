@@ -5,15 +5,15 @@
 //! starts, updates, suspends, ends and deletes them. A bot player has no statechart
 //! of its own, so `player.CreateNextSoldier` gives it one.
 
-pub mod group;
+pub mod behavior;
+pub mod body;
 pub mod image;
 pub mod layout;
-pub mod look;
-pub mod reach;
-pub mod scenario_monitor;
+pub mod locomotion;
+pub mod outcome;
 pub mod scenarios;
 pub mod scenarios_bind;
-pub mod tactical;
+pub mod vision;
 
 #[cfg(all(windows, target_arch = "x86_64"))]
 pub(crate) mod engine;

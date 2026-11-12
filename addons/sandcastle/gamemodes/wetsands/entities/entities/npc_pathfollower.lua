@@ -3,7 +3,7 @@
 -- stay, driven by one of three (NSSetDriver):
 --   "path": its bench, between Idle and Travel, optionally following the AI
 --     war's active lanes, sent to a goal and retargeted (NSSetGoal);
---   "legs": TacticalLeggings alone, told an order and its place in it
+--   "legs": NextLegs alone, told an order and its place in it
 --     (NSLegsGive), heading where its squad's mode says;
 --   "war": enlisted in the AI war (a bench war, when none runs), under the
 --     war's own orders.
@@ -530,7 +530,7 @@ function ENT:BehaveStart ()
 	if self:NSDriver () == "legs" then self:NSPutOnLeggings () end
 end
 
--- Its leggings (TacticalLeggings): the tree beside its main one that puts its feet where its
+-- Its leggings (NextLegs): the tree beside its main one that puts its feet where its
 -- squad's order says, once for its life, at ease while it has no order.
 function ENT:NSPutOnLeggings ()
 	if self.nsLeggings then return end

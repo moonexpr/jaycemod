@@ -1,5 +1,5 @@
 -- The tree a soldier runs beside its main one, as L4D2's survivors run their legs: who it
--- is with, and where that puts its feet. Its root is native (engine.TacticalLeggings);
+-- is with, and where that puts its feet. Its root is native (engine.NextLegs);
 -- what it does under that is nextsoldier.behavior.gib_behaviors'. With no group to be part of
 -- yet, it waits.
 --
@@ -815,7 +815,7 @@ end
 
 -- Its root, holding first (gib_behaviors' LegsWait, for none).
 function InitialAction (engine, first)
-	return engine.TacticalLeggings ({ initial = first or nextsoldier.behavior.gib_behaviors.LegsWait:New () })
+	return engine.NextLegs ({ initial = first or nextsoldier.behavior.gib_behaviors.LegsWait:New () })
 end
 
 -- Puts the tree on ent, telling its actions me. Whether it could: where the binary is not

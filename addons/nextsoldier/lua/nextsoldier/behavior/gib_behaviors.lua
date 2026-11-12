@@ -1,4 +1,4 @@
--- What TacticalLeggings does under its root (group_identity), as L4D2's survivors' legs:
+-- What NextLegs does under its root (group_identity), as L4D2's survivors' legs:
 -- an order's action (LegsMuster, LegsFallBack, LegsAssault), and under it the action its squad's mode says,
 -- each moving its member about the squad's point and its place, never the point itself:
 --   STATIONARY  LegsStationary  rests at a seat near its place, one no other member holds

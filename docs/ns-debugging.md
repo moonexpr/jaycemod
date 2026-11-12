@@ -89,7 +89,7 @@ switching modes switches what drives the followers, without respawning them.
 
 - **Path** (driver `path`): their bench. Right-click sends them to the aim,
   and later right-clicks change the goal.
-- **Local** (driver `legs`): `TacticalLeggings` alone. Right-click gives
+- **Local** (driver `legs`): `NextLegs` alone. Right-click gives
   their squad an order at the aim.
 - **Tactical** (driver `war`): the AI war's own orders. Right-click reports an
   enemy contact at the aim.
@@ -130,7 +130,7 @@ goal when their failed search has no reachable waypoint.
 ### Local
 
 Local mode inspects how members place themselves within a room or enclosed
-area: the legs (`TacticalLeggings`) alone, the followers' only tree.
+area: the legs (`NextLegs`) alone, the followers' only tree.
 Right-click gives the selected members the panel's order at the aim:
 **Muster** (the point, then rings around it), **Fall back** (rows across the
 way from you, the threat) or **Assault** (the room at the aim, found by the
@@ -271,7 +271,7 @@ called clear wins it; a fall back or RED dead loses it (`NSAssaultTrial.Report()
 the log of stages, sightings and kills, and the damage each dealt).
 
 A follower on its legs runs two stacks, as a bot player does: its main stack
-fights, and its `TacticalLeggings` beside it (`engine.InsertGroup`, updated each
+fights, and its `NextLegs` beside it (`engine.InsertGroup`, updated each
 tick by `engine.UpdateGroup` from its `BehaveUpdate`, ended by `engine.EndGroup`,
 or by the binary when the engine removes it) put its feet where its squad's
 order says. The leggings' base (`behavior.group_identity`, `gib_behaviors`) is

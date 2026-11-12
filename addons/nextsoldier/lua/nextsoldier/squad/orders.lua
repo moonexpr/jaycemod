@@ -1,4 +1,4 @@
--- The seam between a soldier's leggings (TacticalLeggings: behavior.group_identity's orders,
+-- The seam between a soldier's leggings (NextLegs: behavior.group_identity's orders,
 -- behavior.gib_behaviors' actions) and the squad above them (nextsoldier.squad). The leggings know
 -- their own orders (Muster, FallBack, Assault); a kind of order the squad adds registers here its
 -- leggings' action, which they look up for a kind of their own they do not know. Any kind may

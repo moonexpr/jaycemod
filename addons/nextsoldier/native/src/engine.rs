@@ -6,10 +6,15 @@
 //! The engine's frames do not expect a Lua error to pass through them, so each
 //! hook is a pcall: a hook that fails is reported and answers as if undefined.
 
+use crate::behavior::main_nextsoldier::{
+    self, create_next_soldier, release_soldier, Head, Soldier,
+};
+use crate::behavior::{main_nextlegs, monitor_nextsoldier_scenario, monitor_nextsoldier_tactical};
+use crate::body::look::{Angles, Kind as SourceKind, Look, Point, Priority, Source, Tuning};
 use crate::image::Image;
 use crate::layout::*;
-use crate::look::{Angles, Kind as SourceKind, Look, Point, Priority, Source, Tuning, View};
-use crate::{group, scenario_monitor, tactical};
+use crate::locomotion;
+use crate::outcome::{Made, Outcome, Reason};
 use foundation::lua::{
     api, push_str, set_function, string_at, CFunction, GLOBALSINDEX, L, TFUNCTION, TTABLE,
 };
@@ -25,7 +30,7 @@ extern "system" {
     fn GetModuleHandleA(name: *const c_char) -> *mut c_void;
 }
 
-struct Binding {
+pub(crate) struct Binding {
     lua: L,
     primary: Box<[usize]>,
     query: Box<[usize]>,
@@ -39,15 +44,15 @@ struct Binding {
     free_ids: Vec<u32>,
     live: HashSet<*mut LuaAction>,
     reasons: HashMap<Vec<u8>, &'static CStr>,
-    player_vtable: usize,
-    base_intention_vtable: usize,
-    base_intention_destructor: usize,
-    player_intention: Box<[usize]>,
-    intention_update: usize,
-    set_eye_angles: usize,
+    pub(crate) player_vtable: usize,
+    pub(crate) base_intention_vtable: usize,
+    pub(crate) base_intention_destructor: usize,
+    pub(crate) player_intention: Box<[usize]>,
+    pub(crate) intention_update: usize,
+    pub(crate) set_eye_angles: usize,
     intention_query_vtable: usize,
     behavior_vtables: (usize, usize),
-    soldiers: HashMap<usize, Soldier>,
+    pub(crate) soldiers: HashMap<usize, Soldier>,
     /// A CLuaNextBot's tree beside its main one, by the bot's address: updated when
     /// engine.UpdateGroup says (its BehaveUpdate), released by engine.EndGroup (its OnRemove).
     bot_groups: HashMap<usize, Tree>,
@@ -65,28 +70,14 @@ struct EventCall {
 /// What engine.Event sends in place of a command; no command is called this.
 const EVENT_MARK: &CStr = c"\x01nextsoldier.event";
 
-/// What a player bot has that a plain NextBotPlayer has not: a Behavior, and the
-/// shadow of its intention that CLuaNextBotIntention::Update runs it through.
-struct Soldier {
-    behavior: *mut u64,
-    shadow: *mut u64,
-    entity: usize,
-    head: Option<Head>,
-    group: Option<Tree>,
-    /// Its main tree runs when engine.Update says, not on the engine's own turn.
-    paced: bool,
-    /// Which way its group pushes it, from its last update.
-    push: [f32; 2],
-}
-
 /// A tree beside its main one: a Behavior and the shadow it updates through.
-struct Tree {
-    behavior: *mut u64,
-    shadow: *mut u64,
+pub(crate) struct Tree {
+    pub(crate) behavior: *mut u64,
+    pub(crate) shadow: *mut u64,
 }
 
 /// A new Behavior for the INextBot at `nextbot`, and the shadow of its intention.
-unsafe fn new_tree(nextbot: usize) -> Tree {
+pub(crate) unsafe fn new_tree(nextbot: usize) -> Tree {
     let b = binding();
     let behavior = Box::into_raw(vec![0u64; BEHAVIOR_WORDS].into_boxed_slice()).cast::<u64>();
     *behavior = b.behavior_vtables.0 as u64;
@@ -102,14 +93,6 @@ unsafe fn new_tree(nextbot: usize) -> Tree {
     Tree { behavior, shadow }
 }
 
-/// A soldier's head, once its config is given, on a clock of its own ticks: a player's
-/// Upkeep runs only while it lives, and every time in the model is relative.
-struct Head {
-    look: Look,
-    now: f32,
-    interval: f32,
-}
-
 /// A kind of action implemented in Rust. Its Lua table is only its config; what it
 /// overrides of Action<CLuaNextBot> is its own module's. `engine.<name>` makes a config.
 pub(crate) struct Kind {
@@ -121,7 +104,11 @@ pub(crate) struct Kind {
     pub constructor: CFunction,
 }
 
-const KINDS: &[&Kind] = &[&tactical::KIND, &scenario_monitor::KIND, &group::KIND];
+const KINDS: &[&Kind] = &[
+    &monitor_nextsoldier_tactical::KIND,
+    &monitor_nextsoldier_scenario::KIND,
+    &main_nextlegs::KIND,
+];
 
 struct NativeTables {
     name: &'static CStr,
@@ -132,18 +119,18 @@ struct NativeTables {
 
 static mut BINDING: Option<Binding> = None;
 #[allow(static_mut_refs)]
-unsafe fn binding<'a>() -> &'a mut Binding {
+pub(crate) unsafe fn binding<'a>() -> &'a mut Binding {
     BINDING
         .as_mut()
         .expect("a hook runs only once the binding is open")
 }
 
 /// A name or reason the engine keeps by pointer, each held for good.
-fn intern(bytes: &[u8]) -> *const c_char {
+fn intern(bytes: &[u8]) -> &'static CStr {
     // SAFETY: Lua's one thread, after the binding opened.
     let reasons = unsafe { &mut binding().reasons };
     if let Some(found) = reasons.get(bytes) {
-        return found.as_ptr();
+        return found;
     }
     let owned = CString::new(
         bytes
@@ -155,7 +142,7 @@ fn intern(bytes: &[u8]) -> *const c_char {
     .unwrap_or_default();
     let leaked: &'static CStr = Box::leak(owned.into_boxed_c_str());
     reasons.insert(bytes.to_vec(), leaked);
-    leaked.as_ptr()
+    leaked
 }
 
 // Lua, from the engine's side ------------------------------------------------------
@@ -347,70 +334,59 @@ unsafe fn hook(l: L, action: *mut LuaAction, name: &CStr, args: impl FnOnce(L) -
     true
 }
 
-/// The ActionResult in the table at the top of the stack; its action is new.
-unsafe fn decode(l: L, owner: *mut LuaAction) -> EventResult {
+/// The result in the table at the top of the stack, and its priority. Its action is
+/// made only when its kind hands the engine one.
+unsafe fn decode(l: L, owner: *mut LuaAction) -> (Outcome, i32) {
     let api = api();
     let at = (api.gettop)(l);
-    let mut result = EventResult {
-        kind: CONTINUE,
-        action: null_mut(),
-        reason: std::ptr::null(),
-        priority: RESULT_TRY,
-    };
     if (api.type_of)(l, at) != TTABLE {
-        return result;
+        return (Outcome::Continue, RESULT_TRY);
     }
     (api.getfield)(l, at, c"type".as_ptr());
-    result.kind = (api.tonumber)(l, -1) as i32;
+    let kind = (api.tonumber)(l, -1) as i32;
     (api.getfield)(l, at, c"priority".as_ptr());
-    let priority = (api.tonumber)(l, -1) as i32;
-    if priority != 0 {
-        result.priority = priority;
-    }
+    let priority = match (api.tonumber)(l, -1) as i32 {
+        0 => RESULT_TRY,
+        given => given,
+    };
     (api.getfield)(l, at, c"reason".as_ptr());
-    if let Some(reason) = string_at(l, -1) {
-        result.reason = intern(reason);
-    }
+    let reason = string_at(l, -1).map_or(Reason::NONE, |text| Reason::of(intern(text)));
     (api.getfield)(l, at, c"action".as_ptr());
-    if (api.type_of)(l, -1) == TTABLE {
+    let mut action = None;
+    if Outcome::needs_action(kind) && (api.type_of)(l, -1) == TTABLE {
         push_me(l, owner);
-        result.action = new_action(l, -2, -1).cast();
+        action = Made::new(new_action(l, -2, -1).cast());
     }
-    result
+    (Outcome::decode(kind, action, reason), priority)
 }
 
-fn plain(result: EventResult) -> ActionResult {
-    ActionResult {
-        kind: result.kind,
-        action: result.action,
-        reason: result.reason,
+/// What a Lua hook answered, the top of the stack put back after; an ended action, a
+/// missing hook and a failing one continue.
+unsafe fn answered(
+    this: *mut LuaAction,
+    name: &CStr,
+    args: impl FnOnce(L) -> c_int,
+) -> (Outcome, i32) {
+    if (*this).ended {
+        return (Outcome::Continue, RESULT_TRY);
     }
+    let l = binding().lua;
+    let top = (api().gettop)(l);
+    let answer = if hook(l, this, name, args) {
+        decode(l, this)
+    } else {
+        (Outcome::Continue, RESULT_TRY)
+    };
+    (api().settop)(l, top);
+    answer
 }
 
-const CONTINUING: ActionResult = ActionResult {
-    kind: CONTINUE,
-    action: null_mut(),
-    reason: std::ptr::null(),
-};
-
-/// A hook that answers an ActionResult, the top of the stack put back after.
 unsafe fn action_result(
     this: *mut LuaAction,
     name: &CStr,
     args: impl FnOnce(L) -> c_int,
 ) -> ActionResult {
-    if (*this).ended {
-        return CONTINUING;
-    }
-    let l = binding().lua;
-    let top = (api().gettop)(l);
-    let result = if hook(l, this, name, args) {
-        plain(decode(l, this))
-    } else {
-        CONTINUING
-    };
-    (api().settop)(l, top);
-    result
+    answered(this, name, args).0.action_result()
 }
 
 unsafe fn event_result(
@@ -418,21 +394,8 @@ unsafe fn event_result(
     name: &CStr,
     args: impl FnOnce(L) -> c_int,
 ) -> EventResult {
-    let l = binding().lua;
-    let top = (api().gettop)(l);
-    let none = EventResult {
-        kind: CONTINUE,
-        action: null_mut(),
-        reason: std::ptr::null(),
-        priority: RESULT_TRY,
-    };
-    let result = if !(*this).ended && hook(l, this, name, args) {
-        decode(l, this)
-    } else {
-        none
-    };
-    (api().settop)(l, top);
-    result
+    let (outcome, priority) = answered(this, name, args);
+    outcome.event_result(priority)
 }
 
 // The hooks, in the engine's calling convention ---------------------------------------
@@ -464,7 +427,7 @@ unsafe extern "win64" fn get_name(this: *mut LuaAction) -> *const c_char {
     let top = (api().gettop)(l);
     push_table(l, this.cast());
     (api().getfield)(l, -1, c"name".as_ptr());
-    let name = string_at(l, -1).map_or(c"Action".as_ptr(), intern);
+    let name = string_at(l, -1).map_or(c"Action", intern).as_ptr();
     (api().settop)(l, top);
     name
 }
@@ -729,15 +692,15 @@ pub(crate) unsafe fn same_again(this: *mut LuaAction) -> *mut Action {
     with_config(this, |l| action_from_top(l, this))
 }
 
-/// What the binding keeps for names and reasons, which the engine holds by pointer.
-pub(crate) fn interned(bytes: &[u8]) -> *const c_char {
-    intern(bytes)
+/// A reason the binding keeps for good, which the engine holds by pointer.
+pub(crate) fn interned(bytes: &[u8]) -> Reason {
+    Reason::of(intern(bytes))
 }
 
 // What Lua calls -----------------------------------------------------------------------
 
 /// The entity at `index` as the engine holds it: null when empty.
-unsafe fn entity_at(l: L, index: c_int) -> (usize, usize) {
+pub(crate) unsafe fn entity_at(l: L, index: c_int) -> (usize, usize) {
     let api = api();
     (api.getfield)(l, index, c"EntIndex".as_ptr());
     (api.pushvalue)(l, index);
@@ -749,7 +712,7 @@ unsafe fn entity_at(l: L, index: c_int) -> (usize, usize) {
 }
 
 /// The INextBot at `nextbot`'s intention.
-unsafe fn intention_of(nextbot: usize) -> usize {
+pub(crate) unsafe fn intention_of(nextbot: usize) -> usize {
     let table = *(nextbot as *const *const usize);
     let get: unsafe extern "win64" fn(usize) -> usize =
         std::mem::transmute(*table.add(GET_INTENTION));
@@ -794,54 +757,11 @@ unsafe fn behavior_of(l: L, index: c_int) -> (*mut u8, bool) {
 
 // A NextSoldier: a player bot's intention, with a Behavior ----------------------------
 
-unsafe extern "win64" fn soldier_first_contained(this: usize) -> *mut u64 {
-    binding()
-        .soldiers
-        .get(&this)
-        .map_or(null_mut(), |s| s.behavior)
-}
-
-unsafe extern "win64" fn soldier_update(this: usize) {
-    let b = binding();
-    let Some(soldier) = b.soldiers.get_mut(&this) else {
-        return;
-    };
-    if soldier.group.is_some() {
-        let entity = soldier.entity;
-        soldier.push = group::separation(
-            eye_position(entity),
-            &teammates(entity),
-            (entity >> 4) as u32,
-        );
-    }
-    let soldier = &binding().soldiers[&this];
-    let main = (!soldier.paced).then_some(soldier.shadow);
-    let group = soldier.group.as_ref().map(|tree| tree.shadow);
-    // what INextBot::Update computed for the component, for the shadow it runs on
-    let interval = *((this + COMPONENT_INTERVAL) as *const f32);
-    let run: unsafe extern "win64" fn(*mut u64) = std::mem::transmute(b.intention_update);
-    for tree in main.into_iter().chain(group) {
-        *(tree.cast::<u8>().add(COMPONENT_INTERVAL).cast::<f32>()) = interval;
-        run(tree);
-    }
-}
-
-/// After its main tree, its group's: so an event reaches both.
-unsafe extern "win64" fn soldier_next_contained(this: usize, current: *mut u64) -> *mut u64 {
-    let Some(soldier) = binding().soldiers.get(&this) else {
-        return null_mut();
-    };
-    match soldier.group.as_ref() {
-        Some(tree) if current == soldier.behavior => tree.behavior,
-        _ => null_mut(),
-    }
-}
-
 unsafe fn virtual_at(entity: usize, slot: usize) -> usize {
     *(*(entity as *const *const usize)).add(slot)
 }
 
-unsafe fn eye_position(entity: usize) -> Point {
+pub(crate) unsafe fn eye_position(entity: usize) -> Point {
     let get: unsafe extern "win64" fn(usize, *mut Point) -> *mut Point =
         std::mem::transmute(virtual_at(entity, EYE_POSITION));
     let mut at = [0.0; 3];
@@ -849,7 +769,7 @@ unsafe fn eye_position(entity: usize) -> Point {
     at
 }
 
-unsafe fn eye_angles(entity: usize) -> Angles {
+pub(crate) unsafe fn eye_angles(entity: usize) -> Angles {
     let get: unsafe extern "win64" fn(usize) -> *const [f32; 3] =
         std::mem::transmute(virtual_at(entity, EYE_ANGLES));
     let angles = *get(entity);
@@ -859,7 +779,7 @@ unsafe fn eye_angles(entity: usize) -> Angles {
     }
 }
 
-unsafe fn is_alive(entity: usize) -> bool {
+pub(crate) unsafe fn is_alive(entity: usize) -> bool {
     let get: unsafe extern "win64" fn(usize) -> bool =
         std::mem::transmute(virtual_at(entity, IS_ALIVE));
     get(entity)
@@ -876,7 +796,7 @@ unsafe fn team_of(entity: usize) -> i32 {
 }
 
 /// Where the eyes of the other live players of `me`'s team are.
-unsafe fn teammates(me: usize) -> Vec<Point> {
+pub(crate) unsafe fn teammates(me: usize) -> Vec<Point> {
     let list = binding().entity_list + ENTITY_LIST_ENTRIES;
     let team = team_of(me);
     let mut found = Vec::new();
@@ -894,70 +814,7 @@ unsafe fn teammates(me: usize) -> Vec<Point> {
     found
 }
 
-/// The nearest live player of `me`'s team within range of its eye.
-unsafe fn nearest_friend(me: usize, eye: Point, range: f32) -> Option<Point> {
-    let mut best = None;
-    let mut nearest = range;
-    for at in teammates(me) {
-        let far =
-            ((at[0] - eye[0]).powi(2) + (at[1] - eye[1]).powi(2) + (at[2] - eye[2]).powi(2)).sqrt();
-        if far < nearest {
-            nearest = far;
-            best = Some(at);
-        }
-    }
-    best
-}
-
-/// INextBot::Upkeep's call on a soldier: its head, with no Lua in between.
-unsafe extern "win64" fn soldier_upkeep(this: usize) {
-    let b = binding();
-    let set_eye_angles = b.set_eye_angles;
-    let Some(soldier) = b.soldiers.get_mut(&this) else {
-        return;
-    };
-    let entity = soldier.entity;
-    let Some(head) = soldier.head.as_mut() else {
-        return;
-    };
-    if !is_alive(entity) {
-        return;
-    }
-    head.now += head.interval;
-    let eye = eye_position(entity);
-    let friend = head
-        .look
-        .friend_range(head.now)
-        .and_then(|range| nearest_friend(entity, eye, range));
-    let was = eye_angles(entity);
-    let turned = head.look.upkeep(
-        head.now,
-        head.interval,
-        View {
-            eye,
-            head: was,
-            friend,
-        },
-    );
-    if turned != was {
-        let set: unsafe extern "win64" fn(usize, *const [f32; 3]) =
-            std::mem::transmute(set_eye_angles);
-        set(entity, &[turned.pitch, turned.yaw, 0.0]);
-    }
-}
-
-/// The engine's own ~Behavior ends and deletes the actions; then what we allocated.
-unsafe fn release_soldier(soldier: Soldier) {
-    if let Some(tree) = soldier.group {
-        release_tree(tree);
-    }
-    release_tree(Tree {
-        behavior: soldier.behavior,
-        shadow: soldier.shadow,
-    });
-}
-
-unsafe fn release_tree(tree: Tree) {
+pub(crate) unsafe fn release_tree(tree: Tree) {
     let table = *(tree.behavior as *const *const usize);
     let destroy: unsafe extern "win64" fn(*mut u64, u32) -> *mut u64 =
         std::mem::transmute(*table.add(DESTRUCTOR));
@@ -970,25 +827,6 @@ unsafe fn release_tree(tree: Tree) {
         tree.shadow,
         SHADOW_WORDS,
     )));
-}
-
-/// The player is being destroyed without EntityRemoved having told us: inside
-/// ~INextBot, GetEntity is pure, and InvokeOnEnd reaches it logging. With no actor
-/// set, ~Behavior deletes the actions without ending them.
-unsafe extern "win64" fn soldier_destructor(this: usize, flags: u32) -> usize {
-    let b = binding();
-    let original = b.base_intention_destructor;
-    if let Some(soldier) = b.soldiers.remove(&this) {
-        for behavior in std::iter::once(soldier.behavior)
-            .chain(soldier.group.as_ref().map(|tree| tree.behavior))
-        {
-            *(behavior.cast::<u8>().add(BEHAVIOR_ME).cast::<usize>()) = 0;
-        }
-        release_soldier(soldier);
-    }
-    *(this as *mut usize) = binding().base_intention_vtable;
-    let destroy: unsafe extern "win64" fn(usize, u32) -> usize = std::mem::transmute(original);
-    destroy(this, flags)
 }
 
 /// EntityRemoved: a NextSoldier's actions end while the player is still whole.
@@ -1013,55 +851,6 @@ unsafe extern "C-unwind" fn entity_removed(l: L) -> c_int {
         release_soldier(soldier);
     }
     0
-}
-
-/// player.CreateNextSoldier(botName) -> a bot player whose intention runs the
-/// engine's statechart, as a NextBot's does; nil when GMod made no player. Its
-/// behaviours go on with nextsoldier.engine.Insert.
-unsafe extern "C-unwind" fn create_next_soldier(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 1);
-    (api.getfield)(l, GLOBALSINDEX, c"player".as_ptr());
-    (api.getfield)(l, -1, c"CreateNextBot".as_ptr());
-    (api.pushvalue)(l, 1);
-    (api.call)(l, 1, 1);
-    let player = (api.gettop)(l);
-    if (api.type_of)(l, player) != foundation::lua::TUSERDATA {
-        (api.pushnil)(l);
-        return 1;
-    }
-    let b = binding();
-    let (entity, entindex) = entity_at(l, player);
-    if entity == 0 || *(entity as *const usize) != b.player_vtable {
-        foundation::lua::raise_where(
-            l,
-            format!("player.CreateNextBot gave entity {entindex}, not a NextBotPlayer"),
-        );
-    }
-    let nextbot = entity + PLAYER_INEXTBOT_OFFSET;
-    let intention = intention_of(nextbot);
-    if intention == 0 || *(intention as *const usize) != b.base_intention_vtable {
-        foundation::lua::raise_where(
-            l,
-            format!("player {entindex}'s intention is not a plain IIntention"),
-        );
-    }
-    let Tree { behavior, shadow } = new_tree(nextbot);
-    b.soldiers.insert(
-        intention,
-        Soldier {
-            behavior,
-            shadow,
-            entity,
-            head: None,
-            group: None,
-            paced: false,
-            push: [0.0, 0.0],
-        },
-    );
-    *(intention as *mut usize) = b.player_intention.as_ptr() as usize;
-    (api.settop)(l, player);
-    1
 }
 
 unsafe fn root_of(behavior: *mut u8) -> *mut Action {
@@ -1414,7 +1203,7 @@ unsafe extern "C-unwind" fn group_push(l: L) -> c_int {
 
 /// engine.GroupSpacing() -> how near a teammate pushes.
 unsafe extern "C-unwind" fn group_spacing(l: L) -> c_int {
-    (api().pushnumber)(l, group::SPACING as f64);
+    (api().pushnumber)(l, locomotion::SPACING as f64);
     1
 }
 
@@ -1444,7 +1233,7 @@ unsafe extern "C-unwind" fn separation(l: L) -> c_int {
             point
         })
         .collect();
-    let push = group::separation(me, &others, tie);
+    let push = locomotion::separation(me, &others, tie);
     (api.pushnumber)(l, push[0] as f64);
     (api.pushnumber)(l, push[1] as f64);
     2
@@ -1755,12 +1544,8 @@ unsafe fn bind(l: L) -> Result<Binding, String> {
     query[SHOULD_RETREAT] = should_retreat as *const () as usize;
     let mut player_intention = absolute_slots(&base_slots);
     let base_intention_destructor = player_intention[DESTRUCTOR];
-    player_intention[DESTRUCTOR] = soldier_destructor as *const () as usize;
-    player_intention[FIRST_CONTAINED] = soldier_first_contained as *const () as usize;
-    player_intention[NEXT_CONTAINED] = soldier_next_contained as *const () as usize;
-    player_intention[INTENTION_UPDATE] = soldier_update as *const () as usize;
-    player_intention[INTENTION_UPKEEP] = soldier_upkeep as *const () as usize;
-    let reach = crate::reach::read(&image)?;
+    main_nextsoldier::install(&mut player_intention);
+    let reach = crate::body::reach::read(&image)?;
     Ok(Binding {
         lua: l,
         primary,

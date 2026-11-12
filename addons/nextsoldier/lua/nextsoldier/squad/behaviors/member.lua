@@ -1,4 +1,4 @@
--- A squad member's main stack: what it fights, apart from its leggings (TacticalLeggings,
+-- A squad member's main stack: what it fights, apart from its leggings (NextLegs,
 -- behavior.group_identity and gib_behaviors), which put its feet where its squad's order says. On
 -- a mission its leader has yet to activate (nextsoldier.squad.orders' Awaiting: an assault before
 -- its signal, an ambush before it is sprung, an occupation stacked up before its word), it listens:

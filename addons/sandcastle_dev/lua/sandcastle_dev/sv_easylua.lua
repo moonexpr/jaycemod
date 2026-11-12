@@ -1,5 +1,5 @@
 -- NextSoldier's behaviours in what !print of a soldier shows (ulx_luadev's luadev_overlay, its
--- ULXLuaDevDescribe hook): its main tree's stack and its TacticalLeggings tree's, each down
+-- ULXLuaDevDescribe hook): its main tree's stack and its NextLegs tree's, each down
 -- to the behaviour it runs now. A NextBot has a main tree; a bot player is a NextSoldier when it
 -- has the group tree, which only player.CreateNextSoldier's are given.
 local function Shape(frames)

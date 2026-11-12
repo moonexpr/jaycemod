@@ -1,4 +1,4 @@
--- nextsoldier.behavior.gib_behaviors: what TacticalLeggings does under its root, as L4D2's
+-- nextsoldier.behavior.gib_behaviors: what NextLegs does under its root, as L4D2's
 -- legs do beside its survivors' behaviour: an order's action, and under it its squad's mode's.
 local T = dofile ("tests/harness.lua")
 local Action = nextsoldier.behavior.action
@@ -55,7 +55,7 @@ end
 
 T.test ("its root is the engine's own, waiting first", function ()
 	local given
-	local engine = { TacticalLeggings = function (config) given = config return "root" end }
+	local engine = { NextLegs = function (config) given = config return "root" end }
 	GroupIdentity.InitialAction (engine)
 	T.eq (given.initial.name, "LegsWait", "it starts by waiting")
 end)

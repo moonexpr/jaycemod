@@ -6,7 +6,7 @@ local GroupIdentity = nextsoldier.behavior.group_identity
 
 T.test ("its root is the engine's own, holding what it does first", function ()
 	local given
-	local engine = { TacticalLeggings = function (config) given = config return { name = "root" } end }
+	local engine = { NextLegs = function (config) given = config return { name = "root" } end }
 	local root = GroupIdentity.InitialAction (engine)
 	T.eq (root.name,          "root",     "what the engine made")
 	T.eq (given.initial.name, "LegsWait", "it starts by waiting")
@@ -16,7 +16,7 @@ T.test ("it is given to a soldier beside its main tree", function ()
 	local placed
 	local engine =
 	{
-		TacticalLeggings = function () return "root" end,
+		NextLegs = function () return "root" end,
 		InsertGroup = function (ent, action, me) placed = { ent, action, me } end
 	}
 	GroupIdentity.Give ("ent", engine, "me")
@@ -32,7 +32,7 @@ end)
 
 T.test ("it can be started on what it is given, for a soldier with no other tree", function ()
 	local given
-	local engine = { TacticalLeggings = function (config) given = config return "root" end }
+	local engine = { NextLegs = function (config) given = config return "root" end }
 	GroupIdentity.InitialAction (engine, nextsoldier.behavior.gib_behaviors.LegsAtEase:New ())
 	T.eq (given.initial.name, "LegsAtEase", "what it was given")
 end)
@@ -718,7 +718,7 @@ local ENT = { GetClass = function () return "player" end }
 
 T.test ("the debug layer shows both trees, the group's after the main's", function ()
 	local npc = Action.DebugNpc (ENT, function () return { { name = "Main", depth = 1 } } end, function ()
-		return { { name = "TacticalLeggings", depth = 1 }, { name = "LegsWait", depth = 2 } }
+		return { { name = "NextLegs", depth = 1 }, { name = "LegsWait", depth = 2 } }
 	end)
 	local _, frames = npc:Stack ()
 	T.eq (#frames,         3,          "all of them")
@@ -743,7 +743,7 @@ T.test ("an engine behaviour counts as empty by its main tree alone", function (
 	local engine =
 	{
 		Stack = function () return { { name = "Root", depth = 1 } } end,
-		GroupStack = function () return { { name = "TacticalLeggings", depth = 1 }, { name = "LegsWait", depth = 2 } } end
+		GroupStack = function () return { { name = "NextLegs", depth = 1 }, { name = "LegsWait", depth = 2 } } end
 	}
 	T.eq (Action.EngineBehavior (ENT, "first", "actor", "KIND", engine):IsEmpty (), true, "the group's tree does not keep it going")
 end)

@@ -30,6 +30,7 @@ mod hooks {
     use super::{step, Step};
     use crate::engine::{self, Kind};
     use crate::layout::*;
+    use crate::outcome::{Made, Outcome, Reason};
     use foundation::lua::{api, raise_where, L, TTABLE};
     use std::ffi::{c_char, c_int, c_void, CStr};
     use std::ptr::null_mut;
@@ -96,25 +97,17 @@ mod hooks {
         _interval: f32,
     ) -> *mut ActionResult {
         let answer = engine::behavior_answer(this, me, SHOULD_RETREAT);
-        let mut result = ActionResult {
-            kind: CONTINUE,
-            action: null_mut(),
-            reason: std::ptr::null(),
-        };
+        let mut outcome = Outcome::Continue;
         if step(answer, (*this).state != 0) == Step::Retreat {
             let action = engine::with_config(this, |l| {
                 (api().getfield)(l, -1, c"retreat".as_ptr());
                 engine::made_by(l, this)
             });
-            if !action.is_null() {
-                result = ActionResult {
-                    kind: SUSPEND_FOR,
-                    action,
-                    reason: c"Backing off".as_ptr(),
-                };
+            if let Some(made) = Made::new(action) {
+                outcome = Outcome::SuspendFor(made, Reason::of(c"Backing off"));
             }
         }
-        ret.write(result);
+        ret.write(outcome.action_result());
         ret
     }
 
@@ -134,18 +127,13 @@ mod hooks {
             (api().getfield)(l, -1, command);
             engine::made_by(l, this)
         });
-        let mut result = EventResult {
-            kind: CONTINUE,
-            action: null_mut(),
-            reason: std::ptr::null(),
-            priority: RESULT_TRY,
+        let outcome = match Made::new(action) {
+            Some(made) => {
+                Outcome::SuspendFor(made, engine::interned(CStr::from_ptr(command).to_bytes()))
+            }
+            None => Outcome::Continue,
         };
-        if !action.is_null() {
-            result.kind = SUSPEND_FOR;
-            result.action = action;
-            result.reason = engine::interned(CStr::from_ptr(command).to_bytes());
-        }
-        ret.write(result);
+        ret.write(outcome.event_result(RESULT_TRY));
         ret
     }
 }
