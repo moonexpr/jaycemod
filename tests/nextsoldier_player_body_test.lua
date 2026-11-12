@@ -10,6 +10,10 @@ for _, name in ipairs ({ "TURN_RATE", "ARRIVE", "STUCK_SPEED", "STUCK_TIME", "CR
 end
 
 local TICK = 0.015
+-- How it pans its aim (Pan): a quick, steady hand following fully.
+local PAN = { frequency = 3, damping = 1, pursuit = 1 }
+-- Settled aim, degrees.
+local SETTLED = 0.5
 local ORIGIN = { x = 0, y = 0, z = 0 }
 local EAST, NORTH = { x = 1000, y = 0, z = 0 }, { x = 0, y = 1000, z = 0 }
 local GUN =
@@ -32,7 +36,9 @@ local function Sense (fields)
 		onGround = true,
 		walk = false,
 		fire = true,
-		weapon = GUN
+		weapon = GUN,
+		pan = PAN,
+		aimVelocity = { x = 0, y = 0, z = 0 }
 	}
 	for k, v in pairs (fields) do sense [k] = v end
 	return sense
@@ -66,8 +72,8 @@ end)
 T.test ("it aims at its enemy whichever way it moves", function ()
 	local body = Body.New ()
 	local cmd = Run (body, 0, 1, { target = EAST, aim = NORTH, aimRadius = 16 })
-	T.near (cmd.moveYaw, 0,  1e-6, "moving east")
-	T.near (cmd.yaw,     90, 1e-6, "aiming north")
+	T.near (cmd.moveYaw, 0,  1e-6,    "moving east")
+	T.near (cmd.yaw,     90, SETTLED, "aiming north")
 end)
 
 T.test ("with no enemy it faces where it is told to look, else the way it goes", function ()
@@ -83,10 +89,67 @@ T.test ("it turns no faster than its turn rate", function ()
 	T.near (cmd.pitch,          0,                     1e-6, "level")
 end)
 
+T.test ("aiming, it pans onto a still enemy: a quick hand overshoots and settles, a steady one does not", function ()
+	local function Pan (damping)
+		local body = Body.New ()
+		local sense = Sense ({ aim = NORTH, aimRadius = 16, pan = { frequency = 2, damping = damping, pursuit = 1 } })
+		local furthest, cmd = 0, nil
+		for i = 1, math.floor (2 / TICK) do
+			cmd = body:Command (i * TICK, TICK, sense)
+			sense.eye = { pitch = cmd.pitch, yaw = cmd.yaw }
+			furthest = math.max (furthest, cmd.yaw)
+		end
+		return furthest, cmd.yaw
+	end
+	local furthest, settled = Pan (0.5)
+	T.eq (furthest > 91, true, "quick: past it, " .. furthest)
+	T.near (settled, 90, SETTLED, "then on it")
+	furthest, settled = Pan (1)
+	T.eq (furthest <= 90 + 1e-6, true, "steady: never past it, " .. furthest)
+	T.near (settled, 90, SETTLED, "and on it")
+end)
+
+T.test ("a crossing enemy is followed: full pursuit stays on it, less trails behind it", function ()
+	local SPEED, RANGE = 300, 1000
+	local function Trail (pursuit)
+		local body = Body.New ()
+		local sense = Sense ({ aimRadius = 16, aimVelocity = { x = 0, y = SPEED, z = 0 }, pan = { frequency = 2, damping = 1, pursuit = pursuit } })
+		local t, cmd = 0, nil
+		for i = 1, math.floor (3 / TICK) do
+			t = i * TICK
+			sense.aim = { x = RANGE, y = SPEED * (t - 1.5), z = 64 }
+			cmd = body:Command (t, TICK, sense)
+			sense.eye = { pitch = cmd.pitch, yaw = cmd.yaw }
+		end
+		return cmd.yaw - math.deg (math.atan2 (sense.aim.y, RANGE))
+	end
+	T.eq (math.abs (Trail (1)) < 0.5,    true, "full: on it, " .. Trail (1))
+	T.eq (Trail (0.5) < Trail (1) - 0.5, true, "half: behind full pursuit, " .. Trail (0.5))
+	T.eq (Trail (0.5) < 0,               true, "and behind the enemy")
+end)
+
+T.test ("with nothing to aim at its hand comes to rest: the next enemy is panned to from still", function ()
+	local body = Body.New ()
+	local sense = Sense ({ aimRadius = 16, aimVelocity = { x = 0, y = 300, z = 0 } })
+	local cmd
+	for i = 1, math.floor (2 / TICK) do
+		sense.aim = { x = 1000, y = 300 * i * TICK, z = 64 }
+		cmd = body:Command (i * TICK, TICK, sense)
+		sense.eye = { pitch = cmd.pitch, yaw = cmd.yaw }
+	end
+	sense.aim, sense.aimVelocity = nil, { x = 0, y = 0, z = 0 }
+	cmd = body:Command (2, TICK, sense)
+	sense.eye = { pitch = cmd.pitch, yaw = cmd.yaw }
+	local yaw = math.rad (cmd.yaw)
+	sense.aim = { x = 1000 * math.cos (yaw), y = 1000 * math.sin (yaw), z = 64 }
+	local still = body:Command (2 + TICK, TICK, sense)
+	T.near (still.yaw, cmd.yaw, 1e-6, "an enemy dead ahead: the hand does not swing on past it")
+end)
+
 T.test ("it aims up and down at an enemy above or below its eyes", function ()
 	local body = Body.New ()
 	local cmd = Run (body, 0, 1, { aim = { x = 1000, y = 0, z = 64 + 1000 }, aimRadius = 16 })
-	T.near (cmd.pitch, -45, 1e-6, "up is negative pitch, as Source's")
+	T.near (cmd.pitch, -45, SETTLED, "up is negative pitch, as Source's")
 end)
 
 T.test ("it fires only once its aim is on the enemy, and not when told to hold", function ()
@@ -99,6 +162,16 @@ T.test ("it fires only once its aim is on the enemy, and not when told to hold",
 	T.eq (cmd.attack, false, "held")
 end)
 
+T.test ("a gun is on target within the enemy's width at its range, or FIRE_CONE, whichever is wider", function ()
+	local eye = { x = 0, y = 0, z = 64 }
+	local near, far = { x = 100, y = 0, z = 64 }, { x = 3000, y = 0, z = 64 }
+	local wide = math.deg (math.atan2 (16, 100))
+	T.eq (Body.Aimed (eye, near, 16, 0, wide - 0.1),          true,  "near: within its width")
+	T.eq (Body.Aimed (eye, near, 16, 0, wide + 0.1),          false, "near: past it")
+	T.eq (Body.Aimed (eye, far, 16, 0, Body.FIRE_CONE - 0.1), true,  "far: within the cone")
+	T.eq (Body.Aimed (eye, far, 16, Body.FIRE_CONE + 0.1, 0), false, "far: above it")
+end)
+
 T.test ("a semi-automatic's trigger is pressed again for each shot; an automatic's held", function ()
 	local semi =
 	{
@@ -109,7 +182,7 @@ T.test ("a semi-automatic's trigger is pressed again for each shot; an automatic
 		reserve = 150
 	}
 	local body = Body.New ()
-	local sense = Sense ({ aim = EAST, aimRadius = 16, weapon = semi })
+	local sense = Sense ({ aim = { x = 1000, y = 0, z = 64 }, aimRadius = 16, weapon = semi })
 	local a = body:Command (0, TICK, sense).attack
 	local b = body:Command (TICK, TICK, sense).attack
 	local c = body:Command (2 * TICK, TICK, sense).attack

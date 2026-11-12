@@ -50,9 +50,17 @@ local function View (fields)
 	return fields
 end
 
-T.test ("in a fight the head looks along the aim", function ()
-	local yaw, pitch = Gaze.Goal (View ({ fighting = true, hint = P (100, 50), people = { P (50, 20) } }))
-	T.eq (yaw,   0)
+T.test ("in a fight the head looks at the enemy where it is, apart from the aim panning after it", function ()
+	local yaw = Gaze.Goal (View ({ fighting = true, enemy = P (100, 100), hint = P (100, -50), people = { P (50, 20) } }))
+	T.near (yaw, 45, 1e-9, "at the enemy, over a hint or anyone passing")
+end)
+
+T.test ("in a fight with the enemy past the head's turn, or not known, the head looks along the aim", function ()
+	local yaw, pitch = Gaze.Goal (View ({ fighting = true, enemy = P (-100, 1), hint = P (100, 50) }))
+	T.eq (yaw, 0, "behind")
+	T.eq (pitch, 0)
+	yaw, pitch = Gaze.Goal (View ({ fighting = true, hint = P (100, 50), people = { P (50, 20) } }))
+	T.eq (yaw, 0, "not known")
 	T.eq (pitch, 0)
 end)
 

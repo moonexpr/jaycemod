@@ -6,12 +6,15 @@ local T = dofile ("tests/harness.lua")
 local Vision = nextsoldier.senses.vision
 
 local REACTION, MEMORY = 0.5, 3
+-- How it reads an enemy's motion from its looks (an alpha-beta-gamma filter).
+local TRACK = { alpha = 0.7, beta = 0.4, gamma = 0.08 }
 
 local function New ()
 	return Vision.New (
 		{
 			reaction = REACTION,
-			memory = MEMORY
+			memory = MEMORY,
+			track = TRACK
 		}
 	)
 end
@@ -51,7 +54,8 @@ T.test ("with no reaction time an enemy is a contact as soon as it is seen", fun
 	local v = Vision.New (
 		{
 			reaction = 0,
-			memory = MEMORY
+			memory = MEMORY,
+			track = TRACK
 		}
 	)
 	local events = v:Update (0, { scout = HERE }, ANY)
@@ -127,7 +131,8 @@ local function Pursuing ()
 		{
 			reaction = REACTION,
 			memory = MEMORY,
-			unseen = true
+			unseen = true,
+			track = TRACK
 		}
 	)
 end
@@ -207,6 +212,88 @@ T.test ("an enemy forgotten on purpose (it died) ends the contact", function ()
 	T.eq (Kinds (events, "scout"), Vision.CONTACT_LOST, "the contact ends")
 	T.eq (v:Visible ("scout"),     false,               "not in sight")
 	T.eq (#v:Forget ("nobody"),    0,                   "forgetting a stranger tells nothing")
+end)
+
+-- Motion: each look reads where an enemy is going, as an
+-- alpha-beta-gamma filter does, and Estimate says where it is now.
+
+local LOOK = 0.2
+
+-- An enemy at x = path(t) looked at every LOOK seconds from 0 to seconds.
+local function Watch (v, path, seconds, from)
+	local t = from or 0
+	while t <= seconds + 1e-9 do
+		v:Update (t, { scout = { x = path (t), y = 0, z = 0 } }, ANY)
+		t = t + LOOK
+	end
+	return t - LOOK
+end
+
+local function Tracking (gains)
+	return Vision.New (
+		{
+			reaction = 0,
+			memory = MEMORY,
+			track = gains
+		}
+	)
+end
+
+T.test ("an enemy first seen is read as standing still", function ()
+	local v = New ()
+	v:Update (0, { scout = THERE }, ANY)
+	local at, velocity = v:Estimate ("scout", 0.5)
+	T.eq (at.x == THERE.x and at.y == THERE.y and at.z == THERE.z, true, "where it was seen")
+	T.eq (velocity.x == 0 and velocity.y == 0 and velocity.z == 0, true, "not moving")
+end)
+
+T.test ("an enemy moving steadily is read at its speed, and where it will be", function ()
+	local SPEED = 250
+	local v = Tracking (TRACK)
+	local last = Watch (v, function (t) return SPEED * t end, 6)
+	local at, velocity = v:Estimate ("scout", last + LOOK / 2)
+	T.eq (math.abs (velocity.x - SPEED) < 1,               true, "its speed: " .. velocity.x)
+	T.eq (math.abs (at.x - SPEED * (last + LOOK / 2)) < 1, true, "ahead of the last look: " .. at.x)
+end)
+
+T.test ("an enemy turning back is read late, then caught up with", function ()
+	local SPEED, TURN = 250, 2
+	local function Path (t) return t < TURN and SPEED * t or SPEED * (2 * TURN - t) end
+	local v = Tracking (TRACK)
+	Watch (v, Path, TURN)
+	local _, before = v:Estimate ("scout", TURN)
+	Watch (v, Path, TURN + LOOK, TURN + LOOK)
+	local _, after = v:Estimate ("scout", TURN + LOOK)
+	T.eq (after.x > 0 and after.x < before.x, true, "still read as going on, but slower: " .. after.x)
+	Watch (v, Path, TURN + 6, TURN + 2 * LOOK)
+	local _, settled = v:Estimate ("scout", TURN + 6)
+	T.eq (math.abs (settled.x + SPEED) < 1, true, "then read going back: " .. settled.x)
+end)
+
+T.test ("an accelerating enemy is followed closely only by an eye that reads acceleration", function ()
+	local ACCELERATION = 400
+	local function Path (t) return 0.5 * ACCELERATION * t * t end
+	local function Miss (gamma)
+		local v = Tracking ({ alpha = TRACK.alpha, beta = TRACK.beta, gamma = gamma })
+		local last = Watch (v, Path, 6)
+		local at = v:Estimate ("scout", last + LOOK)
+		return math.abs (at.x - Path (last + LOOK))
+	end
+	T.eq (Miss (TRACK.gamma) < 1,             true, "reading it: " .. Miss (TRACK.gamma))
+	T.eq (Miss (0) > 10 * Miss (TRACK.gamma), true, "blind to it, it falls behind: " .. Miss (0))
+end)
+
+T.test ("an enemy back in sight, or heard, is read afresh", function ()
+	local v = Tracking (TRACK)
+	local last = Watch (v, function (t) return 250 * t end, 2)
+	v:Update (last + LOOK,     {},                ANY)
+	v:Update (last + 2 * LOOK, { scout = THERE }, ANY)
+	local _, back = v:Estimate ("scout", last + 2 * LOOK)
+	T.eq (back.x, 0, "back in sight: still")
+	Watch (v, function (t) return 250 * t end, last + 4, last + 3 * LOOK)
+	v:Hear (last + 5, "scout", HERE, ANY)
+	local at, heard = v:Estimate ("scout", last + 6)
+	T.eq (heard.x == 0 and at.x == HERE.x, true, "heard: still, where it was heard")
 end)
 
 T.finish ()
