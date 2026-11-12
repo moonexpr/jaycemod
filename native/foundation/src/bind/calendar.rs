@@ -124,7 +124,7 @@ impl Calendar {
             }
             let standing = self.systems[s].standing.max(self.floor);
             self.systems[s].standing = standing;
-            if best.map_or(true, |b| standing < self.systems[b].standing) {
+            if best.is_none_or(|b| standing < self.systems[b].standing) {
                 best = Some(s);
             }
         }
@@ -261,7 +261,7 @@ unsafe extern "C-unwind" fn wake(l: L) -> c_int {
     let calendar = userdata::check::<Calendar>(l, 1);
     if calendar.running == Some(id) {
         let job = calendar.jobs.get_mut(&id).expect("known");
-        if job.woken.map_or(true, |w| at < w) {
+        if job.woken.is_none_or(|w| at < w) {
             job.woken = Some(at);
         }
     } else if at < calendar.jobs[&id].at {
@@ -304,7 +304,7 @@ unsafe extern "C-unwind" fn run(l: L) -> c_int {
     let mut t = started;
     let mut ran = 0u32;
     let mut drained = false;
-    while t - started < seconds && count.map_or(true, |c| (ran as f64) < c) {
+    while t - started < seconds && count.is_none_or(|c| (ran as f64) < c) {
         let calendar = userdata::check::<Calendar>(l, 1);
         let Some(s) = calendar.pick(now) else {
             drained = true;

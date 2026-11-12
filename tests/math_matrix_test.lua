@@ -30,6 +30,7 @@ T.test ("products, and a shape mismatch refused", function ()
 	local b = Matrix.New ({ { 5, 6 }, { 7, 8 } })
 	T.eq (Rows (a:Multiply (b)),                               "19 22 | 43 50", "a b")
 	T.eq (Rows (Matrix.Identity (2):Multiply (a)),             Rows (a),        "identity")
+	T.eq (Rows (a:Multiply (a)),                               "7 10 | 15 22",  "a matrix by itself")
 	T.eq (pcall (a.Multiply, a, Matrix.New ({ { 1, 2, 3 } })), false,           "2x2 by 1x3")
 end)
 

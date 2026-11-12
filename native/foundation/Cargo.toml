@@ -18,3 +18,8 @@ entry = []
 # turn that unwind into an abort, so pcall could never catch a refusal.
 panic = "unwind"
 lto = true
+
+[lints.clippy]
+# `!(x >= 0.0)` is the crate's way to refuse NaN with the rest, as the Lua
+# twins' `not (x >= 0)` does; `partial_cmp` would only hide that.
+neg_cmp_op_on_partial_ord = "allow"

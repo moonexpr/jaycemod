@@ -239,7 +239,6 @@ impl Avl {
     }
 
     /// The greatest key at or below `key`.
-    #[allow(clippy::neg_cmp_op_on_partial_ord, reason = "the Lua twin's `not (a < b)`, NaN included")]
     pub fn floor(&self, key: f64) -> Option<(f64, u32)> {
         let (mut i, mut best) = (self.root(), NIL);
         while i != NIL {
@@ -258,7 +257,6 @@ impl Avl {
     }
 
     /// The least key at or above `key`.
-    #[allow(clippy::neg_cmp_op_on_partial_ord, reason = "the Lua twin's `not (a < b)`, NaN included")]
     pub fn ceiling(&self, key: f64) -> Option<(f64, u32)> {
         let (mut i, mut best) = (self.root(), NIL);
         while i != NIL {

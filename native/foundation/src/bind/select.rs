@@ -151,7 +151,7 @@ unsafe extern "C-unwind" fn nearest(l: L) -> c_int {
             };
             let (dx, dy, dz) = (at[0] - from[0], at[1] - from[1], at[2] - from[2]);
             let distance = (dx * dx + dy * dy + dz * dz).sqrt();
-            if best.map_or(true, |(_, held)| distance < held) {
+            if best.is_none_or(|(_, held)| distance < held) {
                 best = Some((place, distance));
             }
         }
@@ -237,9 +237,14 @@ unsafe extern "C-unwind" fn top_k(l: L) -> c_int {
         raise_where(l, format!("TopK takes a whole number of at least 0, not {}", tostring(l, 2)));
     }
     let k = wanted as usize;
+    if k == 0 {
+        // The first none: the list is not read, nor `before` called.
+        (api.createtable)(l, 0, 0);
+        return 1;
+    }
     let mut top: Vec<usize> = Vec::new();
     let mut place = 1;
-    while k > 0 {
+    loop {
         (api.rawgeti)(l, 1, place as c_int);
         if (api.type_of)(l, -1) == TNIL {
             (api.settop)(l, -2);

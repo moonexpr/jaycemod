@@ -69,12 +69,30 @@ pub unsafe fn push<T: Native>(l: L, value: T) {
     (api.setmetatable)(l, -2);
 }
 
-/// The userdata of type T at `index`; anything else is a Lua error naming T.
+/// The userdata of type T at `index`, to change; anything else is a Lua
+/// error naming T.
 ///
 /// # Safety
 /// `l` is a live state, after `lua::open`; the reference is used only while
-/// the userdata stays on the stack, and no other reference to it is live.
+/// the userdata stays on the stack, and no other reference to it is live:
+/// not one from another argument (Lua may pass one userdata as two, as
+/// `m:Multiply(m)` does), nor one held across a call back into Lua. A
+/// binding that only reads takes `get`.
 pub unsafe fn check<'a, T: Native>(l: L, index: c_int) -> &'a mut T {
+    &mut *value_at::<T>(l, index)
+}
+
+/// The userdata of type T at `index`, to read; anything else is a Lua error
+/// naming T. Any number of these may be live over one value at once.
+///
+/// # Safety
+/// As `check`, except that other shared references may be live; no `&mut`
+/// to the value is.
+pub unsafe fn get<'a, T: Native>(l: L, index: c_int) -> &'a T {
+    &*value_at::<T>(l, index)
+}
+
+unsafe fn value_at<T: Native>(l: L, index: c_int) -> *mut T {
     let api = api();
     if (api.type_of)(l, index) == TUSERDATA {
         let tagged = (api.touserdata)(l, index).cast::<Tagged<T>>();
@@ -82,7 +100,7 @@ pub unsafe fn check<'a, T: Native>(l: L, index: c_int) -> &'a mut T {
         // pushed starts with its tag; a userdata of another module is read
         // only if at least that long, checked first.
         if (api.objlen)(l, index) >= std::mem::size_of::<Tagged<T>>() && (*tagged).tag == tag_of(T::NAME) {
-            return &mut (*tagged).value;
+            return std::ptr::addr_of_mut!((*tagged).value);
         }
     }
     raise_owned(l, format!("argument {index}: a {} is wanted", T::NAME.to_string_lossy()))

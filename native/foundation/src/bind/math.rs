@@ -149,12 +149,7 @@ unsafe extern "C-unwind" fn closest_on_segment(l: L) -> c_int {
     let length2 = abx * abx + aby * aby + abz * abz;
     let mut t = 0.0;
     if length2 > 0.0 {
-        t = ((p[0] - a[0]) * abx + (p[1] - a[1]) * aby + (p[2] - a[2]) * abz) / length2;
-        if t < 0.0 {
-            t = 0.0;
-        } else if t > 1.0 {
-            t = 1.0;
-        }
+        t = (((p[0] - a[0]) * abx + (p[1] - a[1]) * aby + (p[2] - a[2]) * abz) / length2).clamp(0.0, 1.0);
     }
     push_point(l, a[0] + abx * t, a[1] + aby * t, Some(a[2] + abz * t))
 }
@@ -264,13 +259,7 @@ unsafe extern "C-unwind" fn clamp(l: L) -> c_int {
 }
 
 fn saturate_of(value: f64) -> f64 {
-    if value < 0.0 {
-        0.0
-    } else if value > 1.0 {
-        1.0
-    } else {
-        value
-    }
+    value.clamp(0.0, 1.0)
 }
 
 unsafe extern "C-unwind" fn saturate(l: L) -> c_int {
@@ -766,8 +755,9 @@ unsafe extern "C-unwind" fn matrix_transpose(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn matrix_multiply(l: L) -> c_int {
-    let a = userdata::check::<Matrix>(l, 1);
-    let b = userdata::check::<Matrix>(l, 2);
+    // Shared borrows: `m:Multiply(m)` passes one matrix as both.
+    let a = userdata::get::<Matrix>(l, 1);
+    let b = userdata::get::<Matrix>(l, 2);
     if a.cols != b.rows {
         let text = format!("cannot multiply {}x{} by {}x{}", a.rows, a.cols, b.rows, b.cols);
         raise_where(l, text);
