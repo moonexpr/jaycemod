@@ -1682,4 +1682,21 @@ T.test ("the debug overlay and its rooms are jobs of the debug system, which a r
 	T.eq (controller.calendar:Report ().debug.jobs, 2, "still the two")
 end)
 
+T.test ("the carts and the doors are part objects, which a reload keeps and gives their classes again", function ()
+	local w = World ()
+	local controller = Load (w)
+	local carts, doors = controller.carts, controller.doors
+	local area = { GetCenter = function () return Vector (0, 0, 0) end, GetID = function () return 7 end }
+	T.eq (carts:Under (area),       false, "no cart: nothing under one")
+	T.eq (doors:ShutIn (area, RED), false, "no door noted shut")
+	T.eq (controller.UnderCart,     nil,   "the carts are the part's, not the controller's")
+	T.eq (controller.ShutDoorIn,    nil,   "the doors are the part's, not the controller's")
+	setmetatable (carts, nil)
+	setmetatable (doors, nil)
+	Reload (w, controller)
+	T.eq (controller.carts,                    carts, "the same carts")
+	T.eq (controller.doors,                    doors, "the same doors")
+	T.eq (controller.doors:ShutIn (area, RED), false, "their methods back")
+end)
+
 T.finish ()

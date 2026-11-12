@@ -462,6 +462,14 @@ and checked live with `dev.reload`:
    paused, 30 look jobs ran and none looked. Step 3 is done.
 4. `sv_obstacles.lua`, then `sv_field.lua` with its `Think` (the `Survey`,
    the largest timer by cost, §6.2).
+   `sv_obstacles.lua` done 2026-11-12, as two objects: `Controller.carts`
+   (`Refresh`, `Trigger`, `Under`) and `Controller.doors` (`OpenFor`,
+   `CloseLeft`, `NoteShut`, `Noted`, `Forget`, `ShutAreas`, `ShutIn`),
+   seven root fields between them. It had no timer: `DOOR_OPEN_INTERVAL`
+   is a door's cooldown on opening. Gates, forcefields, the setup zone,
+   ejecting from a cart and the spawn doors stay the controller's (no state
+   of their own). Checked after a clean map load: a door noted shut to RED
+   closes its area to RED alone, and `Forget` opens it.
 5. The hooks with no state: `sv_intel.lua`, `sv_gestures.lua`,
    `sv_responserules.lua`, as jobs only.
 6. What is left on the root is then measured again against the 26.

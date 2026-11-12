@@ -227,7 +227,7 @@ local function Pricing (ready)
 	local soldier = setmetatable (
 		{
 			team = 3,
-			controller = { ShutDoorAreas = function (_, team) return team == 3 and shut or nil end },
+			controller = { doors = { ShutAreas = function (_, team) return team == 3 and shut or nil end } },
 			ent =
 			{
 				EntIndex = function () return 12 end,
@@ -463,7 +463,7 @@ local function Searching (plans)
 	soldier.team = 3
 	soldier.RouteCost = nil
 	soldier.Navigator = function () error ("a bot that plans on the mesh needs no navigator") end
-	soldier.controller.ShutDoorIn = function (_, area, team) return area.shut == true and team == 3 end
+	soldier.controller.doors = { ShutIn = function (_, area, team) return area.shut == true and team == 3 end }
 	soldier.ent.EntIndex = function () return 12 end
 	soldier.ent.GetHullDuck = function () return Vec (-24, -24, 0), Vec (24, 24, 62) end
 	soldier.ent.GetGravity = function () return 1 end
