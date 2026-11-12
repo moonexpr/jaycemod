@@ -53,105 +53,69 @@ unsafe fn library(l: L, name: &CStr, functions: &[(&CStr, CFunction)]) {
     (api.setfield)(l, -2, name.as_ptr());
 }
 
+/// A namespace's native modules, by name: what pushes each one's table.
+pub type Modules = &'static [(&'static CStr, unsafe fn(L))];
+
+/// One namespace: its name (None for the globals' root) and its modules.
+type Namespace = (Option<&'static CStr>, Modules);
+
+/// Every native module, each named once, where its Lua twin is published.
+/// The tests' table and the server's install are both laid out from it.
+const NAMESPACES: &[Namespace] = &[
+    (Some(c"tree"), &[(c"heap", heap::push_module), (c"avl", avl::push_module)]),
+    (
+        Some(c"graph"),
+        &[(c"pathfinder", pathfinder::push_module), (c"search", search::push_module), (c"paths", paths::push_module)],
+    ),
+    (
+        None,
+        &[
+            (c"nodegraph", nodegraph::push_module),
+            (c"configstore", configstore::push_module),
+            (c"transaction", transaction::push_module),
+        ],
+    ),
+    (Some(c"list"), list::MODULES),
+    (Some(c"world"), world::MODULES),
+    (Some(c"math"), math::MODULES),
+    (Some(c"core"), core::MODULES),
+    (Some(c"cache"), cache::MODULES),
+    (Some(c"timer"), timer::MODULES),
+    (Some(c"generator"), &[(c"state_machine", state_machine::push_module), (c"state_chart", state_chart::push_module)]),
+    (Some(c"analysis"), analysis::MODULES),
+    (Some(c"file"), codec::FILE_MODULES),
+    (Some(c"encoding"), codec::ENCODING_MODULES),
+];
+
 /// Pushes the module's table, laid out as foundation's globals are
 /// (`.tree.heap`, `.nodegraph`), with the boundary probes, for the tests and the bench.
 unsafe fn module(l: L) {
     let api = api();
-    (api.createtable)(l, 0, 2);
-    (api.createtable)(l, 0, 2);
-    heap::push_module(l);
-    (api.setfield)(l, -2, c"heap".as_ptr());
-    avl::push_module(l);
-    (api.setfield)(l, -2, c"avl".as_ptr());
-    (api.setfield)(l, -2, c"tree".as_ptr());
-    (api.createtable)(l, 0, 1);
-    pathfinder::push_module(l);
-    (api.setfield)(l, -2, c"pathfinder".as_ptr());
-    search::push_module(l);
-    (api.setfield)(l, -2, c"search".as_ptr());
-    paths::push_module(l);
-    (api.setfield)(l, -2, c"paths".as_ptr());
-    (api.setfield)(l, -2, c"graph".as_ptr());
-    nodegraph::push_module(l);
-    (api.setfield)(l, -2, c"nodegraph".as_ptr());
-    configstore::push_module(l);
-    (api.setfield)(l, -2, c"configstore".as_ptr());
-    transaction::push_module(l);
-    (api.setfield)(l, -2, c"transaction".as_ptr());
-    namespace(l, c"list", list::push_modules);
-    namespace(l, c"world", world::push_modules);
-    namespace(l, c"math", math::push_modules);
-    namespace(l, c"core", core::push_modules);
-    namespace(l, c"cache", cache::push_modules);
-    namespace(l, c"timer", timer::push_modules);
-    namespace(l, c"generator", generator_modules);
-    namespace(l, c"analysis", analysis::push_modules);
-    namespace(l, c"file", codec::push_file);
-    namespace(l, c"encoding", codec::push_encoding);
+    (api.createtable)(l, 0, NAMESPACES.len() as c_int);
+    for (namespace, modules) in NAMESPACES {
+        if namespace.is_some() {
+            (api.createtable)(l, 0, modules.len() as c_int);
+        }
+        for (name, push) in *modules {
+            push(l);
+            (api.setfield)(l, -2, name.as_ptr());
+        }
+        if let Some(namespace) = namespace {
+            (api.setfield)(l, -2, namespace.as_ptr());
+        }
+    }
     library(l, c"probe", &[(c"Nothing", probe_nothing), (c"Add", probe_add)]);
 }
 
-/// Pushes the generator namespace's native modules into the table at the top.
-unsafe fn generator_modules(l: L) {
-    state_machine::push_module(l);
-    (api().setfield)(l, -2, c"state_machine".as_ptr());
-    state_chart::push_module(l);
-    (api().setfield)(l, -2, c"state_chart".as_ptr());
-}
-
-const GENERATOR_NAMES: &[&CStr] = &[c"state_machine", c"state_chart"];
-
-/// Pushes a table of a namespace's native modules (filled by `push`) into the
-/// table at the top of the stack, as `name`.
-unsafe fn namespace(l: L, name: &CStr, push: unsafe fn(L)) {
-    let api = api();
-    (api.createtable)(l, 0, 8);
-    push(l);
-    (api.setfield)(l, -2, name.as_ptr());
-}
-
-/// Provides each of a namespace's native modules (filled by `push`, keyed by
-/// `names`) at `namespace.<name>`.
-unsafe fn provide_all(l: L, namespace: &CStr, push: unsafe fn(L), names: &[&CStr]) {
-    let api = api();
-    (api.createtable)(l, 0, names.len() as c_int);
-    push(l);
-    for name in names {
-        (api.getfield)(l, -1, name.as_ptr());
-        crate::module::provide(l, Some(namespace), name);
-    }
-    (api.settop)(l, -2);
-}
-
-/// Provides each native twin that is whole at its Lua twin's global, before
-/// the indexes run (docs/native-foundation-plan.md).
+/// Provides each native twin, whole, at its Lua twin's global, before the
+/// indexes run (docs/native-foundation-plan.md).
 unsafe fn provide(l: L) {
-    heap::push_module(l);
-    crate::module::provide(l, Some(c"tree"), c"heap");
-    avl::push_module(l);
-    crate::module::provide(l, Some(c"tree"), c"avl");
-    pathfinder::push_module(l);
-    crate::module::provide(l, Some(c"graph"), c"pathfinder");
-    search::push_module(l);
-    crate::module::provide(l, Some(c"graph"), c"search");
-    paths::push_module(l);
-    crate::module::provide(l, Some(c"graph"), c"paths");
-    provide_all(l, c"list", list::push_modules, list::NAMES);
-    nodegraph::push_module(l);
-    crate::module::provide(l, None, c"nodegraph");
-    configstore::push_module(l);
-    crate::module::provide(l, None, c"configstore");
-    transaction::push_module(l);
-    crate::module::provide(l, None, c"transaction");
-    provide_all(l, c"world", world::push_modules, world::NAMES);
-    provide_all(l, c"math", math::push_modules, math::NAMES);
-    provide_all(l, c"core", core::push_modules, core::NAMES);
-    provide_all(l, c"cache", cache::push_modules, cache::NAMES);
-    provide_all(l, c"timer", timer::push_modules, timer::NAMES);
-    provide_all(l, c"generator", generator_modules, GENERATOR_NAMES);
-    provide_all(l, c"analysis", analysis::push_modules, analysis::NAMES);
-    provide_all(l, c"file", codec::push_file, codec::FILE_NAMES);
-    provide_all(l, c"encoding", codec::push_encoding, codec::ENCODING_NAMES);
+    for (namespace, modules) in NAMESPACES {
+        for (name, push) in *modules {
+            push(l);
+            crate::module::provide(l, *namespace, name);
+        }
+    }
 }
 
 /// GMod's entry point: the server requires the module before foundation's

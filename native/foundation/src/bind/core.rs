@@ -916,9 +916,8 @@ unsafe extern "C-unwind" fn enum_new(l: L) -> c_int {
     construct_through(l, class, class + 1)
 }
 
-/// Pushes the core namespace's native modules into the table at the top.
-pub unsafe fn push_modules(l: L) {
-    let api = api();
+/// Pushes the class module table.
+unsafe fn push_class_module(l: L) {
     crate::module::push(
         l,
         &[
@@ -931,19 +930,34 @@ pub unsafe fn push_modules(l: L) {
         ],
         None,
     );
-    (api.setfield)(l, -2, c"class".as_ptr());
+}
+
+/// Pushes the port module table.
+unsafe fn push_port_module(l: L) {
     crate::module::push(l, &[(c"New", port_new), (c"Is", port_is)], None);
-    (api.setfield)(l, -2, c"port".as_ptr());
+}
+
+/// Pushes the constants module table.
+unsafe fn push_constants_module(l: L) {
+    let api = api();
     crate::module::push(l, &[(c"New", constants_new)], None);
     constant_set_class(l);
     (api.setfield)(l, -2, c"ConstantSet".as_ptr());
-    (api.setfield)(l, -2, c"constants".as_ptr());
+}
+
+/// Pushes the enum module table.
+unsafe fn push_enum_module(l: L) {
+    let api = api();
     crate::module::push(l, &[(c"New", enum_new)], None);
     enum_class(l);
     (api.setfield)(l, -2, c"Enum".as_ptr());
-    (api.setfield)(l, -2, c"enum".as_ptr());
-    super::namespace::push_module(l);
-    (api.setfield)(l, -2, c"namespace".as_ptr());
 }
 
-pub const NAMES: &[&CStr] = &[c"class", c"port", c"constants", c"enum", c"namespace"];
+/// This namespace's native modules, by name: what pushes each one's table.
+pub const MODULES: super::Modules = &[
+    (c"class", push_class_module),
+    (c"port", push_port_module),
+    (c"constants", push_constants_module),
+    (c"enum", push_enum_module),
+    (c"namespace", super::namespace::push_module),
+];

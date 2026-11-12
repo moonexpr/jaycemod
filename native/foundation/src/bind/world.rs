@@ -812,19 +812,26 @@ unsafe extern "C-unwind" fn sets_sorted(l: L) -> c_int {
     1
 }
 
-/// Pushes the world namespace's native modules into the table at the top.
-pub unsafe fn push_modules(l: L) {
+/// Pushes the pairmap module table.
+unsafe fn push_pairmap_module(l: L) {
     let api = api();
-    module::push(l, &[(c"New", bucket_new)], None);
-    (api.setfield)(l, -2, c"bucket".as_ptr());
     module::push(l, &[(c"New", pairmap_new), (c"Unordered", pairmap_unordered)], None);
     (api.pushnumber)(l, MAX_KEY);
     (api.setfield)(l, -2, c"MAX_KEY".as_ptr());
-    (api.setfield)(l, -2, c"pairmap".as_ptr());
+}
+
+/// Pushes the lease module table.
+unsafe fn push_lease_module(l: L) {
     module::push(l, &[(c"New", lease_new)], None);
-    (api.setfield)(l, -2, c"lease".as_ptr());
+}
+
+/// Pushes the grid module table.
+unsafe fn push_grid_module(l: L) {
     module::push(l, &[(c"New", grid_new), (c"Thin", grid_thin), (c"Spread", grid_spread), (c"Isolated", grid_isolated)], None);
-    (api.setfield)(l, -2, c"grid".as_ptr());
+}
+
+/// Pushes the sets module table.
+unsafe fn push_sets_module(l: L) {
     module::push(
         l,
         &[
@@ -839,7 +846,18 @@ pub unsafe fn push_modules(l: L) {
         ],
         None,
     );
-    (api.setfield)(l, -2, c"sets".as_ptr());
 }
 
-pub const NAMES: &[&CStr] = &[c"pairmap", c"lease", c"grid", c"sets", c"bucket"];
+/// Pushes the bucket module table.
+unsafe fn push_bucket_module(l: L) {
+    module::push(l, &[(c"New", bucket_new)], None);
+}
+
+/// This namespace's native modules, by name: what pushes each one's table.
+pub const MODULES: super::Modules = &[
+    (c"pairmap", push_pairmap_module),
+    (c"lease", push_lease_module),
+    (c"grid", push_grid_module),
+    (c"sets", push_sets_module),
+    (c"bucket", push_bucket_module),
+];

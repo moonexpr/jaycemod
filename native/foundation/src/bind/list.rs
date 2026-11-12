@@ -643,27 +643,39 @@ unsafe extern "C-unwind" fn chain_tostring(l: L) -> c_int {
     1
 }
 
-/// Pushes the list namespace's native modules as `list.<name>` tables into
-/// the table at the top of the stack.
-pub unsafe fn push_modules(l: L) {
-    let api = api();
+/// Pushes the queue module table.
+unsafe fn push_queue_module(l: L) {
     module::push(l, &[(c"New", queue_new)], None);
-    (api.setfield)(l, -2, c"queue".as_ptr());
-    module::push(l, &[(c"New", ring_new)], None);
-    (api.setfield)(l, -2, c"ring".as_ptr());
-    module::push(l, &[(c"New", slots_new)], None);
-    (api.setfield)(l, -2, c"slots".as_ptr());
-    module::push(l, &[(c"New", chain_new)], None);
-    (api.setfield)(l, -2, c"chain".as_ptr());
-    super::schedule::push_module(l);
-    (api.setfield)(l, -2, c"schedule".as_ptr());
-    super::select::push_module(l);
-    (api.setfield)(l, -2, c"select".as_ptr());
-    module::push(l, &[(c"New", window_new)], None);
-    (api.setfield)(l, -2, c"window".as_ptr());
-    super::calendar::push_module(l);
-    (api.setfield)(l, -2, c"calendar".as_ptr());
 }
 
-/// The names push_modules sets, for provide.
-pub const NAMES: &[&CStr] = &[c"queue", c"ring", c"slots", c"chain", c"schedule", c"select", c"window", c"calendar"];
+/// Pushes the ring module table.
+unsafe fn push_ring_module(l: L) {
+    module::push(l, &[(c"New", ring_new)], None);
+}
+
+/// Pushes the slots module table.
+unsafe fn push_slots_module(l: L) {
+    module::push(l, &[(c"New", slots_new)], None);
+}
+
+/// Pushes the chain module table.
+unsafe fn push_chain_module(l: L) {
+    module::push(l, &[(c"New", chain_new)], None);
+}
+
+/// Pushes the window module table.
+unsafe fn push_window_module(l: L) {
+    module::push(l, &[(c"New", window_new)], None);
+}
+
+/// This namespace's native modules, by name: what pushes each one's table.
+pub const MODULES: super::Modules = &[
+    (c"queue", push_queue_module),
+    (c"ring", push_ring_module),
+    (c"slots", push_slots_module),
+    (c"chain", push_chain_module),
+    (c"schedule", super::schedule::push_module),
+    (c"select", super::select::push_module),
+    (c"window", push_window_module),
+    (c"calendar", super::calendar::push_module),
+];

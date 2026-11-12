@@ -214,15 +214,22 @@ pub(super) unsafe fn push_interval_unstarted(l: L) {
     (api().pushnumber)(l, INTERVAL_UNSTARTED);
 }
 
-/// Sets the timer modules in the table at the top of the stack.
-pub unsafe fn push_modules(l: L) {
+/// Pushes timer module `name` from the shared table, so both are made once
+/// and state_chart's CountdownTimer and IntervalTimer are these.
+unsafe fn push_shared_module(l: L, name: &CStr) {
     let api = api();
     push_shared(l);
-    for name in NAMES {
-        (api.getfield)(l, -1, name.as_ptr());
-        (api.setfield)(l, -3, name.as_ptr());
-    }
-    (api.settop)(l, -2);
+    (api.getfield)(l, -1, name.as_ptr());
+    (api.remove)(l, -2);
 }
 
-pub const NAMES: &[&CStr] = &[c"countdown", c"interval"];
+unsafe fn push_countdown_module(l: L) {
+    push_shared_module(l, c"countdown");
+}
+
+unsafe fn push_interval_module(l: L) {
+    push_shared_module(l, c"interval");
+}
+
+/// This namespace's native modules, by name: what pushes each one's table.
+pub const MODULES: super::Modules = &[(c"countdown", push_countdown_module), (c"interval", push_interval_module)];

@@ -891,8 +891,8 @@ unsafe extern "C-unwind" fn memo_new(l: L) -> c_int {
     new_of(l, c"foundation.cache.Memo")
 }
 
-/// Pushes the cache namespace's native modules into the table at the top.
-pub unsafe fn push_modules(l: L) {
+/// Pushes the base module table.
+unsafe fn push_base_module(l: L) {
     let api = api();
     crate::module::push(l, &[(c"New", base_new), (c"State", state)], None);
     for (name, value) in [
@@ -908,21 +908,38 @@ pub unsafe fn push_modules(l: L) {
     }
     cache_class(l);
     (api.setfield)(l, -2, c"Cache".as_ptr());
-    (api.setfield)(l, -2, c"base".as_ptr());
+}
+
+/// Pushes the lru module table.
+unsafe fn push_lru_module(l: L) {
+    let api = api();
     crate::module::push(l, &[(c"New", lru_new)], None);
     lru_class(l);
     (api.setfield)(l, -2, c"Lru".as_ptr());
-    (api.setfield)(l, -2, c"lru".as_ptr());
+}
+
+/// Pushes the expiring module table.
+unsafe fn push_expiring_module(l: L) {
+    let api = api();
     crate::module::push(l, &[(c"New", expiring_new)], None);
     expiring_class(l);
     (api.setfield)(l, -2, c"Expiring".as_ptr());
     clock_port(l);
     (api.setfield)(l, -2, c"CLOCK".as_ptr());
-    (api.setfield)(l, -2, c"expiring".as_ptr());
+}
+
+/// Pushes the memo module table.
+unsafe fn push_memo_module(l: L) {
+    let api = api();
     crate::module::push(l, &[(c"New", memo_new)], None);
     memo_class(l);
     (api.setfield)(l, -2, c"Memo".as_ptr());
-    (api.setfield)(l, -2, c"memo".as_ptr());
 }
 
-pub const NAMES: &[&CStr] = &[c"base", c"lru", c"expiring", c"memo"];
+/// This namespace's native modules, by name: what pushes each one's table.
+pub const MODULES: super::Modules = &[
+    (c"base", push_base_module),
+    (c"lru", push_lru_module),
+    (c"expiring", push_expiring_module),
+    (c"memo", push_memo_module),
+];

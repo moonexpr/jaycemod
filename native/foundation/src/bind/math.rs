@@ -993,9 +993,8 @@ unsafe extern "C-unwind" fn polyline_distance_of(l: L) -> c_int {
     number(l, best)
 }
 
-/// Pushes the math namespace's native modules into the table at the top.
-pub unsafe fn push_modules(l: L) {
-    let api = api();
+/// Pushes the geometry module table.
+unsafe fn push_geometry_module(l: L) {
     module::push(
         l,
         &[
@@ -1021,7 +1020,10 @@ pub unsafe fn push_modules(l: L) {
         ],
         None,
     );
-    (api.setfield)(l, -2, c"geometry".as_ptr());
+}
+
+/// Pushes the scalar module table.
+unsafe fn push_scalar_module(l: L) {
     module::push(
         l,
         &[
@@ -1033,19 +1035,40 @@ pub unsafe fn push_modules(l: L) {
         ],
         None,
     );
-    (api.setfield)(l, -2, c"scalar".as_ptr());
+}
+
+/// Pushes the stats module table.
+unsafe fn push_stats_module(l: L) {
     module::push(l, &[(c"Mean", mean), (c"Percentile", percentile)], None);
-    (api.setfield)(l, -2, c"stats".as_ptr());
+}
+
+/// Pushes the weighted module table.
+unsafe fn push_weighted_module(l: L) {
     module::push(l, &[(c"PickWeighted", pick_weighted)], None);
-    (api.setfield)(l, -2, c"weighted".as_ptr());
+}
+
+/// Pushes the polynomial module table.
+unsafe fn push_polynomial_module(l: L) {
     module::push(l, &[(c"Evaluate", evaluate), (c"Derivative", derivative), (c"Roots", roots)], None);
-    (api.setfield)(l, -2, c"polynomial".as_ptr());
+}
+
+/// Pushes the matrix module table.
+unsafe fn push_matrix_module(l: L) {
     module::push(l, &[(c"New", matrix_new), (c"Identity", matrix_identity)], None);
-    (api.setfield)(l, -2, c"matrix".as_ptr());
+}
+
+/// Pushes the polyline module table.
+unsafe fn push_polyline_module(l: L) {
     module::push(l, &[(c"New", polyline_new)], None);
-    (api.setfield)(l, -2, c"polyline".as_ptr());
+}
+
+/// Pushes the interval module table.
+unsafe fn push_interval_module(l: L) {
     module::push(l, &[(c"Overlaps", interval_overlaps), (c"Intersect", interval_intersect)], None);
-    (api.setfield)(l, -2, c"interval".as_ptr());
+}
+
+/// Pushes the box module table.
+unsafe fn push_box_module(l: L) {
     module::push(
         l,
         &[
@@ -1058,9 +1081,23 @@ pub unsafe fn push_modules(l: L) {
         ],
         None,
     );
-    (api.setfield)(l, -2, c"box".as_ptr());
-    module::push(l, &[(c"Shuffle", choice_shuffle), (c"Draw", choice_draw)], None);
-    (api.setfield)(l, -2, c"choice".as_ptr());
 }
 
-pub const NAMES: &[&CStr] = &[c"geometry", c"scalar", c"stats", c"weighted", c"polynomial", c"matrix", c"polyline", c"interval", c"box", c"choice"];
+/// Pushes the choice module table.
+unsafe fn push_choice_module(l: L) {
+    module::push(l, &[(c"Shuffle", choice_shuffle), (c"Draw", choice_draw)], None);
+}
+
+/// This namespace's native modules, by name: what pushes each one's table.
+pub const MODULES: super::Modules = &[
+    (c"geometry", push_geometry_module),
+    (c"scalar", push_scalar_module),
+    (c"stats", push_stats_module),
+    (c"weighted", push_weighted_module),
+    (c"polynomial", push_polynomial_module),
+    (c"matrix", push_matrix_module),
+    (c"polyline", push_polyline_module),
+    (c"interval", push_interval_module),
+    (c"box", push_box_module),
+    (c"choice", push_choice_module),
+];

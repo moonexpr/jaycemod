@@ -607,9 +607,8 @@ unsafe extern "C-unwind" fn format_samples(l: L) -> c_int {
     pushed
 }
 
-/// Pushes the analysis namespace's native modules into the table at the top.
-pub unsafe fn push_modules(l: L) {
-    let api = api();
+/// Pushes the memory module table.
+unsafe fn push_memory_module(l: L) {
     module::push(l, &[(c"Measure", measure), (c"Format", memory_format)], None);
     for (name, value) in [
         (c"TABLE", TABLE),
@@ -621,7 +620,10 @@ pub unsafe fn push_modules(l: L) {
     ] {
         set(l, name, value);
     }
-    (api.setfield)(l, -2, c"memory".as_ptr());
+}
+
+/// Pushes the analytics module table.
+unsafe fn push_analytics_module(l: L) {
     module::push(
         l,
         &[
@@ -634,7 +636,10 @@ pub unsafe fn push_modules(l: L) {
     );
     set(l, c"WINDOW", WINDOW as f64);
     set(l, c"PERCENTILE", PERCENTILE);
-    (api.setfield)(l, -2, c"analytics".as_ptr());
 }
 
-pub const NAMES: &[&CStr] = &[c"memory", c"analytics"];
+/// This namespace's native modules, by name: what pushes each one's table.
+pub const MODULES: super::Modules = &[
+    (c"memory", push_memory_module),
+    (c"analytics", push_analytics_module),
+];

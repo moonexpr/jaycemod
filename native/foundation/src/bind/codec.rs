@@ -922,8 +922,8 @@ unsafe extern "C-unwind" fn gma_read(l: L) -> c_int {
     1
 }
 
-/// Pushes file.buffer into the table at the top, as `buffer`.
-pub unsafe fn push_file(l: L) {
+/// Pushes the buffer module table.
+unsafe fn push_buffer_module(l: L) {
     module::push(
         l,
         &[
@@ -940,30 +940,54 @@ pub unsafe fn push_file(l: L) {
         ],
         None,
     );
-    (api().setfield)(l, -2, c"buffer".as_ptr());
 }
 
-pub const FILE_NAMES: &[&CStr] = &[c"buffer"];
+/// This namespace's native modules, by name: what pushes each one's table.
+pub const FILE_MODULES: super::Modules = &[
+    (c"buffer", push_buffer_module),
+];
 
-/// Pushes the encoding namespace's native modules into the table at the top.
-pub unsafe fn push_encoding(l: L) {
-    let api = api();
+/// Pushes the utf16 module table.
+unsafe fn push_utf16_module(l: L) {
     module::push(l, &[(c"Decode", utf16_decode)], None);
-    (api.setfield)(l, -2, c"utf16".as_ptr());
+}
+
+/// Pushes the cursor module table.
+unsafe fn push_cursor_module(l: L) {
     module::push(l, &[(c"New", cursor_new)], None);
-    (api.setfield)(l, -2, c"cursor".as_ptr());
+}
+
+/// Pushes the keyvalues module table.
+unsafe fn push_keyvalues_module(l: L) {
     module::push(l, &[(c"Read", keyvalues_read)], None);
-    (api.setfield)(l, -2, c"keyvalues".as_ptr());
+}
+
+/// Pushes the consolecfg module table.
+unsafe fn push_consolecfg_module(l: L) {
     module::push(l, &[(c"Commands", consolecfg_commands)], None);
-    (api.setfield)(l, -2, c"consolecfg".as_ptr());
+}
+
+/// Pushes the cvarfile module table.
+unsafe fn push_cvarfile_module(l: L) {
     module::push(l, &[(c"Write", cvarfile_write), (c"Read", cvarfile_read)], None);
-    (api.setfield)(l, -2, c"cvarfile".as_ptr());
+}
+
+/// Pushes the gma module table.
+unsafe fn push_gma_module(l: L) {
+    let api = api();
     module::push(l, &[(c"Write", gma_write), (c"Read", gma_read)], None);
     crate::lua::push_str(l, "GMAD");
     (api.setfield)(l, -2, c"MAGIC".as_ptr());
     (api.pushnumber)(l, 3.0);
     (api.setfield)(l, -2, c"VERSION".as_ptr());
-    (api.setfield)(l, -2, c"gma".as_ptr());
 }
 
-pub const ENCODING_NAMES: &[&CStr] = &[c"utf16", c"cursor", c"keyvalues", c"consolecfg", c"cvarfile", c"gma"];
+/// This namespace's native modules, by name: what pushes each one's table.
+pub const ENCODING_MODULES: super::Modules = &[
+    (c"utf16", push_utf16_module),
+    (c"cursor", push_cursor_module),
+    (c"keyvalues", push_keyvalues_module),
+    (c"consolecfg", push_consolecfg_module),
+    (c"cvarfile", push_cvarfile_module),
+    (c"gma", push_gma_module),
+];
