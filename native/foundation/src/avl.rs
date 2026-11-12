@@ -6,28 +6,35 @@
 const NIL: u32 = u32::MAX;
 
 #[derive(Clone, Copy)]
-struct Node {
+struct Node<V> {
     key: f64,
-    value: u32,
+    value: V,
     left: u32,
     right: u32,
     height: i32,
 }
 
-#[derive(Default)]
-pub struct Avl {
-    nodes: Vec<Node>,
+/// An ordered map of number keys to values of type V (by default whole
+/// numbers, as a binding's slots once were).
+pub struct Avl<V = u32> {
+    nodes: Vec<Node<V>>,
     free: Vec<u32>,
     root: Option<u32>,
     size: usize,
 }
 
-impl Avl {
-    fn node(&self, i: u32) -> &Node {
+impl<V> Default for Avl<V> {
+    fn default() -> Self {
+        Avl { nodes: Vec::new(), free: Vec::new(), root: None, size: 0 }
+    }
+}
+
+impl<V: Copy> Avl<V> {
+    fn node(&self, i: u32) -> &Node<V> {
         &self.nodes[i as usize]
     }
 
-    fn node_mut(&mut self, i: u32) -> &mut Node {
+    fn node_mut(&mut self, i: u32) -> &mut Node<V> {
         &mut self.nodes[i as usize]
     }
 
@@ -79,7 +86,7 @@ impl Avl {
         i
     }
 
-    fn alloc(&mut self, key: f64, value: u32) -> u32 {
+    fn alloc(&mut self, key: f64, value: V) -> u32 {
         let node = Node { key, value, left: NIL, right: NIL, height: 1 };
         match self.free.pop() {
             Some(i) => {
@@ -95,7 +102,7 @@ impl Avl {
 
     /// Returns the subtree with key set, whether it is new, and the value it
     /// replaced (when it was not).
-    fn insert_at(&mut self, i: u32, key: f64, value: u32) -> (u32, Option<u32>) {
+    fn insert_at(&mut self, i: u32, key: f64, value: V) -> (u32, Option<V>) {
         if i == NIL {
             return (self.alloc(key, value), None);
         }
@@ -135,7 +142,7 @@ impl Avl {
     }
 
     /// Returns the subtree without key, and the removed node's value.
-    fn remove_at(&mut self, i: u32, key: f64) -> (u32, Option<u32>) {
+    fn remove_at(&mut self, i: u32, key: f64) -> (u32, Option<V>) {
         if i == NIL {
             return (NIL, None);
         }
@@ -172,7 +179,7 @@ impl Avl {
     }
 
     /// Sets key to value; returns the value it replaced, if the key was there.
-    pub fn insert(&mut self, key: f64, value: u32) -> Option<u32> {
+    pub fn insert(&mut self, key: f64, value: V) -> Option<V> {
         let (root, replaced) = self.insert_at(self.root(), key, value);
         self.root = Some(root);
         if replaced.is_none() {
@@ -182,7 +189,7 @@ impl Avl {
     }
 
     /// Removes key; returns its value, if it was there.
-    pub fn remove(&mut self, key: f64) -> Option<u32> {
+    pub fn remove(&mut self, key: f64) -> Option<V> {
         let (root, removed) = self.remove_at(self.root(), key);
         self.root = (root != NIL).then_some(root);
         if removed.is_some() {
@@ -191,7 +198,7 @@ impl Avl {
         removed
     }
 
-    pub fn get(&self, key: f64) -> Option<u32> {
+    pub fn get(&self, key: f64) -> Option<V> {
         let mut i = self.root();
         while i != NIL {
             let node = self.node(i);
@@ -218,16 +225,16 @@ impl Avl {
         self.height_of(self.root())
     }
 
-    fn entry(&self, i: u32) -> Option<(f64, u32)> {
+    fn entry(&self, i: u32) -> Option<(f64, V)> {
         (i != NIL).then(|| (self.node(i).key, self.node(i).value))
     }
 
-    pub fn min(&self) -> Option<(f64, u32)> {
+    pub fn min(&self) -> Option<(f64, V)> {
         let root = self.root();
         if root == NIL { None } else { self.entry(self.min_node(root)) }
     }
 
-    pub fn max(&self) -> Option<(f64, u32)> {
+    pub fn max(&self) -> Option<(f64, V)> {
         let mut i = self.root();
         if i == NIL {
             return None;
@@ -239,7 +246,7 @@ impl Avl {
     }
 
     /// The greatest key at or below `key`.
-    pub fn floor(&self, key: f64) -> Option<(f64, u32)> {
+    pub fn floor(&self, key: f64) -> Option<(f64, V)> {
         let (mut i, mut best) = (self.root(), NIL);
         while i != NIL {
             let node = self.node(i);
@@ -257,7 +264,7 @@ impl Avl {
     }
 
     /// The least key at or above `key`.
-    pub fn ceiling(&self, key: f64) -> Option<(f64, u32)> {
+    pub fn ceiling(&self, key: f64) -> Option<(f64, V)> {
         let (mut i, mut best) = (self.root(), NIL);
         while i != NIL {
             let node = self.node(i);
@@ -275,7 +282,7 @@ impl Avl {
     }
 
     /// The least key strictly above `key`: the in-order step after it.
-    pub fn higher(&self, key: f64) -> Option<(f64, u32)> {
+    pub fn higher(&self, key: f64) -> Option<(f64, V)> {
         let (mut i, mut best) = (self.root(), NIL);
         while i != NIL {
             let node = self.node(i);

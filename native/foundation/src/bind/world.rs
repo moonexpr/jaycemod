@@ -3,7 +3,8 @@
 //! keys, holders, items, members) stays as given, in the userdata's
 //! environment: by slot, or in tables keyed by the caller's own values.
 
-use super::slots::{fresh_environment, ValueSlots};
+use super::slots::{fresh_environment, keep, let_go, Kept, Slot, ValueSlots};
+use crate::exchange::{pure, respond};
 use super::util::{absent, boolean, each_item, env_field, env_table, nothing, number, number_at};
 use crate::lua::{raise_at, raise_where, string_at, tostring, CFunction, GLOBALSINDEX, L, TNIL, TTABLE};
 use crate::module;
@@ -16,11 +17,38 @@ use std::ffi::{c_int, CStr};
 const SPAN: f64 = 67_108_864.0; // 2^26
 const MAX_KEY: f64 = SPAN - 1.0;
 
+/// Lua values under pairs of whole numbers, by slot.
 #[derive(Default)]
 pub struct PairMap {
-    keys: HashMap<u64, u32>,
+    keys: HashMap<u64, Slot>,
     values: ValueSlots,
     unordered: bool,
+}
+
+impl PairMap {
+    /// Sets (a, b): the slot for the value given, when one is, and the slot
+    /// of the value it replaced, given back.
+    fn set(&mut self, a: f64, b: f64, given: bool) -> (Option<Slot>, Option<Slot>) {
+        let key = pair_key(self.unordered, a, b);
+        let replaced = self.keys.remove(&key);
+        if let Some(old) = replaced {
+            self.values.give_back(old);
+        }
+        let slot = given.then(|| self.values.take());
+        if let Some(slot) = slot {
+            self.keys.insert(key, slot);
+        }
+        (slot, replaced)
+    }
+
+    fn get(&self, a: f64, b: f64) -> Option<Slot> {
+        self.keys.get(&pair_key(self.unordered, a, b)).copied()
+    }
+
+    fn clear(&mut self) {
+        self.keys.clear();
+        self.values.reset();
+    }
 }
 
 impl Native for PairMap {
@@ -50,14 +78,9 @@ unsafe extern "C-unwind" fn pairmap_unordered(l: L) -> c_int {
 
 unsafe extern "C-unwind" fn pairmap_get(l: L) -> c_int {
     let (a, b) = (l.checknumber(2), l.checknumber(3));
-    let map = userdata::check::<PairMap>(l, 1);
-    match map.keys.get(&pair_key(map.unordered, a, b)) {
-        Some(&slot) => {
-            ValueSlots::push(l, slot);
-            1
-        }
-        None => nothing(l),
-    }
+    let map = userdata::get::<PairMap>(l, 1);
+    let map = &*map;
+    respond(l, || Ok(map.get(a, b).map(Kept)))
 }
 
 unsafe fn pair_part(l: L, index: c_int) -> f64 {
@@ -73,26 +96,30 @@ unsafe fn pair_part(l: L, index: c_int) -> f64 {
 unsafe extern "C-unwind" fn pairmap_set(l: L) -> c_int {
     l.settop(4);
     let (a, b) = (pair_part(l, 2), pair_part(l, 3));
+    let given = !absent(l, 4);
     let mut map = userdata::check::<PairMap>(l, 1);
-    let key = pair_key(map.unordered, a, b);
-    if let Some(old) = map.keys.remove(&key) {
-        map.values.release(l, old);
+    let map = &mut *map;
+    let (slot, replaced) = pure(l, || map.set(a, b, given));
+    if let Some(old) = replaced {
+        let_go(l, old);
     }
-    if !absent(l, 4) {
-        let slot = map.values.store(l, 4);
-        map.keys.insert(key, slot);
+    if let Some(slot) = slot {
+        keep(l, slot, 4);
     }
     0
 }
 
 unsafe extern "C-unwind" fn pairmap_size(l: L) -> c_int {
-    number(l, userdata::check::<PairMap>(l, 1).keys.len() as f64)
+    let map = userdata::get::<PairMap>(l, 1);
+    let map = &*map;
+    respond(l, || Ok(map.keys.len()))
 }
 
 unsafe extern "C-unwind" fn pairmap_clear(l: L) -> c_int {
     let mut map = userdata::check::<PairMap>(l, 1);
-    map.keys.clear();
-    map.values.clear(l);
+    let map = &mut *map;
+    pure(l, || map.clear());
+    fresh_environment(l, 1);
     0
 }
 

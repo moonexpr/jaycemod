@@ -2,7 +2,8 @@
 //! contracts (foundation/list/), values the caller gives kept by slot in
 //! the userdata's environment.
 
-use super::slots::{fresh_environment, ValueSlots};
+use super::slots::{fresh_environment, keep, let_go, Kept, KeptList, Slot, Taken, ValueSlots};
+use crate::exchange::{pure, respond};
 use crate::lua::{push_str, raise_where, tostring, CFunction, L, TNUMBER};
 use crate::module;
 use crate::userdata::{self, Native};
@@ -30,10 +31,31 @@ unsafe fn whole_at(l: L, index: c_int) -> Option<u32> {
 
 // list.queue -----------------------------------------------------------------
 
+/// A double-ended queue of Lua values, by slot.
 #[derive(Default)]
 pub struct Queue {
-    slots: VecDeque<u32>,
+    slots: VecDeque<Slot>,
     values: ValueSlots,
+}
+
+impl Queue {
+    fn push_back(&mut self) -> Slot {
+        let slot = self.values.take();
+        self.slots.push_back(slot);
+        slot
+    }
+
+    fn push_front(&mut self) -> Slot {
+        let slot = self.values.take();
+        self.slots.push_front(slot);
+        slot
+    }
+
+    fn given_back(&mut self, slot: Option<Slot>) -> Option<Taken> {
+        let slot = slot?;
+        self.values.give_back(slot);
+        Some(Taken(slot))
+    }
 }
 
 impl Native for Queue {
@@ -60,77 +82,66 @@ unsafe extern "C-unwind" fn queue_new(l: L) -> c_int {
 unsafe extern "C-unwind" fn queue_push_back(l: L) -> c_int {
     l.settop(2);
     let mut q = userdata::check::<Queue>(l, 1);
-    let slot = q.values.store(l, 2);
-    q.slots.push_back(slot);
+    let q = &mut *q;
+    keep(l, pure(l, || q.push_back()), 2);
     0
 }
 
 unsafe extern "C-unwind" fn queue_push_front(l: L) -> c_int {
     l.settop(2);
     let mut q = userdata::check::<Queue>(l, 1);
-    let slot = q.values.store(l, 2);
-    q.slots.push_front(slot);
+    let q = &mut *q;
+    keep(l, pure(l, || q.push_front()), 2);
     0
-}
-
-unsafe fn pop(l: L, slot: Option<u32>, values: &mut ValueSlots) -> c_int {
-    match slot {
-        None => nothing(l),
-        Some(slot) => {
-            ValueSlots::push(l, slot);
-            values.release(l, slot);
-            1
-        }
-    }
 }
 
 unsafe extern "C-unwind" fn queue_pop_front(l: L) -> c_int {
     let mut q = userdata::check::<Queue>(l, 1);
-    let slot = q.slots.pop_front();
-    pop(l, slot, &mut q.values)
+    let q = &mut *q;
+    respond(l, || {
+        let slot = q.slots.pop_front();
+        Ok(q.given_back(slot))
+    })
 }
 
 unsafe extern "C-unwind" fn queue_pop_back(l: L) -> c_int {
     let mut q = userdata::check::<Queue>(l, 1);
-    let slot = q.slots.pop_back();
-    pop(l, slot, &mut q.values)
-}
-
-unsafe fn peek(l: L, slot: Option<&u32>) -> c_int {
-    match slot {
-        None => nothing(l),
-        Some(&slot) => {
-            ValueSlots::push(l, slot);
-            1
-        }
-    }
+    let q = &mut *q;
+    respond(l, || {
+        let slot = q.slots.pop_back();
+        Ok(q.given_back(slot))
+    })
 }
 
 unsafe extern "C-unwind" fn queue_front(l: L) -> c_int {
-    peek(l, userdata::check::<Queue>(l, 1).slots.front())
+    let q = userdata::get::<Queue>(l, 1);
+    let q = &*q;
+    respond(l, || Ok(q.slots.front().copied().map(Kept)))
 }
 
 unsafe extern "C-unwind" fn queue_back(l: L) -> c_int {
-    peek(l, userdata::check::<Queue>(l, 1).slots.back())
+    let q = userdata::get::<Queue>(l, 1);
+    let q = &*q;
+    respond(l, || Ok(q.slots.back().copied().map(Kept)))
 }
 
 unsafe extern "C-unwind" fn queue_size(l: L) -> c_int {
-    number(l, userdata::check::<Queue>(l, 1).slots.len() as f64)
+    let q = userdata::get::<Queue>(l, 1);
+    let q = &*q;
+    respond(l, || Ok(q.slots.len()))
 }
 
 /// The iterator Values gives: (queue, i) -> i + 1, the value there.
 unsafe extern "C-unwind" fn queue_step(l: L) -> c_int {
     let i = l.tonumber(2) as usize;
-    let q = userdata::check::<Queue>(l, 1);
-    let Some(&slot) = q.slots.get(i) else { return nothing(l) };
-    l.pushnumber((i + 1) as f64);
-    ValueSlots::push(l, slot);
-    2
+    let q = userdata::get::<Queue>(l, 1);
+    let q = &*q;
+    respond(l, || Ok(q.slots.get(i).map(|&slot| (i + 1, Kept(slot)))))
 }
 
 /// queue:Values() -> an iterator front to back (i, value)
 unsafe extern "C-unwind" fn queue_values(l: L) -> c_int {
-    userdata::check::<Queue>(l, 1);
+    userdata::get::<Queue>(l, 1);
     l.pushcclosure(queue_step, 0);
     l.pushvalue(1);
     l.pushnumber(0.0);
@@ -139,11 +150,43 @@ unsafe extern "C-unwind" fn queue_values(l: L) -> c_int {
 
 // list.ring ------------------------------------------------------------------
 
+/// The last `capacity` Lua values pushed, by slot.
 pub struct Ring {
-    slots: Vec<Option<u32>>,
+    slots: Vec<Option<Slot>>,
     next: usize,
     size: usize,
     values: ValueSlots,
+}
+
+impl Ring {
+    /// A slot for the value pushed, and the slot of the oldest it pushed
+    /// out, given back.
+    fn push(&mut self) -> (Slot, Option<Slot>) {
+        let pushed_out = self.slots[self.next].take();
+        if let Some(old) = pushed_out {
+            self.values.give_back(old);
+        }
+        let slot = self.values.take();
+        self.slots[self.next] = Some(slot);
+        self.next = (self.next + 1) % self.slots.len();
+        self.size = (self.size + 1).min(self.slots.len());
+        (slot, pushed_out)
+    }
+
+    fn newest(&self) -> Option<Slot> {
+        let capacity = self.slots.len();
+        if self.size == 0 {
+            return None;
+        }
+        self.slots[(self.next + capacity - 1) % capacity]
+    }
+
+    /// The slots, oldest first.
+    fn ordered(&self) -> Vec<Slot> {
+        let capacity = self.slots.len();
+        let start = if self.size < capacity { 0 } else { self.next };
+        (0..self.size).filter_map(|i| self.slots[(start + i) % capacity]).collect()
+    }
 }
 
 impl Native for Ring {
@@ -165,51 +208,34 @@ unsafe extern "C-unwind" fn ring_new(l: L) -> c_int {
 
 unsafe extern "C-unwind" fn ring_push(l: L) -> c_int {
     l.settop(2);
-    let mut guard = userdata::check::<Ring>(l, 1);
-    let ring = &mut *guard;
-    if let Some(old) = ring.slots[ring.next].take() {
-        ring.values.release(l, old);
+    let mut ring = userdata::check::<Ring>(l, 1);
+    let ring = &mut *ring;
+    let (slot, pushed_out) = pure(l, || ring.push());
+    if let Some(old) = pushed_out {
+        let_go(l, old);
     }
-    let slot = ring.values.store(l, 2);
-    ring.slots[ring.next] = Some(slot);
-    ring.next = (ring.next + 1) % ring.slots.len();
-    ring.size = (ring.size + 1).min(ring.slots.len());
+    keep(l, slot, 2);
     0
 }
 
 unsafe extern "C-unwind" fn ring_size(l: L) -> c_int {
-    number(l, userdata::check::<Ring>(l, 1).size as f64)
+    let ring = userdata::get::<Ring>(l, 1);
+    let ring = &*ring;
+    respond(l, || Ok(ring.size))
 }
 
 /// ring:Newest() -> the last value pushed, nil for an empty ring
 unsafe extern "C-unwind" fn ring_newest(l: L) -> c_int {
-    let ring = userdata::check::<Ring>(l, 1);
-    if ring.size == 0 {
-        return nothing(l);
-    }
-    let capacity = ring.slots.len();
-    match ring.slots[(ring.next + capacity - 1) % capacity] {
-        Some(slot) => {
-            ValueSlots::push(l, slot);
-            1
-        }
-        None => nothing(l),
-    }
+    let ring = userdata::get::<Ring>(l, 1);
+    let ring = &*ring;
+    respond(l, || Ok(ring.newest().map(Kept)))
 }
 
 /// ring:Ordered() -> the values, oldest first, a fresh list
 unsafe extern "C-unwind" fn ring_ordered(l: L) -> c_int {
-    let ring = userdata::check::<Ring>(l, 1);
-    let capacity = ring.slots.len();
-    let start = if ring.size < capacity { 0 } else { ring.next };
-    l.createtable(ring.size as c_int, 0);
-    for i in 0..ring.size {
-        if let Some(slot) = ring.slots[(start + i) % capacity] {
-            ValueSlots::push(l, slot);
-            l.rawseti(-2, i as c_int + 1);
-        }
-    }
-    1
+    let ring = userdata::get::<Ring>(l, 1);
+    let ring = &*ring;
+    respond(l, || Ok(KeptList(ring.ordered())))
 }
 
 // list.window ----------------------------------------------------------------

@@ -11,6 +11,7 @@
 use super::slots::fresh_environment;
 use super::util::{absent, env_field, nothing, number};
 use crate::heap::Heap;
+use crate::exchange::pure;
 use crate::lua::{push_str, raise_where, tostring, CFunction, L, TBOOLEAN, TFUNCTION, TNUMBER, TSTRING};
 use crate::module;
 use crate::userdata::{self, Native};
@@ -88,6 +89,32 @@ impl Calendar {
         self.systems.iter().position(|s| s.name.as_bytes() == name)
     }
 
+    /// A new job of system `s`, first due at `at`: its id.
+    fn add(&mut self, s: usize, period: f64, at: f64) -> u32 {
+        self.next_job += 1;
+        let id = self.next_job;
+        self.jobs.insert(id, Job { system: s, period, at, ticket: 0, runs: 0, late: 0.0, late_max: 0.0, woken: None });
+        self.systems[s].jobs += 1;
+        self.queue(id, at);
+        id
+    }
+
+    /// Brings job `id` due at `at` if that is sooner; a job running takes
+    /// it as its next due at the latest. A job no longer known is left be.
+    fn wake(&mut self, id: u32, at: f64) {
+        let running = self.running == Some(id);
+        let Some(job) = self.jobs.get_mut(&id) else {
+            return;
+        };
+        if running {
+            if job.woken.is_none_or(|w| at < w) {
+                job.woken = Some(at);
+            }
+        } else if at < job.at {
+            self.queue(id, at);
+        }
+    }
+
     /// Queues `id` at `at` under a new ticket, its old one let go.
     fn queue(&mut self, id: u32, at: f64) {
         self.next_ticket += 1;
@@ -115,6 +142,22 @@ impl Calendar {
 
     /// Of the systems with a job due at `now`, the lowest standing, a tie to
     /// the one made first; a system's standing raised to the floor first.
+    /// Takes the job due next out of its system's queue and marks it
+    /// running: its system, when it was due, and its id; None when no
+    /// system has a job due.
+    fn start_next(&mut self, now: f64) -> Option<(usize, f64, u32)> {
+        let s = self.pick(now)?;
+        let (ticket, at) = self.top(s).expect("a picked system has a job due");
+        self.systems[s].heap.pop();
+        let id = self.tickets.remove(&ticket).expect("a live ticket has its job");
+        let standing = self.systems[s].standing;
+        if self.floor < standing {
+            self.floor = standing;
+        }
+        self.running = Some(id);
+        Some((s, at, id))
+    }
+
     fn pick(&mut self, now: f64) -> Option<usize> {
         let mut best: Option<usize> = None;
         for s in 0..self.systems.len() {
@@ -225,11 +268,8 @@ unsafe extern "C-unwind" fn every(l: L) -> c_int {
     }
     let at = if absent(l, 5) { now_of(l, c"clock") } else { l.checknumber(5) };
     let mut calendar = userdata::check::<Calendar>(l, 1);
-    calendar.next_job += 1;
-    let id = calendar.next_job;
-    calendar.jobs.insert(id, Job { system: s, period, at, ticket: 0, runs: 0, late: 0.0, late_max: 0.0, woken: None });
-    calendar.systems[s].jobs += 1;
-    calendar.queue(id, at);
+    let calendar = &mut *calendar;
+    let id = pure(l, || calendar.add(s, period, at));
     set_fn(l, id, 4);
     number(l, id as f64)
 }
@@ -250,15 +290,10 @@ unsafe extern "C-unwind" fn wake(l: L) -> c_int {
         return 0;
     }
     let at = if absent(l, 3) { now_of(l, c"clock") } else { l.checknumber(3) };
+    // Asked after the clock, which may have cancelled the job.
     let mut calendar = userdata::check::<Calendar>(l, 1);
-    if calendar.running == Some(id) {
-        let job = calendar.jobs.get_mut(&id).expect("known");
-        if job.woken.is_none_or(|w| at < w) {
-            job.woken = Some(at);
-        }
-    } else if at < calendar.jobs[&id].at {
-        calendar.queue(id, at);
-    }
+    let calendar = &mut *calendar;
+    pure(l, || calendar.wake(id, at));
     0
 }
 
@@ -296,20 +331,16 @@ unsafe extern "C-unwind" fn run(l: L) -> c_int {
     let mut drained = false;
     while t - started < seconds && count.is_none_or(|c| (ran as f64) < c) {
         let mut calendar = userdata::check::<Calendar>(l, 1);
-        let Some(s) = calendar.pick(now) else {
+        let next = {
+            let calendar = &mut *calendar;
+            pure(l, || calendar.start_next(now))
+        };
+        // The job may call back into the calendar (Cancel, Wake): not held.
+        drop(calendar);
+        let Some((s, at, id)) = next else {
             drained = true;
             break;
         };
-        let (ticket, at) = calendar.top(s).expect("a picked system has a job due");
-        calendar.systems[s].heap.pop();
-        let id = calendar.tickets.remove(&ticket).expect("a live ticket has its job");
-        let standing = calendar.systems[s].standing;
-        if calendar.floor < standing {
-            calendar.floor = standing;
-        }
-        calendar.running = Some(id);
-        // The job may call back into the calendar (Cancel, Wake): not held.
-        drop(calendar);
         env_field(l, 1, c"fns");
         l.rawgeti(-1, id as c_int);
         l.remove(-2);
@@ -356,12 +387,21 @@ unsafe extern "C-unwind" fn run(l: L) -> c_int {
         };
         l.settop(answer - 1);
         let mut calendar = userdata::check::<Calendar>(l, 1);
-        match next {
-            Some(n) => calendar.queue(id, n),
-            None => {
-                calendar.cancel(id);
-                set_fn(l, id, 0);
-            }
+        let ended = {
+            let calendar = &mut *calendar;
+            pure(l, || match next {
+                Some(n) => {
+                    calendar.queue(id, n);
+                    false
+                }
+                None => {
+                    calendar.cancel(id);
+                    true
+                }
+            })
+        };
+        if ended {
+            set_fn(l, id, 0);
         }
     }
     let mut calendar = userdata::check::<Calendar>(l, 1);

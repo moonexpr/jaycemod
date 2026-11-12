@@ -1,6 +1,7 @@
 //! `probe`: seams of the boundary itself, in the tests' and the bench's table
 //! only (`luaopen_foundation`); a server never installs them.
 
+use crate::exchange::pure;
 use crate::lua::{raise, CFunction, L};
 use std::ffi::{c_int, CStr};
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -41,5 +42,10 @@ unsafe extern "C-unwind" fn dropped(l: L) -> c_int {
     1
 }
 
+/// probe.Panic(): a handler that panics, as a foundation bug would.
+unsafe extern "C-unwind" fn panic(l: L) -> c_int {
+    pure(l, || panic!("the probe's own panic"))
+}
+
 pub const FUNCTIONS: &[(&CStr, CFunction)] =
-    &[(c"Nothing", nothing), (c"Add", add), (c"RaiseDropping", raise_dropping), (c"Dropped", dropped)];
+    &[(c"Nothing", nothing), (c"Add", add), (c"RaiseDropping", raise_dropping), (c"Dropped", dropped), (c"Panic", panic)];

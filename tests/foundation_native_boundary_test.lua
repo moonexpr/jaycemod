@@ -29,4 +29,33 @@ T.test ("one native object handed to its own method twice is read twice, not ref
 	T.eq (square:Get (2, 2), 22, "m by itself, last")
 end)
 
+T.test ("a panic in native code is a Lua error naming a foundation bug, and the server lives", function ()
+	local ok, err = pcall (native.probe.Panic)
+	T.eq (ok,                                                                            false, "raised")
+	T.eq (tostring (err):find ("foundation bug: the probe's own panic", 1, true) ~= nil, true,  "named ours: " .. tostring (err))
+	T.eq (native.probe.Add (1, 2),                                                       3,     "the next call answers")
+end)
+
+T.test ("a job its clock cancels while it is woken stays cancelled, in both twins", function ()
+	for _, Calendar in ipairs ({ list.calendar, native.list.calendar }) do
+		local clock, cancelling = { t = 0 }, nil
+		local calendar
+		function clock:Now ()
+			if cancelling then calendar:Cancel (cancelling) end
+			return self.t
+		end
+		local timer = { Now = function () return 0 end }
+		calendar = Calendar.New (clock, timer)
+		calendar:System ("war", 1)
+		local runs = 0
+		local job = calendar:Every ("war", 5, function () runs = runs + 1 end, 10)
+		cancelling = job
+		calendar:Wake (job)
+		cancelling = nil
+		clock.t = 20
+		calendar:Run (1)
+		T.eq (runs, 0, "the cancelled job never runs")
+	end
+end)
+
 T.finish ()

@@ -22,6 +22,7 @@
 //! of entry points is exported from each DLL.
 
 pub mod astar;
+pub mod exchange;
 pub mod avl;
 pub mod graph;
 pub mod heap;

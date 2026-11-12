@@ -1,27 +1,32 @@
-//! A binary min-heap of numbers keyed by numbers: the lowest key comes out
+//! A binary min-heap of values keyed by numbers: the lowest key comes out
 //! first, and of equal keys the one pushed first, so a search ordered by it
 //! breaks ties the way NavAreaBuildPath does without a push count of its own.
 
-#[derive(Default)]
-pub struct Heap {
-    entries: Vec<Entry>,
+pub struct Heap<V = f64> {
+    entries: Vec<Entry<V>>,
     pushed: u64,
 }
 
-#[derive(Clone, Copy)]
-struct Entry {
-    key: f64,
-    seq: u64,
-    value: f64,
+impl<V> Default for Heap<V> {
+    fn default() -> Self {
+        Heap { entries: Vec::new(), pushed: 0 }
+    }
 }
 
-impl Entry {
-    fn before(&self, other: &Entry) -> bool {
+#[derive(Clone, Copy)]
+struct Entry<V> {
+    key: f64,
+    seq: u64,
+    value: V,
+}
+
+impl<V> Entry<V> {
+    fn before(&self, other: &Entry<V>) -> bool {
         self.key < other.key || (self.key == other.key && self.seq < other.seq)
     }
 }
 
-impl Heap {
+impl<V: Copy> Heap<V> {
     pub fn len(&self) -> usize {
         self.entries.len()
     }
@@ -37,7 +42,7 @@ impl Heap {
 
     /// Pushes `value` under `key` and returns its push number (1 up, until
     /// `clear`), which `pop_entry` gives back.
-    pub fn push(&mut self, key: f64, value: f64) -> u64 {
+    pub fn push(&mut self, key: f64, value: V) -> u64 {
         self.pushed += 1;
         let entry = Entry { key, seq: self.pushed, value };
         let mut i = self.entries.len();
@@ -55,17 +60,17 @@ impl Heap {
     }
 
     /// The first entry's (value, key), left in.
-    pub fn peek(&self) -> Option<(f64, f64)> {
+    pub fn peek(&self) -> Option<(V, f64)> {
         self.entries.first().map(|e| (e.value, e.key))
     }
 
     /// The first entry's (value, key), taken out.
-    pub fn pop(&mut self) -> Option<(f64, f64)> {
+    pub fn pop(&mut self) -> Option<(V, f64)> {
         self.pop_entry().map(|(value, key, _)| (value, key))
     }
 
     /// The first entry's (value, key, push number), taken out.
-    pub fn pop_entry(&mut self) -> Option<(f64, f64, u64)> {
+    pub fn pop_entry(&mut self) -> Option<(V, f64, u64)> {
         let top = *self.entries.first()?;
         let last = self.entries.pop().expect("a heap with a first entry has a last");
         let n = self.entries.len();
