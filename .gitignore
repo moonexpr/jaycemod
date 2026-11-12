@@ -11,8 +11,3 @@ addons/*/native/target/
 
 # reference material kept beside the repo, never committed
 reference/**/*
-
-# subsystems apart of our monorepo
-addons/ulx_luadev/
-addons/nextsoldier/
-addons/model_viewer/

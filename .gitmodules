@@ -1,0 +1,21 @@
+[submodule "addons/sandcastle"]
+	path = addons/sandcastle
+	url = git@github.com:moonexpr/sandcastle.git
+[submodule "addons/cstrike_weapons"]
+	path = addons/cstrike_weapons
+	url = git@github.com:moonexpr/cstrike_weapons.git
+[submodule "addons/model_viewer"]
+	path = addons/model_viewer
+	url = git@github.com:moonexpr/model_viewer.git
+[submodule "addons/nextsoldier"]
+	path = addons/nextsoldier
+	url = git@github.com:moonexpr/nextsoldier.git
+[submodule "addons/teamtint"]
+	path = addons/teamtint
+	url = git@github.com:moonexpr/teamtint.git
+[submodule "addons/wartactics"]
+	path = addons/wartactics
+	url = git@github.com:moonexpr/wartactics.git
+[submodule "addons/ulx_luadev"]
+	path = addons/ulx_luadev
+	url = git@github.com:moonexpr/ulx_luadev.git
