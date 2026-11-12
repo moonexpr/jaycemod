@@ -520,6 +520,16 @@ T.test ("a search that finds no way leaves it no route, and it asks again in its
 	Done ()
 end)
 
+T.test ("made ready, it gets a navigator only when the engine's search plans its routes", function ()
+	local soldier, _, _, Done = Searching ()
+	soldier:PrepareRoutes ()
+	Done ()
+	local made = 0
+	soldier.Navigator = function () made = made + 1 end
+	soldier:PrepareRoutes ()
+	T.eq (made, 1, "the engine's search starts from its navigator, which must learn where it stands")
+end)
+
 T.test ("a search that never answers is given up, and its late answer is not walked", function ()
 	local soldier, asked, _, Done = Searching ()
 	soldier:Steer (1)

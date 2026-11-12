@@ -261,8 +261,7 @@ function Controller:ReadyBot (ply, entry)
 	soldier.nextLook = 0
 	soldier.attackedAt = -math.huge
 	soldier.sense = { eye = {} }
-	-- its navigator learns where it stands before its first route
-	soldier:Navigator ()
+	soldier:PrepareRoutes ()
 end
 
 -- A bot spawned (a wave, the round's start): enlisted afresh, its orders

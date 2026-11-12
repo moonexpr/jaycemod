@@ -275,6 +275,12 @@ function BotSoldier:EngineSearch ()
 	end
 end
 
+-- As it is enlisted: the engine's search starts from its navigator, which learns where it
+-- stands before its first route; the war's own search needs none, and none is made.
+function BotSoldier:PrepareRoutes ()
+	if ENGINE_ROUTES:GetBool () then self:Navigator () end
+end
+
 function BotSoldier:RouteSearch ()
 	if ENGINE_ROUTES:GetBool () then return self:EngineSearch () end
 	return self:MeshSearch ()
