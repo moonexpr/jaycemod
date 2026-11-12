@@ -16,6 +16,10 @@ local routeWalk =
 	end
 }
 
+-- The convars the bot soldier reads, by name: the cases below that plan through a navigator
+-- have it use the engine's search, as ns_bots_routes_engine 1 does.
+searches = { ns_bots_routes_engine = true }
+
 local Vec
 local VectorMeta = { __add = function (a, b) return Vec (a.x + b.x, a.y + b.y, a.z + b.z) end, __sub = function (a, b) return Vec (a.x - b.x, a.y - b.y, a.z - b.z) end }
 Vec = function (x, y, z) return setmetatable ({ x = x, y = y, z = z }, VectorMeta) end
@@ -29,6 +33,10 @@ local environment = setmetatable (
 			TraceLine = function (trace) return { Hit = trace.start.z ~= trace.endpos.z } end
 		},
 		MASK_PLAYERSOLID = 1,
+		FCVAR_ARCHIVE = 128,
+		CreateConVar = function (name)
+			return { GetBool = function () return searches [name] == true end }
+		end,
 		IsValid = function (ent) return ent ~= nil and ent.gone ~= true end,
 		CurTime = function () return 1 end,
 		WS =
@@ -358,8 +366,8 @@ T.test ("it asks for one route at a time, however many looks pass while it is pl
 	local soldier, plans, Run, Done = Planning ()
 	local navigator = soldier:Navigator ()
 	soldier:Steer (1)
-	soldier:Steer (10)
-	soldier:Steer (20)
+	soldier:Steer (3.1)
+	soldier:Steer (4)
 	Run ()
 	Done ()
 	T.eq (navigator.plans, 1, "one search")
@@ -410,6 +418,120 @@ T.test ("a plan that fails is raised where the plans are run, and its bot asks a
 	Done ()
 	T.eq (navigator.plans,     1,    "it asked again")
 	T.eq (soldier.walk ~= nil, true, "and has its route")
+end)
+
+-- The war's own search (the npc controller's RequestRoute and RouteWaypoints), a fake that keeps
+-- what it was asked and answers when the test says.
+local function Searching ()
+	local asked = { requests = 0 }
+	local clearance = { Area = function () return true end, Link = function () return true end }
+	local npcs =
+	{
+		BlockerGeneration = function () return 0 end,
+		RequestRoute = function (_, request)
+			asked.requests = asked.requests + 1
+			asked.request = request
+		end,
+		RouteWaypoints = function (_, areas, to, found, from)
+			asked.waypoints = { areas = areas, to = to, found = found, from = from }
+			return { { x = 200, y = 50, z = 0 }, to }
+		end
+	}
+	local saved =
+	{
+		engine = searches.ns_bots_routes_engine,
+		feature = environment.WS.Feature,
+		hull = environment.WS.NavHullClearance,
+		masks = environment.WS.ClipMasks,
+		crossable = environment.WS.NavLinkCrossable,
+		convar = environment.GetConVarNumber,
+		reach = environment.gameplay.movement.JumpReach
+	}
+	searches.ns_bots_routes_engine = false
+	environment.WS.Feature = function () return npcs end
+	environment.WS.NavHullClearance = function () return clearance end
+	environment.WS.ClipMasks = function () return { brushes = 1 } end
+	environment.WS.NavLinkCrossable = function () return true end
+	environment.GetConVarNumber = function () return 800 end
+	environment.gameplay.movement.JumpReach = function (power) return power / 4 end
+	local soldier = NewSoldier (nil)
+	soldier.team = 3
+	soldier.RouteCost = nil
+	soldier.Navigator = function () error ("a bot that plans on the mesh needs no navigator") end
+	soldier.controller.ShutDoorIn = function (_, area, team) return area.shut == true and team == 3 end
+	soldier.ent.EntIndex = function () return 12 end
+	soldier.ent.GetHullDuck = function () return Vec (-24, -24, 0), Vec (24, 24, 62) end
+	soldier.ent.GetGravity = function () return 1 end
+	soldier.ent.GetJumpPower = function () return 280 end
+	local function Done ()
+		searches.ns_bots_routes_engine = saved.engine
+		environment.WS.Feature, environment.WS.NavHullClearance, environment.WS.ClipMasks = saved.feature, saved.hull, saved.masks
+		environment.WS.NavLinkCrossable, environment.GetConVarNumber = saved.crossable, saved.convar
+		environment.gameplay.movement.JumpReach = saved.reach
+	end
+	return soldier, asked, clearance, Done
+end
+
+T.test ("it asks the war's own search for its route: its body's limits and fit, the doors shut to it", function ()
+	local TFBot = T.require ("foundation.wetsands.path.tfbot")
+	local soldier, asked, clearance, Done = Searching ()
+	soldier:Steer (1)
+	local request = asked.request
+	T.eq (asked.requests,                        1, "one search asked")
+	T.eq (request.from.x .. " " .. request.to.x, position.x .. " " .. goal.x, "from where it stands to its goal")
+	T.eq (request.strategy,                      TFBot, "priced as TF2's bots' are")
+	T.eq (request.limits.jumpHeight,             70, "what its own crouch jump reaches")
+	T.eq (request.limits.ladders,                true, "and ladders")
+	T.eq (request.bot.team,                      3, "the enemy's spawn rooms closed to its team")
+	T.eq (request.bot.route,                     TFBot.FASTEST_ROUTE, "the shortest way")
+	T.eq (request.body,                          clearance, "an area or opening its body does not fit is routed around")
+	T.eq (request.crossable,                     environment.WS.NavLinkCrossable, "the map's own uncrossable links, as the search is told them")
+	T.eq (request.avoid ({ shut = true }),       true, "a door shut to its team is routed around")
+	T.eq (request.avoid ({ shut = false }),      false, "an open way is not")
+	soldier:Steer (1.2)
+	T.eq (asked.requests, 1, "and no other while it is searched")
+	Done ()
+end)
+
+T.test ("the search's answer is its route, walked from where it stood", function ()
+	local soldier, asked, _, Done = Searching ()
+	soldier:Steer (1)
+	local areas = { "an area", "another" }
+	asked.request.onDone (areas, true)
+	T.eq (asked.waypoints.areas,                                 areas, "its areas' points")
+	T.eq (asked.waypoints.found,                                 true, "to its goal")
+	T.eq (asked.waypoints.from.x .. " " .. asked.waypoints.to.x, position.x .. " " .. goal.x, "from where it stood")
+	T.eq (soldier.walk ~= nil,                                   true, "its to walk")
+	T.eq (soldier.plan,                                          nil, "and it may ask for its next")
+	soldier:Steer (1.2)
+	T.eq (soldier.steer.x, 200, "on its way to the first point")
+	Done ()
+end)
+
+T.test ("a search that finds no way leaves it no route, and it asks again in its turn", function ()
+	local soldier, asked, _, Done = Searching ()
+	soldier.walk = { Next = function () return nil end, Stalled = function () return false end }
+	soldier:Steer (1)
+	asked.request.onDone (nil)
+	T.eq (soldier.walk, nil, "no route")
+	T.eq (soldier.plan, nil, "free to ask")
+	soldier:Steer (10)
+	T.eq (asked.requests, 2, "asked again")
+	Done ()
+end)
+
+T.test ("a search that never answers is given up, and its late answer is not walked", function ()
+	local soldier, asked, _, Done = Searching ()
+	soldier:Steer (1)
+	local first = asked.request
+	T.defined (BotSoldier.PLAN_PATIENCE, "how long it waits for a route")
+	soldier:Steer (1 + BotSoldier.PLAN_PATIENCE / 2)
+	T.eq (asked.requests, 1, "still waited for within its patience")
+	soldier:Steer (1 + BotSoldier.PLAN_PATIENCE + 0.1)
+	T.eq (asked.requests, 2, "given up and asked afresh once it is spent")
+	first.onDone ({ "an area" }, true)
+	T.eq (soldier.walk, nil, "the answer it gave up on is no route of its")
+	Done ()
 end)
 
 T.finish ()

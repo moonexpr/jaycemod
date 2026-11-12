@@ -40,6 +40,13 @@ local TELEPORTED = 256
 -- navigator's area up after that.
 local SETTLE_DELAY = 0.5
 local DIRECT_RANGE = 256
+-- How long it waits for a route it asked for before asking afresh: a search starved or lost
+-- shows as a bot asking again, not one standing still.
+local PLAN_PATIENCE = 5
+-- Which search plans a bot's routes: the war's own (0), or the engine's through a navigator (1),
+-- as before the war's own took ladders and a body's fit; kept to compare the two.
+local ENGINE_ROUTES = CreateConVar ("ns_bots_routes_engine", "0", FCVAR_ARCHIVE,
+	"Whether the AI war's bot players plan routes with the engine's search (1) or the war's own asynchronous one (0)")
 local FIRST_PLAN = 0.3
 -- What a player's body climbs and falls (RouteCost): a stair step, a crouch
 -- jump (JumpReachOf), the fall it survives unhurt.
@@ -66,6 +73,7 @@ local function Unmoving (ent) return not (ent:IsPlayer () or ent:IsNPC () or ent
 
 local BotSoldier = setmetatable ({}, { __index = Soldier })
 BotSoldier.__index = BotSoldier
+BotSoldier.PLAN_PATIENCE = PLAN_PATIENCE
 WS.require ("features.npc.bot_steering").Apply (BotSoldier, { util = util, Vector = Vector, mask = MASK_PLAYERSOLID })
 
 -- reaction: the difficulty's (features.aiwar.marksmanship), before it
@@ -168,33 +176,51 @@ local function JumpReachOf (ply)
 	return Movement.JumpReach (ply:GetJumpPower (), gravity, stand.z, duck.z)
 end
 
--- What a route is priced by (Path:Compute's generator), or nil until the mesh is ready to price
--- one: TF2's bots' own cost (wetsands.path.tfbot: a jump dearer than its length, the enemy's
--- spawn rooms closed, their visualizers stopping players) priced natively over what its team
--- knows (the npc controller's EngineCost: the areas its doors and brushes close to it, the links
--- a clip or a wall's end refuses) and the doors the war found shut to it, at its own body's
--- limits: a stair, its crouch jump, the fall it survives unhurt, and ladders. Each step is told
--- whether its body fits the area and the opening into it; a ladder has no opening.
-function BotSoldier:RouteCost ()
-	local ply, team = self.ent, self.team
-	local limits =
+-- Its body's limits for a route: a stair, its crouch jump, the fall it survives unhurt, and
+-- ladders. One table a reach, so bodies alike ask their searches with the same limits (the
+-- searches' reach memo keys a request by them).
+local limitsByReach = {}
+
+local function LimitsOf (ply)
+	local reach = JumpReachOf (ply)
+	local limits = limitsByReach [reach]
+	if not limits then
+		limits = { stepHeight = STEP_HEIGHT, jumpHeight = reach, deathDropHeight = SAFE_DROP, ladders = true }
+		limitsByReach [reach] = limits
+	end
+	return limits
+end
+
+-- Who a route is priced for (wetsands.path.tfbot's bot): the shortest way, the enemy's spawn
+-- rooms closed to its team, their visualizers stopping players.
+function BotSoldier:PathBot ()
+	return
 	{
-		stepHeight = STEP_HEIGHT,
-		jumpHeight = JumpReachOf (ply),
-		deathDropHeight = SAFE_DROP,
-		ladders = true
+		entIndex = self.ent:EntIndex (),
+		now = CurTime (),
+		team = self.team,
+		route = TFBot.FASTEST_ROUTE,
+		miniBoss = false,
+		roundWon = false
 	}
-	local cost = WS.Feature ("npc"):EngineCost (team, TFBot, limits,
-		{
-			entIndex = ply:EntIndex (),
-			now = CurTime (),
-			team = team,
-			route = TFBot.FASTEST_ROUTE,
-			miniBoss = false,
-			roundWon = false
-		}, self.controller:ShutDoorAreas (team))
+end
+
+-- Whether its body fits an area and the opening into one: the shared primitive, by its own hull.
+function BotSoldier:Body ()
+	return WS.NavHullClearance (self.ent, WS.ClipMasks ().brushes)
+end
+
+-- What the engine's search prices a route by (Path:Compute's generator), or nil until the mesh
+-- is ready to price one: TF2's bots' own cost (wetsands.path.tfbot: a jump dearer than its
+-- length) priced natively over what its team knows (the npc controller's EngineCost: the areas
+-- its doors and brushes close to it, the links a clip or a wall's end refuses) and the doors the
+-- war found shut to it, at its own body's limits. Each step is told whether its body fits the
+-- area and the opening into it; a ladder has no opening.
+function BotSoldier:RouteCost ()
+	local cost = WS.Feature ("npc"):EngineCost (self.team, TFBot, LimitsOf (self.ent), self:PathBot (),
+		self.controller:ShutDoorAreas (self.team))
 	if not cost then return nil end
-	local clearance = WS.NavHullClearance (self.ent, WS.ClipMasks ().brushes)
+	local clearance = self:Body ()
 	return function (area, fromArea, ladder, elevator, length)
 		local fits
 		if fromArea then
@@ -203,6 +229,55 @@ function BotSoldier:RouteCost ()
 		end
 		return cost (area, fromArea, ladder, elevator, length, fits)
 	end
+end
+
+-- How its routes are searched for: search(goal, pos, plan), which answers plan:Answer(route,
+-- found) with the route's points (Vectors; nil for none) when it has them, or nil while a
+-- search cannot be asked yet.
+--
+-- The war's own search (the npc controller's RequestRoute: asynchronous, native, a slice a
+-- tick), asked as the look asks: priced as RouteCost prices, told the doors shut to its team
+-- and its body's fit as rules, from where it stands. No navigator is made.
+function BotSoldier:MeshSearch ()
+	local npcs, controller, team = WS.Feature ("npc"), self.controller, self.team
+	return function (goal, pos, plan)
+		local from, to = ToVector (pos), ToVector (goal)
+		npcs:RequestRoute (
+			{
+				from = from,
+				to = to,
+				strategy = TFBot,
+				limits = LimitsOf (self.ent),
+				bot = self:PathBot (),
+				avoid = function (area) return controller:ShutDoorIn (area, team) end,
+				crossable = WS.NavLinkCrossable,
+				body = self:Body (),
+				onDone = function (areas, found)
+					if not areas then return plan:Answer (nil, false) end
+					plan:Answer (npcs:RouteWaypoints (areas, to, found, from), found)
+				end
+			}
+		)
+	end
+end
+
+-- The engine's search (ns_bots_routes_engine 1), through its navigator: one step of the war's
+-- planning time that cannot give way. Not until the navigator knows where it stands
+-- (Path:Compute starts at its last known area), nor while a route cannot be priced.
+function BotSoldier:EngineSearch ()
+	local navigator = self:Navigator ()
+	local cost = navigator:Settled () and self:RouteCost ()
+	if not cost then return nil end
+	return function (goal, _, plan)
+		plan:Task (function ()
+			if plan.Mine () then plan:Answer (navigator:PlanRoute (ToVector (goal), cost)) end
+		end)
+	end
+end
+
+function BotSoldier:RouteSearch ()
+	if ENGINE_ROUTES:GetBool () then return self:EngineSearch () end
+	return self:MeshSearch ()
 end
 
 function BotSoldier:MoveTo (p, gait)
@@ -253,47 +328,59 @@ function BotSoldier:MeshGoal (goal)
 	return goal
 end
 
--- Its route to goal from pos, planned in the war's planning time (the controller's plans, a
--- list.schedule run a slice a tick) and not in the look that asks: the engine's search, one
--- step that cannot give way, then the clean-up for its own body, which gives way between its
--- traces once the tick's slice is spent. The route is its to walk when the plan is done;
--- until then it keeps the one it has. A plan dropped meanwhile (self.plan another's or none:
--- set down elsewhere, pinned) or whose bot is gone traces no more and leaves nothing.
-function BotSoldier:PlanRoute (goal, cost, pos)
+-- Its route to goal from pos, asked of search (RouteSearch) and not planned in the look that
+-- asks: the search answers in its own time, then the clean-up for its own body runs in the
+-- war's planning time (the controller's plans, a list.schedule run a slice a tick), giving way
+-- between its traces once the tick's slice is spent. The route is its to walk when the plan is
+-- done; until then it keeps the one it has. A plan dropped meanwhile (self.plan another's or
+-- none: set down elsewhere, pinned, given up after PLAN_PATIENCE) or whose bot is gone traces
+-- no more and leaves nothing; one that fails (our bug, raised where the plans are run) leaves
+-- the bot free to ask for its next.
+function BotSoldier:PlanRoute (goal, pos, search, now)
 	local plans = self.controller.plans
-	local plan = {}
+	local plan = { at = now }
 	self.plan = plan
-	local function Mine () return self.plan == plan and IsValid (self.ent) end
-	local function Planned ()
-		if not Mine () then return end
-		local route, found = self:Navigator ():PlanRoute (ToVector (goal), cost)
-		local points = {}
-		for i, v in ipairs (route or {}) do points [i] = Point (v) end
-		-- whether the clean-up goes on: asked before each of its traces
-		local dropped = false
-		local function Going ()
-			if not dropped and plans:CheckYield () and not Mine () then dropped = true end
-			return not dropped
-		end
-		-- each point where its body fits, then its turns pushed out off the inside walls
-		-- until its body passes them (the map's walls, not who stands there now)
-		points = self:StandOnRoute (points, Going)
-		points = Locomotion.RoundCorners (points, function (a, b)
-			return Going () and self:WalkClear (ToVector (a), ToVector (b), Unmoving)
-		end)
-		if dropped or not Mine () then return end
-		-- the engine's trivial path, straight from its start to the goal, is a route when it
-		-- found one (both in one area); where it found no way it is none
-		if route and not found and RouteWalk.Trivial (points, pos, DIRECT_RANGE) then route = nil end
-		self.walk = route and RouteWalk.New (points) or nil
-	end
-	plans:Spawn (function ()
-		-- however it ends (done, dropped, or failed: our bug, raised where the plans are run),
-		-- the bot may ask for its next route
-		local ok, why = xpcall (Planned, debug.traceback)
+	local function Ended ()
 		if self.plan == plan then self.plan = nil end
-		if not ok then error (why, 0) end
-	end)
+	end
+	plan.Mine = function () return self.plan == plan and IsValid (self.ent) end
+	-- (the plan's own functions take it as their first argument and name it _: self is the soldier)
+	plan.Task = function (_, work)
+		plans:Spawn (function ()
+			local ok, why = xpcall (work, debug.traceback)
+			if not ok then
+				Ended ()
+				error (why, 0)
+			end
+		end)
+	end
+	plan.Answer = function (_, route, found)
+		if not plan.Mine () then return end
+		plan:Task (function ()
+			local points = {}
+			for i, v in ipairs (route or {}) do points [i] = Point (v) end
+			-- whether the clean-up goes on: asked before each of its traces
+			local dropped = false
+			local function Going ()
+				if not dropped and plans:CheckYield () and not plan.Mine () then dropped = true end
+				return not dropped
+			end
+			-- each point where its body fits, then its turns pushed out off the inside walls
+			-- until its body passes them (the map's walls, not who stands there now)
+			points = self:StandOnRoute (points, Going)
+			points = Locomotion.RoundCorners (points, function (a, b)
+				return Going () and self:WalkClear (ToVector (a), ToVector (b), Unmoving)
+			end)
+			if not dropped and plan.Mine () then
+				-- the engine's trivial path, straight from its start to the goal, is a route when
+				-- it found one (both in one area); where it found no way it is none
+				if route and not found and RouteWalk.Trivial (points, pos, DIRECT_RANGE) then route = nil end
+				self.walk = route and RouteWalk.New (points) or nil
+			end
+			Ended ()
+		end)
+	end
+	search (goal, pos, plan)
 end
 
 -- Every look (sv_bots.lua): the point its body makes for now (steer) on
@@ -315,12 +402,15 @@ function BotSoldier:Steer (now)
 		self.steer = not self:HasEnemy () and self:Spread (self.ent:GetPos ()) or nil
 		return
 	end
-	-- one route at a time, and none while it cannot be priced (the mesh not ready): the route
-	-- it has is kept meanwhile, and it asks at its next look
-	local cost = not self.plan and now >= self.nextPlan and self:Navigator ():Settled () and self:RouteCost ()
-	if cost then
+	-- a search that has not answered in PLAN_PATIENCE is given up: its bot does not stand waiting
+	if self.plan and now - self.plan.at > PLAN_PATIENCE then self.plan = nil end
+	-- one route at a time, and none while one cannot be searched for (the engine's: its
+	-- navigator not settled, the mesh not ready to price): the route it has is kept meanwhile,
+	-- and it asks at its next look
+	local search = not self.plan and now >= self.nextPlan and self:RouteSearch ()
+	if search then
 		self.nextPlan = now + REPATH_LEAST + math.random () * (REPATH_MOST - REPATH_LEAST)
-		self:PlanRoute (goal, cost, pos)
+		self:PlanRoute (goal, pos, search, now)
 	end
 	if self:RangeTo (goal) <= DIRECT_RANGE and self:CanWalkTo (goal) then
 		self.steer = goal
