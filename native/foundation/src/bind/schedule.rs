@@ -95,10 +95,11 @@ unsafe extern "C-unwind" fn spawn(l: L) -> c_int {
 /// Spawns the task of the scheduler at 1, the function at 2 and its
 /// arguments at 3..n; values above n are left alone. Pushes the task.
 unsafe fn spawn_frame(l: L, n: c_int) -> c_int {
-    let s = userdata::check::<Scheduler>(l, 1);
+    let mut s = userdata::check::<Scheduler>(l, 1);
     s.next += 1;
     let task = s.next;
     s.tasks.push_back(task);
+    drop(s);
     l.getfield(GLOBALSINDEX, c"coroutine");
     l.getfield(-1, c"create");
     l.pushvalue(2);
@@ -413,7 +414,13 @@ unsafe extern "C-unwind" fn run(l: L) -> c_int {
     let deadline = now(l) + seconds;
     userdata::check::<Scheduler>(l, 1).deadline = deadline;
     let mut parked = 0usize;
-    while let Some(task) = userdata::check::<Scheduler>(l, 1).tasks.pop_front() {
+    loop {
+        // Popped on a line of its own: a `while let` scrutinee would hold the
+        // scheduler's guard through the task's turn.
+        let next = userdata::check::<Scheduler>(l, 1).tasks.pop_front();
+        let Some(task) = next else {
+            break;
+        };
         if !may_run(l, task) {
             userdata::check::<Scheduler>(l, 1).tasks.push_back(task);
             parked += 1;

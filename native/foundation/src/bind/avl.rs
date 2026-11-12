@@ -45,7 +45,7 @@ unsafe extern "C-unwind" fn new(l: L) -> c_int {
 /// tree:Insert(key, value): a key inserted again takes the new value
 unsafe extern "C-unwind" fn insert(l: L) -> c_int {
     let key = l.checknumber(2);
-    let tree = userdata::check::<Tree>(l, 1);
+    let mut tree = userdata::check::<Tree>(l, 1);
     let slot = tree.slots.store(l, 3);
     if let Some(old) = tree.avl.insert(key, slot) {
         tree.slots.release(l, old);
@@ -66,7 +66,7 @@ unsafe extern "C-unwind" fn get(l: L) -> c_int {
 /// tree:Remove(key) -> whether it was there
 unsafe extern "C-unwind" fn remove(l: L) -> c_int {
     let key = l.checknumber(2);
-    let tree = userdata::check::<Tree>(l, 1);
+    let mut tree = userdata::check::<Tree>(l, 1);
     let removed = tree.avl.remove(key);
     if let Some(slot) = removed {
         tree.slots.release(l, slot);

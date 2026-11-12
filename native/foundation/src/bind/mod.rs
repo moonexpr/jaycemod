@@ -22,6 +22,7 @@ mod state_chart_stacks;
 mod state_machine;
 mod timer;
 mod pathfinder;
+mod probe;
 mod paths;
 mod search;
 mod select;
@@ -30,18 +31,6 @@ mod transaction;
 
 use crate::lua::{set_function, CFunction, L};
 use std::ffi::{c_int, CStr};
-
-/// probe.Nothing(): the cost of a call across the boundary and nothing else.
-unsafe extern "C-unwind" fn probe_nothing(_l: L) -> c_int {
-    0
-}
-
-/// probe.Add(a, b) -> a + b: a call that reads two numbers and returns one.
-unsafe extern "C-unwind" fn probe_add(l: L) -> c_int {
-    let sum = l.checknumber(1) + l.checknumber(2);
-    l.pushnumber(sum);
-    1
-}
 
 unsafe fn library(l: L, name: &CStr, functions: &[(&CStr, CFunction)]) {
     l.createtable(0, functions.len() as c_int);
@@ -101,7 +90,7 @@ unsafe fn module(l: L) {
             l.setfield(-2, namespace);
         }
     }
-    library(l, c"probe", &[(c"Nothing", probe_nothing), (c"Add", probe_add)]);
+    library(l, c"probe", probe::FUNCTIONS);
 }
 
 /// Provides each native twin, whole, at its Lua twin's global, before the

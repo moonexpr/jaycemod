@@ -41,7 +41,7 @@ unsafe extern "C-unwind" fn new(l: L) -> c_int {
 /// heap:Push(key, value)
 unsafe extern "C-unwind" fn push(l: L) -> c_int {
     let key = l.checknumber(2);
-    let heap = userdata::check::<KeyedHeap>(l, 1);
+    let mut heap = userdata::check::<KeyedHeap>(l, 1);
     let slot = heap.slots.store(l, 3);
     heap.heap.push(key, slot as f64);
     0
@@ -49,7 +49,7 @@ unsafe extern "C-unwind" fn push(l: L) -> c_int {
 
 /// heap:Pop() -> value, key of the first, taken out; nil when empty
 unsafe extern "C-unwind" fn pop(l: L) -> c_int {
-    let heap = userdata::check::<KeyedHeap>(l, 1);
+    let mut heap = userdata::check::<KeyedHeap>(l, 1);
     let Some((slot, key)) = heap.heap.pop() else {
         l.pushnil();
         return 1;
@@ -81,7 +81,7 @@ unsafe extern "C-unwind" fn size(l: L) -> c_int {
 
 /// heap:Clear(): empty, the push order starting again
 unsafe extern "C-unwind" fn clear(l: L) -> c_int {
-    let heap = userdata::check::<KeyedHeap>(l, 1);
+    let mut heap = userdata::check::<KeyedHeap>(l, 1);
     heap.heap.clear();
     heap.slots.clear(l);
     0

@@ -10,6 +10,7 @@ use super::slots::fresh_environment;
 use crate::astar::{AStar, Costs, Status, NAN_COST};
 use crate::lua::{raise, raise_owned, set_function, string_at, CFunction, L, TNIL, TNUMBER, TTABLE};
 use crate::userdata::{self, Native};
+use std::cell::RefMut;
 use std::ffi::{c_int, CStr};
 
 /// graph.pathfinder.MAX_EXPANDED: the cap a search takes when given none.
@@ -175,7 +176,7 @@ impl Costs for Port<'_> {
 }
 
 /// The search at index 1, refused while busy in a step.
-unsafe fn search<'a>(l: L) -> &'a mut PathSearch {
+unsafe fn search<'a>(l: L) -> RefMut<'a, PathSearch> {
     let search = userdata::check::<PathSearch>(l, 1);
     if search.busy {
         raise(l, c"the search is busy in a step (a graph port may not use its own search), or its port raised and spent it");
@@ -213,7 +214,7 @@ unsafe fn push_search(l: L) {
     l.setfield(env, c"nodes");
     l.createtable(0, 0);
     l.setfield(env, c"index");
-    let search = userdata::check::<PathSearch>(l, ud);
+    let mut search = userdata::check::<PathSearch>(l, ud);
     let start = number_of(l, env, 2, &mut search.nodes);
     let goal = number_of(l, env, 3, &mut search.nodes);
     search.busy = true;
@@ -232,13 +233,13 @@ unsafe extern "C-unwind" fn new(l: L) -> c_int {
 
 /// Runs the search at `ud` up to `budget` expansions; its status.
 unsafe fn run(l: L, ud: c_int, budget: u32) -> Status {
-    let search = userdata::check::<PathSearch>(l, ud);
+    let mut search = userdata::check::<PathSearch>(l, ud);
     if search.busy {
         raise(l, c"the search is busy in a step (a graph port may not use its own search), or its port raised and spent it");
     }
     let env = environment(l, ud);
     search.busy = true;
-    let PathSearch { astar, nodes, .. } = search;
+    let PathSearch { astar, nodes, .. } = &mut *search;
     let status = astar.as_mut().map_or(Status::Failed, |astar| astar.step(&mut Port { l, env, count: nodes }, budget));
     search.busy = false;
     l.settop(env - 1);

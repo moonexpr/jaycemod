@@ -73,7 +73,7 @@ unsafe fn pair_part(l: L, index: c_int) -> f64 {
 unsafe extern "C-unwind" fn pairmap_set(l: L) -> c_int {
     l.settop(4);
     let (a, b) = (pair_part(l, 2), pair_part(l, 3));
-    let map = userdata::check::<PairMap>(l, 1);
+    let mut map = userdata::check::<PairMap>(l, 1);
     let key = pair_key(map.unordered, a, b);
     if let Some(old) = map.keys.remove(&key) {
         map.values.release(l, old);
@@ -90,7 +90,7 @@ unsafe extern "C-unwind" fn pairmap_size(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn pairmap_clear(l: L) -> c_int {
-    let map = userdata::check::<PairMap>(l, 1);
+    let mut map = userdata::check::<PairMap>(l, 1);
     map.keys.clear();
     map.values.clear(l);
     0
@@ -147,7 +147,7 @@ unsafe extern "C-unwind" fn bucket_new(l: L) -> c_int {
 
 unsafe extern "C-unwind" fn bucket_take(l: L) -> c_int {
     let now = l.checknumber(2);
-    let bucket = userdata::check::<Bucket>(l, 1);
+    let mut bucket = userdata::check::<Bucket>(l, 1);
     let tokens = bucket.refill(now);
     if tokens < 1.0 {
         return boolean(l, false);

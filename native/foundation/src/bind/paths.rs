@@ -120,7 +120,7 @@ unsafe extern "C-unwind" fn new(l: L) -> c_int {
 
 /// g:Step(from, to, cost): a step one way
 unsafe extern "C-unwind" fn step(l: L) -> c_int {
-    let g = userdata::check::<Graph>(l, 1);
+    let mut g = userdata::check::<Graph>(l, 1);
     let nodes = g.0.nodes();
     let (from, to) = (node_at(l, 2, nodes), node_at(l, 3, nodes));
     let cost = l.checknumber(4);

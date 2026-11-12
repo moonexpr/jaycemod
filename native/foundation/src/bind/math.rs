@@ -798,7 +798,7 @@ fn eliminate(a: &mut [Vec<f64>], n: usize) -> f64 {
 
 unsafe extern "C-unwind" fn matrix_determinant(l: L) -> c_int {
     let m = userdata::check::<Matrix>(l, 1);
-    square(l, m, "a determinant");
+    square(l, &m, "a determinant");
     let mut a = m.rows_of();
     let det = eliminate(&mut a, m.rows);
     drop(a);
@@ -807,7 +807,7 @@ unsafe extern "C-unwind" fn matrix_determinant(l: L) -> c_int {
 
 unsafe extern "C-unwind" fn matrix_inverse(l: L) -> c_int {
     let m = userdata::check::<Matrix>(l, 1);
-    square(l, m, "an inverse");
+    square(l, &m, "an inverse");
     let n = m.rows;
     let mut a = m.rows_of();
     for (i, row) in a.iter_mut().enumerate() {
@@ -824,7 +824,7 @@ unsafe extern "C-unwind" fn matrix_inverse(l: L) -> c_int {
 
 unsafe extern "C-unwind" fn matrix_solve(l: L) -> c_int {
     let m = userdata::check::<Matrix>(l, 1);
-    square(l, m, "solving");
+    square(l, &m, "solving");
     let n = m.rows;
     l.checktype(2, TTABLE);
     let given = l.objlen(2);

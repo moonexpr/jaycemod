@@ -95,6 +95,7 @@ unsafe fn add(l: L, min: Option<f64>, max: Option<f64>, guard: c_int) -> c_int {
     if store.entries.contains_key(&key) {
         raise_where(l, format!("{name}: {shown} is stored already"));
     }
+    drop(store);
     let whole = |n: Option<f64>| n.filter(|n| n.floor() == *n);
     let range = whole(min).zip(whole(max)).filter(|(lo, hi)| lo <= hi);
     let Some((lo, hi)) = range else {
@@ -207,10 +208,13 @@ unsafe fn format_lua(l: L, fmt: &str, args: &[c_int]) {
 
 unsafe extern "C-unwind" fn parse(l: L) -> c_int {
     l.settop(3);
-    let store = userdata::check::<Store>(l, 1);
-    let entry = string_at(l, 2).and_then(|k| store.entries.get(k)).map(|e| (e.min, e.max));
+    let (entry, name) = {
+        let store = userdata::get::<Store>(l, 1);
+        let entry = string_at(l, 2).and_then(|k| store.entries.get(k)).map(|e| (e.min, e.max));
+        (entry, store.name.clone())
+    };
     let Some((min, max)) = entry else {
-        let (key, name) = (tostring(l, 2), store.name.clone());
+        let key = tostring(l, 2);
         l.pushnil();
         push_str(l, &format!("{key} is not one of {name}"));
         return 2;

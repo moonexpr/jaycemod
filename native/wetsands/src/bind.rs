@@ -18,6 +18,7 @@ use foundation::lua::{
 };
 use foundation::userdata::{self, Native};
 use std::ffi::{c_int, CStr};
+use std::cell::RefMut;
 use std::sync::Arc;
 
 enum Mesh {
@@ -104,15 +105,16 @@ unsafe extern "C-unwind" fn mesh_new(l: L) -> c_int {
     1
 }
 
-unsafe fn building<'a>(l: L) -> &'a mut MeshBuilder {
-    match userdata::check::<Mesh>(l, 1) {
-        Mesh::Building(builder) => builder,
-        Mesh::Sealed(_) => raise(l, c"the mesh is sealed: areas and links come before Seal"),
-    }
+unsafe fn building<'a>(l: L) -> RefMut<'a, MeshBuilder> {
+    let building = RefMut::filter_map(userdata::check::<Mesh>(l, 1), |mesh| match mesh {
+        Mesh::Building(builder) => Some(builder),
+        Mesh::Sealed(_) => None,
+    });
+    building.unwrap_or_else(|_| raise(l, c"the mesh is sealed: areas and links come before Seal"))
 }
 
 unsafe fn sealed(l: L, index: c_int) -> Arc<NavMesh> {
-    match userdata::check::<Mesh>(l, index) {
+    match &*userdata::get::<Mesh>(l, index) {
         Mesh::Sealed(mesh) => Arc::clone(mesh),
         Mesh::Building(_) => raise(l, c"the mesh is not sealed yet"),
     }
@@ -151,8 +153,8 @@ unsafe extern "C-unwind" fn mesh_ladder(l: L) -> c_int {
 
 /// mesh:Seal(): no more areas or links; searches may begin.
 unsafe extern "C-unwind" fn mesh_seal(l: L) -> c_int {
-    let mesh = userdata::check::<Mesh>(l, 1);
-    let Mesh::Building(builder) = std::mem::replace(mesh, Mesh::Building(MeshBuilder::default())) else {
+    let mut mesh = userdata::check::<Mesh>(l, 1);
+    let Mesh::Building(builder) = std::mem::replace(&mut *mesh, Mesh::Building(MeshBuilder::default())) else {
         raise(l, c"the mesh is sealed already");
     };
     match builder.finish() {
@@ -164,7 +166,7 @@ unsafe extern "C-unwind" fn mesh_seal(l: L) -> c_int {
 
 /// mesh:Sealed() -> whether searches may begin.
 unsafe extern "C-unwind" fn mesh_sealed(l: L) -> c_int {
-    let is_sealed = matches!(userdata::check::<Mesh>(l, 1), Mesh::Sealed(_));
+    let is_sealed = matches!(*userdata::get::<Mesh>(l, 1), Mesh::Sealed(_));
     l.pushboolean(is_sealed as c_int);
     1
 }
@@ -247,12 +249,12 @@ unsafe extern "C-unwind" fn walker_price(l: L) -> c_int {
 // The search ----------------------------------------------------------------
 
 /// The search at index 1, refused while it is busy inside its own step.
-unsafe fn search<'a>(l: L) -> &'a mut RouteSearch {
+unsafe fn search<'a>(l: L) -> RefMut<'a, RouteSearch> {
     let handle = userdata::check::<SearchHandle>(l, 1);
     if handle.busy {
         raise(l, c"the search is busy in a step (a rule may not use its own search), or a rule raised and spent it");
     }
-    &mut handle.search
+    RefMut::map(handle, |handle| &mut handle.search)
 }
 
 /// The area id a told table's key (at -2) or value (at -1) holds.
@@ -276,8 +278,8 @@ unsafe fn subtable_at(l: L, index: c_int, name: &CStr) -> Option<c_int> {
 }
 
 /// Tells the search at `handle` what `told` (a table at `told`) says.
-unsafe fn tell(l: L, handle: *mut SearchHandle, told: c_int) {
-    let search = &mut (*handle).search;
+unsafe fn tell(l: L, handle: &mut SearchHandle, told: c_int) {
+    let search = &mut handle.search;
     if let Some(closed) = subtable_at(l, told, c"closed") {
         each(l, closed, |l| told_ok(l, search.close(id_at(l, -2, "told.closed"))));
         l.settop(-2);
@@ -342,16 +344,16 @@ unsafe extern "C-unwind" fn search_new(l: L) -> c_int {
     };
     userdata::push(l, SearchHandle { search, busy: false });
     let ud = l.gettop();
-    let handle: *mut SearchHandle = userdata::check::<SearchHandle>(l, ud);
+    let mut handle = userdata::check::<SearchHandle>(l, ud);
     if let Some(penalized) = subtable_at(l, model, c"penalized") {
-        each(l, penalized, |l| told_ok(l, (*handle).search.penalize(id_at(l, -2, "model.penalized"))));
+        each(l, penalized, |l| told_ok(l, handle.search.penalize(id_at(l, -2, "model.penalized"))));
         l.settop(-2);
     }
     match l.type_of(9) {
-        TTABLE => tell(l, handle, 9),
+        TTABLE => tell(l, &mut handle, 9),
         TUSERDATA => {
             let known = Arc::clone(&userdata::check::<KnownHandle>(l, 9).0);
-            told_ok(l, (*handle).search.know(&known));
+            told_ok(l, handle.search.know(&known));
         }
         _ => {}
     }
@@ -437,7 +439,7 @@ unsafe extern "C-unwind" fn search_step(l: L) -> c_int {
         crossable: rule(l, 3, c"crossable"),
         room: rule(l, 3, c"room"),
     };
-    let handle = userdata::check::<SearchHandle>(l, 1);
+    let mut handle = userdata::check::<SearchHandle>(l, 1);
     handle.busy = true;
     let result = handle.search.step(budget, &mut rules);
     handle.busy = false;
@@ -468,7 +470,7 @@ unsafe extern "C-unwind" fn search_index(l: L) -> c_int {
         b"start" => number(l, search.start() as f64),
         b"goal" => number(l, search.goal() as f64),
         b"closest" => number(l, search.closest() as f64),
-        b"parent" => push_parents(l, search),
+        b"parent" => push_parents(l, &search),
         _ => {
             l.pushnil();
             1
@@ -534,7 +536,7 @@ unsafe fn whole_at(l: L, index: c_int) -> Option<u32> {
 /// the mesh (1), starts (2), told (`told`, a table index, if any).
 unsafe fn walks_of(l: L, limit: f64, limits: (f64, f64, bool), told: Option<c_int>) -> Result<Vec<(u32, f64)>, String> {
     let (jump, drop, ladders) = limits;
-    let mesh = match userdata::check::<Mesh>(l, 1) {
+    let mesh = match &*userdata::get::<Mesh>(l, 1) {
         Mesh::Sealed(mesh) => Arc::clone(mesh),
         Mesh::Building(_) => return Err("the mesh is not sealed yet".into()),
     };

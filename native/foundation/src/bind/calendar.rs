@@ -195,7 +195,7 @@ unsafe extern "C-unwind" fn system(l: L) -> c_int {
     let Some(weight) = weight else {
         raise_where(l, format!("a system's weight is a number above 0, not {}", tostring(l, 3)))
     };
-    let calendar = userdata::check::<Calendar>(l, 1);
+    let mut calendar = userdata::check::<Calendar>(l, 1);
     if calendar.system_named(&name).is_some() {
         raise_where(l, format!("a system is already named {}", tostring(l, 2)));
     }
@@ -224,7 +224,7 @@ unsafe extern "C-unwind" fn every(l: L) -> c_int {
         raise_where(l, format!("a job is a function, not {}", tostring(l, 4)));
     }
     let at = if absent(l, 5) { now_of(l, c"clock") } else { l.checknumber(5) };
-    let calendar = userdata::check::<Calendar>(l, 1);
+    let mut calendar = userdata::check::<Calendar>(l, 1);
     calendar.next_job += 1;
     let id = calendar.next_job;
     calendar.jobs.insert(id, Job { system: s, period, at, ticket: 0, runs: 0, late: 0.0, late_max: 0.0, woken: None });
@@ -250,7 +250,7 @@ unsafe extern "C-unwind" fn wake(l: L) -> c_int {
         return 0;
     }
     let at = if absent(l, 3) { now_of(l, c"clock") } else { l.checknumber(3) };
-    let calendar = userdata::check::<Calendar>(l, 1);
+    let mut calendar = userdata::check::<Calendar>(l, 1);
     if calendar.running == Some(id) {
         let job = calendar.jobs.get_mut(&id).expect("known");
         if job.woken.is_none_or(|w| at < w) {
@@ -295,7 +295,7 @@ unsafe extern "C-unwind" fn run(l: L) -> c_int {
     let mut ran = 0u32;
     let mut drained = false;
     while t - started < seconds && count.is_none_or(|c| (ran as f64) < c) {
-        let calendar = userdata::check::<Calendar>(l, 1);
+        let mut calendar = userdata::check::<Calendar>(l, 1);
         let Some(s) = calendar.pick(now) else {
             drained = true;
             break;
@@ -308,6 +308,8 @@ unsafe extern "C-unwind" fn run(l: L) -> c_int {
             calendar.floor = standing;
         }
         calendar.running = Some(id);
+        // The job may call back into the calendar (Cancel, Wake): not held.
+        drop(calendar);
         env_field(l, 1, c"fns");
         l.rawgeti(-1, id as c_int);
         l.remove(-2);
@@ -320,7 +322,7 @@ unsafe extern "C-unwind" fn run(l: L) -> c_int {
         t = after;
         ran += 1;
         let late = now - at;
-        let calendar = userdata::check::<Calendar>(l, 1);
+        let mut calendar = userdata::check::<Calendar>(l, 1);
         calendar.running = None;
         let system = &mut calendar.systems[s];
         system.standing += spent / system.weight;
@@ -345,6 +347,7 @@ unsafe extern "C-unwind" fn run(l: L) -> c_int {
             l.settop(answer);
             l.error();
         }
+        drop(calendar);
         let next = next_at(l, answer, period, at, now);
         let next = match (next, woken) {
             (Some(n), Some(w)) => Some(n.min(w)),
@@ -352,7 +355,7 @@ unsafe extern "C-unwind" fn run(l: L) -> c_int {
             (n, None) => n,
         };
         l.settop(answer - 1);
-        let calendar = userdata::check::<Calendar>(l, 1);
+        let mut calendar = userdata::check::<Calendar>(l, 1);
         match next {
             Some(n) => calendar.queue(id, n),
             None => {
@@ -361,12 +364,12 @@ unsafe extern "C-unwind" fn run(l: L) -> c_int {
             }
         }
     }
-    let calendar = userdata::check::<Calendar>(l, 1);
+    let mut calendar = userdata::check::<Calendar>(l, 1);
     for system in &mut calendar.systems {
         system.behind = 0;
     }
     if !drained {
-        let Calendar { systems, jobs, .. } = calendar;
+        let Calendar { systems, jobs, .. } = &mut *calendar;
         for job in jobs.values().filter(|j| j.at <= now) {
             systems[job.system].behind += 1;
         }
@@ -382,7 +385,7 @@ unsafe fn set_number(l: L, name: &CStr, n: f64) {
 /// calendar:Report([reset]) -> { [system] = { weight, jobs, runs, spent, late, lateMax, behind } }
 unsafe extern "C-unwind" fn report(l: L) -> c_int {
     let reset = l.toboolean(2) != 0;
-    let calendar = userdata::check::<Calendar>(l, 1);
+    let mut calendar = userdata::check::<Calendar>(l, 1);
     l.createtable(0, calendar.systems.len() as c_int);
     for system in &mut calendar.systems {
         l.createtable(0, 7);

@@ -59,7 +59,7 @@ unsafe extern "C-unwind" fn queue_new(l: L) -> c_int {
 
 unsafe extern "C-unwind" fn queue_push_back(l: L) -> c_int {
     l.settop(2);
-    let q = userdata::check::<Queue>(l, 1);
+    let mut q = userdata::check::<Queue>(l, 1);
     let slot = q.values.store(l, 2);
     q.slots.push_back(slot);
     0
@@ -67,7 +67,7 @@ unsafe extern "C-unwind" fn queue_push_back(l: L) -> c_int {
 
 unsafe extern "C-unwind" fn queue_push_front(l: L) -> c_int {
     l.settop(2);
-    let q = userdata::check::<Queue>(l, 1);
+    let mut q = userdata::check::<Queue>(l, 1);
     let slot = q.values.store(l, 2);
     q.slots.push_front(slot);
     0
@@ -85,13 +85,13 @@ unsafe fn pop(l: L, slot: Option<u32>, values: &mut ValueSlots) -> c_int {
 }
 
 unsafe extern "C-unwind" fn queue_pop_front(l: L) -> c_int {
-    let q = userdata::check::<Queue>(l, 1);
+    let mut q = userdata::check::<Queue>(l, 1);
     let slot = q.slots.pop_front();
     pop(l, slot, &mut q.values)
 }
 
 unsafe extern "C-unwind" fn queue_pop_back(l: L) -> c_int {
-    let q = userdata::check::<Queue>(l, 1);
+    let mut q = userdata::check::<Queue>(l, 1);
     let slot = q.slots.pop_back();
     pop(l, slot, &mut q.values)
 }
@@ -165,7 +165,8 @@ unsafe extern "C-unwind" fn ring_new(l: L) -> c_int {
 
 unsafe extern "C-unwind" fn ring_push(l: L) -> c_int {
     l.settop(2);
-    let ring = userdata::check::<Ring>(l, 1);
+    let mut guard = userdata::check::<Ring>(l, 1);
+    let ring = &mut *guard;
     if let Some(old) = ring.slots[ring.next].take() {
         ring.values.release(l, old);
     }
@@ -259,7 +260,7 @@ unsafe extern "C-unwind" fn window_new(l: L) -> c_int {
 
 unsafe extern "C-unwind" fn window_add(l: L) -> c_int {
     let (at, value) = (l.checknumber(2), l.checknumber(3));
-    let window = userdata::check::<Window>(l, 1);
+    let mut window = userdata::check::<Window>(l, 1);
     if let Some(&(last, _)) = window.entries.back() {
         if at < last {
             let (given, before) = (tostring(l, 2), format!("{last}"));
@@ -273,14 +274,14 @@ unsafe extern "C-unwind" fn window_add(l: L) -> c_int {
 
 unsafe extern "C-unwind" fn window_sum(l: L) -> c_int {
     let now = l.checknumber(2);
-    let window = userdata::check::<Window>(l, 1);
+    let mut window = userdata::check::<Window>(l, 1);
     window.drop_aged(now);
     number(l, window.sum)
 }
 
 unsafe extern "C-unwind" fn window_count(l: L) -> c_int {
     let now = l.checknumber(2);
-    let window = userdata::check::<Window>(l, 1);
+    let mut window = userdata::check::<Window>(l, 1);
     window.drop_aged(now);
     number(l, window.entries.len() as f64)
 }
@@ -290,7 +291,7 @@ unsafe extern "C-unwind" fn window_size(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn window_clear(l: L) -> c_int {
-    let window = userdata::check::<Window>(l, 1);
+    let mut window = userdata::check::<Window>(l, 1);
     window.entries.clear();
     window.sum = 0.0;
     0
@@ -328,7 +329,7 @@ unsafe extern "C-unwind" fn slots_new(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn slots_alloc(l: L) -> c_int {
-    let pool = userdata::check::<Slots>(l, 1);
+    let mut pool = userdata::check::<Slots>(l, 1);
     let slot = match pool.free.pop() {
         Some(slot) => slot,
         None => {
@@ -345,7 +346,7 @@ unsafe extern "C-unwind" fn slots_alloc(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn slots_free(l: L) -> c_int {
-    let pool = userdata::check::<Slots>(l, 1);
+    let mut pool = userdata::check::<Slots>(l, 1);
     let slot = whole_at(l, 2).filter(|&s| pool.used.get(s as usize).copied().unwrap_or(false));
     let Some(slot) = slot else {
         let given = tostring(l, 2);
@@ -505,16 +506,16 @@ unsafe fn inside(l: L, chain: &Chain) -> u32 {
 }
 
 unsafe extern "C-unwind" fn chain_push_front(l: L) -> c_int {
-    let chain = userdata::check::<Chain>(l, 1);
-    let slot = outside(l, chain);
+    let mut chain = userdata::check::<Chain>(l, 1);
+    let slot = outside(l, &chain);
     chain.room(slot);
     chain.link_front(slot);
     0
 }
 
 unsafe extern "C-unwind" fn chain_push_back(l: L) -> c_int {
-    let chain = userdata::check::<Chain>(l, 1);
-    let slot = outside(l, chain);
+    let mut chain = userdata::check::<Chain>(l, 1);
+    let slot = outside(l, &chain);
     chain.room(slot);
     let back = chain.back;
     chain.prev[slot as usize] = back;
@@ -530,15 +531,15 @@ unsafe extern "C-unwind" fn chain_push_back(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn chain_unlink(l: L) -> c_int {
-    let chain = userdata::check::<Chain>(l, 1);
-    let slot = inside(l, chain);
+    let mut chain = userdata::check::<Chain>(l, 1);
+    let slot = inside(l, &chain);
     chain.detach(slot);
     0
 }
 
 unsafe extern "C-unwind" fn chain_move_front(l: L) -> c_int {
-    let chain = userdata::check::<Chain>(l, 1);
-    let slot = inside(l, chain);
+    let mut chain = userdata::check::<Chain>(l, 1);
+    let slot = inside(l, &chain);
     if chain.front != slot {
         chain.detach(slot);
         chain.link_front(slot);

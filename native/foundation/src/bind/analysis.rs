@@ -291,7 +291,7 @@ unsafe fn stop_span(l: L, name: c_int, started: f64) {
         raise_where(l, format!("analytics: {shown} stopped with no span started"));
     }
     let seconds = ask(l, c"clock", c"Now") - started;
-    let a = userdata::check::<Analytics>(l, 1);
+    let mut a = userdata::check::<Analytics>(l, 1);
     a.depth -= 1;
     if a.depth == 0 {
         a.frame_seconds += seconds;
@@ -344,7 +344,7 @@ unsafe extern "C-unwind" fn frame(l: L) -> c_int {
     let budget = l.checknumber(2);
     let kb = ask(l, c"memory", c"Kilobytes");
     let now = ask(l, c"clock", c"Now");
-    let a = userdata::check::<Analytics>(l, 1);
+    let mut a = userdata::check::<Analytics>(l, 1);
     let pressure = a.frame_seconds / budget;
     a.frame_seconds = 0.0;
     a.frames += 1.0;

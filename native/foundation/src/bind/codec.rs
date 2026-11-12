@@ -248,14 +248,14 @@ unsafe extern "C-unwind" fn writer_float32(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn writer_varint(l: L) -> c_int {
-    let w = userdata::check::<Writer>(l, 1);
+    let mut w = userdata::check::<Writer>(l, 1);
     varint(l, 2, &mut w.data);
     0
 }
 
 unsafe extern "C-unwind" fn writer_string(l: L) -> c_int {
     let s = text_at(l, 2, "a buffer's string");
-    let w = userdata::check::<Writer>(l, 1);
+    let mut w = userdata::check::<Writer>(l, 1);
     l.pushnumber(s.len() as f64);
     varint(l, -1, &mut w.data);
     w.data.extend_from_slice(s);
@@ -360,7 +360,7 @@ unsafe extern "C-unwind" fn reader_float32(l: L) -> c_int {
 }
 
 unsafe fn read_varint(l: L) -> f64 {
-    let r = userdata::check::<Reader>(l, 1);
+    let mut r = userdata::check::<Reader>(l, 1);
     let (mut n, mut scale) = (0.0, 1.0);
     loop {
         let Some(&b) = r.take(1).and_then(|b| b.first()) else { short(l) };
@@ -378,7 +378,7 @@ unsafe extern "C-unwind" fn reader_varint(l: L) -> c_int {
 
 unsafe extern "C-unwind" fn reader_string(l: L) -> c_int {
     let length = read_varint(l) as usize;
-    let r = userdata::check::<Reader>(l, 1);
+    let mut r = userdata::check::<Reader>(l, 1);
     let start = r.at.min(r.data.len());
     let end = (r.at + length).min(r.data.len());
     r.at += length;
@@ -458,7 +458,7 @@ unsafe extern "C-unwind" fn cursor_literal(l: L) -> c_int {
     let s = text_at(l, 2, "a literal").to_vec();
     let ignore_case = l.toboolean(3) != 0;
     let text = cursor_text(l);
-    let c = userdata::check::<Cursor>(l, 1);
+    let mut c = userdata::check::<Cursor>(l, 1);
     let end = (c.at + s.len()).min(text.len());
     let here = &text[c.at.min(text.len())..end];
     if here == s.as_slice() || (ignore_case && here.eq_ignore_ascii_case(&s)) {
@@ -517,7 +517,7 @@ unsafe extern "C-unwind" fn cursor_peek(l: L) -> c_int {
 
 unsafe extern "C-unwind" fn cursor_whitespace(l: L) -> c_int {
     let text = cursor_text(l);
-    let c = userdata::check::<Cursor>(l, 1);
+    let mut c = userdata::check::<Cursor>(l, 1);
     let start = c.at;
     let mut end = start;
     while end < text.len() && matches!(text[end], b' ' | b'\t' | b'\r' | b'\n') {
@@ -531,13 +531,14 @@ unsafe extern "C-unwind" fn cursor_whitespace(l: L) -> c_int {
 }
 
 unsafe extern "C-unwind" fn cursor_save(l: L) -> c_int {
-    let c = userdata::check::<Cursor>(l, 1);
-    c.saved.push(c.at);
+    let mut c = userdata::check::<Cursor>(l, 1);
+    let at = c.at;
+    c.saved.push(at);
     0
 }
 
 unsafe extern "C-unwind" fn cursor_restore(l: L) -> c_int {
-    let c = userdata::check::<Cursor>(l, 1);
+    let mut c = userdata::check::<Cursor>(l, 1);
     if let Some(at) = c.saved.pop() {
         c.at = at;
     }
