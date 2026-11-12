@@ -390,7 +390,7 @@ end
 local function Load (w)
 	local chunk = assert (loadfile (SOURCE))
 	local controller = setfenv (chunk, Env (w)) ()
-	controller.slotStore = MemoryStore ()
+	controller.slotList.store = MemoryStore ()
 	controller.hazardWatch.store = MemoryStore ()
 	controller.PlaceSpawnBases = function ()
 		if w.placeSpawnBases then return w.placeSpawnBases () end
@@ -455,7 +455,7 @@ end
 
 local function SlotIds (controller, team)
 	local ids = {}
-	for i, slot in ipairs (controller:SlotPlan ():Slots (controller:FactionName (team))) do ids [i] = slot.id end
+	for i, slot in ipairs (controller.slotList:Plan ():Slots (controller:FactionName (team))) do ids [i] = slot.id end
 	return ids
 end
 
@@ -463,10 +463,10 @@ T.test ("at a team size, every faction keeps that many slots, and the list is ke
 	local w = World ()
 	w.teamSize = 3
 	local controller = Load (w)
-	controller.slotStore = MemoryStore ()
+	controller.slotList.store = MemoryStore ()
 	local sizes = controller:Sizes ()
-	T.eq (sizes [RED] .. " " .. sizes [BLUE],  "3 3", "three a side")
-	T.eq (#controller.slotStore.saved.Combine, 3,     "kept")
+	T.eq (sizes [RED] .. " " .. sizes [BLUE],       "3 3", "three a side")
+	T.eq (#controller.slotList.store.saved.Combine, 3,     "kept")
 	w.teamSize = 1
 	sizes = controller:Sizes ()
 	T.eq (sizes [RED] .. " " .. sizes [BLUE], "1 1", "follows the team size")
@@ -482,8 +482,8 @@ T.test ("setting a side's slot count sizes that side alone, and turns the team s
 	T.eq (sizes [RED] .. " " .. sizes [BLUE], "5 2", "RED has five")
 	controller:SetSlotCount (BLUE, 0)
 	sizes = controller:Sizes ()
-	T.eq (sizes [RED] .. " " .. sizes [BLUE],  "5 0", "RED alone")
-	T.eq (#controller.slotStore.saved.Combine, 0,     "kept empty: BLU's faction, the Combine")
+	T.eq (sizes [RED] .. " " .. sizes [BLUE],       "5 0", "RED alone")
+	T.eq (#controller.slotList.store.saved.Combine, 0,     "kept empty: BLU's faction, the Combine")
 end)
 
 T.test ("removing slots by id removes their soldiers, and sets that side's size", function ()
@@ -492,7 +492,7 @@ T.test ("removing slots by id removes their soldiers, and sets that side's size"
 	local controller = Load (w)
 	controller:Sizes ()
 	local removed = false
-	controller:SlotPlan ():Fill ("Resistance", { Remove = function () removed = true end, IsPlayer = function () return false end })
+	controller.slotList:Plan ():Fill ("Resistance", { Remove = function () removed = true end, IsPlayer = function () return false end })
 	local ids = SlotIds (controller, RED)
 	local lines = controller:RemoveSlots ({ ids [1], ids [2], 99 })
 	T.eq (removed,    true,              "the soldier in the first went with it")
@@ -506,17 +506,17 @@ T.test ("pins are kept with the slot list, and read back on the next map", funct
 	local w = World ()
 	w.teamSize = 2
 	local controller = Load (w)
-	controller.slotStore = MemoryStore ()
+	controller.slotList.store = MemoryStore ()
 	controller:Sizes ()
 	local first = SlotIds (controller, RED) [1]
 	T.eq (controller:PinSlots ("mp_aiwar_slots_leader", { first }, Squad.LEADER) [1], "mp_aiwar_slots_leader: slot " .. first .. " leader", "told")
-	local saved = controller.slotStore.saved
+	local saved = controller.slotList.store.saved
 	w.teamSize = Slots.CUSTOM_SIZE
 	local next = Load (w)
-	next.slotStore = MemoryStore (saved)
+	next.slotList.store = MemoryStore (saved)
 	local sizes = next:Sizes ()
-	T.eq (sizes [RED] .. " " .. sizes [BLUE],            "2 2",        "the same slots")
-	T.eq (next:SlotPlan ():Slots ("Resistance") [1].pin, Squad.LEADER, "the same pin, on RED's faction")
+	T.eq (sizes [RED] .. " " .. sizes [BLUE],                 "2 2",        "the same slots")
+	T.eq (next.slotList:Plan ():Slots ("Resistance") [1].pin, Squad.LEADER, "the same pin, on RED's faction")
 end)
 
 -- A soldier the controller holds, with entity index `index`, whose DrGBase
@@ -619,7 +619,7 @@ T.test ("a stored slot list that is none is replaced by a new one", function ()
 	local w = World ()
 	w.teamSize = Slots.CUSTOM_SIZE
 	local controller = Load (w)
-	controller.slotStore = MemoryStore ({ Combine = { "captain" } })
+	controller.slotList.store = MemoryStore ({ Combine = { "captain" } })
 	local sizes = controller:Sizes ()
 	T.eq (sizes [RED] .. " " .. sizes [BLUE], "0 0", "no slots")
 end)
@@ -790,7 +790,7 @@ T.test ("an MvM war sizes its sides by the scenario's split, and keeps the slots
 	local sizes = controller:Sizes ()
 	local want = Mvm.Scenario:TeamSizes (8)
 	T.eq (sizes [RED] .. " " .. sizes [BLUE], want [RED] .. " " .. want [BLUE], "the MvM split")
-	T.eq (#controller:SlotPlan ():Slots (controller:FactionName (BLUE)), want [BLUE], "BLU's faction has its slots")
+	T.eq (#controller.slotList:Plan ():Slots (controller:FactionName (BLUE)), want [BLUE], "BLU's faction has its slots")
 end)
 
 -- A capture feature with one point, neutral and capturable by both, its
@@ -1636,6 +1636,22 @@ T.test ("the map's nav hazards are a part object, read from its store, which a r
 	T.eq (Reload (w, controller),          controller, "the live controller")
 	T.eq (controller.hazardWatch,          hazards,    "the same object")
 	T.eq (controller.hazardWatch:Model (), model,      "its state kept, its methods back")
+end)
+
+T.test ("the slot list is a part object, its viewers synced by one job of the calendar, which a reload does not add again", function ()
+	local w = World ()
+	local controller = Load (w)
+	local slots = controller.slotList
+	slots.store = MemoryStore ({ Combine = { Squad.LEADER } })
+	local plan = slots:Plan ()
+	T.eq (#plan:Slots ("Combine"),                  1,   "read from its store")
+	T.eq (controller.SlotPlan,                      nil, "the plan is the part's, not the controller's")
+	T.eq (controller.calendar:Report ().slots.jobs, 1,   "the sync, a job of the slots system")
+	setmetatable (slots, nil)
+	Reload (w, controller)
+	T.eq (controller.slotList,                      slots, "the same object")
+	T.eq (controller.slotList:Plan (),              plan,  "its state kept, its methods back")
+	T.eq (controller.calendar:Report ().slots.jobs, 1,     "still the one job")
 end)
 
 T.finish ()

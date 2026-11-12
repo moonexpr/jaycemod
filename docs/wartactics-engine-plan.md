@@ -433,6 +433,15 @@ and checked live with `dev.reload`:
    it. The controller is reached live with `WS.Feature ("aiwar")`.
 3. `sv_slots.lua`, `sv_marks.lua`, `sv_report.lua`, `sv_rooms.lua`'s debug:
    a timer each, small.
+   `sv_slots.lua` done 2026-11-12: `Controller.slotList` (`New(store,
+   calendar)`) holds the plan, its store, the viewers and the last
+   signature; its sync to viewers is a job of the calendar's `slots`
+   system every 0.5 s (an edit still sends at once). `Faction`,
+   `FactionName`, `Sizes` and the edits stay the controller's: they read
+   the war as well, and other parts call them 35 times. The root now
+   makes each system once (`SYSTEMS`), so a reload can bring a new one to
+   a live calendar. Checked live: 16 slots a side read, the sync running,
+   at most a tick late.
 4. `sv_obstacles.lua`, then `sv_field.lua` with its `Think` (the `Survey`,
    the largest timer by cost, §6.2).
 5. The hooks with no state: `sv_intel.lua`, `sv_gestures.lua`,
