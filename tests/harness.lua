@@ -71,14 +71,16 @@ function T.require (name)
 end
 CHUNK_ENV.require = T.require
 
--- A native module built from native/<crate> (check_lua.sh builds them), as
--- the table its luaopen_<crate> returns: what the game's module sets in
--- foundation.native or foundation.wetsands.native. Unbuilt, the test errors
--- naming the build.
+-- A native module built from native/<crate>, or the folder CRATES names
+-- (check_lua.sh builds them), as the table its luaopen_<crate> returns: what
+-- the game's module sets in foundation.native or foundation.wetsands.native.
+-- Unbuilt, the test errors naming the build.
+local CRATES = { nextsoldier = "addons/nextsoldier/native" }
 local natives = {}
 function T.native (crate)
 	if natives [crate] then return natives [crate] end
-	local base = "native/" .. crate .. "/target/release/lib" .. crate
+	local folder = CRATES [crate] or "native/" .. crate
+	local base = folder .. "/target/release/lib" .. crate
 	for _, extension in ipairs ({ ".dylib", ".so" }) do
 		local file = io.open (base .. extension)
 		if file then
@@ -87,7 +89,7 @@ function T.native (crate)
 			return natives [crate]
 		end
 	end
-	error ("native/" .. crate .. " is not built: cargo build --release in native/" .. crate, 2)
+	error (folder .. " is not built: cargo build --release in " .. folder, 2)
 end
 
 local function ReadFile (path)
