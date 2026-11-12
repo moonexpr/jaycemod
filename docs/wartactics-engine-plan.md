@@ -318,9 +318,19 @@ fire-team table.
    looks and the route plans moved onto it. Built 2026-11-12: `list.calendar`,
    both twins (`tests/list_calendar_test.lua`, both passes). A job's answer
    sets its next time (nil: its period, phase kept; seconds: an attention
-   span; false: done); `Wake` brings one sooner (a repath on need). Not yet
-   built on: the looks, the route plans and the hooks' intervals are still
-   their own.
+   span; false: done); `Wake` brings one sooner (a repath on need).
+   The looks moved onto it the same day: a bot's look is a job of the
+   calendar's `looks` system (`sv_bots.lua`'s `LookJob`), answering
+   `LOOK_INTERVAL` from when it ran, the calendar run 3 ms a tick
+   (`CALENDAR_SECONDS`, about the share of 32 bots' looks the old
+   `Looks.Share` gave); `Share` and `Due` are gone. On the benchmark (four
+   replications at 31 or 32 soldiers; the first, at 8 while bots joined,
+   left out): the war 484 ms/s (464 to 503) against 502 ± 11, the tick's p99
+   26.9 to 33.5 ms against 29.4 ± 3.4, so no difference in time, as a move
+   should make none. What is new is the calendar's report: 27,875 looks at
+   about 1.03 ms, 11.6 ms late on average (within the tick they came due),
+   70 ms at worst (a scenario's load enlisting a wave), none left behind.
+   Still their own: the route plans and the hooks' intervals (§6a).
 4. §5.1's mesh columns, the room column first, then body fit as data.
 5. The look split into its jobs, the sight pass made native.
 6. `docs/places-plan.md`'s room graph and occupation on §5.1.
@@ -424,11 +434,9 @@ and checked live with `dev.reload`:
   a weight), and `Report` then gives each part's spend and lateness at
   16v16 on the benchmark. The weights are chosen from those numbers, all
   1 until then.
-- Still open: whether the looks change in the working tree (tests pass,
-  the war group at its known 38 failures; not checked live) is committed
-  as it is or folded into step 1. Checking it live needs a Windows
-  `gmsv_foundation` (`cargo xwin build --release --target
-  x86_64-pc-windows-msvc`) and the dev server restarted on it.
+- The looks change was committed on its own, checked live and on the
+  benchmark (§6 step 3); step 1 above is then only its two fields moved off
+  the root into a looks object.
 
 ## 7. Pitfalls met in this work
 
@@ -449,6 +457,14 @@ and checked live with `dev.reload`:
   committed with the tests (they stay in the superproject's `tests/`).
 - The war's feature loads only once a war starts (`mp_aiwar_start`):
   `WS.FeatureLoaded ("aiwar")` is false on a fresh map until then.
+- The repository moved from `~/Repositories/sandcastle` to
+  `~/Repositories/jaycemod` (2026-11-12, about 10:11). What pointed at the
+  old path broke quietly: the server bottle's shared install linked
+  `garrysmod/gamemodes/{sandcastle,wetsands}` there (by hand; no tool makes
+  them), so a restarted server ran `sandbox` ("Couldn't change active
+  gamemode - 'wetsands' not found"), and `native/wetsands`' cached build
+  script panicked on the old `vendor/` path. Both re-pointed or cleaned
+  that day. Suspect the old path first when something "not found" appears.
 - The probe's window is the server's time: at 16v16 the server runs behind
   its ticks, and a 30 s window takes 35 to 40 s of ours.
 

@@ -275,7 +275,7 @@ end)
 
 T.test ("systems and jobs refuse what is not one", function ()
 	local calendar = Fixture ()
-	Raises (calendar.System, calendar, 1, 1)
+	Raises (calendar.System, calendar, 1,     1)
 	Raises (calendar.System, calendar, "war", 0)
 	Raises (calendar.System, calendar, "war", -1)
 	calendar:System ("war", 1)
@@ -283,6 +283,42 @@ T.test ("systems and jobs refuse what is not one", function ()
 	Raises (calendar.Every, calendar, "nobody", 1, function () end)
 	Raises (calendar.Every, calendar, "war",    0, function () end)
 	Raises (calendar.Every, calendar, "war",    1, "not a function")
+end)
+
+-- The AI war's looks: a wave of soldiers enlisted in one tick all due at once, each look a job
+-- that answers its interval (an attention span from when it ran), a run a tick on a budget.
+T.test ("jobs all due at once that answer their span are spread over the ticks, and stay spread", function ()
+	local INTERVAL, TICK, COST, BUDGET, COUNT = 0.2, 0.015, 0.001, 0.003, 16
+	local calendar, clock, timer = Fixture ()
+	calendar:System ("looks", 1)
+	local last, longest, most, ran = {}, 0, 0, 0
+	for i = 1, COUNT do
+		calendar:Every ("looks", INTERVAL, function (_, now)
+			if last [i] then longest = math.max (longest, now - last [i]) end
+			last [i] = now
+			ran = ran + 1
+			timer.t = timer.t + COST
+			return INTERVAL
+		end, 0)
+	end
+	local perTick = math.ceil (BUDGET / COST)
+	for _ = 1, 400 do
+		ran = 0
+		calendar:Run (BUDGET)
+		most = math.max (most, ran)
+		clock.t = clock.t + TICK
+	end
+	T.eq (most <= perTick, true, "never more than the budget takes in one tick")
+	for i = 1, COUNT do T.eq (last [i] ~= nil, true, "everyone ran: " .. i) end
+	-- a job waits its span, to the tick after, and at worst for everyone before it once
+	T.eq (longest <= INTERVAL + TICK * (1 + math.ceil (COUNT / perTick)), true, "no one waits much past its span")
+	local behind = 0
+	for _ = 1, 200 do
+		calendar:Run (BUDGET)
+		behind = behind + calendar:Report ().looks.behind
+		clock.t = clock.t + TICK
+	end
+	T.eq (behind, 0, "none is left behind once they are spread")
 end)
 
 T.finish ()
