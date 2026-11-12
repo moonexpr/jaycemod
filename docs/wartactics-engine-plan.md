@@ -454,6 +454,32 @@ and checked live with `dev.reload`:
   benchmark (§6 step 3); step 1 above is then only its two fields moved off
   the root into a looks object.
 
+## 6a'. Queued after the controller split: the simulation and the behaviours
+
+The operator, 2026-11-12, to be done once §6a's split is finished:
+
+- **A `simulation` collection, its own Lua folder:**
+  `addons/wartactics/lua/simulation/`, beside `wartactics/` in the addon's
+  `lua/`, not inside it. Its members are the tactical world model's
+  objects: lanes, rooms, room hints and the annotations (intel; marks and
+  camps, moved in from `features/aiwar/`, which are pure models). Still to
+  settle when it is built: its published name (`simulation.<module>`, by a
+  `sh_init.lua` of its own as `wartactics/` has), its rank in
+  `tests/foundation_layers_test.lua` (with wartactics, which reads it, or
+  below), and its tests' prefix. The feature's controller parts
+  (`sv_lanes`, `sv_rooms`, `sv_marks`, `sv_room_hints`) stay at the
+  feature's top level: `feature_parts_test` (b) forbids a part in a
+  subfolder.
+- **`ns_behaviors.lua` (2,408 lines) split into
+  `features/aiwar/nextsoldier_behavior/`**, a file a chart state:
+  `travel`, `chase`, `objective`, `idle`, `humiliated`,
+  `seek_and_destroy`, `retreat_to_cover` (with `find_health` and
+  `call_medic`, which share it), `open_door`; the shared helpers and
+  constants (about the first 660 lines: rings, roles, the payload
+  doctrine, `Goal`, `Focus`) in a core file; an init assembling them
+  under the old module's exports, so the 18 files requiring
+  `features.aiwar.ns_behaviors` change one name.
+
 ## 6b. A soldier's attention by its stress (planned, not built)
 
 The operator, 2026-11-12: the rates should adapt to how stressed a unit
