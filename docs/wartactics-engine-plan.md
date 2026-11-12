@@ -106,7 +106,9 @@ On `main`, pushed. Each has its tests, written first.
    the war's class.
 4. **A fixed benchmark.** One saved 8v8 scenario (`dev.scenario.save`),
    replayed several times a condition, so before and after are the same
-   fight. Every comparison in §2 lacks this.
+   fight. Every comparison in §2 lacks this. Beside it, the pass line
+   (§8.6): a saved 16v16 scenario on the operator's MacBook Pro (M1 Pro),
+   the war's p99 a tick under 10 ms and no tick over 15.
 5. **The searches' slice overruns.** With a body's fit asked as a Lua rule,
    one step of a search took up to 15.7 ms against its 2 ms slice (a cold
    hull trace an area and a link, sixteen expansions between looks at the
@@ -294,13 +296,12 @@ plan's direction; its details are still to be written where it is built.
    (§4.3), which still uses `RouteCost` and `Navigator`. Then it goes whole,
    switch and all: a comparison nobody runs only rots.
 
-Raised in the same conversation, not yet answered:
-
-- Every measure in this plan is time. None says whether squads play better,
-  and §5.2's attention span changes how soon a soldier sees a new enemy,
-  which nothing measures. The benchmark wants a measure of play beside its
-  milliseconds (time to first sight of a new enemy, objectives taken)
-  before the looks move onto the calendar.
-- The war averages about 4.3 ms of a 15 ms tick. The restructure is
-  justified by its structure and by §5.3's problems more than by the tick;
-  §5.4's roll-forward is the part most at risk of growing without a result.
+6. **The target is 32 bots, 16 a team, on the operator's MacBook Pro
+   (M1 Pro), without the server slowing to a crawl.** The pass line is
+   §4.4's benchmark on a saved 16v16 scenario: the war's p99 a tick under
+   10 ms, and no tick over the 15 ms tick. At about 18 ms/s a bot (§2), 32
+   bots are some 580 ms/s, near 9 ms of every tick before searches or
+   spikes, so at this size the restructure is for the tick, not only for
+   its structure. Play quality (how soon a soldier sees a new enemy,
+   objectives taken) is out of this pass: it is tuned by other means, and
+   §5.2's attention span is judged here by its cost alone.
