@@ -81,6 +81,8 @@ On `main`, pushed. Each has its tests, written first.
 | `defab284` | The map's ladders in the mesh snapshot, a walker's body as a search rule, ladders as waypoints |
 | `9b027a3b` | A bot's routes come from the war's own asynchronous search (`npcs:RequestRoute`); `ns_bots_routes_engine 1` keeps the engine's for comparison |
 | `5635c827` | No navigator entity is made for a bot that plans on the war's own search |
+| `ba389f6f` | The fixed benchmark (`aiwar_bench.py`) and its 16v16 scenario; scenarios load bot soldiers |
+| `a113c8a` (`addons/sandcastle`) | Route searches keep to their slice; a route's points laid out in the planning time |
 
 ## 4. What is left of that work
 
@@ -104,19 +106,47 @@ On `main`, pushed. Each has its tests, written first.
    engine's search. Move it onto the same `PlanRoute` and `MeshSearch`, which
    belong in `features/npc/bot_steering.lua` beside `StandOnRoute`, not in
    the war's class.
-4. **A fixed benchmark.** One saved 8v8 scenario (`dev.scenario.save`),
-   replayed several times a condition, so before and after are the same
-   fight. Every comparison in §2 lacks this. Beside it, the pass line
-   (§8.6): a saved 16v16 scenario on the operator's MacBook Pro (M1 Pro),
-   the war's p99 a tick under 10 ms and no tick over 15.
-5. **The searches' slice overruns.** With a body's fit asked as a Lua rule,
-   one step of a search took up to 15.7 ms against its 2 ms slice (a cold
-   hull trace an area and a link, sixteen expansions between looks at the
-   clock). Body fit as data on the mesh (§5.1) removes it; until then a
-   smaller step for a request with a body would bound it.
-6. **Asking costs the look 0.7 ms.** `RequestRoute` finds the nearest areas,
-   refreshes the blockers and consults the reach memo before it queues. It
-   could queue first and do those in the searches' slice.
+4. **Done 2026-11-12: the fixed benchmark** (`ba389f6f`).
+   `.devtools/bin/aiwar_bench.py --save NAME` saves a warmed war as a
+   scenario; `--scenario NAME --conditions "a=convar 0;b=convar 1"` replays
+   it for each replication and condition in turn (a b b a ...), measures a
+   window with the probe's hooks alone, and reports each condition as the
+   mean of its replications with a 95 % t interval, and the pass line (§8.6)
+   on every replication. The scenario is
+   `.devtools/scenarios/cp_dustbowl/aiwar_bench_16v16.json` (32 bots, 29
+   alive when saved). 16v16 needs a server of 33 slots or more (the quota
+   keeps one free): `srcds.py start --gamemode wetsands --map cp_dustbowl
+   --maxplayers 34`. The baseline, five replications, asynchronous search:
+
+   | 16v16 | async | engine |
+   |---|---|---|
+   | War | 453 ± 53 ms/s | 486 ± 18 |
+   | Route searches | 22 ± 9 ms/s | 0.8 ± 0.3 |
+   | A tick, war and searches, p99 | 29.4 ± 3.4 ms | 30.4 ± 1.8 |
+   | A tick, worst | 50 ± 4 ms | 71 ± 33 |
+   | Ticks over 15 ms, of about 2,000 | 181 ± 43 | 190 ± 25 |
+
+   The pass line fails by about three times, as §8.6 foresaw: at this size
+   the tick is the war's own time, not the searches'. On time, the two
+   searches show no difference (§8.5's parity on routes found and bots
+   stuck is not measured yet: the bench has no such count).
+5. **Done 2026-11-12: the searches keep to their slice** (`a113c8a` in
+   `addons/sandcastle`). The smaller step for a request with a body
+   (`features.npc.search_step`) went in first and was not shown to help:
+   timed live, the steps were bounded (max 0.5 ms) but the answer was not.
+   A route's points (`RouteWaypoints`) were laid out in the search's task in
+   one go, p99 2.4 ms and up to 10.7 ms. They are laid out now in the war's
+   planning time, giving way between areas (`plan:Lay`): the searches' p99
+   a tick fell from 3.9 to 2.0 ms (their 2 ms slice), their time from 22 to
+   13 ms/s. That work moved into the war's share (502 ± 11 ms/s); the
+   tick's p99 shows no difference. Body fit as data (§5.1) is still what
+   removes the traces.
+6. **Asking costs the look about 13 ms/s at 16v16.** Timed live: 535
+   requests in 30 s (31 bots, about one route a bot every 1.7 s), p50
+   0.45 ms, p99 3.7 ms. `RequestRoute` finds the nearest areas, refreshes
+   the blockers and consults the reach memo before it queues; it could
+   queue first and do those in the searches' slice. How often a bot asks
+   (`REPATH_LEAST`, `REPATH_MOST`) is the other lever.
 
 Known gaps in the workbench, found on the way:
 
@@ -225,12 +255,18 @@ fire-team table.
 ## 6. A suggested order
 
 1. §4.1 to §4.4: finish and verify what is in flight, with the benchmark.
-2. §5.2's calendar in foundation (§8.3's policy), Lua twin first, then the
+   Done but §4.2 (a bot seen on a ladder) and §4.3; the bench still lacks
+   §8.5's count of routes found and bots stuck.
+2. Where the war's own 450 to 500 ms/s goes at 16v16, by the probe's
+   `Methods` on the benchmark's scenario, before the calendar is shaped:
+   §2's per-bot figures are 8v8's, and `Drive`'s share (§8.1) is the
+   first to confirm.
+3. §5.2's calendar in foundation (§8.3's policy), Lua twin first, then the
    looks and the route plans moved onto it.
-3. §5.1's mesh columns, the room column first, then body fit as data.
-4. The look split into its jobs, the sight pass made native.
-5. `docs/places-plan.md`'s room graph and occupation on §5.1.
-6. §5.3, a problem at a time.
+4. §5.1's mesh columns, the room column first, then body fit as data.
+5. The look split into its jobs, the sight pass made native.
+6. `docs/places-plan.md`'s room graph and occupation on §5.1.
+7. §5.3, a problem at a time.
 
 ## 7. Pitfalls met in this work
 
@@ -245,6 +281,14 @@ fire-team table.
   against those counts.
 - A measurement on the dev server changes it. Check that the war is
   thinking (`C.nextThink` close to `CurTime()`) before believing a number.
+- Since 2026-11-12 (`d0edcd23`) the addons are submodules, each its own
+  repository under moonexpr: a change to the gamemode is committed in
+  `addons/sandcastle` and pushed there, then the superproject's pointer is
+  committed with the tests (they stay in the superproject's `tests/`).
+- The war's feature loads only once a war starts (`mp_aiwar_start`):
+  `WS.FeatureLoaded ("aiwar")` is false on a fresh map until then.
+- The probe's window is the server's time: at 16v16 the server runs behind
+  its ticks, and a 30 s window takes 35 to 40 s of ours.
 
 ## 8. The operator's answers, 2026-11-11
 
