@@ -117,9 +117,9 @@ return
 	},
 	{
 		name = "addons",
-		about = "the addons beside the gamemode: Team Tint, the CS:S weapons and the model viewer",
-		tests = { "teamtint_*", "addons_cstrike_weapons*", "model_viewer_*" },
-		sources = { "addons/teamtint/", "addons/cstrike_weapons/", "addons/model_viewer/" }
+		about = "the addons beside the gamemode: Team Tint, the CS:S weapons, the model viewer and the TF2 weapons in your own hands",
+		tests = { "teamtint_*", "addons_cstrike_weapons*", "model_viewer_*", "tf_weapons_*" },
+		sources = { "addons/teamtint/", "addons/cstrike_weapons/", "addons/model_viewer/", "addons/tf_weapons/" }
 	},
 	{
 		name = "tooling",
