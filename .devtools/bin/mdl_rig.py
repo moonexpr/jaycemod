@@ -6,6 +6,9 @@
   mdl_rig.py attachments MODEL...      attachments and the bone each rides on
   mdl_rig.py procedural MODEL...       quaternion-interpolation helper bones and their triggers
   mdl_rig.py corrections ARMS HANDS    per-bone axis corrections, rest pose to rest pose
+  mdl_rig.py fixture ARMS ANIMS HANDS LABEL@FRAME...
+                                       a Lua fixture: both skeletons, and per frame the TF2 bones'
+                                       world transforms and every hands bone solved from them
   mdl_rig.py check ARMS ANIMS HANDS [LABEL...]
                                        retarget every frame of the sequences (all by default) and
                                        report the worst elbow, finger, palm and hand-position errors
@@ -368,8 +371,8 @@ def canonical(model: Model, chain: List[str]) -> Dict[int, Quat]:
     palm = cross(unit(length), unit(across))
     out = {hand: frame_quat(length, across)}
     elbow, bend = axis_angle(rest[fore][1])
-    if bend < MIN_BEND:  # straight at rest: take the bend from the palm's across axis
-        elbow = qrot(qconj(rest[hand][1]), across)
+    if bend < MIN_BEND:  # straight at rest: the bend is across the palm, in the forearm's axes
+        elbow = qrot(rest[hand][1], across)
     out[upper] = frame_quat(rest[fore][0], elbow)
     out[fore] = frame_quat(rest[hand][0], elbow)
     for f, ids in enumerate(joints):
@@ -406,6 +409,107 @@ def retarget(arms_world, hands: Model, corr) -> Dict[int, Tuple[Vec, Quat]]:
             pos = (pp[0] + r[0], pp[1] + r[1], pp[2] + r[2])
         out[j] = (pos, q)
     return out
+
+
+def quatinterp(model: Model, bone: int, world: Dict[int, Tuple[Vec, Quat]]) -> Tuple[Vec, Quat]:
+    """DoQuatInterpBone (bone_setup.cpp): a helper bone's world transform from its control's rotation."""
+    control, triggers = model.quatinterp(bone)
+    cp = model.bones[control].parent
+    src = world[control][1] if cp < 0 else qmul(qconj(world[cp][1]), world[control][1])
+    weights = [max(0.0, 1 - 2 * math.acos(min(1.0, abs(dot(t[1], src)))) * t[0]) for t in triggers]
+    scale = sum(weights)
+    if scale <= 0.001:
+        pos, quat = triggers[0][2], triggers[0][3]
+    else:
+        acc, pos = [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0]
+        for weight, (_, _, tpos, tquat) in zip(weights, triggers):
+            if weight > 0:
+                s = weight / scale
+                sign = -1 if dot(acc, tquat) < 0 else 1
+                acc = [acc[k] + sign * s * tquat[k] for k in range(4)]
+                pos = [pos[k] + s * tpos[k] for k in range(3)]
+        n = math.sqrt(dot(acc, acc))
+        quat = tuple(c / n for c in acc)
+    pp, pq = world[model.bones[bone].parent]
+    r = qrot(pq, pos)
+    return (pp[0] + r[0], pp[1] + r[1], pp[2] + r[2]), qmul(pq, quat)
+
+
+def solve(arms: Model, arms_world, hands: Model) -> Dict[int, Tuple[Vec, Quat]]:
+    """Every hands bone: the paired ones retargeted, their ancestors held to them by rest offsets,
+    the procedural helpers solved, the rest under their parents. As tf_weapons/rig.lua's Rig.Solve."""
+    out: Dict[int, Tuple[Vec, Quat]] = {}
+    mapped = set()
+    for side in "RL":
+        part = retarget(arms_world, hands, corrections(arms, hands, side))
+        out.update(part)
+        mapped.update(part)
+    kind: Dict[int, str] = {}
+    child: Dict[int, int] = {}
+    for j in range(len(hands.bones) - 1, -1, -1):
+        if j in mapped:
+            kind[j] = "mapped"
+        parent = hands.bones[j].parent
+        if parent >= 0 and kind.get(j) in ("mapped", "above") and parent not in child:
+            kind[parent], child[parent] = "above", j
+    for j in range(len(hands.bones) - 1, -1, -1):
+        if kind.get(j) == "above":
+            c = child[j]
+            q = qmul(out[c][1], qconj(hands.bones[c].quat))
+            r = qrot(q, hands.bones[c].pos)
+            out[j] = ((out[c][0][0] - r[0], out[c][0][1] - r[1], out[c][0][2] - r[2]), q)
+    for j, b in enumerate(hands.bones):
+        if j in kind:
+            continue
+        if b.proctype == PROC_QUATINTERP:
+            out[j] = quatinterp(hands, j, out)
+        elif b.parent >= 0:
+            pp, pq = out[b.parent]
+            r = qrot(pq, b.pos)
+            out[j] = ((pp[0] + r[0], pp[1] + r[1], pp[2] + r[2]), qmul(pq, b.quat))
+        else:
+            out[j] = (b.pos, b.quat)
+    return out
+
+
+def lua_fixture(arms: Model, anims: Model, hands: Model, frames: Sequence[Tuple[str, int]]) -> str:
+    """A Lua file returning both skeletons and, for each frame, the TF2 bones' world transforms and
+    every hands bone's as solve() places them: tests/tf_weapons_rig_test.lua's oracle."""
+    def num(x: float) -> str:
+        return repr(round(x, 7))
+
+    def skeleton(m: Model) -> List[str]:
+        lines = ["\t{", f"\t\tmodel = \"{m.name}\",", "\t\tbones =", "\t\t{"]
+        for i, b in enumerate(m.bones):
+            proc = ""
+            if b.proctype == PROC_QUATINTERP:
+                control, triggers = m.quatinterp(i)
+                rows = ", ".join("{ " + ", ".join(num(x) for x in (t[0], *t[1], *t[2], *t[3])) + " }" for t in triggers)
+                proc = f", control = {control + 1}, triggers = {{ {rows} }}"
+            lines.append(f"\t\t\t{{ \"{b.name}\", {b.parent + 1}, " + ", ".join(num(x) for x in (*b.pos, *b.quat))
+                         + proc + " },")
+        lines[-1] = lines[-1].rstrip(",")
+        return lines + ["\t\t}", "\t}"]
+
+    out = ["-- Generated by .devtools/bin/mdl_rig.py fixture; do not edit.",
+           "-- Bones: { name, parent (0 none), px, py, pz, qx, qy, qz, qw [, control, triggers] }.", "return", "{",
+           "\tarms ="]
+    out += skeleton(arms)
+    out[-1] += ","
+    out.append("\thands =")
+    out += skeleton(hands)
+    out[-1] += ","
+    out += ["\tframes =", "\t{"]
+    for label, frame in frames:
+        w = arms.world(anims.pose(label, frame))
+        solved = solve(arms, w, hands)
+        arm_rows = ", ".join("{ " + ", ".join(num(x) for x in (*p, *q)) + " }" for p, q in w)
+        hand_rows = ", ".join("{ " + ", ".join(num(x) for x in (*solved[j][0], *solved[j][1])) + " }"
+                              for j in range(len(hands.bones)))
+        out += [f"\t\t{{ label = \"{label}\", frame = {frame},",
+                f"\t\t\tarms = {{ {arm_rows} }},", f"\t\t\thands = {{ {hand_rows} }} }},"]
+    out[-1] = out[-1].rstrip(",")
+    return "\n".join(out + ["\t}", "}", ""])
 
 
 def wrapped(degrees: float) -> float:
@@ -472,7 +576,8 @@ def check(arms: Model, anims: Model, hands: Model, labels: Sequence[str]) -> Dic
 def main(argv: Sequence[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--vpk", action="append", type=Path)
-    ap.add_argument("command", choices=("bones", "sequences", "attachments", "procedural", "corrections", "check"))
+    ap.add_argument("command", choices=("bones", "sequences", "attachments", "procedural", "corrections", "check",
+                                        "fixture"))
     ap.add_argument("models", nargs="+")
     a = ap.parse_args(argv)
     lib = Library(a.vpk or DEFAULT_VPKS)
@@ -483,6 +588,11 @@ def main(argv: Sequence[str]) -> int:
                 axis, angle = axis_angle(c)
                 print(f"{arms.bones[i].name:18s} -> {hands.bones[j].name:30s} {angle:6.1f} deg about "
                       f"({axis[0]:+.2f} {axis[1]:+.2f} {axis[2]:+.2f})")
+        return 0
+    if a.command == "fixture":
+        arms, anims, hands = (lib.model(n) for n in a.models[:3])
+        frames = [(spec.rsplit("@", 1)[0], int(spec.rsplit("@", 1)[1])) for spec in a.models[3:]]
+        sys.stdout.write(lua_fixture(arms, anims, hands, frames))
         return 0
     if a.command == "check":
         arms, anims, hands = (lib.model(n) for n in a.models[:3])
