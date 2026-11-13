@@ -274,13 +274,15 @@ THIRD_EYE = (75.0, -55.0, 58.0)     # in front of the player and to its right, a
 THIRD_TARGET = (0.0, 0.0, 38.0)
 
 
-def third_scene(lib: Library, names: Sequence[str], base: str, frame: int, layer: Optional[str], ghost: bool) -> Scene:
+def third_scene(lib: Library, names: Sequence[str], base: str, frame: int, layer: Optional[str], ghost: bool,
+                layer_cycle: Optional[float] = None) -> Scene:
     """A TF2 class's player animation on a GMod player model by body_rig's transformer, the weapon on
     its right hand by TF2's grip, the TF2 model a ghost brought to the GMod model's size."""
     import body_rig
     tf, anims, gm, gun = (lib.model(n) for n in names)
     seq = next(s for s in anims.sequences if s.label == base)
-    local = body_rig.layered(anims, base, frame, layer, frame / max(1, seq.frames - 1))
+    cycle = layer_cycle if layer_cycle is not None else frame / max(1, seq.frames - 1)
+    local = body_rig.layered(anims, base, frame, layer, cycle)
     w = body_rig.tf_world(tf, local)
     corr = body_rig.corrections(tf, gm)
     pose = body_rig.solve(tf, w, gm, corr)
@@ -299,6 +301,14 @@ def third_scene(lib: Library, names: Sequence[str], base: str, frame: int, layer
     layers = [Layer(gm, load_mesh(lib, gm), pose, HANDS_COLOR), Layer(gun, load_mesh(lib, gun), gun_pose, GUN_COLOR)]
     if ghost:
         layers.append(Layer(tf, load_mesh(lib, tf), dict(enumerate(w)), ARMS_COLOR, wire=True, scale=scale))
+        # TF2's own weapon where TF2's skeleton carries it, brought to the same size: what our right hand misses
+        tf_gun = {j: w[tf.index[b.name]] if b.name in tf.index else None for j, b in enumerate(gun.bones)}
+        for j, b in enumerate(gun.bones):
+            if tf_gun[j] is None:
+                pp, pq = tf_gun[b.parent]
+                r = qrot(pq, b.pos)
+                tf_gun[j] = ((pp[0] + r[0], pp[1] + r[1], pp[2] + r[2]), qmul(pq, b.quat))
+        layers.append(Layer(gun, load_mesh(lib, gun), tf_gun, ARMS_COLOR, wire=True, scale=scale))
     chain_tf = [b.name for b in tf.bones if b.name.startswith("bip_") and "dogtag" not in b.name and "pack" not in b.name]
     chain_gm = [b.name for b in gm.bones if b.name.startswith(body_rig.VB)]
     scaled_w = {i: ((p[0] * scale, p[1] * scale, p[2] * scale), q) for i, (p, q) in enumerate(w)}

@@ -402,23 +402,34 @@ def nlerp(a: Quat, b: Quat, t: float) -> Quat:
     return (q[0] / n, q[1] / n, q[2] / n, q[3] / n)
 
 
-def blend(a, b, t: float):
-    """Two local poses blended: positions lerped, rotations by QuaternionBlend."""
-    if t <= 0:
-        return a
-    if t >= 1:
-        return b
-    return [((pa[0] + (pb[0] - pa[0]) * t, pa[1] + (pb[1] - pa[1]) * t, pa[2] + (pb[2] - pa[2]) * t), nlerp(qa, qb, t))
-            for (pa, qa), (pb, qb) in zip(a, b)]
+def blend(a, b, t: float, bone_weights=None):
+    """Two local poses blended: positions lerped, rotations by QuaternionBlend; each bone at t times its
+    weight (the sequence's weightlist: a bone at 0 keeps a's)."""
+    out = []
+    for k, ((pa, qa), (pb, qb)) in enumerate(zip(a, b)):
+        w = t * (bone_weights[k] if bone_weights is not None else 1.0)
+        if w <= 0:
+            out.append((pa, qa))
+        elif w >= 1:
+            out.append((pb, qb))
+        else:
+            out.append(((pa[0] + (pb[0] - pa[0]) * w, pa[1] + (pb[1] - pa[1]) * w, pa[2] + (pb[2] - pa[2]) * w),
+                        nlerp(qa, qb, w)))
+    return out
 
 
-def add_delta(base, delta, weight: float):
-    """A delta layer added at a weight (QuaternionMA): q = base * slerp-toward(delta, weight), p += delta * weight."""
+def add_delta(base, delta, weight: float, bone_weights=None):
+    """A delta layer added at a weight (QuaternionMA): q = base * toward(delta, w), p += delta * w, each bone at
+    the weight times its own (the sequence's weightlist)."""
     out = []
     identity = (0.0, 0.0, 0.0, 1.0)
-    for (bp, bq), (dp, dq) in zip(base, delta):
-        q = qmul(bq, nlerp(identity, dq, weight)) if weight < 1 else qmul(bq, dq)
-        out.append(((bp[0] + dp[0] * weight, bp[1] + dp[1] * weight, bp[2] + dp[2] * weight), q))
+    for k, ((bp, bq), (dp, dq)) in enumerate(zip(base, delta)):
+        w = weight * (bone_weights[k] if bone_weights is not None else 1.0)
+        if w <= 0:
+            out.append((bp, bq))
+            continue
+        q = qmul(bq, nlerp(identity, dq, w)) if w < 1 else qmul(bq, dq)
+        out.append(((bp[0] + dp[0] * w, bp[1] + dp[1] * w, bp[2] + dp[2] * w), q))
     return out
 
 
@@ -438,6 +449,12 @@ class Sampler:
             self.params.append((_cstr(d, o + _i32(d, o)), struct.unpack_from("<f", d, o + 8)[0],
                                 struct.unpack_from("<f", d, o + 12)[0]))
         self.by_label = {s.label: s for s in model.sequences}
+
+    def _bone_weights(self, index: int) -> List[float]:
+        """mstudioseqdesc_t's weightlist: how much of each bone a sequence moves when it is layered."""
+        o = self._seq_offset(index)
+        at = o + _i32(self.m.d, o + 156)
+        return list(struct.unpack_from(f"<{len(self.m.bones)}f", self.m.d, at))
 
     def _seq_offset(self, index: int) -> int:
         return _i32(self.m.d, 192) + index * SEQ_SIZE
@@ -493,7 +510,8 @@ class Sampler:
         pose = self._grid(seq.index, cycle, values, label)
         delta = bool(seq.flags & STUDIO_DELTA)
         if base is not None:
-            pose = add_delta(base, pose, weight) if delta else blend(base, pose, weight)
+            weights = self._bone_weights(seq.index)
+            pose = add_delta(base, pose, weight, weights) if delta else blend(base, pose, weight, weights)
         for k in range(_i32(d, o + 148)):
             q = o + _i32(d, o + 152) + k * 24
             layer, pose_index = struct.unpack_from("<hh", d, q)
