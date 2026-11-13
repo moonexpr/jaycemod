@@ -19,3 +19,6 @@
 [submodule "addons/ulx_luadev"]
 	path = addons/ulx_luadev
 	url = git@github.com:moonexpr/ulx_luadev.git
+[submodule "addons/foundation"]
+	path = addons/foundation
+	url = git@github.com:moonexpr/foundation.git

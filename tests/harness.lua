@@ -1,5 +1,5 @@
 -- Minimal harness for Sandcastle's pure-logic libraries, run under plain
--- LuaJIT (no GMod). Libraries under test live in gamemode/foundation/ and use
+-- LuaJIT (no GMod). Libraries under test live in addons/foundation/ and use
 -- no GMod globals, so a test loads them with T.require.
 local T = { passed = 0, failed = 0 }
 
@@ -31,7 +31,12 @@ T.MODULE_DIRS =
 -- The trees an addon ships under its own lua/ that the gamemode's loader
 -- reads from the LUA path's root (shared_loader.lua's ADDON_TREES): tree ->
 -- the addon's lua/ folder.
-T.ADDON_TREES = { nextsoldier = "addons/nextsoldier/lua/", wartactics = "addons/wartactics/lua/" }
+T.ADDON_TREES =
+{
+	foundation  = "addons/foundation/lua/",
+	nextsoldier = "addons/nextsoldier/lua/",
+	wartactics  = "addons/wartactics/lua/"
+}
 
 -- A gamemode-relative path, as shared_loader.lua's LoaderFile reads it, as
 -- a repo path.

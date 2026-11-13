@@ -5,7 +5,7 @@
 -- it, in any tree, and no tree requires a feature or a ws/ file.
 local T = dofile("tests/harness.lua")
 
-local FOUNDATION = T.ROOT .. "foundation/"
+local FOUNDATION = T.File ("foundation/")
 local FOUNDATION_PREFIX = "^foundation%."
 local OUTSIDE_PREFIXES = { "^features%.", "^includes%." }
 

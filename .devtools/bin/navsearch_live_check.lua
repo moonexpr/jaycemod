@@ -17,7 +17,7 @@ local Check = WSNavSearchCheck
 
 -- The Lua twin, loaded apart from the global the native module replaced.
 local function LuaTwin ()
-	local chunk = CompileFile (GAMEMODE.FolderName .. "/gamemode/foundation/wetsands/navsearch.lua")
+	local chunk = CompileFile ("foundation/wetsands/navsearch.lua")
 	local env = setmetatable ({}, { __index = _G })
 	setfenv (chunk, env) ("ws_navsearch_check.lua_twin")
 	return package.loaded ["ws_navsearch_check.lua_twin"] or env

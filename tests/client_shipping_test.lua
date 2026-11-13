@@ -101,7 +101,7 @@ end)
 -- modules (the files under features/ and at the root with no realm),
 -- the features' client and shared parts, and the vendored libraries.
 T.test ("the sent set is the old rule's set plus the feature and ws modules", function ()
-	local expected = Set (LuaFilesUnder (T.ROOT .. "foundation/", T.ROOT))
+	local expected = Set (LuaFilesUnder (T.File ("foundation/"), T.ADDON_TREES.foundation))
 	for _, path in ipairs (LuaFilesUnder (T.ROOT .. "includes/", T.ROOT)) do expected [path] = true end
 	for _, path in ipairs (LuaFilesUnder (T.File ("wartactics/"), T.ADDON_TREES.wartactics)) do expected [path] = true end
 	for _, name in ipairs (Names (T.ROOT .. Features.ROOT, "d")) do

@@ -48,7 +48,7 @@ T.test ("WS.require keeps logical module names while resolving the new directory
 			include = function () end, -- NextSoldier, which loads itself
 			CompileFile = function (path)
 				compiled [#compiled + 1] = path
-				if path == "sandcastle/gamemode/foundation/core/namespace.lua" then
+				if path == "foundation/core/namespace.lua" then
 					return function (name)
 						fakePackage.loaded [name] =
 						{

@@ -148,6 +148,7 @@ NATIVE_BINARIES = {
 }
 # addons built in this repo, linked into the server's addons/: name -> folder
 REPO_ADDONS = {
+    "foundation": REPO / "addons" / "foundation",  # foundation: the structures and algorithms every other addon stands on
     "cstrike_weapons": REPO / "addons" / "cstrike_weapons",  # CS:S weapons and grenade effects
     "nextsoldier": REPO / "addons" / "nextsoldier",  # NextSoldier: the soldier's modules, its base entities, the response rules it speaks by
     "wartactics": REPO / "addons" / "wartactics",  # the tactics engine: the strategy the soldiers are organised by, the scenarios and monitors

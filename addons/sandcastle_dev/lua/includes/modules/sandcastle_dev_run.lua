@@ -28,7 +28,7 @@ local SERVER_NAMES = { init = true, sv = true }
 local CLIENT_NAMES = { cl = true }
 local SHARED_NAMES = { sh = true, shared = true }
 -- Trees whose files both realms load: foundation, the games modules, the soldier's addons.
-local SHARED_TREES = { "/gamemode/foundation/", "/gamemode/includes/", "^nextsoldier/", "^wartactics/" }
+local SHARED_TREES = { "^foundation/", "/gamemode/includes/", "^nextsoldier/", "^wartactics/" }
 
 function Script (luaPath)
 	local dir, class = match (luaPath, "([%w_]+)/([%w_]+)%.lua$")

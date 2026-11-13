@@ -44,7 +44,7 @@ local function Twins (module)
 		local installed
 		if ns then installed = _G [ns] and _G [ns] [name] else installed = _G [module] end
 		local env = setmetatable ({}, { __index = _G })
-		local chunk = CompileFile (GAMEMODE.FolderName .. "/gamemode/" .. Path (module))
+		local chunk = CompileFile (Path (module))
 		setfenv (chunk, env) ("ws_native_bench." .. module)
 		local lua = package.loaded ["ws_native_bench." .. module]
 		return lua, HasNative (installed) and installed or nil

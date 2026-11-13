@@ -2,7 +2,7 @@
 """Mark foundation modules as Lua twins once their native twin lands.
 
 For each module name given (list.queue, world.grid, transaction), the
-module's file under gamemode/foundation/ loses its "Core-rule exception:
+module's file under addons/foundation/lua/foundation/ loses its "Core-rule exception:
 stays Lua" comment block, and gains, just above its first line of code, the
 note that it is the Lua twin a server with native/foundation replaces. A
 file that already carries the note is left alone.
@@ -13,7 +13,7 @@ import pathlib
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-FOUNDATION = ROOT / "addons/sandcastle/gamemodes/sandcastle/gamemode/foundation"
+FOUNDATION = ROOT / "addons/foundation/lua/foundation"
 NOTE = [
     "-- This is the Lua twin, which clients run; a server with native/foundation",
     "-- has the native one in its place, which keeps this contract.",

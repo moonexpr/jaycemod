@@ -19,7 +19,7 @@ return
 			"core_*", "list_*", "tree_*", "world_*", "cache_*", "graph_*", "math_*", "file_*", "encoding_*",
 			"generator_*", "timer_*", "analysis_*", "transaction*", "configstore", "nodegraph", "wetsands_*", "foundation_*"
 		},
-		sources = { G .. "foundation/", G .. "shared_loader.lua", "native/" }
+		sources = { "addons/foundation/", "addons/sandcastle/gamemodes/wetsands/gamemode/shared_loader.lua", "native/" }
 	},
 	{
 		name = "games",
