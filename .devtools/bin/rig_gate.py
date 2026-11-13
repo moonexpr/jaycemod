@@ -3,6 +3,7 @@
 
   rig_gate.py SWEP.lua [--hands MODEL] [--vpk PATH]...
   rig_gate.py SWEP.lua --third PLAYER_MODEL       third person: TFPlayerAnimations on a GMod player model
+  rig_gate.py SWEP.lua --limits                   the viewmodel with the candidate sibling limits applied
 
 The sequences gated are the ones the weapon can play: each activity its TFAnimations names
 (addons/tf_weapons/lua/weapons/*.lua), every sequence of the class arms' animations that has it.
@@ -141,7 +142,34 @@ def native_envelope(lib: Library, hands: Model, regions: Regions, sources=None, 
     return env, frames, refused
 
 
-def gate(lib: Library, swep: Path, hands_name: str) -> bool:
+def candidate_limits(lib: Library, hands: Model, mesh):
+    """sibling_limits learned from the same native animations as the envelope: the candidate translation
+    `--limits` judges in place of what the game runs today (the addon's rig.lua does not apply it yet)."""
+    import sibling_limits
+    from mdl_rig import bone_map, canonical
+    frames = {}
+    for side in "RL":
+        frames.update(canonical(hands, [b for _, b in bone_map(side)]))
+    pairs = sibling_limits.shared_siblings(hands, mesh, frames)
+    native = []
+    sources = [lib.model(NATIVE_ANIMATIONS)] + [lib.model(f"models/weapons/c_{w}.mdl") for w in NATIVE_WEAPONS]
+    for m in sources:
+        for s in m.sequences:
+            if s.anim < 0 or s.label in NATIVE_EXCLUDED or s.flags & STUDIO_DELTA:
+                continue
+            for f in range(s.frames):
+                try:
+                    pose = merged(hands, m, s.label, f)
+                except EmptyStream:
+                    continue
+                if pose is None:
+                    break
+                native.append(pose)
+    limits = sibling_limits.learn(hands, frames, pairs, native)
+    return lambda pose: sibling_limits.apply(hands, frames, limits, pose)
+
+
+def gate(lib: Library, swep: Path, hands_name: str, limits: bool = False) -> bool:
     arms_name, animations = swep_animations(swep)
     arms, hands = lib.model(arms_name), lib.model(hands_name)
     anims = lib.model(arms.includes[0]) if arms.includes else arms
@@ -161,6 +189,9 @@ def gate(lib: Library, swep: Path, hands_name: str) -> bool:
     print(f"  native envelope: {native_frames} frames of GMod's own animations, {refused} empty frames refused, "
           f"{len(regions.keys)} mesh regions")
 
+    limit = candidate_limits(lib, hands, mesh) if limits else (lambda pose: pose)
+    if limits:
+        print("  judging the candidate: sibling limits applied (not yet what the game runs)")
     camera = Camera(SCREEN)
     empty, worst_length, over = [], (0.0, ""), {}
     above = _above(hands, arms)
@@ -172,7 +203,7 @@ def gate(lib: Library, swep: Path, hands_name: str) -> bool:
             except EmptyStream:
                 empty.append(at)
                 continue
-            pose = solve(arms, arms.world(local), hands)
+            pose = limit(solve(arms, arms.world(local), hands))
             for j, b in enumerate(hands.bones):
                 if b.parent < 0 or j in above or b.proctype == PROC_QUATINTERP:
                     continue
@@ -362,12 +393,13 @@ def main(argv: Sequence[str]) -> int:
     ap.add_argument("swep", type=Path)
     ap.add_argument("--hands", default=HANDS)
     ap.add_argument("--third", metavar="PLAYER_MODEL", help="gate third person on this GMod player model")
+    ap.add_argument("--limits", action="store_true", help="judge the candidate sibling limits (sibling_limits.py)")
     ap.add_argument("--vpk", action="append", type=Path)
     a = ap.parse_args(argv)
     lib = Library(a.vpk or DEFAULT_VPKS)
     if a.third:
         return 0 if gate_third(lib, a.swep, a.third) else 1
-    return 0 if gate(lib, a.swep, a.hands) else 1
+    return 0 if gate(lib, a.swep, a.hands, a.limits) else 1
 
 
 if __name__ == "__main__":

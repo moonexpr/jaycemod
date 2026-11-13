@@ -221,17 +221,39 @@ real base unknown, they are left out), the right hand's index-middle web passes 
 0.142 units, 6.0 px on screen, at `sg_reload_loop@4`, and its middle knuckle by 3.1 px.
 `test_rig_gate.py`'s `test_the_scattergun_passes` fails, as it should, until that is fixed.
 
-What was tried against it, measured and refuted:
+What was tried against it, measured:
 
 - each joint clamped into its own native range of turn (per axis, in its own frame, over
-  the same 6,791 native frames): the web got worse, 7.2 px. The fingers each stay in
-  range; what native animation never does is the pair together.
-- the angle between neighbouring fingers on the palm's plane: ours, 33 degrees at that
-  frame, is inside the native maximum, 85; the measure itself breaks down on curled
-  fingers, whose projections are degenerate. No explanation of the web is in hand.
+  the same 6,791 native frames): the web got worse, 7.2 px. Refuted.
+- the angle between neighbouring fingers on the palm's plane: inside the native maximum;
+  the measure breaks down on curled fingers. Refuted.
+- **the cause, validated**: the web's vertices are weighted to two siblings under the hand,
+  the index and middle finger roots, and their turn against each other is 44 degrees from
+  any native sample (every other pair of that edge's bones, under 17). Put that one relation
+  at its nearest native sample and the web falls to 0.226 units, inside native's 0.557;
+  put any other relation there and it does not move. In the fingers' own axes the pair's
+  twist and splay are inside native; their curl difference is not: the index bent back 35
+  degrees while the middle curls 42, -77 against native's -37 to +21. TF2's trigger finger
+  held off the trigger while the hand grips, which the c_arms' web was never weighted for.
+- **sibling limits** (`.devtools/bin/sibling_limits.py`): for every pair of sibling bones
+  sharing a vertex (here the neighbouring finger roots of both hands), the native range of
+  the difference of their turns, per axis in their own frames; a pose past it turns both
+  back by half the excess. The Scattergun then passes (`rig_gate.py --limits`: 2 of 86
+  regions past native, the worst 0.53 px). It costs the index fingertip up to 0.97 units of
+  TF2's pose; the hands do not move. Not yet in the addon's `rig.lua`, so the gate without
+  `--limits`, which judges what the game runs, still fails.
 
-The phase plan's own answer is per-weapon finger curl overrides (phase 3's panel), which a
-gate run can then hold.
+In third person the same cause holds at the hip: the crotch's vertices are weighted to both
+thighs, each within its native range, the pair 48 to 60 degrees from any native sample in
+the diagonal run. A per-axis box does not catch it: the native box of the thighs'
+difference is wide (sitting, crouching, climbing: one axis spans -327 to +111) and the
+diagonal run's difference lies inside it on every axis. The native cloud is not convex. A
+limit by distance to the nearest native sample needs a distance, and the data does not set
+one: a native sequence's own distance from all the others runs from 0 (the median: many
+sequences repeat) to 250 degrees (`zombie_slump_rise_01`, where the difference of rotation
+vectors also wraps), and the most novel native sequence admits every TF2 run frame. The
+other two third-person failures (the aim corner's left arm, airwalk's shoulder) are not yet
+analysed.
 
 Copying the fingers' motion from rest (a delta through the same corrections) instead of
 their direction was measured and rejected: 21 regions over the fists' envelope instead of

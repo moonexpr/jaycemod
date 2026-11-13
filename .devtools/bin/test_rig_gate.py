@@ -47,6 +47,9 @@ class GateTest(unittest.TestCase):
     def test_the_scattergun_passes(self):
         self.assertTrue(rig_gate.gate(self.lib, SCATTERGUN, rig_gate.HANDS))
 
+    def test_the_scattergun_passes_with_the_candidate_sibling_limits(self):
+        self.assertTrue(rig_gate.gate(self.lib, SCATTERGUN, rig_gate.HANDS, limits=True))
+
     def test_a_finger_splayed_25_degrees_fails_the_mesh(self):
         half = math.radians(25) / 2
         turn = (0.0, math.sin(half), 0.0, math.cos(half))
