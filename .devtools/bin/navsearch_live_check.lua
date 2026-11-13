@@ -1,4 +1,4 @@
--- On the dedicated server, with native/wetsands installed over
+-- On the dedicated server, with the native foundation installed over
 -- wetsands.navsearch: the live mesh snapshotted into both implementations
 -- (the native one in place, the Lua twin loaded beside it), the same
 -- searches between seeded random area pairs run through each, and each

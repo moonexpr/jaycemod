@@ -1,5 +1,5 @@
 -- foundation's twins answer to one interface. A server installs each native
--- twin (native/foundation, native/wetsands) over the Lua one its clients
+-- twin (foundation's native/) over the Lua one its clients
 -- run, so a name only one twin answers to is code that works in one realm
 -- and breaks in the other. Twin (core.namespace) refuses a native twin
 -- lacking a key of the Lua module's; this suite holds the rest of the
@@ -17,7 +17,7 @@
 -- native pass a Lua twin loaded here would stand on native globals.
 local T = dofile ("tests/harness.lua")
 
-local CRATES = { "foundation", "wetsands" }
+local CRATES = { "foundation" }
 
 -- module(...)'s own keys, which a Lua twin's table holds and its native
 -- twin does not take.

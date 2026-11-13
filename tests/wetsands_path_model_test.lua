@@ -1,10 +1,10 @@
 -- foundation.wetsands.path's strategies as models: each strategy's
--- Model(limits, bot), priced by native/wetsands' walker, gives the very
+-- Model(limits, bot), priced by the native foundation's walker, gives the very
 -- double its Lua Cost gives, step for step, over steps chosen to sit on
 -- every boundary the costs test (a rise of exactly a step, a jump, a drop;
 -- each room; each attribute; penalised or not; a closed area).
 local T = dofile ("tests/harness.lua")
-local Native = T.native ("wetsands").wetsands.navsearch
+local Native = T.native ("foundation").wetsands.navsearch
 local Path = wetsands.path
 local Ground = T.require ("foundation.wetsands.path.ground")
 local Scatter = T.require ("foundation.wetsands.path.scatter")

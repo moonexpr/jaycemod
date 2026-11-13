@@ -4,7 +4,7 @@
 -- a call into the native module costs (probe.Add), which no native twin of
 -- an operation that cheap could beat.
 --
--- Under plain LuaJIT (the native twins from the built native/foundation):
+-- Under plain LuaJIT (the native twins from the built the native foundation):
 --   luajit .devtools/bin/native_bench.lua [module ...]
 -- On the dedicated server (native twins installed over the globals, the Lua
 -- twins compiled beside them; the floor is unmeasured there, as GMod has no
@@ -527,7 +527,7 @@ if SERVER_SIDE then
 	WSNativeBench = Bench
 else
 	dofile ("tests/harness.lua")
-	local loaded = assert (package.loadlib ("native/foundation/target/release/libfoundation.dylib", "luaopen_foundation")) ()
+	local loaded = assert (package.loadlib ("addons/foundation/native/target/release/libfoundation.dylib", "luaopen_foundation")) ()
 	native, floor = loaded, loaded.probe
 	local modules = #arg > 0 and arg or nil
 	Bench.Run (modules)

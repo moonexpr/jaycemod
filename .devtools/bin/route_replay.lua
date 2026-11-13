@@ -5,7 +5,7 @@
 --
 --   luajit .devtools/bin/route_replay.lua RECORD.dat [--repeat N] [--reach TERM] [--native]
 --
--- --native replays through the native search (native/wetsands, built by
+-- --native replays through the native search (the native foundation, built by
 -- cargo build --release) instead of the Lua one: the same check, that each
 -- search does exactly what the live one did.
 -- Run from the repo root. --repeat replays every search N times for steadier
@@ -149,7 +149,7 @@ end
 local function Main (argv)
 	local args = Args (argv)
 	local record = Load (args.path)
-	local NavSearch = args.native and T.native ("wetsands").wetsands.navsearch or nil
+	local NavSearch = args.native and T.native ("foundation").wetsands.navsearch or nil
 	Record.Mesh (record, NavSearch or wetsands.navsearch)
 	local areas, links = 0, 0
 	for _, area in pairs (record.areas) do

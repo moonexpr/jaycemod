@@ -1,4 +1,4 @@
--- The boundary between Lua and native/foundation: what the bindings rely on
+-- The boundary between Lua and the native foundation: what the bindings rely on
 -- when a call fails, whichever twin the rest of the suite runs.
 local T = dofile ("tests/harness.lua")
 

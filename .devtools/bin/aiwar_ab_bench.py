@@ -1,5 +1,5 @@
 """An A/B bench of the AI war on the dev server: the native foundation
-(native/foundation and native/wetsands installed) against the Lua twins
+(addons/foundation/native installed) against the Lua twins
 alone, and the war's NPC soldiers (NextSoldier's NextBots) against its bot
 players, in alternating legs on the same map and settings.
 
@@ -40,7 +40,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 BIN = REPO / ".devtools/bin"
 ARTIFACTS = REPO / ".devtools/artifacts"
-CRATES = ("foundation", "wetsands")
+CRATES = ("foundation",)
 IMPLEMENTATIONS = ("native", "lua")
 ACTORS = ("npc", "bot")
 STATS_EVERY = 10

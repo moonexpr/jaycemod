@@ -1,5 +1,5 @@
 -- foundation.tree.avl: an ordered map of number keys on an AVL tree. Every
--- case runs through both twins (the Lua module and native/foundation's,
+-- case runs through both twins (the Lua module and the native foundation's,
 -- which a server installs over it); the native one runs the same algorithm
 -- node for node, so even the heights agree.
 local T = dofile ("tests/harness.lua")

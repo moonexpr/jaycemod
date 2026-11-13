@@ -1,7 +1,7 @@
 -- foundation.graph.pathfinder: NavAreaBuildPath's A* (nav_pathfind.h) over
 -- any graph the caller describes, run here on small grids whose costs the
 -- tests control, whole or a few expansions at a time. The native pass
--- (run_lua_tests.sh, WS_NATIVE=1) holds native/foundation's to every case.
+-- (run_lua_tests.sh, WS_NATIVE=1) holds the native foundation's to every case.
 local T = dofile ("tests/harness.lua")
 local Pathfinder = graph.pathfinder
 local Path = wetsands.path

@@ -1,6 +1,6 @@
 -- foundation.tree.heap: values keyed by numbers, the lowest key first and
 -- of equal keys the one pushed first. Every case runs through both twins:
--- the Lua module and native/foundation's, which a server installs over it.
+-- the Lua module and the native foundation's, which a server installs over it.
 local T = dofile ("tests/harness.lua")
 
 local IMPLEMENTATIONS =

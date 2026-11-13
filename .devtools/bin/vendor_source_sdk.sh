@@ -1,13 +1,13 @@
 #!/bin/sh
-# Copies the Source SDK 2013 files native/ builds against from a local clone
-# (default ~/Repositories/source-sdk-2013) into native/vendor/source-sdk-2013,
+# Copies the Source SDK 2013 files foundation's crate builds against from a local clone
+# (default ~/Repositories/source-sdk-2013) into addons/foundation/native/vendor/source-sdk-2013,
 # with the SDK's LICENSE and third-party notices its licence requires, and
 # records the clone's commit in the folder's COMMIT file.
 #   .devtools/bin/vendor_source_sdk.sh [path to the clone]
 set -eu
 SDK=${1:-$HOME/Repositories/source-sdk-2013}
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
-DEST=$ROOT/native/vendor/source-sdk-2013
+DEST=$ROOT/addons/foundation/native/vendor/source-sdk-2013
 FILES="
 LICENSE
 thirdpartylegalnotices.txt

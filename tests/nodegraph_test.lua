@@ -100,7 +100,7 @@ T.test ("the header alone can be read, to tell whether an installed graph fits t
 end)
 
 -- The pair searches, through both twins: the Lua module's and
--- native/foundation's, which a server patches over them. Ties are part of
+-- the native foundation's, which a server patches over them. Ties are part of
 -- the contract: nearer first, then the lower index; links nearest first,
 -- then by a, then by b; areas largest first, then in the order given.
 local TWINS =

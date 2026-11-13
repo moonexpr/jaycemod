@@ -18,7 +18,7 @@ NextSoldier, the AI-war's NextBot soldiers. Below, `gamemode/` is
 | `gamemode/includes/{gameplay,npc,system}/` | Gamemode models built on foundation: pure Lua systems, no GMod globals, I/O through ports; published as globals by `sh_init.lua` and loaded on first read (index below) |
 | `gamemode/includes/extensions/{list,world}/` | Gamemode extensions to GMod/Lua global tables, published by their `sh_init.lua` indexes |
 | `gamemode/includes/*.lua` | Gamemode glue models, required by their stable module names |
-| `addons/nextsoldier/` | NextSoldier, the soldier itself, its own addon: its collections in `lua/nextsoldier/` (`world`, `body`, `locomotion`, `senses`, `behavior`, `squad`), on foundation and sharing nothing with the gamemode but what its `host` port hands it (index below); its base entity `base_nextsoldier` in `lua/entities/` (the gamemode's `base_nextsoldier_npc` and `_combat` extend it in the gamemode's `entities/`); the response rules it speaks by, their GMod modules, autorun and `scripts/responserules/` (`docs/ns-response-rules.md`); its binary module in `native/` (a soldier's behaviours as the engine's own `Action<CLuaNextBot>`s, and `player.CreateNextSoldier`: `docs/nextsoldier-engine-behaviors.md`), on the `native/foundation` crate by path, which `check_lua.sh` builds, `server_root.py` links and `tests/harness.lua`'s `T.native` loads; its `src/` laid out by NextBot's components: `behavior/` (named `main_X` for a behaviour stack and `monitor_X_Y` for the high-level controller Y within stack X: `main_nextsoldier`, the intention `player.CreateNextSoldier` gives a bot player in place of its default one, and `main_nextlegs`, NextLegs, the stack beside it; `monitor_nextsoldier_tactical` and `monitor_nextsoldier_scenario`), `body/` (`look`, `reach`), `locomotion`, `vision`, and `engine` binding them |
+| `addons/nextsoldier/` | NextSoldier, the soldier itself, its own addon: its collections in `lua/nextsoldier/` (`world`, `body`, `locomotion`, `senses`, `behavior`, `squad`), on foundation and sharing nothing with the gamemode but what its `host` port hands it (index below); its base entity `base_nextsoldier` in `lua/entities/` (the gamemode's `base_nextsoldier_npc` and `_combat` extend it in the gamemode's `entities/`); the response rules it speaks by, their GMod modules, autorun and `scripts/responserules/` (`docs/ns-response-rules.md`); its binary module in `native/` (a soldier's behaviours as the engine's own `Action<CLuaNextBot>`s, and `player.CreateNextSoldier`: `docs/nextsoldier-engine-behaviors.md`), on foundation's crate (`addons/foundation/native`) by path, which `check_lua.sh` builds, `server_root.py` links and `tests/harness.lua`'s `T.native` loads; its `src/` laid out by NextBot's components: `behavior/` (named `main_X` for a behaviour stack and `monitor_X_Y` for the high-level controller Y within stack X: `main_nextsoldier`, the intention `player.CreateNextSoldier` gives a bot player in place of its default one, and `main_nextlegs`, NextLegs, the stack beside it; `monitor_nextsoldier_tactical` and `monitor_nextsoldier_scenario`), `body/` (`look`, `reach`), `locomotion`, `vision`, and `engine` binding them |
 | `addons/wartactics/` | The tactics engine, its own addon: the strategy soldiers are organised by (fire teams, squads, lanes, posts, scenarios, the tactical, squad and scenario monitors), apart from NextSoldier but for one bridge module, its modules in `lua/wartactics/`, published as `wartactics.<module>` (index below) |
 | `addons/foundation/lua/foundation/` | Nothing but its namespaces and three plain globals at its root (`transaction`, `configstore`, `nodegraph`): foundation is copied to the globals, so it stays small and generic. A feature's or mode's model is the feature's `model.lua` and its parts (`docs/foundation-game-split-plan.md`) |
 | `gamemodes/sandcastle/gamemode/` | Sandbox's own files, changed where the gameplay mode needs it, plus `rounds.lua` (rounds, match) and `includes/modules/game_manager.lua`. No foundation and no feature loader. TF2's map entities live in its `entities/`; those still calling `WS` run only under Wetsands until they call gamemode modules directly, modules reaching the gamemode through its hooks, and waits on its callbacks being coroutines |
@@ -33,7 +33,7 @@ NextSoldier, the AI-war's NextBot soldiers. Below, `gamemode/` is
 | `addons/ulx_luadev/` | ULX luadev, its own repository ([moonexpr/ulx_luadev](https://github.com/moonexpr/ulx_luadev)) checked out here, ignored by this one (commit and push it there); `tests/server_luadev*_test.lua` need the checkout. ULX variants of luadev's chat commands (`!l`, `!ls`, `!lm`, `!print`...) and of its console-only features (`!lfile`, `!lent`, `!lwep`, `!leffect`, `!lwatch`, `!lunwatch`, `!lcopy`, `!lspawn`); a run on the server tells its caller in chat and with a sound cue, tuned by each caller's `cl_luadev_output_*` preferences; `!print` of easylua's relative names (`this`, `we`, `there`, `trace`...) draws them for the caller a moment (`ULXLuaDevDescribe` adds lines, NextSoldier's stacks from the workbench); its library in `lua/includes/modules/` (`luadev_output`, `luadev_overlay`) |
 | `addons/model_viewer/` | Model Viewer, its own addon: a client's window on a model, to click through its acts and watch each animation (`cl_model_viewer <model>`, a model's right-click menu in the spawn menu, the C menu's icon); its values in `lua/includes/modules/model_viewer_catalog.lua` |
 | `tests/*_test.lua` | LuaJIT tests, `tests/harness.lua`; `tests/foundation_layers_test.lua` guards foundation's layers |
-| `native/` | Rust binary modules, each a drop-in that a server's `require` installs over the globals its Lua twins publish: `foundation` (foundation's structures), `wetsands` (foundation.wetsands' systems, on the foundation crate), `ws_profile` (the sampling profiler); NextSoldier's own is its addon's `native/`; `vendor/source-sdk-2013` the raw Source SDK headers they read Source's values from (`docs/native-foundation-plan.md`) |
+| `native/` | `ws_profile`, the sampling profiler, a Rust binary module. The other binary modules are their addons' `native/`, each a drop-in that a server's `require` installs over the globals its Lua twins publish: foundation's (`addons/foundation/native`: its structures and foundation.wetsands' systems, one crate, with `vendor/source-sdk-2013`, the raw Source SDK headers it reads Source's values from) and NextSoldier's (`docs/native-foundation-plan.md`) |
 | `docs/` | Design notes; `docs/research/foundation-admission-rule.md` decides what belongs in foundation; `docs/combat-repath-optimization.md` is the handoff for profiling and optimizing AI-war combat repaths |
 | `.devtools/bin/` | Project tools; `.devtools/artifacts/` generated output |
 
@@ -176,8 +176,8 @@ system that owns them, in games or a feature.
 ## foundation index
 
 foundation is the stable base the rest of the gamemode stands on, and may
-come to replace GMod's own defaults. On a server with `native/foundation` and
-`native/wetsands`, every module is its native twin, whole; clients run
+come to replace GMod's own defaults. On a server with foundation's native module
+(`addons/foundation/native`), every module is its native twin, whole; clients run
 the Lua twins. `shared_loader.lua` runs each
 namespace's `sh_index.lua`, which publishes a module per line: module
 `foundation.<namespace>.<module>` is the global `<namespace>.<module>`,
@@ -300,7 +300,7 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 ### wetsands: systems on native backing
 
 The systems moved out of `games/` because native backing speeds them up
-(`native/wetsands`, `docs/native-foundation-plan.md`); the Lua is the oracle
+(foundation's crate, `src/wetsands/`, `docs/native-foundation-plan.md`); the Lua is the oracle
 the native code is tested against, and what runs without the binary.
 
 | Module | API |
@@ -422,8 +422,7 @@ feature or game noun.
 New data structures and algorithms use or extend foundation. A server
 runs foundation in Rust and a client in Lua, never a module part one and
 part the other: a new module gets its Lua twin (what clients run, and the
-oracle) and a whole native twin in `native/foundation` (or
-`native/wetsands`), held by the same tests in both passes, and its index
+oracle) and a whole native twin in `addons/foundation/native`, held by the same tests in both passes, and its index
 line is a `Twin` (`docs/native-foundation-plan.md`). The twins answer to
 one interface, both ways: the same module keys, classes, constants and
 metamethods, and what their constructors make the same methods

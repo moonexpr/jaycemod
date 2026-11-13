@@ -8,7 +8,7 @@
 --   server_lua.py 'return WSRouteRecord.Save("pl_upward_war")'  data/ws_routes/<name>.dat
 --
 -- Each search is wrapped as it is made: a search on the mesh
--- (wetsands.navsearch, native on a server with native/wetsands) through its
+-- (wetsands.navsearch, native on a server with the native foundation) through its
 -- rules, a watched one (foundation.graph.pathfinder, on the NavGraph) through
 -- its graph. Every area the search found untraversable, every link its
 -- crossable refused, every spawn room it read (and, on the NavGraph, every

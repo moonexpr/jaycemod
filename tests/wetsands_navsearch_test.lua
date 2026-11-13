@@ -1,6 +1,6 @@
 -- foundation.wetsands.navsearch's contract, held by both implementations:
 -- the Lua one (the oracle, published by the index) and the native one
--- (native/wetsands, which a server installs over it). Every case runs
+-- (the native foundation, which a server installs over it). Every case runs
 -- through each, and the two must also agree with each other.
 local T = dofile ("tests/harness.lua")
 local Pathfinder = graph.pathfinder
@@ -11,7 +11,7 @@ local Lanes = wartactics.lanes
 local IMPLEMENTATIONS =
 {
 	{ "lua", wetsands.navsearch },
-	{ "native", T.native ("wetsands").wetsands.navsearch }
+	{ "native", T.native ("foundation").wetsands.navsearch }
 }
 
 local RED, BLUE = 2, 3
