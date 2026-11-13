@@ -211,11 +211,27 @@ weapon's file, so what ships is what is gated):
   1920x1080.
 
 The fists alone were the wrong yardstick: their hands never open round a grip, and against
-them 24 of 86 regions of the Scattergun's frames looked over-stretched. Against the guns,
-one region is past native, the right thumb tip in `sg_reload_loop@4`, by 0.013 units,
-0.53 px: the Scattergun passes. `primary_inspect_end` would fail (the left thumb tip, 1.24
-px on screen), but no SWEP plays it. Raw stretch ratios mislead here: the worst (10x, in
-`bm_fire`) are 0.1-unit webs between the finger roots, a unit of travel.
+them 24 of 86 regions of the Scattergun's frames looked over-stretched.
+
+**The Scattergun fails the gate.** An earlier version of this note said it passed, by 0.53
+px; that envelope was wrong. It read the HL2 weapons' delta sequences (their `adjustment`
+layers, made to re-grip the c_arms for other hand models) on top of the bind pose, a pose
+the engine never shows, and those phantom poses widened the envelope. Without them (their
+real base unknown, they are left out), the right hand's index-middle web passes native by
+0.142 units, 6.0 px on screen, at `sg_reload_loop@4`, and its middle knuckle by 3.1 px.
+`test_rig_gate.py`'s `test_the_scattergun_passes` fails, as it should, until that is fixed.
+
+What was tried against it, measured and refuted:
+
+- each joint clamped into its own native range of turn (per axis, in its own frame, over
+  the same 6,791 native frames): the web got worse, 7.2 px. The fingers each stay in
+  range; what native animation never does is the pair together.
+- the angle between neighbouring fingers on the palm's plane: ours, 33 degrees at that
+  frame, is inside the native maximum, 85; the measure itself breaks down on curled
+  fingers, whose projections are degenerate. No explanation of the web is in hand.
+
+The phase plan's own answer is per-weapon finger curl overrides (phase 3's panel), which a
+gate run can then hold.
 
 Copying the fingers' motion from rest (a delta through the same corrections) instead of
 their direction was measured and rejected: 21 regions over the fists' envelope instead of
@@ -232,6 +248,42 @@ section after; and a stream of a lone 255 holds no bone, which is now refused
 (`EmptyStream`) rather than read as the bind pose. No TF2 Scout frame has one; five
 frames of the HL2 weapons do, and the envelope leaves them out. Every section boundary of
 the sectioned sequences now steps within 0.8 to 1.4 times its neighbouring frames.
+
+## Third person: the per-character transformer
+
+GMod's player models have no `weapon_bone` and the c_model none of theirs, so the engine's
+bone merge puts the Scattergun nowhere near the hand. TF2 holds it rigidly in `bip_hand_R`
+through every base pose (`weapon_bone` against the hand: 0.000 units, 0.00 degrees over
+`stand`, `crouch`, `run`, `crouch_walk`, `swim` and the jumps; `airwalk` drifts 0.28), so
+the weapon goes where the hand's TF2 axes say, times that grip.
+
+What drives the hand decides how that looks. On GMod's own shotgun animations the grip
+points the barrel 34 to 53 degrees off straight ahead (TF2's grip expects TF2's wrist). Through
+`.devtools/bin/body_rig.py` (TF2's player animation on the GMod model: each bone turned as
+TF2's, corrected by the same axis method as the viewmodel's, extended to the pelvis, spine,
+neck, head, clavicles and legs with the body's left as the second axis, the pelvis placed by
+the ratio of leg lengths), the barrel is 9.6 degrees off ahead in `stand_PRIMARY`, TF2's own
+stance. Bones stay at their own lengths (2e-6 units).
+
+TF2's player animation is a stack, evaluated as the engine does (`mdl_rig.Sampler`): a base
+whose locomotion is a 3x3 grid over `move_x` and `move_y`, autolayers the model declares
+(`PRIMARY_aimmatrix_*`, a 3x4 delta grid over `body_yaw` and `body_pitch`, faded by `move_x`
+through start, peak, tail and end; `layer_idleNoise`), and gestures (attack, reload) added as
+deltas. Reading the grid's first blend alone shows a different run: forward and that blend
+are 134 degrees apart somewhere in the body.
+
+`rig_gate.py SWEP.lua --third MODEL` judges the weapon's `TFPlayerAnimations` (every base
+frame at the 9 move directions, stand at 12 aims, every gesture frame on stand; 1,338
+frames) against the player model's own animations (9,855 frames of `m_anm` on kleiner),
+through an eye 100 units off at 1080p. It fails: the left arm at the aim corner (`body_pitch`
++90, `body_yaw` -45), 3.9 px; the right hip seam running diagonally, 3.8 px; a shoulder
+helper in `airwalk`, 1.0 px. The left hand's IK has up to 6.9 units to close. Which sign of
+`body_pitch` is looking up is not known here: the in-game mapping must be checked.
+
+Decoder work on the way: animations in an external `.ani` (GMod's `m_anm.ani`) are read;
+a delta animation starts every bone it leaves out at identity rather than at rest, and a delta
+whose stream is empty is a zero (TF2's aim matrix has one at its middle), where an empty
+stream of a plain animation is still refused.
 
 ## What this decides
 

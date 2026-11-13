@@ -33,3 +33,19 @@ SWEP.Primary.Spread      = 0.0675
 SWEP.Primary.Delay       = 0.625
 SWEP.Primary.Sound       = "weapons/scatter_gun_shoot.wav"
 SWEP.DeployTime          = 0.5
+
+-- Third person: the Scout's player animations, on the player's own model (body_rig.py, rig_gate.py --third)
+SWEP.TFPlayerModel = "models/player/scout.mdl"
+SWEP.TFPlayerAnimations =
+{
+	stand       = "ACT_MP_STAND_PRIMARY",
+	crouch      = "ACT_MP_CROUCH_PRIMARY",
+	run         = "ACT_MP_RUN_PRIMARY",
+	crouchWalk  = "ACT_MP_CROUCHWALK_PRIMARY",
+	swim        = "ACT_MP_SWIM_PRIMARY",
+	air         = "ACT_MP_AIRWALK_PRIMARY",
+	attack      = "ACT_MP_ATTACK_STAND_PRIMARY",
+	reloadStart = "ACT_MP_RELOAD_STAND_PRIMARY",
+	reload      = "ACT_MP_RELOAD_STAND_PRIMARY_LOOP",
+	reloadEnd   = "ACT_MP_RELOAD_STAND_PRIMARY_END"
+}

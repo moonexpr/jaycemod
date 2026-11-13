@@ -225,6 +225,12 @@ class Layer:
     pose: Pose
     color: Tuple[int, int, int]
     wire: bool = False
+    scale: float = 1.0  # the skinned mesh scaled about the origin (a ghost brought to another's size)
+
+
+def posed(layer: Layer) -> Tuple[np.ndarray, np.ndarray]:
+    v, n = skin(layer.model, layer.mesh, layer.pose)
+    return v * layer.scale, n
 
 
 @dataclass
@@ -233,6 +239,8 @@ class Scene:
     layers: List[Layer]
     skeletons: List[Tuple[Model, Pose, Tuple[int, int, int], List[str]]] = field(default_factory=list)
     marks: Dict[str, Vec] = field(default_factory=dict)
+    camera: Optional[object] = None  # a function of the picture's size giving its eye; None: the viewmodel's
+    camera_name: str = ""
 
 
 def oracle_scene(lib: Library, names: Sequence[str], label: str, frame: int, ghost: bool, body: Sequence[int]):
@@ -259,6 +267,53 @@ def build_scene(lib, arms, hands, gun, arms_pose, hands_pose, gun_pose, title, g
     muzzle = attachment(gun, gun_pose, "muzzle")
     if muzzle:
         scene.marks["M"] = muzzle
+    return scene
+
+
+THIRD_EYE = (75.0, -55.0, 58.0)     # in front of the player and to its right, a little above
+THIRD_TARGET = (0.0, 0.0, 38.0)
+
+
+def third_scene(lib: Library, names: Sequence[str], base: str, frame: int, layer: Optional[str], ghost: bool) -> Scene:
+    """A TF2 class's player animation on a GMod player model by body_rig's transformer, the weapon on
+    its right hand by TF2's grip, the TF2 model a ghost brought to the GMod model's size."""
+    import body_rig
+    tf, anims, gm, gun = (lib.model(n) for n in names)
+    seq = next(s for s in anims.sequences if s.label == base)
+    local = body_rig.layered(anims, base, frame, layer, frame / max(1, seq.frames - 1))
+    w = body_rig.tf_world(tf, local)
+    corr = body_rig.corrections(tf, gm)
+    pose = body_rig.solve(tf, w, gm, corr)
+    scale = body_rig.gm_scale(tf, gm)
+    hand_corr = next(c for i, j, c in corr if gm.bones[j].name == body_rig.VB + "R_Hand")
+    held = body_rig.grip(w, tf)
+    wp, wq = body_rig.weapon_place(pose, gm, hand_corr, held)
+    gun_pose: Pose = {}
+    for j, b in enumerate(gun.bones):
+        if b.name == "weapon_bone":
+            gun_pose[j] = (wp, wq)
+        else:
+            pp, pq = gun_pose[b.parent]
+            r = qrot(pq, b.pos)
+            gun_pose[j] = ((pp[0] + r[0], pp[1] + r[1], pp[2] + r[2]), qmul(pq, b.quat))
+    layers = [Layer(gm, load_mesh(lib, gm), pose, HANDS_COLOR), Layer(gun, load_mesh(lib, gun), gun_pose, GUN_COLOR)]
+    if ghost:
+        layers.append(Layer(tf, load_mesh(lib, tf), dict(enumerate(w)), ARMS_COLOR, wire=True, scale=scale))
+    chain_tf = [b.name for b in tf.bones if b.name.startswith("bip_") and "dogtag" not in b.name and "pack" not in b.name]
+    chain_gm = [b.name for b in gm.bones if b.name.startswith(body_rig.VB)]
+    scaled_w = {i: ((p[0] * scale, p[1] * scale, p[2] * scale), q) for i, (p, q) in enumerate(w)}
+    title = f"{base}@{frame}" + (f" + {layer}" if layer else "") + f"  ({gm.name.split('/')[-1]} as {tf.name.split('/')[-1]})"
+    scene = Scene(title, layers, [(tf, scaled_w, ARMS_BONE_COLOR, chain_tf), (gm, pose, HANDS_BONE_COLOR, chain_gm)],
+                  camera=lambda size: LookCamera(size, THIRD_EYE, THIRD_TARGET), camera_name="third person")
+    scene.marks["r"] = pose[gm.index[body_rig.VB + "R_Hand"]][0]
+    scene.marks["l"] = pose[gm.index[body_rig.VB + "L_Hand"]][0]
+    scene.marks["W"] = wp
+    # where TF2's left hand sits on the weapon, carried onto ours: the left hand's IK target
+    tw = w[tf.index["weapon_bone"]]
+    lp = w[tf.index["bip_hand_L"]][0]
+    on_gun = qrot(qconj(tw[1]), tuple(lp[k] - tw[0][k] for k in range(3)))
+    t = qrot(wq, on_gun)
+    scene.marks["T"] = (wp[0] + t[0], wp[1] + t[1], wp[2] + t[2])
     return scene
 
 
@@ -298,7 +353,8 @@ class Camera:
         """Zoomed and shifted onto the points, the eye where it was: the same picture, closer. What is
         nearer than `near` (the upper arms by the eye, which would fill it) is left out of the picture."""
         self.NEAR = near
-        xy, _ = self.project(points[points[:, 0] > near])
+        xy, depth = self.project(points)
+        xy = xy[depth > near]
         lo, hi = xy.min(axis=0), xy.max(axis=0)
         zoom = min(self.w * (1 - 2 * margin) / max(hi[0] - lo[0], 1), self.h * (1 - 2 * margin) / max(hi[1] - lo[1], 1))
         mid = (lo + hi) / 2
@@ -309,6 +365,34 @@ class Camera:
     def to_view(self, v: np.ndarray) -> np.ndarray:
         """Directions in camera axes (right, up, toward the eye)."""
         return np.stack([-v[:, 1], v[:, 2], -v[:, 0]], axis=1)
+
+
+class LookCamera(Camera):
+    """A perspective eye anywhere, looking at a target, z up: a third person's view."""
+
+    def __init__(self, size, eye, target, fov=60.0):
+        super().__init__(size)
+        self.eye = np.array(eye, dtype=float)
+        f = np.array(target, dtype=float) - self.eye
+        self.fwd = f / np.linalg.norm(f)
+        left = np.cross([0.0, 0.0, 1.0], self.fwd)
+        self.left = left / np.linalg.norm(left)
+        self.up = np.cross(self.fwd, self.left)
+        self.f = (self.h / 2) / math.tan(math.radians(fov / 2))
+        self.NEAR = 1.0
+
+    def _local(self, p):
+        d = p - self.eye
+        return np.stack([d @ self.fwd, d @ self.left, d @ self.up], axis=1)
+
+    def project(self, p):
+        return super().project(self._local(np.asarray(p, dtype=float)))
+
+    def to_view(self, v):
+        return super().to_view(np.stack([v @ self.fwd, v @ self.left, v @ self.up], axis=1))
+
+    def fit(self, points, margin=0.06, near=1.0):
+        Camera.fit(self, points, margin, near)
 
 
 class Plan:
@@ -408,12 +492,12 @@ def draw_view(view, scene: Scene, skinned, size, font, labels: bool = True) -> I
 
 def picture(scene: Scene, with_plans: bool = True, fit: bool = False) -> Image.Image:
     font = ImageFont.load_default()
-    skinned = [skin(l.model, l.mesh, l.pose) for l in scene.layers]
-    eye = Camera(CAMERA_SIZE)
+    skinned = [posed(l) for l in scene.layers]
+    eye = scene.camera(CAMERA_SIZE) if scene.camera else Camera(CAMERA_SIZE)
     if fit:
         eye.fit(np.vstack([v for v, _ in skinned]))
     camera = draw_view(eye, scene, skinned, CAMERA_SIZE, font)
-    framing = "framed on the meshes" if fit else f"as in game, fov {VIEWMODEL_FOV:g}"
+    framing = "framed on the meshes" if fit else (scene.camera_name or f"as in game, fov {VIEWMODEL_FOV:g}")
     ImageDraw.Draw(camera).text((10, 8), f"{scene.title}  (the eye; {framing})", fill=(255, 255, 255), font=font)
     _legend(ImageDraw.Draw(camera), font, CAMERA_SIZE)
     if not with_plans:
@@ -442,9 +526,9 @@ def _ruler(pen, font, plan: Plan) -> None:
 
 
 def _legend(pen, font, size) -> None:
-    items = [("hands", HANDS_COLOR), ("weapon", GUN_COLOR), ("TF2 arms, translucent (--ghost)", ARMS_COLOR),
-             ("hands bones", HANDS_BONE_COLOR), ("TF2 bones", ARMS_BONE_COLOR),
-             ("R/L TF2 hand  r/l hand  W weapon bone  M muzzle", MARK_COLOR)]
+    items = [("your model (hands or player)", HANDS_COLOR), ("weapon", GUN_COLOR), ("TF2's model, translucent (--ghost)", ARMS_COLOR),
+             ("your model's bones", HANDS_BONE_COLOR), ("TF2's bones", ARMS_BONE_COLOR),
+             ("R/L TF2 hand  r/l yours  W weapon bone  M muzzle  T left hand's target", MARK_COLOR)]
     y = size[1] - 16 * len(items) - 6
     for text, color in items:
         pen.rectangle([10, y + 3, 20, y + 13], fill=color)
@@ -459,12 +543,12 @@ def ascii_camera(scene: Scene, size=ASCII_SIZE, fit: bool = False) -> str:
     w, h = size
     cam = Camera((w, h * 2))  # a character is about twice as tall as wide
     if fit:
-        cam.fit(np.vstack([skin(l.model, l.mesh, l.pose)[0] for l in scene.layers]))
+        cam.fit(np.vstack([posed(l)[0] for l in scene.layers]))
     grid = [[" "] * w for _ in range(h)]
     zbuf = np.full((h, w), np.inf)
     chars = {HANDS_COLOR: "#+", GUN_COLOR: "=-", ARMS_COLOR: "o."}
     for layer in scene.layers:
-        verts, _ = skin(layer.model, layer.mesh, layer.pose)
+        verts, _ = posed(layer)
         xy, depth = cam.project(verts)
         xy[:, 1] /= 2
         tri = layer.mesh.triangles
@@ -539,7 +623,9 @@ def _frames(spec: str) -> Tuple[str, int]:
 
 def main(argv: Sequence[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("command", choices=("frame", "sheet", "dump", "where"))
+    ap.add_argument("command", choices=("frame", "sheet", "dump", "where", "third"))
+    ap.add_argument("--layer", default=None)
+    ap.add_argument("--third", action="store_true", help="sheet: the third-person scene (body_rig)")
     ap.add_argument("args", nargs="+")
     ap.add_argument("--vpk", action="append", type=Path)
     ap.add_argument("--out", type=Path)
@@ -563,6 +649,13 @@ def main(argv: Sequence[str]) -> int:
     if a.command == "dump":
         scenes = [dump_scene(lib, Path(a.args[0]), a.ghost, body)]
         stems = [Path(a.args[0]).stem]
+    elif a.command == "third":
+        names = a.args[:4]
+        scenes, stems = [], []
+        for spec in a.args[4:]:
+            label, frame = _frames(spec)
+            scenes.append(third_scene(lib, names, label, frame, a.layer, a.ghost))
+            stems.append(f"third_{label}@{frame}" + (f"+{a.layer}" if a.layer else ""))
     elif a.command == "frame":
         names = a.args[:4]
         scenes, stems = [], []
@@ -578,10 +671,13 @@ def main(argv: Sequence[str]) -> int:
         rows = math.ceil(len(picks) / cols)
         sheet = Image.new("RGB", (cols * SHEET_CELL[0], rows * SHEET_CELL[1]), BACKGROUND)
         for k, frame in enumerate(picks):
-            scene = oracle_scene(lib, names, label, frame, a.ghost, body)
+            if a.third:
+                scene = third_scene(lib, names, label, frame, a.layer, a.ghost)
+            else:
+                scene = oracle_scene(lib, names, label, frame, a.ghost, body)
             cell = picture(scene, with_plans=False, fit=a.fit).resize(SHEET_CELL, Image.LANCZOS)
             sheet.paste(cell, ((k % cols) * SHEET_CELL[0], (k // cols) * SHEET_CELL[1]))
-        out = a.out or OUT_DIR / f"{label}_sheet.png"
+        out = a.out or OUT_DIR / (f"{'third_' if a.third else ''}{label}{'+' + a.layer if a.layer else ''}_sheet.png")
         sheet.save(out)
         print(out)
         return 0

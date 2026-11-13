@@ -33,7 +33,7 @@ import sys
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
-from typing import Dict, List, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from tf2_content import TF_DIR, Vpk
 
@@ -45,6 +45,7 @@ BONE_SIZE, SEQ_SIZE, ANIM_SIZE, ATTACHMENT_SIZE, TRIGGER_SIZE = 216, 212, 100, 9
 PROC_QUATINTERP = 2
 # animation flags (studio.h)
 RAWPOS, RAWROT, ANIMPOS, ANIMROT, DELTA, RAWROT2 = 0x01, 0x02, 0x04, 0x08, 0x10, 0x20
+STUDIO_DELTA = 0x0004  # mstudioanimdesc_t and mstudioseqdesc_t flags
 MIN_BEND = 3.0  # degrees: a rest bend smaller than this names no axis
 
 Vec = Tuple[float, float, float]
@@ -189,6 +190,7 @@ class Model:
         if data[:4] != b"IDST":
             raise RigError(f"{name}: not a studio model")
         self.name, self.d = name, data
+        self.ani: Optional[bytes] = None  # the .ani its animation blocks are in, when it has one
         self.version = _i32(data, 4)
         if self.version not in (48, 49):
             raise RigError(f"{name}: studio version {self.version}")
@@ -256,20 +258,32 @@ class Model:
         """mstudiobone_t.poseToBone: the 3x4 matrix, rows first, taking a bind-pose vertex into the bone."""
         return struct.unpack_from("<12f", self.d, _i32(self.d, 160) + bone * BONE_SIZE + 96)
 
+    def ani_block(self, block: int, label: str) -> Tuple[bytes, int]:
+        """The external animation file and where `block` starts in it (studiohdr_t's animblocks)."""
+        if self.ani is None:
+            raise RigError(f"{self.name}: {label} is in {_cstr(self.d, _i32(self.d, 348))}, which was not read")
+        if not 0 < block < _i32(self.d, 352):
+            raise RigError(f"{self.name}: {label} names animation block {block} of {_i32(self.d, 352)}")
+        return self.ani, _i32(self.d, _i32(self.d, 356) + block * 8)
+
     def rest(self) -> List[Tuple[Vec, Quat]]:
         return [(b.pos, b.quat) for b in self.bones]
 
     def pose(self, label: str, frame: int) -> List[Tuple[Vec, Quat]]:
-        """Local (pos, quat) of every bone in the first blend of sequence `label` at `frame`."""
+        """Local (pos, quat) of every bone in the first blend of sequence `label` at `frame` (sample()
+        blends a sequence's grid and adds its autolayers, as the engine does)."""
         seq = next((s for s in self.sequences if s.label == label), None)
         if seq is None or seq.anim < 0:
             raise RigError(f"{self.name}: no animated sequence {label}")
+        return self.anim_pose(seq.anim, frame, label)
+
+    def anim_pose(self, anim: int, frame: int, label: str = "") -> List[Tuple[Vec, Quat]]:
+        """Local (pos, quat) of every bone in animation `anim` (mstudioanimdesc_t) at whole `frame`."""
         d = self.d
-        ad = _i32(d, 184) + seq.anim * ANIM_SIZE
-        if _i32(d, ad + 52):
-            raise RigError(f"{self.name}: {label} lives in an external animation block")
+        ad = _i32(d, 184) + anim * ANIM_SIZE
         numframes = _i32(d, ad + 16)
         frame = max(0, min(frame, numframes - 1))
+        block, index, base_offset = _i32(d, ad + 52), _i32(d, ad + 56), ad
         section = _i32(d, ad + 84)
         if section:
             # mstudioanimdesc_t::pAnim: a long animation's last frame is a section of its own
@@ -278,52 +292,59 @@ class Model:
             else:
                 k = frame // section
                 frame -= k * section
-            p = ad + _i32(d, ad + _i32(d, ad + 80) + k * 8 + 4)
+            entry = ad + _i32(d, ad + 80) + k * 8
+            block, index = _i32(d, entry), _i32(d, entry + 4)
+        # block 0 is this file, the offset from the animation's descriptor; another, the .ani's block
+        if block == 0:
+            buf, p = d, base_offset + index
         else:
-            p = ad + _i32(d, ad + 56)
-        out = self.rest()
+            buf, start = self.ani_block(block, label)
+            p = start + index
+        # a delta animation (STUDIO_DELTA) is added to a pose: a bone it leaves out is unmoved, not at rest
+        delta = bool(_i32(d, ad + 12) & STUDIO_DELTA)
+        out = [((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))] * len(self.bones) if delta else self.rest()
         first = True
         while True:
-            bone, flags, step = d[p], d[p + 1], struct.unpack_from("<h", d, p + 2)[0]
+            bone, flags, step = buf[p], buf[p + 1], struct.unpack_from("<h", buf, p + 2)[0]
             if bone >= len(self.bones):  # 255: studiomdl's mark for a stream with no bone in it
-                if first:
+                if first and not delta:  # a delta with no bone moves none: an unambiguous zero
                     raise EmptyStream(f"{self.name}: {label}@{frame} has an empty animation stream")
                 return out
             first = False
             b, q = self.bones[bone], p + 4
-            pos, quat = b.pos, b.quat
+            pos, quat = ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0)) if delta else (b.pos, b.quat)
             if flags & RAWROT2:
-                v = struct.unpack_from("<Q", d, q)[0]
+                v = struct.unpack_from("<Q", buf, q)[0]
                 x, y, z = [((v >> s) & 0x1FFFFF) - 1048576 for s in (0, 21, 42)]
                 x, y, z = x / 1048576.5, y / 1048576.5, z / 1048576.5
                 w = math.sqrt(max(0.0, 1 - x * x - y * y - z * z))
                 quat, q = (x, y, z, -w if v >> 63 else w), q + 8
             elif flags & RAWROT:
-                a, c, e = struct.unpack_from("<HHH", d, q)
+                a, c, e = struct.unpack_from("<HHH", buf, q)
                 x, y, z = (a - 32768) / 32768.0, (c - 32768) / 32768.0, ((e & 0x7FFF) - 16384) / 16384.0
                 w = math.sqrt(max(0.0, 1 - x * x - y * y - z * z))
                 quat, q = (x, y, z, -w if e >> 15 else w), q + 6
             elif flags & ANIMROT:
-                offs = struct.unpack_from("<3h", d, q)
+                offs = struct.unpack_from("<3h", buf, q)
                 base = (0.0, 0.0, 0.0) if flags & DELTA else b.rot
-                quat = euler_quat(*((self._value(q + offs[k], frame, b.rotscale[k]) if offs[k] else 0.0) + base[k]
+                quat = euler_quat(*((self._value(buf, q + offs[k], frame, b.rotscale[k]) if offs[k] else 0.0) + base[k]
                                     for k in range(3)))
                 q += 6
             if flags & RAWPOS:
-                pos = tuple(_half(h) for h in struct.unpack_from("<3H", d, q))
+                pos = tuple(_half(h) for h in struct.unpack_from("<3H", buf, q))
             elif flags & ANIMPOS:
-                offs = struct.unpack_from("<3h", d, q)
+                offs = struct.unpack_from("<3h", buf, q)
                 base = (0.0, 0.0, 0.0) if flags & DELTA else b.pos
-                pos = tuple((self._value(q + offs[k], frame, b.posscale[k]) if offs[k] else 0.0) + base[k]
+                pos = tuple((self._value(buf, q + offs[k], frame, b.posscale[k]) if offs[k] else 0.0) + base[k]
                             for k in range(3))
             out[bone] = (pos, quat)
             if step == 0:
                 return out
             p += step
 
-    def _value(self, p: int, frame: int, scale: float) -> float:
+    def _value(self, d: bytes, p: int, frame: int, scale: float) -> float:
         """ExtractAnimValue: run-length encoded shorts."""
-        d, k = self.d, frame
+        k = frame
         while True:
             valid, total = d[p], d[p + 1]
             if total == 0:
@@ -361,7 +382,148 @@ class Library:
         raise RigError(f"{name}: in none of the VPKs")
 
     def model(self, name: str) -> Model:
-        return Model(name, self.read(name))
+        m = Model(name, self.read(name))
+        if _i32(m.d, 352) > 0:  # numanimblocks: animations in an external .ani
+            m.ani = self.read(_cstr(m.d, _i32(m.d, 348)))
+        return m
+
+
+# ---- sampling a sequence as the engine does (bone_setup.cpp: CalcPose, AccumulatePose, CalcAutoplaySequences) ----
+
+STUDIO_AL_SPLINE, STUDIO_AL_XFADE, STUDIO_AL_NOBLEND, STUDIO_AL_LOCAL, STUDIO_AL_POSE = 0x40, 0x80, 0x200, 0x1000, 0x4000
+
+
+def nlerp(a: Quat, b: Quat, t: float) -> Quat:
+    """QuaternionBlend: b aligned to a, a straight blend, normalized."""
+    if dot(a, b) < 0:
+        b = (-b[0], -b[1], -b[2], -b[3])
+    q = tuple(a[k] * (1 - t) + b[k] * t for k in range(4))
+    n = math.sqrt(dot(q, q)) or 1.0
+    return (q[0] / n, q[1] / n, q[2] / n, q[3] / n)
+
+
+def blend(a, b, t: float):
+    """Two local poses blended: positions lerped, rotations by QuaternionBlend."""
+    if t <= 0:
+        return a
+    if t >= 1:
+        return b
+    return [((pa[0] + (pb[0] - pa[0]) * t, pa[1] + (pb[1] - pa[1]) * t, pa[2] + (pb[2] - pa[2]) * t), nlerp(qa, qb, t))
+            for (pa, qa), (pb, qb) in zip(a, b)]
+
+
+def add_delta(base, delta, weight: float):
+    """A delta layer added at a weight (QuaternionMA): q = base * slerp-toward(delta, weight), p += delta * weight."""
+    out = []
+    identity = (0.0, 0.0, 0.0, 1.0)
+    for (bp, bq), (dp, dq) in zip(base, delta):
+        q = qmul(bq, nlerp(identity, dq, weight)) if weight < 1 else qmul(bq, dq)
+        out.append(((bp[0] + dp[0] * weight, bp[1] + dp[1] * weight, bp[2] + dp[2] * weight), q))
+    return out
+
+
+def simple_spline(s: float) -> float:
+    return 3 * s * s - 2 * s * s * s
+
+
+class Sampler:
+    """A model's sequences sampled at a cycle with pose parameters (by name, in their own units)."""
+
+    def __init__(self, model: Model):
+        self.m, d = model, model.d
+        count, base = _i32(d, 300), _i32(d, 304)
+        self.params = []
+        for k in range(count):
+            o = base + k * 20
+            self.params.append((_cstr(d, o + _i32(d, o)), struct.unpack_from("<f", d, o + 8)[0],
+                                struct.unpack_from("<f", d, o + 12)[0]))
+        self.by_label = {s.label: s for s in model.sequences}
+
+    def _seq_offset(self, index: int) -> int:
+        return _i32(self.m.d, 192) + index * SEQ_SIZE
+
+    def _param(self, values: Dict[str, float], index: int) -> float:
+        name, lo, hi = self.params[index]
+        return values.get(name, 0.0 if lo <= 0 <= hi else lo)
+
+    def _frame(self, anim: int, cycle: float, label: str):
+        """An animation at a cycle, between its two whole frames."""
+        frames = _i32(self.m.d, _i32(self.m.d, 184) + anim * ANIM_SIZE + 16)
+        at = max(0.0, min(1.0, cycle)) * (frames - 1)
+        lo = int(math.floor(at))
+        a = self.m.anim_pose(anim, lo, label)
+        if lo + 1 >= frames or at == lo:
+            return a
+        return blend(a, self.m.anim_pose(anim, lo + 1, label), at - lo)
+
+    def _grid(self, index: int, cycle: float, values: Dict[str, float], label: str):
+        """The sequence's blend grid at the pose parameters: bilinear between its four nearest animations."""
+        d, o = self.m.d, self._seq_offset(index)
+        g0, g1 = struct.unpack_from("<2i", d, o + 68)
+        p0, p1 = struct.unpack_from("<2i", d, o + 76)
+        start, end = struct.unpack_from("<2f", d, o + 84), struct.unpack_from("<2f", d, o + 92)
+        table = o + _i32(d, o + 60)
+
+        def anim(x, y):
+            return struct.unpack_from("<h", d, table + (y * g0 + x) * 2)[0]
+
+        def axis(size, param, k):
+            if size < 2 or param < 0:
+                return 0, 0, 0.0
+            span = end[k] - start[k]
+            t = (self._param(values, param) - start[k]) / span if span else 0.0
+            at = max(0.0, min(1.0, t)) * (size - 1)
+            i = min(int(math.floor(at)), size - 2)
+            return i, i + 1, at - i
+
+        x0, x1, fx = axis(g0, p0, 0)
+        y0, y1, fy = axis(g1, p1, 1)
+        row0 = blend(self._frame(anim(x0, y0), cycle, label), self._frame(anim(x1, y0), cycle, label), fx)
+        if g1 < 2:
+            return row0
+        row1 = blend(self._frame(anim(x0, y1), cycle, label), self._frame(anim(x1, y1), cycle, label), fx)
+        return blend(row0, row1, fy)
+
+    def sample(self, label: str, cycle: float, values: Dict[str, float], base=None, weight: float = 1.0):
+        """The sequence at a cycle, with its autolayers: alone (base None), or added to a base pose."""
+        seq = self.by_label.get(label)
+        if seq is None:
+            raise RigError(f"{self.m.name}: no sequence {label}")
+        d, o = self.m.d, self._seq_offset(seq.index)
+        pose = self._grid(seq.index, cycle, values, label)
+        delta = bool(seq.flags & STUDIO_DELTA)
+        if base is not None:
+            pose = add_delta(base, pose, weight) if delta else blend(base, pose, weight)
+        for k in range(_i32(d, o + 148)):
+            q = o + _i32(d, o + 152) + k * 24
+            layer, pose_index = struct.unpack_from("<hh", d, q)
+            flags = _i32(d, q + 4)
+            start, peak, tail, end = struct.unpack_from("<4f", d, q + 8)
+            if flags & STUDIO_AL_LOCAL:
+                continue
+            layer_cycle, layer_weight = cycle, weight
+            if start != end:
+                index = self._param(values, pose_index) if flags & STUDIO_AL_POSE else cycle
+                if index < start or index >= end:
+                    continue
+                s = 1.0
+                if index < peak and start != peak:
+                    s = (index - start) / (peak - start)
+                elif index > tail and end != tail:
+                    s = (end - index) / (end - tail)
+                if flags & STUDIO_AL_SPLINE:
+                    s = simple_spline(s)
+                if flags & STUDIO_AL_XFADE and index > tail:
+                    layer_weight = (s * weight) / (1 - weight + s * weight)
+                elif flags & STUDIO_AL_NOBLEND:
+                    layer_weight = s
+                else:
+                    layer_weight = weight * s
+                if not flags & STUDIO_AL_POSE:
+                    layer_cycle = (cycle - start) / (end - start)
+            name = next(s.label for s in self.m.sequences if s.index == layer)
+            pose = self.sample(name, layer_cycle, values, pose, layer_weight)
+        return pose
 
 
 # ---- the retarget: TF2 class arms -> ValveBiped hands ----
