@@ -64,13 +64,23 @@ Bones `weapon_bone` (root, 0x43f00), `weapon_bone_1` at (0, 2.37, 3.77) under it
 
 `weapon_bone_1` never moves against `weapon_bone` in any `sg_` sequence: there is no
 pump stroke to follow. `weapon_bone` is a child of `bip_hand_R` but animated against
-it: in `sg_draw` frame 0 the gun is 40 units from the right hand, and through
-`sg_reload_loop` the gun turns in the hand, the hand's place on it moving up to 9.7
-units. TF2's left hand holds a fixed point on `weapon_bone_1` (3.32, −3.14, 3.16)
-through idle and fire, leaves it by up to 5.3 units through the reload loop (2.1 in
-`sg_reload_start`), and is back on it by `sg_reload_end` frame 10. So the right hand's
-IK weight needs a curve too (0 at the start of `sg_draw`, eased off through the
-reload loop), not only the left's.
+it: in `sg_draw` frame 0 the gun is 40 units from the right hand.
+
+Which hand lets go in the reload, read in the weapon bone's axes (`rig_view.py where`;
+this corrects the first version of this note, which had the left hand leaving):
+
+| | TF2 right hand | TF2 left hand |
+|---|---|---|
+| `sg_idle`, `sg_fire` | (−2.01, 3.52, −6.67), on the grip | (3.32, −0.77, 6.93), on the fore-end |
+| `sg_reload_start` | eases off the grip | slides 2 units up the gun to (4.41, 0.00, 8.55) |
+| `sg_reload_loop` | leaves the grip, up to 9.7 units, loading shells | holds (4.41, 0.00, 8.55), within 0.2 |
+| `sg_reload_end` | back on the grip by frame 10 | back to the fore-end by frame 10 |
+
+So the left hand never leaves the gun: it holds it while the right hand loads. A left
+hand "letting go during the reload" is not in TF2's data; the right hand's IK weight is
+the one that must ease off through `sg_reload_loop` (and be 0 at the start of
+`sg_draw`), and the left hand's grip target moves between two places on the gun rather
+than releasing.
 
 ## Scout sequences and activities (`c_scout_animations.mdl`)
 
@@ -153,7 +163,37 @@ look wrong:
   (TF2's skinning hides it). Copied, it will show on the c_arms mesh.
 - With the upper arms anchored, the hands' longer forearm leaves the hand up to 3.3
   units from where TF2's is in the Scattergun's sequences: the right hand off the
-  grip by that much until IK pins it.
+  grip by that much until IK pins it, the left about 1.3 to 2.1 above the fore-end.
+
+## The TF2 arm mesh has no upper arm
+
+No vertex of `c_scout_arms.mdl` is weighted to `bip_upperArm_*` or the collars: the
+sleeve is a straight tube on the forearm, running back past the elbow toward the eye,
+so TF2 never shows its elbow bend or its upper arm. The c_arms mesh bends at the elbow
+and has an upper arm, so the hands show a pose of the TF2 skeleton that TF2's own mesh
+hides; where the animators did not care where the upper arm points, ours will point
+there anyway. At the game's framing it stays mostly off screen; in `sg_reload_loop` the
+right upper arm reaches into the picture's right edge.
+
+## Seeing it
+
+`.devtools/bin/rig_view.py` skins the three models' meshes (`.mdl`, `.vvd`, `.dx90.vtx`)
+with the bones as `mdl_rig.solve` places them and draws them: the viewmodel's eye at the
+game's field of view, or framed on the meshes (`--fit`), over three plans with a 5-unit
+ruler; the TF2 arms translucent green (`--ghost`), both skeletons, and marks for the
+hands (R/L TF2's, r/l ours), the weapon bone (W) and the muzzle (M). `sheet` lays a
+sequence's frames side by side, `--ascii` prints the eye's view as characters, and
+`where` tabulates the hands against the weapon bone, frame by frame. Pictures go to
+`.devtools/artifacts/rig_view/`.
+
+    rig_view.py frame ARMS ANIMS HANDS GUN sg_reload_loop@4 --ghost --fit
+    rig_view.py sheet ARMS ANIMS HANDS GUN sg_reload_loop --count 8 --fit
+    rig_view.py where ARMS ANIMS HANDS GUN sg_reload_loop
+
+In game, `tf_weapons_dump [name]` saves the next drawn frame, every bone of the arms,
+the hands and the weapon in the viewmodel's axes, to
+`data/tf_weapons/dumps/<name>.json`; `rig_view.py dump` draws it with the same meshes, so
+what the game did can be put beside what the oracle says it should.
 
 ## What this decides
 

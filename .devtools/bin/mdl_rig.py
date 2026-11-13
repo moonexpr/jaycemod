@@ -247,6 +247,10 @@ class Model:
             triggers.append((f[0], f[1:5], f[5:8], f[8:12]))
         return control, triggers
 
+    def pose_to_bone(self, bone: int) -> Tuple[float, ...]:
+        """mstudiobone_t.poseToBone: the 3x4 matrix, rows first, taking a bind-pose vertex into the bone."""
+        return struct.unpack_from("<12f", self.d, _i32(self.d, 160) + bone * BONE_SIZE + 96)
+
     def rest(self) -> List[Tuple[Vec, Quat]]:
         return [(b.pos, b.quat) for b in self.bones]
 
@@ -334,11 +338,14 @@ class Library:
         if not self.vpks:
             raise RigError("none of the VPKs exist: " + ", ".join(map(str, vpks)))
 
-    def model(self, name: str) -> Model:
+    def read(self, name: str) -> bytes:
         for v in self.vpks:
             if name in v:
-                return Model(name, v.read(name))
+                return v.read(name)
         raise RigError(f"{name}: in none of the VPKs")
+
+    def model(self, name: str) -> Model:
+        return Model(name, self.read(name))
 
 
 # ---- the retarget: TF2 class arms -> ValveBiped hands ----

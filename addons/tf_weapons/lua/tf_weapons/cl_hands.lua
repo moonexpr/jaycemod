@@ -3,6 +3,9 @@
 -- is posed from the arms' bones by tf_weapons/rig.lua and drawn. Our own model rather than the stock
 -- gmod_hands: docs/tf2-hands-spike.md.
 --
+-- tf_weapons_dump [name] saves what the next frame drew, every bone in the viewmodel's axes, which
+-- .devtools/bin/rig_view.py dump draws with the models' meshes.
+--
 -- tf_weapons_rebuild reads the rigs again, re-runs the pure modules from disk and remakes the models
 -- on the next frame, so an edit is picked up by autorefresh and a rebuild, with no map change and
 -- no re-equip.
@@ -209,6 +212,68 @@ function Hands.Draw (weapon, vm, ply)
 	state.hands:InvalidateBoneCache ()
 	state.hands:DrawModel ()
 	render.CullMode (MATERIAL_CULLMODE_CCW)
+
+	if Hands.dumpName then
+		Hands.WriteDump (state, weapon, vm, Hands.dumpName)
+		Hands.dumpName = nil
+	end
+end
+
+-- The viewmodel's frame: its origin, and its axes (forward, left, up) as a rotation
+local function FrameOf (vm)
+	local origin, angles = vm:GetPos (), vm:GetAngles ()
+	local f, r, u = angles:Forward (), angles:Right (), angles:Up ()
+	local qx, qy, qz, qw = TFWeapons.Rig.QuatFromMatrix (f.x, -r.x, u.x, f.y, -r.y, u.y, f.z, -r.z, u.z)
+	return origin.x, origin.y, origin.z, qx, qy, qz, qw
+end
+
+-- An entity's every bone in the viewmodel's axes, { px, py, pz, qx, qy, qz, qw } a bone
+local function EntityRows (ent, ox, oy, oz, rx, ry, rz, rw)
+	local Rig, rows = TFWeapons.Rig, {}
+	for i = 0, ent:GetBoneCount () - 1 do
+		local m = ent:GetBoneMatrix (i)
+		if m then
+			local e11, e12, e13, e14, e21, e22, e23, e24, e31, e32, e33, e34 = m:Unpack ()
+			local qx, qy, qz, qw = Rig.QuatFromMatrix (e11, e12, e13, e21, e22, e23, e31, e32, e33)
+			rows [i + 1] = { Rig.ToLocal (ox, oy, oz, rx, ry, rz, rw, e14, e24, e34, qx, qy, qz, qw) }
+		else
+			rows [i + 1] = { 0, 0, 0, 0, 0, 0, 1 }
+		end
+	end
+	return rows
+end
+
+-- What this frame drew, for .devtools/bin/rig_view.py dump: each model's bones in the viewmodel's
+-- axes (x forward, y left, z up), the solved hands as the rig placed them
+function Hands.Snapshot (state, weapon, vm)
+	local Rig, rig = TFWeapons.Rig, state.rig
+	local ox, oy, oz, rx, ry, rz, rw = FrameOf (vm)
+	local hands = {}
+	for j = 1, rig.dst.count do
+		local px, py, pz, qx, qy, qz, qw = rig.px [j], rig.py [j], rig.pz [j], rig.qx [j], rig.qy [j], rig.qz [j], rig.qw [j]
+		hands [j] = { Rig.ToLocal (ox, oy, oz, rx, ry, rz, rw, px, py, pz, qx, qy, qz, qw) }
+	end
+	state.gun:SetupBones ()
+	return
+	{
+		version = 1,
+		arms = state.armsModel, hands = state.handsModel, gun = weapon.TFModel,
+		sequence = vm:GetSequenceName (vm:GetSequence ()), cycle = vm:GetCycle (),
+		fov = weapon.ViewModelFOV,
+		bones =
+		{
+			arms = EntityRows (vm, ox, oy, oz, rx, ry, rz, rw),
+			hands = hands,
+			gun = EntityRows (state.gun, ox, oy, oz, rx, ry, rz, rw)
+		}
+	}
+end
+
+function Hands.WriteDump (state, weapon, vm, name)
+	local path = "tf_weapons/dumps/" .. name .. ".json"
+	file.CreateDir ("tf_weapons/dumps")
+	file.Write (path, util.TableToJSON (Hands.Snapshot (state, weapon, vm), true))
+	Print ("this frame saved to data/%s", path)
 end
 
 -- The pure modules again from disk, the activity names forgotten, the models remade next frame
@@ -223,6 +288,13 @@ end
 
 local REBUILD_HELP = "Read the arms and hands rigs again and remake the held TF2 weapon's hands"
 concommand.Add ("tf_weapons_rebuild", function () Hands.Rebuild () end, nil, REBUILD_HELP)
+
+local DUMP_HELP = "Save the next frame's arms, hands and weapon bones to data/tf_weapons/dumps/<name>.json"
+concommand.Add ("tf_weapons_dump", function (_, _, args)
+	local name = string.gsub (args [1] or os.date ("%Y%m%d_%H%M%S"), "[^%w_%-]", "_")
+	Hands.dumpName = name
+	if not Hands.state then Print ("saved when a TF2 weapon is next drawn in your hands") end
+end, nil, DUMP_HELP)
 
 hook.Add ("Think", "moonexpr/tf-weapons/release-models", function ()
 	local state = Hands.state

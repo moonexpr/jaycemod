@@ -44,7 +44,7 @@ local function MatrixOf (w)
 	return m
 end
 
-local made, removed, hooks, commands, printed = {}, 0, {}, {}, {}
+local made, removed, hooks, commands, printed, written = {}, 0, {}, {}, {}, {}
 
 local function Entity (model)
 	local skeleton = SKELETONS [model]
@@ -68,6 +68,8 @@ local function Entity (model)
 		if build and self.stale then build (self, self:GetBoneCount ()) end
 		self.stale = false
 	end
+	function ent:SetupBones () end
+	function ent:GetBoneMatrix () return nil end
 	function ent:Remove ()
 		self.valid = false
 		removed = removed + 1
@@ -94,6 +96,9 @@ local function Install ()
 		return ent
 	end
 	_G.file = { Read = function (path) return SKELETONS [path] and path or nil end }
+	_G.file.CreateDir = function () end
+	_G.file.Write = function (path, data) written [path] = data end
+	_G.util = { TableToJSON = function (t) return t end }
 	_G.render = { SetBlend = function (b) _G.render.blend = b end, CullMode = function () end }
 	_G.concommand = { Add = function (name, fn) commands [name] = fn end }
 	_G.hook = { Add = function (event, id, fn) hooks [event .. " " .. id] = fn end }
@@ -247,6 +252,51 @@ T.test ("loading the driver again keeps what it holds", function ()
 	dofile ("addons/tf_weapons/lua/tf_weapons/cl_hands.lua")
 	T.eq (TFWeapons.Hands.state, state, "the state survives an autorefresh")
 	T.eq (TFWeapons.Hands,       Hands, "one table")
+end)
+
+-- The viewmodel moved to (100, 50, 10) and turned 90 degrees to the left: its forward is world +y
+local ORIGIN = { 100, 50, 10 }
+local TURN = { 0, 0, math.sqrt (0.5), math.sqrt (0.5) }
+
+local function Turned (w)
+	local x, y, z = Rig.Rotate (TURN [1], TURN [2], TURN [3], TURN [4], w [1], w [2], w [3])
+	local qx, qy, qz, qw = Rig.Mul (TURN [1], TURN [2], TURN [3], TURN [4], w [4], w [5], w [6], w [7])
+	return { x + ORIGIN [1], y + ORIGIN [2], z + ORIGIN [3], qx, qy, qz, qw }
+end
+
+T.test ("a dump saves the frame drawn in the viewmodel's axes, wherever the viewmodel stands", function ()
+	Hands.Release ()
+	local frame = FIXTURE.frames [3]
+	local vm, ply, weapon = Viewmodel (frame), Player (), Weapon ()
+	function vm:GetBoneMatrix (i) return MatrixOf (Turned (frame.arms [i + 1])) end
+	function vm:GetPos () return { x = ORIGIN [1], y = ORIGIN [2], z = ORIGIN [3] } end
+	function vm:GetAngles ()
+		return
+		{
+			Forward = function () return { x = 0, y = 1, z = 0 } end,
+			Right = function () return { x = 1, y = 0, z = 0 } end,
+			Up = function () return { x = 0, y = 0, z = 1 } end
+		}
+	end
+	function vm:GetSequence () return 30 end
+	function vm:GetSequenceName () return frame.label end
+	function vm:GetCycle () return 0.5 end
+	weapon.ViewModelFOV = 54
+	commands.tf_weapons_dump (nil, nil, { "reload top" })
+	Hands.Draw (weapon, vm, ply)
+	local saved = written ["tf_weapons/dumps/reload_top.json"]
+	T.eq (saved ~= nil,   true,        "written, its name made safe")
+	T.eq (Hands.dumpName, nil,         "once")
+	T.eq (saved.sequence, frame.label, "the sequence")
+	T.eq (saved.arms,     ARMS_MODEL,  "the arms model")
+	for _, part in ipairs ({ "arms", "hands" }) do
+		for j, expected in ipairs (frame [part]) do
+			local row, what = saved.bones [part] [j], part .. " " .. j
+			for k = 1, 3 do T.near (row [k], expected [k], POSITION_EPSILON, what) end
+			local dot = row [4] * expected [4] + row [5] * expected [5] + row [6] * expected [6] + row [7] * expected [7]
+			T.near (math.abs (dot), 1, ROTATION_EPSILON, what .. " rotation")
+		end
+	end
 end)
 
 T.finish ()

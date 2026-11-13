@@ -81,6 +81,13 @@ end
 
 local QuatFromMatrix = Rig.QuatFromMatrix
 
+-- A world transform (p, q) in the axes of a frame (o, r): its position and rotation seen from the frame
+function Rig.ToLocal (ox, oy, oz, rx, ry, rz, rw, px, py, pz, qx, qy, qz, qw)
+	local lx, ly, lz = Rotate (-rx, -ry, -rz, rw, px - ox, py - oy, pz - oz)
+	local ax, ay, az, aw = Mul (-rx, -ry, -rz, rw, qx, qy, qz, qw)
+	return lx, ly, lz, ax, ay, az, aw
+end
+
 -- The axis and angle (radians, 0..pi) of a rotation
 local function AxisAngle (x, y, z, w)
 	if w < 0 then x, y, z, w = -x, -y, -z, -w end
