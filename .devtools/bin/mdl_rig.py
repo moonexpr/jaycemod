@@ -55,6 +55,11 @@ class RigError(Exception):
     pass
 
 
+class EmptyStream(RigError):
+    """A frame whose animation data holds no bone (studiomdl wrote a lone 255): what the engine makes of it is
+    not known here, so it is refused rather than read as the bind pose."""
+
+
 # ---- maths: quaternions (x, y, z, w) as Source stores them ----
 
 def qmul(a: Quat, b: Quat) -> Quat:
@@ -263,17 +268,28 @@ class Model:
         ad = _i32(d, 184) + seq.anim * ANIM_SIZE
         if _i32(d, ad + 52):
             raise RigError(f"{self.name}: {label} lives in an external animation block")
-        frame = max(0, min(frame, _i32(d, ad + 16) - 1))
+        numframes = _i32(d, ad + 16)
+        frame = max(0, min(frame, numframes - 1))
         section = _i32(d, ad + 84)
         if section:
-            k = frame // section
+            # mstudioanimdesc_t::pAnim: a long animation's last frame is a section of its own
+            if numframes > section and frame == numframes - 1:
+                k, frame = numframes // section + 1, 0
+            else:
+                k = frame // section
+                frame -= k * section
             p = ad + _i32(d, ad + _i32(d, ad + 80) + k * 8 + 4)
-            frame -= k * section
         else:
             p = ad + _i32(d, ad + 56)
         out = self.rest()
+        first = True
         while True:
             bone, flags, step = d[p], d[p + 1], struct.unpack_from("<h", d, p + 2)[0]
+            if bone >= len(self.bones):  # 255: studiomdl's mark for a stream with no bone in it
+                if first:
+                    raise EmptyStream(f"{self.name}: {label}@{frame} has an empty animation stream")
+                return out
+            first = False
             b, q = self.bones[bone], p + 4
             pos, quat = b.pos, b.quat
             if flags & RAWROT2:

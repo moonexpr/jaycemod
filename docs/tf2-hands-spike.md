@@ -195,6 +195,44 @@ the hands and the weapon in the viewmodel's axes, to
 `data/tf_weapons/dumps/<name>.json`; `rig_view.py dump` draws it with the same meshes, so
 what the game did can be put beside what the oracle says it should.
 
+## The gate: no more deformation than GMod's own animations make
+
+`.devtools/bin/rig_gate.py SWEP.lua` fails (exit 1) a weapon whose retarget goes past the
+evidence, over every frame of every sequence its `TFAnimations` can play (read from the
+weapon's file, so what ships is what is gated):
+
+- **streams**: no frame's animation data is empty.
+- **lengths**: every hands bone at its own rest distance from its parent (worst 5e-7 units).
+- **mesh**: the c_arms mesh deforms no more than GMod's own animations deform it. The
+  envelope is measured, not chosen: per region (the edges whose ends are weighted most to
+  the same two bones), the largest change of an edge's length over 7,349 frames of the
+  fists' and the 16 HL2 c_ weapons' animations, bone-merged onto the hands by name as the
+  engine merges them. An excess fails once it reaches 1 px through the game's camera at
+  1920x1080.
+
+The fists alone were the wrong yardstick: their hands never open round a grip, and against
+them 24 of 86 regions of the Scattergun's frames looked over-stretched. Against the guns,
+one region is past native, the right thumb tip in `sg_reload_loop@4`, by 0.013 units,
+0.53 px: the Scattergun passes. `primary_inspect_end` would fail (the left thumb tip, 1.24
+px on screen), but no SWEP plays it. Raw stretch ratios mislead here: the worst (10x, in
+`bm_fire`) are 0.1-unit webs between the finger roots, a unit of travel.
+
+Copying the fingers' motion from rest (a delta through the same corrections) instead of
+their direction was measured and rejected: 21 regions over the fists' envelope instead of
+24, its worst worse (0.76 against 0.70), and fingers up to 31 degrees off TF2's.
+
+`test_rig_gate.py` holds the gate to its job: the Scattergun passes; an index finger turned
+25 degrees fails the mesh (11.8 px); a hand moved 0.5 units off its forearm fails the
+lengths. It runs where TF2's and GMod's VPKs are (`MDL_RIG_VPKS`, or the CrossOver installs)
+and says it skipped where they are not.
+
+Two decoder faults found on the way, both fixed in `mdl_rig.py`: a long animation's last
+frame is a section of its own (`mstudioanimdesc_t::pAnim`), which it had read as the
+section after; and a stream of a lone 255 holds no bone, which is now refused
+(`EmptyStream`) rather than read as the bind pose. No TF2 Scout frame has one; five
+frames of the HL2 weapons do, and the envelope leaves them out. Every section boundary of
+the sectioned sequences now steps within 0.8 to 1.4 times its neighbouring frames.
+
 ## What this decides
 
 **Drawing the hands: a clientside model of our own, drawn in `SWEP:PostDrawViewModel`,
