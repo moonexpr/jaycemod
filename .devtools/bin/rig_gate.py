@@ -3,7 +3,10 @@
 
   rig_gate.py SWEP.lua [--hands MODEL] [--vpk PATH]...
   rig_gate.py SWEP.lua --third PLAYER_MODEL       third person: TFPlayerAnimations on a GMod player model
-  rig_gate.py SWEP.lua --limits                   the viewmodel with the candidate sibling limits applied
+  rig_gate.py SWEP.lua --mode runtime|runtime+limits
+                                                  the viewmodel as the old runtime retarget (rig.lua) poses it,
+                                                  without or with the sibling limits; by default, as the
+                                                  compiled model plays it (vm_bake: limits and IK)
 
 The sequences gated are the ones the weapon can play: each activity its TFAnimations names
 (addons/tf_weapons/lua/weapons/*.lua), every sequence of the class arms' animations that has it.
@@ -47,6 +50,10 @@ NATIVE_WEAPONS = ("357", "bugbait", "crossbow", "crowbar", "grenade", "irifle", 
 NATIVE_EXCLUDED = {"seq_admire"}
 SCREEN = (1920, 1080)
 PIXEL_FLOOR = 1.0       # a mesh edge's excess over the native envelope, on screen
+# What the viewmodel's eye can see: past the near plane (the SDK's view.cpp: viewEye.zNearViewmodel = 1) and
+# inside the frame of the widest screen judged (Source widens the view sideways with the aspect ratio)
+VIEWMODEL_NEAR = 1.0
+WIDEST_ASPECT = 21 / 9
 LENGTH_EPSILON = 1e-3   # units
 MIN_EDGE = 0.05         # units: shorter bind-pose edges are left out of the regions
 # Bumped whenever mdl_rig's decoding or rig_view's skinning changes: a cached envelope from before is dropped
@@ -144,7 +151,7 @@ def native_envelope(lib: Library, hands: Model, regions: Regions, sources=None, 
 
 def candidate_limits(lib: Library, hands: Model, mesh):
     """sibling_limits learned from the same native animations as the envelope: the candidate translation
-    `--limits` judges in place of what the game runs today (the addon's rig.lua does not apply it yet)."""
+    `--mode runtime+limits` judges on the old runtime retarget."""
     import sibling_limits
     from mdl_rig import bone_map, canonical
     frames = {}
@@ -169,7 +176,24 @@ def candidate_limits(lib: Library, hands: Model, mesh):
     return lambda pose: sibling_limits.apply(hands, frames, limits, pose)
 
 
-def gate(lib: Library, swep: Path, hands_name: str, limits: bool = False) -> bool:
+def _seen(xy: np.ndarray, depth: np.ndarray) -> bool:
+    """Whether the viewmodel's eye shows an edge on some screen judged: both its ends past the near plane and
+    inside the frame of the widest aspect, as tall as SCREEN."""
+    half = SCREEN[1] / 2 * WIDEST_ASPECT
+    left, right = SCREEN[0] / 2 - half, SCREEN[0] / 2 + half
+    inside = (xy[:, 0] >= left) & (xy[:, 0] <= right) & (xy[:, 1] >= 0) & (xy[:, 1] <= SCREEN[1])
+    return bool(depth.min() > VIEWMODEL_NEAR and inside.all())
+
+
+MODES = ("bake", "runtime", "runtime+limits")
+
+
+def gate(lib: Library, swep: Path, hands_name: str, mode: str = "bake", mutate=None) -> bool:
+    """mode: what poses the hands. bake: vm_bake, what the compiled viewmodel plays. runtime: the old runtime
+    retarget alone (the addon's rig.lua); runtime+limits: with sibling_limits. mutate(pose, arms_world, hands)
+    -> pose: a change made to every pose judged (the tests break the retarget on purpose)."""
+    if mode not in MODES:
+        raise RigError(f"no mode {mode}: one of {', '.join(MODES)}")
     arms_name, animations = swep_animations(swep)
     arms, hands = lib.model(arms_name), lib.model(hands_name)
     anims = lib.model(arms.includes[0]) if arms.includes else arms
@@ -189,11 +213,16 @@ def gate(lib: Library, swep: Path, hands_name: str, limits: bool = False) -> boo
     print(f"  native envelope: {native_frames} frames of GMod's own animations, {refused} empty frames refused, "
           f"{len(regions.keys)} mesh regions")
 
-    limit = candidate_limits(lib, hands, mesh) if limits else (lambda pose: pose)
-    if limits:
-        print("  judging the candidate: sibling limits applied (not yet what the game runs)")
+    if mode == "bake":
+        import vm_bake
+        baked = vm_bake.pipeline(lib, arms, hands)
+        pose_fn = lambda w: baked(w)[0]  # noqa: E731
+    else:
+        limit = candidate_limits(lib, hands, mesh) if mode == "runtime+limits" else (lambda pose: pose)
+        pose_fn = lambda w: limit(solve(arms, w, hands))  # noqa: E731
+    print(f"  judging: {mode}")
     camera = Camera(SCREEN)
-    empty, worst_length, over = [], (0.0, ""), {}
+    empty, worst_length, over, unseen = [], (0.0, ""), {}, {}
     above = _above(hands, arms)
     for s in sequences:
         for f in range(s.frames):
@@ -203,7 +232,10 @@ def gate(lib: Library, swep: Path, hands_name: str, limits: bool = False) -> boo
             except EmptyStream:
                 empty.append(at)
                 continue
-            pose = limit(solve(arms, arms.world(local), hands))
+            w = arms.world(local)
+            pose = pose_fn(w)
+            if mutate is not None:
+                pose = mutate(pose, w, hands)
             for j, b in enumerate(hands.bones):
                 if b.parent < 0 or j in above or b.proctype == PROC_QUATINTERP:
                     continue
@@ -220,9 +252,10 @@ def gate(lib: Library, swep: Path, hands_name: str, limits: bool = False) -> boo
                 i, j = regions.edges[n]
                 xy, depth = camera.project(v[[i, j]])
                 px = excess * np.linalg.norm(xy[0] - xy[1]) / max(np.linalg.norm(v[i] - v[j]), 1e-9)
-                visible = bool(depth.min() > camera.NEAR and ((xy >= 0) & (xy <= SCREEN)).all())
-                if px > over.get(k, (0.0,))[0]:
-                    over[k] = (px, excess, at, visible)
+                visible = _seen(xy, depth)
+                book = over if visible else unseen
+                if px > book.get(k, (0.0,))[0]:
+                    book[k] = (px, excess, at, visible)
 
     if empty:
         print(f"FAIL {len(empty)} frames with empty animation streams: {empty[:5]}")
@@ -237,12 +270,13 @@ def gate(lib: Library, swep: Path, hands_name: str, limits: bool = False) -> boo
     failing = {k: o for k, o in over.items() if o[0] >= PIXEL_FLOOR}
     for k, (px, excess, at, visible) in sorted(over.items(), key=lambda kv: -kv[1][0]):
         verdict = "FAIL" if k in failing else "    "
-        print(f"{verdict} mesh {regions.name(k):24s} {excess:.3f} units past native = {px:.2f} px "
-              f"({'on' if visible else 'off'} screen) at {at}")
+        print(f"{verdict} mesh {regions.name(k):24s} {excess:.3f} units past native = {px:.2f} px at {at}")
+    for k, (px, excess, at, visible) in sorted(unseen.items(), key=lambda kv: -kv[1][1]):
+        print(f"     mesh {regions.name(k):24s} {excess:.3f} units past native where no screen shows it, at {at}")
     if failing:
         ok = False
     else:
-        print(f"ok   mesh: {len(over)} of {len(regions.keys)} regions past native, none by {PIXEL_FLOOR:g} px")
+        print(f"ok   mesh: {len(over)} of {len(regions.keys)} regions past native in sight, none by {PIXEL_FLOOR:g} px")
     print("PASS" if ok else "FAILED")
     return ok
 
@@ -393,13 +427,13 @@ def main(argv: Sequence[str]) -> int:
     ap.add_argument("swep", type=Path)
     ap.add_argument("--hands", default=HANDS)
     ap.add_argument("--third", metavar="PLAYER_MODEL", help="gate third person on this GMod player model")
-    ap.add_argument("--limits", action="store_true", help="judge the candidate sibling limits (sibling_limits.py)")
+    ap.add_argument("--mode", choices=MODES, default="bake")
     ap.add_argument("--vpk", action="append", type=Path)
     a = ap.parse_args(argv)
     lib = Library(a.vpk or DEFAULT_VPKS)
     if a.third:
         return 0 if gate_third(lib, a.swep, a.third) else 1
-    return 0 if gate(lib, a.swep, a.hands, a.limits) else 1
+    return 0 if gate(lib, a.swep, a.hands, a.mode) else 1
 
 
 if __name__ == "__main__":

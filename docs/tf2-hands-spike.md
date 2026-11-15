@@ -340,6 +340,40 @@ their vertices with them. Their triggers are only in the `.mdl`, so the rebuild 
 them from the file (`file.Open(model, "rb", "GAME")`, one struct per bone found with
 `BONE_ALWAYS_PROCEDURAL`) and the frame evaluates them as `DoQuatInterpBone` does.
 
+## Recompiled: the viewmodel as a GMod c_ weapon
+
+The operator's call, after the gate: compile the models rather than pose the hands every frame,
+and take DynaBase for third person. The runtime above (a clientside hands model, a
+`BuildBonePositions` callback) is what `addons/tf_weapons` still runs until a compiled model is
+checked in game; it is no longer the plan.
+
+`vm_build.py SWEP.lua` writes a weapon's sources into `.devtools/artifacts/vm_build/<name>/`
+(Valve's content reshaped, so never committed), laid out as GMod's `c_smg1.mdl` is: the 39
+c_arms bones every stock hands model shares, each `$bonemerge`d (flag `0x40000`, as c_smg1's),
+then a second root, `weapon_root`, with the TF2 c_model's bones, mesh, skins and attachments.
+A plain SWEP with `UseHands` then draws the player's own hands by the engine's bone merge, and
+nothing runs per frame. Each frame is `vm_bake`'s: the retarget, the fingers and thumbs held to
+the c_arms' own range (`sibling_limits`), both hands put back where TF2's are by a two-bone IK
+(`ik.py`, shortfall 0 over 864 hand-frames of the Scattergun, Pistol and Bat), the helpers
+solved, and the weapon's bones exactly where TF2's arms carry them. Each sequence takes GMod's
+ACT_VM_* activity. `--verify` reads the SMDs back against the bake (Scattergun: arm 5.2e-5
+units and 1.7e-4°, weapon vertices 1.7e-5 units).
+
+`model_compile.py SWEP.lua` runs GMod's `studiomdl.exe` under CrossOver in the bottle
+`GModServer` (never `Steam`, as `srcds.py`), with a `gameinfo.txt` of our own as its game so
+nothing is written in the shared install, moves what it wrote into
+`addons/tf_weapons/models/` (gitignored) and holds the model to its sources with
+`vm_build.check_compiled`: every bone and parent, the arm bones' merge flag, each sequence's
+activity, every frame (0.01 units, 0.1°: ten of studiomdl's 16-bit steps, derived, not
+measured), the winding, the vertices and texture coordinates. The check passes GMod's own
+`c_smg1.mdl` against sources written back out of it (0.00003 units, 0.0002°) and fails it when
+a frame or an activity is changed (`test_vm_build.py`).
+
+Not verified: studiomdl was not run here (the SDK needs a Steam login; GMod's dedicated server
+has none). That GMod's client ships `bin/studiomdl.exe` (or `bin/win64/`), that it compiles
+against a `gameinfo.txt` with only its own path, and that the TF2 materials the QC names are
+found in game with TF2 mounted are all the operator's first run to find out.
+
 ## Not verified
 
 - Whether GMod runs the `BuildBonePositions` callback before or after it evaluates

@@ -38,42 +38,35 @@ class GateTest(unittest.TestCase):
     def setUpClass(cls):
         cls.lib = Library(VPKS)
 
-    def setUp(self):
-        self.real = rig_gate.solve
-
-    def tearDown(self):
-        rig_gate.solve = self.real
-
-    def test_the_scattergun_passes(self):
+    def test_the_scattergun_as_compiled_passes(self):
         self.assertTrue(rig_gate.gate(self.lib, SCATTERGUN, rig_gate.HANDS))
 
-    def test_the_scattergun_passes_with_the_candidate_sibling_limits(self):
-        self.assertTrue(rig_gate.gate(self.lib, SCATTERGUN, rig_gate.HANDS, limits=True))
+    def test_the_old_runtime_retarget_fails_and_its_limits_pass(self):
+        self.assertFalse(rig_gate.gate(self.lib, SCATTERGUN, rig_gate.HANDS, mode="runtime"))
+        self.assertTrue(rig_gate.gate(self.lib, SCATTERGUN, rig_gate.HANDS, mode="runtime+limits"))
 
     def test_a_finger_splayed_25_degrees_fails_the_mesh(self):
         half = math.radians(25) / 2
         turn = (0.0, math.sin(half), 0.0, math.cos(half))
 
-        def splayed(arms, w, hands):
-            out = self.real(arms, w, hands)
+        def splayed(pose, w, hands):
+            pose = dict(pose)
             for name in ("Finger1", "Finger11", "Finger12"):
                 j = hands.index["ValveBiped.Bip01_R_" + name]
-                out[j] = (out[j][0], qmul(out[j][1], turn))
-            return out
+                pose[j] = (pose[j][0], qmul(pose[j][1], turn))
+            return pose
 
-        rig_gate.solve = splayed
-        self.assertFalse(rig_gate.gate(self.lib, SCATTERGUN, rig_gate.HANDS))
+        self.assertFalse(rig_gate.gate(self.lib, SCATTERGUN, rig_gate.HANDS, mutate=splayed))
 
     def test_a_hand_moved_off_its_forearm_fails_the_lengths(self):
-        def moved(arms, w, hands):
-            out = self.real(arms, w, hands)
+        def moved(pose, w, hands):
+            pose = dict(pose)
             j = hands.index["ValveBiped.Bip01_R_Hand"]
-            (x, y, z), q = out[j]
-            out[j] = ((x + 0.5, y, z), q)
-            return out
+            (x, y, z), q = pose[j]
+            pose[j] = ((x + 0.5, y, z), q)
+            return pose
 
-        rig_gate.solve = moved
-        self.assertFalse(rig_gate.gate(self.lib, SCATTERGUN, rig_gate.HANDS))
+        self.assertFalse(rig_gate.gate(self.lib, SCATTERGUN, rig_gate.HANDS, mutate=moved))
 
 
 if __name__ == "__main__":

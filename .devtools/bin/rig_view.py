@@ -84,9 +84,11 @@ class Mesh:
     bones: np.ndarray      # (n, 3) bone indices
     weights: np.ndarray    # (n, 3)
     triangles: np.ndarray  # (m, 3) vertex indices
+    uvs: Optional[np.ndarray] = None        # (n, 2)
+    materials: Optional[np.ndarray] = None  # (m,) each triangle's texture index (mstudiomesh_t.material)
 
 
-def _vvd(data: bytes) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def _vvd(data: bytes, with_uv: bool = False):
     if data[:4] != b"IDSV":
         raise RigError("not a .vvd")
     lod_vertices, fixups, fixup_start = _i32(data, 16), _i32(data, 48), _i32(data, 52)
@@ -105,7 +107,8 @@ def _vvd(data: bytes) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         verts = verts[:lod_vertices]
     weights = verts["w"].astype(np.float64).copy()
     weights[np.arange(3)[None, :] >= verts["n"][:, None]] = 0.0
-    return verts["p"].astype(np.float64), verts["nm"].astype(np.float64), verts["b"].astype(np.int64), weights
+    out = (verts["p"].astype(np.float64), verts["nm"].astype(np.float64), verts["b"].astype(np.int64), weights)
+    return out + (verts["uv"].astype(np.float64),) if with_uv else out
 
 
 def _strip_triangles(indices: Sequence[int], flags: int) -> List[Tuple[int, int, int]]:
@@ -120,10 +123,11 @@ def _strip_triangles(indices: Sequence[int], flags: int) -> List[Tuple[int, int,
 
 def load_mesh(lib: Library, model: Model, body: Sequence[int] = ()) -> Mesh:
     stem = model.name[:-len(".mdl")]
-    positions, normals, bones, weights = _vvd(lib.read(stem + ".vvd"))
+    positions, normals, bones, weights, uvs = _vvd(lib.read(stem + ".vvd"), with_uv=True)
     vtx = lib.read(stem + ".dx90.vtx")
     md = model.d
     tris: List[Tuple[int, int, int]] = []
+    mats: List[int] = []
     parts, part_base = _i32(md, 232), _i32(md, 236)
     vtx_parts = _i32(vtx, 32)
     for p in range(parts):
@@ -140,6 +144,7 @@ def load_mesh(lib: Library, model: Model, body: Sequence[int] = ()) -> Mesh:
         vmeshes = vl + _i32(vtx, vl + 4)
         for m in range(nmeshes):
             mesh_offset = _i32(md, mm + mesh_index + m * 116 + 12)
+            material = _i32(md, mm + mesh_index + m * 116)
             vmesh = vmeshes + m * VTX["mesh"]
             for g in range(_i32(vtx, vmesh)):
                 vg = vmesh + _i32(vtx, vmesh + 4) + g * VTX["group"]
@@ -153,7 +158,9 @@ def load_mesh(lib: Library, model: Model, body: Sequence[int] = ()) -> Mesh:
                     for a, b, c in _strip_triangles(index[first:first + count], flags):
                         base = model_vertex + mesh_offset
                         tris.append((base + orig[a], base + orig[b], base + orig[c]))
-    return Mesh(positions, normals, bones, weights, np.array(tris, dtype=np.int64).reshape(-1, 3))
+                        mats.append(material)
+    return Mesh(positions, normals, bones, weights, np.array(tris, dtype=np.int64).reshape(-1, 3), uvs,
+                np.array(mats, dtype=np.int64))
 
 
 # ---- posing ----

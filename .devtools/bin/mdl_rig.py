@@ -370,16 +370,24 @@ class Model:
 
 
 class Library:
-    def __init__(self, vpks: Sequence[Path]):
+    """Game files by their game path: from loose folders first (a compiled model's own: its game root, the
+    folder holding `models/`), then the VPKs."""
+
+    def __init__(self, vpks: Sequence[Path], folders: Sequence[Path] = ()):
         self.vpks = [Vpk.open(p) for p in vpks if p.exists()]
-        if not self.vpks:
+        self.folders = list(folders)
+        if not self.vpks and not self.folders:
             raise RigError("none of the VPKs exist: " + ", ".join(map(str, vpks)))
 
     def read(self, name: str) -> bytes:
+        for folder in self.folders:
+            path = folder / name
+            if path.is_file():
+                return path.read_bytes()
         for v in self.vpks:
             if name in v:
                 return v.read(name)
-        raise RigError(f"{name}: in none of the VPKs")
+        raise RigError(f"{name}: in none of the folders or VPKs")
 
     def model(self, name: str) -> Model:
         m = Model(name, self.read(name))

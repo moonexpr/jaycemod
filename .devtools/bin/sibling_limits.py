@@ -106,3 +106,20 @@ def apply(model: Model, frames, limits, pose: Pose) -> Pose:
         if bone.proctype == PROC_QUATINTERP:
             out[j] = quatinterp(model, j, out)
     return out
+
+
+def learn_joints(model: Model, frames, joints: Sequence[int], native_poses) -> Dict[int, Tuple[np.ndarray, np.ndarray]]:
+    """Each joint's own native range of turn from rest, per axis in its own frame. Measured to help where a
+    joint shares no vertex with a sibling (the thumb: docs/tf2-hands-spike.md), and to hurt the fingers."""
+    turns = {j: np.array([turn(model, frames, pose, j) for pose in native_poses]) for j in joints}
+    return {j: (t.min(axis=0), t.max(axis=0)) for j, t in turns.items()}
+
+
+def apply_joints(model: Model, frames, limits, pose: Pose) -> None:
+    """Each limited joint, parents first, turned back into its range, its subtree with it; in place."""
+    for j in sorted(limits):
+        lo, hi = limits[j]
+        r = turn(model, frames, pose, j)
+        clamped = np.clip(r, lo, hi)
+        if (clamped != r).any():
+            _set_turn(model, frames, pose, j, clamped)

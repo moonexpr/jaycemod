@@ -11,3 +11,6 @@ addons/*/native/target/
 
 # reference material kept beside the repo, never committed
 reference/**/*
+
+# compiled TF2 weapon models (model_compile.py): Valve content, reshaped, never committed
+addons/tf_weapons/models/
