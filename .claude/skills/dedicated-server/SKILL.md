@@ -96,6 +96,27 @@ dt lua --instance 2 'return game.GetMap()'
 dt srcds --instance 2 stop
 ```
 
+**GMod's Linux server, in Docker**, in place of CrossOver: `--runtime docker`
+on `start`; `rcon`, `lua`, `stop` and `console` read the runtime from the
+launch record. Build the repo's modules for Linux first (once, and after a
+change to a crate):
+
+```bash
+python3 .devtools/bin/native_linux.py        # each crate's target/x86_64-unknown-linux-gnu/release/
+dt srcds start --runtime docker --map pl_upward
+```
+
+The container (`srcds_docker.py`, image `.devtools/docker/srcds`) installs or
+updates GMod's 64-bit Linux server into the volume `sandcastle-srcds-gmod` at
+every start (the first one downloads it, so `start` waits up to 20 minutes
+more), mounts TF2 from the operator's install, builds the root
+(`server_root.py`'s Linux platform) into its own volume, and publishes the
+game port at `--ip` and luadev's on 127.0.0.1. Not there yet:
+NextSoldier's engine binding (`nextsoldier.engine.refused` says why: it reads
+win64's `server.dll`), `ulx addmap` (no worker is started), and luadev's
+socket until a linux64 LuaSocket is put at
+`.devtools/artifacts/docker/gmsv_luasocket_linux64.dll`.
+
 Instance *n* runs from its own root, `GarrysModServer-n` (its own
 `console.log`, `data/` and `cache/`), with its own launch record and log
 (`.devtools/artifacts/srcds-n.pid`, `srcds-n.log`) and its own luadev port.

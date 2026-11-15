@@ -1,6 +1,7 @@
-//! The GMod side: `lua_shared.dll`'s functions resolved at load, the module's
+//! The GMod side: `lua_shared`'s functions resolved at load, the module's
 //! entry points, and the profiler callback feeding a `Tally`.
 
+use crate::library::Library;
 use crate::tally::{Tally, VmState};
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use std::sync::{Mutex, OnceLock};
@@ -17,17 +18,11 @@ const LUA_GLOBALSINDEX: c_int = -10002;
 const LUA_TSTRING: c_int = 4;
 const LUA_TNUMBER: c_int = 3;
 const GLOBAL_NAME: &CStr = c"wsprofile";
-const LUA_SHARED: &CStr = c"lua_shared.dll";
 const DEFAULT_MODE: &CStr = c"fi1";
 const DEFAULT_FORMAT: &CStr = c"F;";
 const DEFAULT_DEPTH: c_int = -12;
 
-extern "system" {
-    fn GetModuleHandleA(name: *const c_char) -> *mut c_void;
-    fn GetProcAddress(module: *mut c_void, name: *const c_char) -> *mut c_void;
-}
-
-/// The `lua_shared.dll` functions this module calls.
+/// The `lua_shared` functions this module calls.
 struct Api {
     createtable: unsafe extern "C" fn(L, c_int, c_int),
     pushlstring: unsafe extern "C" fn(L, *const c_char, usize),
@@ -44,14 +39,11 @@ struct Api {
     profile_dumpstack: unsafe extern "C" fn(L, *const c_char, c_int, *mut usize) -> *const c_char,
 }
 
-/// An exported function of `lua_shared.dll` as `T`, or which one is missing.
-unsafe fn resolve<T: Copy>(module: *mut c_void, name: &CStr) -> Result<T, String> {
-    let address = GetProcAddress(module, name.as_ptr());
+/// An exported function of `lua_shared` as `T`, or which one is missing.
+unsafe fn resolve<T: Copy>(module: &Library, name: &CStr) -> Result<T, String> {
+    let address = module.symbol(name);
     if address.is_null() {
-        return Err(format!(
-            "lua_shared.dll exports no {}",
-            name.to_string_lossy()
-        ));
+        return Err(format!("lua_shared exports no {}", name.to_string_lossy()));
     }
     // SAFETY: T is the function pointer type of the export `name`.
     Ok(std::mem::transmute_copy(&address))
@@ -59,10 +51,7 @@ unsafe fn resolve<T: Copy>(module: *mut c_void, name: &CStr) -> Result<T, String
 
 impl Api {
     unsafe fn load() -> Result<Self, String> {
-        let module = GetModuleHandleA(LUA_SHARED.as_ptr());
-        if module.is_null() {
-            return Err("lua_shared.dll is not loaded".into());
-        }
+        let module = &Library::find()?;
         Ok(Self {
             createtable: resolve(module, c"lua_createtable")?,
             pushlstring: resolve(module, c"lua_pushlstring")?,

@@ -1,5 +1,5 @@
-//! `gmsv_wsprofile_win64.dll`: LuaJIT's sampling profiler
-//! (`luaJIT_profile_start`), which GMod's `lua_shared.dll` exports but no
+//! `gmsv_wsprofile_win64.dll` (`_linux64.dll` on Linux): LuaJIT's sampling profiler
+//! (`luaJIT_profile_start`), which GMod's `lua_shared` exports but no
 //! Lua library reaches, counted natively and handed to Lua as one table.
 //!
 //! ```lua
@@ -18,5 +18,6 @@
 
 pub mod tally;
 
-#[cfg(windows)]
+pub mod library;
+
 mod binding;

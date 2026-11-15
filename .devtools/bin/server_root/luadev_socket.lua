@@ -3,8 +3,10 @@
 -- the operator's game on 27099 and forwards to a server over net messages,
 -- with no reply. This listens on the server itself, on 127.0.0.1:27098 (a
 -- second server beside it, srcds.py --instance, on the port server_root.py
--- wrote to its data/), runs each chunk through luadev, and answers on the
--- same connection.
+-- wrote to its data/; in a container, srcds.py --runtime docker, on every
+-- interface, which its published port reaches and the host binds to
+-- 127.0.0.1), runs each chunk through luadev, and answers on the same
+-- connection.
 --
 -- A request is three lines, realm (sv, cl or sh), label and the code's
 -- length in bytes, then the code. The answer is JSON: output (print and MsgN
@@ -13,11 +15,13 @@
 -- SANDCASTLE_OPS by name, the code its JSON arguments (run_op below).
 --
 -- LuaSocket is luadev's win64 build, lua/bin/gmsv_luasocket_win64.dll in the
--- server's own lua/bin (server_root.py's SERVER_BINARIES); it defines the
+-- server's own lua/bin (server_root.py's SERVER_BINARIES; in a container, the
+-- linux64 build LINUX_NATIVE_BINARIES links when it is there); it defines the
 -- global socket, the same API as danielga's gmod_luasocket.
 require ("luasocket")
 
-local HOST = "127.0.0.1"
+local HOST = string.Trim (file.Read ("sandcastle_luadev_host.txt", "DATA") or "")
+if HOST == "" then HOST = "127.0.0.1" end
 local PORT = tonumber (file.Read ("sandcastle_luadev_port.txt", "DATA") or "") or 27098
 local READ_TIMEOUT = 2 -- seconds a connected client has to send its request
 local LISTEN_BACKLOG = 4

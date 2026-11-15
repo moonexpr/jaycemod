@@ -36,6 +36,7 @@ NextSoldier, the AI-war's NextBot soldiers. Below, `gamemode/` is
 | `native/` | `ws_profile`, the sampling profiler, a Rust binary module. The other binary modules are their addons' `native/`, each a drop-in that a server's `require` installs over the globals its Lua twins publish: foundation's (`addons/foundation/native`: its structures and foundation.wetsands' systems, one crate, with `vendor/source-sdk-2013`, the raw Source SDK headers it reads Source's values from) and NextSoldier's (`docs/native-foundation-plan.md`) |
 | `docs/` | Design notes; `docs/research/foundation-admission-rule.md` decides what belongs in foundation; `docs/combat-repath-optimization.md` is the handoff for profiling and optimizing AI-war combat repaths |
 | `.devtools/bin/` | Project tools; `.devtools/artifacts/` generated output |
+| `.devtools/docker/` | The images the tools build: `srcds` (GMod's Linux server, `srcds.py --runtime docker`), `native-linux` (the binary modules' Linux builds, `native_linux.py`) |
 
 Sandcastle's messages between server and clients are `net2`'s, and its
 events `game_events`', built on it (`docs/net2.md`): no kinds, a name made

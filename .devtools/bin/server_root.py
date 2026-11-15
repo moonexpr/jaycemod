@@ -36,13 +36,14 @@ from __future__ import annotations
 import json
 import lzma
 import os
+import shutil
 import zipfile
 import struct
 import sys
 import argparse
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Mapping
+from typing import Callable, Mapping
 
 from gma import Gma, GmaFile, write_gma
 from vpk import Vpk
@@ -145,6 +146,16 @@ NATIVE_BINARIES = {
     "gmsv_foundation_win64.dll": REPO / "addons/foundation/native/target/x86_64-pc-windows-msvc/release/foundation.dll",
     "gmsv_nextsoldier_win64.dll": REPO / "addons/nextsoldier/native/target/x86_64-pc-windows-msvc/release/nextsoldier.dll",
 }
+# the same modules built for the Linux server (srcds.py --runtime docker; native_linux.sh builds them),
+# and its LuaSocket for luadev's socket, which the Linux install does not ship: the operator puts a
+# linux64 build of it there
+LINUX_TARGET = "x86_64-unknown-linux-gnu"
+LINUX_NATIVE_BINARIES = {
+    "gmsv_wsprofile_linux64.dll": REPO / f"native/ws_profile/target/{LINUX_TARGET}/release/libwsprofile.so",
+    "gmsv_foundation_linux64.dll": REPO / f"addons/foundation/native/target/{LINUX_TARGET}/release/libfoundation.so",
+    "gmsv_nextsoldier_linux64.dll": REPO / f"addons/nextsoldier/native/target/{LINUX_TARGET}/release/libnextsoldier.so",
+    "gmsv_luasocket_linux64.dll": REPO / ".devtools/artifacts/docker/gmsv_luasocket_linux64.dll",
+}
 # addons built in this repo, linked into the server's addons/: name -> folder
 REPO_ADDONS = {
     "foundation": REPO / "addons" / "foundation",  # foundation: the structures and algorithms every other addon stands on
@@ -179,7 +190,12 @@ GAMEMODE_ENV = "SANDCASTLE_GAMEMODE"
 LUADEV_PORT = 27098
 LUADEV_PORT_STEP = 2
 LUADEV_PORT_FILE = "sandcastle_luadev_port.txt"
+# and the address it binds: 127.0.0.1, but every interface in a container,
+# whose loopback a published port never reaches
+LUADEV_HOST_FILE = "sandcastle_luadev_host.txt"
 LOCALHOST = "127.0.0.1"
+# the Linux install's programs: the server, and the script that starts it
+LINUX_SERVER, LINUX_RUN = "srcds_linux64", "srcds_run_x64"
 MAIN_INSTANCE = 1
 
 
@@ -226,6 +242,54 @@ def link(path: Path, target: Path) -> None:
     path.symlink_to(target)
 
 
+class NotAnExe(ValueError):
+    pass
+
+
+def console_exe(path: Path, source: Path) -> None:
+    """A copy of the PE image `source` at `path`, its subsystem the console's;
+    written again only when `source` is newer."""
+    if path.is_symlink():
+        path.unlink()
+    if path.exists() and path.stat().st_mtime >= source.stat().st_mtime:
+        return
+    image = bytearray(source.read_bytes())
+    if image[:2] != b"MZ" or len(image) < PE_POINTER + 4:
+        raise NotAnExe(f"{source} is not a PE image")
+    (pe,) = struct.unpack_from("<I", image, PE_POINTER)
+    if image[pe:pe + 4] != PE_SIGNATURE or len(image) < pe + SUBSYSTEM_OFFSET + 2:
+        raise NotAnExe(f"{source} is not a PE image")
+    struct.pack_into("<H", image, pe + SUBSYSTEM_OFFSET, CONSOLE_SUBSYSTEM)
+    path.write_bytes(image)
+
+
+def copy_program(path: Path, source: Path) -> None:
+    """A copy of the program `source` at `path`, its mode kept; written again
+    only when `source` is newer. Linked, the engine would look for its game
+    beside where the link leads (/proc/self/exe), the shared install."""
+    if path.is_symlink():
+        path.unlink()
+    if path.exists() and path.stat().st_mtime >= source.stat().st_mtime:
+        return
+    shutil.copy2(source, path)
+
+
+@dataclass(frozen=True)
+class Platform:
+    """What a server root differs by between GMod's builds: the programs it
+    copies rather than links (name -> how, path and source), the binary
+    modules it links from the shared lua/bin (SERVER_BINARIES) and those built
+    from this repo (NATIVE_BINARIES), each linked once it exists."""
+    name: str
+    executables: Mapping[str, Callable[[Path, Path], None]]
+    server_binaries: Mapping[str, str]
+    native_binaries: Mapping[str, Path]
+
+
+WINDOWS = Platform("win64", {SERVER_EXE: console_exe}, SERVER_BINARIES, NATIVE_BINARIES)
+LINUX = Platform("linux64", {LINUX_SERVER: copy_program, LINUX_RUN: copy_program}, {}, LINUX_NATIVE_BINARIES)
+
+
 @dataclass(frozen=True)
 class Layout:
     shared: Path  # the operator's GarrysMod
@@ -237,6 +301,8 @@ class Layout:
     maps: Path  # steamcmd's workshop/content/4000, which holds SERVER_MAPS
     gamemode: Path | None = None  # another checkout's gamemode/sandcastle folder this root runs, or the shared install's
     added_maps: Mapping[str, str] = field(default_factory=dict)  # add_map.py's, mounted beside SERVER_MAPS
+    platform: Platform = WINDOWS  # the build of GMod the root runs
+    luadev_host: str = LOCALHOST  # the address luadev_socket.lua binds, written to LUADEV_HOST_FILE
 
     @classmethod
     def of(cls, instance: Instance) -> "Layout":
@@ -338,33 +404,14 @@ def place_archive(path: Path, archive: Path) -> None:
     path.write_bytes(archive_bytes(archive))
 
 
-class NotAnExe(ValueError):
-    pass
-
-
-def console_exe(path: Path, source: Path) -> None:
-    """A copy of the PE image `source` at `path`, its subsystem the console's;
-    written again only when `source` is newer."""
-    if path.is_symlink():
-        path.unlink()
-    if path.exists() and path.stat().st_mtime >= source.stat().st_mtime:
-        return
-    image = bytearray(source.read_bytes())
-    if image[:2] != b"MZ" or len(image) < PE_POINTER + 4:
-        raise NotAnExe(f"{source} is not a PE image")
-    (pe,) = struct.unpack_from("<I", image, PE_POINTER)
-    if image[pe:pe + 4] != PE_SIGNATURE or len(image) < pe + SUBSYSTEM_OFFSET + 2:
-        raise NotAnExe(f"{source} is not a PE image")
-    struct.pack_into("<H", image, pe + SUBSYSTEM_OFFSET, CONSOLE_SUBSYSTEM)
-    path.write_bytes(image)
-
-
 def build(layout: Layout) -> Path:
     layout.root.mkdir(exist_ok=True)
+    programs = layout.platform.executables
     for entry in layout.shared.iterdir():
-        if entry.name not in ("garrysmod", SERVER_EXE):
+        if entry.name != "garrysmod" and entry.name not in programs:
             link(layout.root / entry.name, entry)
-    console_exe(layout.root / SERVER_EXE, layout.shared / SERVER_EXE)
+    for name, place in programs.items():
+        place(layout.root / name, layout.shared / name)
     game = layout.root / "garrysmod"
     game.mkdir(exist_ok=True)
     for entry in (layout.shared / "garrysmod").iterdir():
@@ -379,9 +426,9 @@ def build(layout: Layout) -> Path:
             link(game / "lua" / entry.name, entry)
     for entry in (shared_lua / "bin").iterdir():
         link(game / "lua" / "bin" / entry.name, entry)
-    for name, source in SERVER_BINARIES.items():
+    for name, source in layout.platform.server_binaries.items():
         link(game / "lua" / "bin" / name, shared_lua / "bin" / source)
-    for name, built in NATIVE_BINARIES.items():
+    for name, built in layout.platform.native_binaries.items():
         if built.exists():
             link(game / "lua" / "bin" / name, built)
     addons = game / "addons"
@@ -425,6 +472,7 @@ def build(layout: Layout) -> Path:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(pak.read(path))
     (game / "data" / LUADEV_PORT_FILE).write_text(str(layout.luadev_port))
+    (game / "data" / LUADEV_HOST_FILE).write_text(layout.luadev_host)
     return layout.root
 
 

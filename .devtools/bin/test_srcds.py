@@ -5,11 +5,14 @@ import struct
 import tempfile
 import termios
 import socket
+import subprocess
 import threading
 import unittest
+import unittest.mock
 from pathlib import Path
 
 import srcds
+import srcds_docker
 from server_root import Instance
 from srcds import (
     ARTIFACTS,
@@ -470,3 +473,91 @@ class ConsoleWindow(unittest.TestCase):
             os.close(master)
             os.close(slave)
 
+
+
+class ServerArguments(unittest.TestCase):
+    # The arguments srcds takes are the same under CrossOver and in a container;
+    # only what runs it differs.
+    def test_are_what_wine_runs_the_program_with(self):
+        config = ServerConfig(map="koth_viaduct", port=27025, rcon_password="pw", maxplayers=24)
+        argv = command_line(INSTALL, config)
+        self.assertEqual(argv[argv.index("-console"):], srcds.server_arguments(config))
+        self.assertEqual(argv[argv.index("-console") - 1], INSTALL.gmod_windows + "\\srcds_win64.exe")
+
+
+class Runtimes(unittest.TestCase):
+    CONFIG = ServerConfig(map="gm_construct", port=27035, rcon_password="pw", maxplayers=24, ip="100.64.0.7")
+    PATHS = srcds_docker.HostPaths(Path("/repo"), Path("/ws"), Path("/steamcmd/4000"), Path("/tf"))
+
+    def docker(self, calls):
+        def run(command, **kwargs):
+            calls.append(command)
+            return subprocess.CompletedProcess(command, 0)
+        return srcds.Docker(self.PATHS, run)
+
+    def test_a_record_names_the_runtime_that_started_it(self):
+        docker = dataclasses.replace(LAUNCHED, runtime="docker")
+        self.assertEqual(Launched.parse(docker.text()), docker)
+        self.assertEqual(LAUNCHED.runtime, "crossover")
+
+    def test_a_record_from_before_runtimes_was_crossovers(self):
+        old = '{"supervisor": 500, "launcher": 501, "port": 27025, "server": null, "host": "127.0.0.1"}'
+        self.assertEqual(Launched.parse(old).runtime, "crossover")
+
+    def test_crossover_builds_the_root_and_runs_wine(self):
+        built = []
+        install = dataclasses.replace(INSTALL, build=built.append)
+        self.assertEqual(install.launch_argv(Instance(2), self.CONFIG), command_line(install, self.CONFIG))
+        self.assertEqual([layout.root for layout in built], [Instance(2).root])
+        self.assertTrue(install.adopts_server)
+
+    def test_docker_runs_the_container_bound_where_asked_with_the_server_on_its_own_interface(self):
+        calls = []
+        argv = self.docker(calls).launch_argv(Instance(2), self.CONFIG)
+        inside = dataclasses.replace(self.CONFIG, ip="0.0.0.0")
+        expected = srcds_docker.run_argv(Instance(2), "100.64.0.7", 27035, srcds.server_arguments(inside), self.PATHS)
+        self.assertEqual(argv, expected)
+        self.assertEqual(calls[0][:3], ["docker", "image", "inspect"], "the image is made first when missing")
+
+    def test_docker_adopts_no_process_and_stops_its_container(self):
+        calls = []
+        docker = self.docker(calls)
+        self.assertFalse(docker.adopts_server)
+        docker.halt(Instance(2))
+        self.assertEqual(calls, [srcds_docker.stop_command(Instance(2))])
+
+    def test_only_crossover_serves_ulx_addmap(self):
+        # add_map.py places a map in the CrossOver root on this machine; a container's root is in its volume
+        self.assertTrue(INSTALL.serves_add_map)
+        self.assertFalse(self.docker([]).serves_add_map)
+
+    def test_a_first_start_in_docker_has_time_to_install_gmod(self):
+        self.assertGreater(self.docker([]).load_timeout, INSTALL.load_timeout)
+
+    def test_a_docker_server_is_made_without_crossover(self):
+        def no_crossover(*args):
+            raise srcds.ServerDown("no CrossOver under /Applications")
+        with unittest.mock.patch.object(Install, "discover", no_crossover), \
+                unittest.mock.patch.object(srcds, "password", lambda: "pw"):
+            server = srcds.make_server("gm_construct", 27025, ip="127.0.0.1", runtime="docker")
+        self.assertIsInstance(server.install, srcds.Docker)
+
+    def test_rcon_and_stop_use_the_runtime_that_started_the_server(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            record = Path(tmp) / "srcds.pid"
+            self.assertEqual(srcds.started_runtime(record), "crossover")
+            record.write_text(dataclasses.replace(LAUNCHED, runtime="docker").text())
+            self.assertEqual(srcds.started_runtime(record), "docker")
+
+
+class Supervisor(unittest.TestCase):
+    # The supervisor records the address the server is reached at: under
+    # CrossOver +ip, in a container where docker publishes it (+ip there is
+    # the container's own 0.0.0.0).
+    def test_its_command_carries_the_address_and_parses_back(self):
+        argv = ["docker", "run", "image", "--", "+ip", "0.0.0.0"]
+        command = srcds.supervisor_command(Path("/a/srcds.log"), Path("/a/srcds.pid"), 27025, "100.64.0.7", argv,
+                                           "docker")
+        self.assertEqual(command[2], srcds.SUPERVISOR_MARK)
+        self.assertEqual(srcds.supervisor_args(command[2:]),
+                         (Path("/a/srcds.log"), Path("/a/srcds.pid"), 27025, "100.64.0.7", argv, "docker"))

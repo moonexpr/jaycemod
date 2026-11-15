@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from server_root import GAMEMODE_ENV, LUADEV_PORT_FILE, REPO, REPO_ADDONS, REPO_DATA, ROOT, ROOT_WINDOWS, SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS,\
+from server_root import GAMEMODE_ENV, LINUX, LUADEV_HOST_FILE, LUADEV_PORT_FILE, WINDOWS, REPO, REPO_ADDONS, REPO_DATA, ROOT, ROOT_WINDOWS, SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS,\
     TF_SCRIPTS_DIR, SERVER_DOWNLOADS, SERVER_MAPS, SERVER_PACKS, map_archive_name, Instance, Layout, NotAnExe, build, console_exe, read_added_maps, write_added_maps
 from test_vpk import DIR_ARCHIVE, entry, write_pak
 
@@ -221,7 +221,8 @@ def test_nothing_is_copied_but_tf2s_hidden_sound_scripts_legacy_archives_and_the
     files = sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file() and not p.is_symlink())
     assert files == sorted(
         [f"garrysmod/data/{TF_SCRIPTS_DIR}/{path}" for path in TF_SCRIPTS]
-        + [f"garrysmod/cache/{legacy_name()}.gma", SERVER_EXE, f"garrysmod/data/{LUADEV_PORT_FILE}"]
+        + [f"garrysmod/cache/{legacy_name()}.gma", SERVER_EXE, f"garrysmod/data/{LUADEV_PORT_FILE}",
+           f"garrysmod/data/{LUADEV_HOST_FILE}"]
         + [f"garrysmod/cache/{name}.gma" for name, item in SERVER_DOWNLOADS.items() if item == LEGACY_DOWNLOAD]
         + [f"garrysmod/cache/{name}.gma" for name in SERVER_PACKS]
     )
@@ -475,3 +476,77 @@ def test_a_pack_not_fetched_is_refused_with_how_to_fetch_it(layout):
     (layout.maps.parent / app / item / "789_legacy.bin").unlink()
     with pytest.raises(FileNotFoundError, match=f"steamcmd.*{app} {item}"):
         build(layout)
+
+
+# The Linux server (srcds.py --runtime docker) builds the same root from the
+# Linux install: its programs are copied, not linked (the engine finds its
+# game from where its program really is), and its binary modules are the
+# linux64 builds.
+@pytest.fixture
+def linux_layout(layout: Layout) -> Layout:
+    (layout.shared / SERVER_EXE).unlink()
+    for name in LINUX.executables:
+        (layout.shared / name).write_text(f"#!/bin/sh\n# {name}\n")
+        (layout.shared / name).chmod(0o755)
+    (layout.shared / "bin" / "linux64").mkdir(parents=True)
+    return replace(layout, platform=LINUX, luadev_host="0.0.0.0")
+
+
+def test_the_linux_servers_programs_are_copies_that_still_run(linux_layout):
+    root = build(linux_layout)
+    for name in LINUX.executables:
+        program = root / name
+        assert not program.is_symlink(), name
+        assert program.read_text() == (linux_layout.shared / name).read_text()
+        assert os.access(program, os.X_OK), name
+    assert (root / "bin").resolve() == linux_layout.shared / "bin"
+    assert not (root / SERVER_EXE).exists()
+
+
+def test_a_linux_program_is_copied_again_only_when_the_installs_is_newer(linux_layout):
+    name = next(iter(LINUX.executables))
+    program = build(linux_layout) / name
+    program.write_text("kept")
+    build(linux_layout)
+    assert program.read_text() == "kept"
+    later = program.stat().st_mtime + 10
+    os.utime(linux_layout.shared / name, (later, later))
+    build(linux_layout)
+    assert program.read_text() == (linux_layout.shared / name).read_text()
+
+
+def test_the_linux_server_links_its_built_modules_under_their_linux64_names(linux_layout, tmp_path):
+    built = tmp_path / "libfoundation.so"
+    built.write_bytes(b"\x7fELF")
+    missing = tmp_path / "libnot_built.so"
+    platform = replace(LINUX, native_binaries={"gmsv_foundation_linux64.dll": built,
+                                               "gmsv_nextsoldier_linux64.dll": missing})
+    root = build(replace(linux_layout, platform=platform))
+    assert (root / "garrysmod/lua/bin/gmsv_foundation_linux64.dll").resolve() == built
+    assert not (root / "garrysmod/lua/bin/gmsv_nextsoldier_linux64.dll").exists(), "linked only once built"
+
+
+def test_every_native_module_has_a_linux64_build_named_as_gmod_requires_it():
+    def module(name, suffix):
+        return name.removeprefix("gmsv_").removesuffix(suffix)
+    windows = {module(name, "_win64.dll") for name in WINDOWS.native_binaries}
+    linux = {module(name, "_linux64.dll") for name in LINUX.native_binaries}
+    assert windows <= linux
+    for name, path in LINUX.native_binaries.items():
+        assert name.endswith("_linux64.dll"), name
+        if module(name, "_linux64.dll") in windows:
+            assert path.suffix == ".so" and "x86_64-unknown-linux-gnu" in path.parts, path
+
+
+def test_the_build_tells_the_servers_lua_luadev_listens_on_this_machine(layout):
+    build(layout)
+    assert (layout.root / "garrysmod" / "data" / LUADEV_HOST_FILE).read_text() == "127.0.0.1"
+
+
+def test_the_build_tells_a_containers_lua_luadev_listens_where_a_published_port_reaches(linux_layout):
+    build(linux_layout)
+    assert (linux_layout.root / "garrysmod" / "data" / LUADEV_HOST_FILE).read_text() == "0.0.0.0"
+
+
+def test_a_layout_of_an_instance_is_the_windows_servers():
+    assert Layout.of(Instance(1)).platform is WINDOWS

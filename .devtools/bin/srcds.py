@@ -7,10 +7,16 @@ r"""Run Garry's Mod's dedicated server under CrossOver and drive it with RCON.
   srcds.py stop                                        quit the server we started
   srcds.py console                                     follow its console in an iTerm window
   srcds.py --instance 2 start ...                      the same for a second server beside the first
+  srcds.py start --runtime docker ...                  GMod's Linux server in a container (srcds_docker.py)
 
 Each instance (server_root.Instance; 1, the default, is the main server) has
 its own root, launch record srcds[-n].pid, log srcds[-n].log and default port
 (DEFAULT_PORT, then INSTANCE_PORT_STEP apart), so two can run side by side.
+
+Started --runtime docker, the server is GMod's Linux server in a container
+instead (srcds_docker.py), on the repo's modules' linux64 builds
+(native_linux.py); the rest of this is CrossOver's, the default runtime. The
+launch record names the runtime, which rcon and stop go by.
 
 The server is GMod's Windows x86-64 srcds_win64.exe in the CrossOver bottle
 "GModServer" and nowhere else: the operator plays in the bottle "Steam",
@@ -70,9 +76,10 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Deque, Dict, List, Optional, Set, Tuple
+from typing import Callable, Deque, Dict, List, Optional, Set, Tuple, Union
 
 import server_root
+import srcds_docker
 from server_root import MAIN_INSTANCE, Instance, Layout
 
 __all__ = [
@@ -83,6 +90,7 @@ __all__ = [
     "AuthFailed",
     "CONSOLE_COLUMNS",
     "BOTTLE",
+    "Docker",
     "Install",
     "InstanceFiles",
     "Launched",
@@ -95,6 +103,7 @@ __all__ = [
     "encode_packet",
     "map_from_status",
     "new_server",
+    "server_arguments",
     "stop_targets",
     "WrongBottle",
 ]
@@ -189,12 +198,34 @@ class WrongBottle(Exception):
     pass
 
 
+CROSSOVER, DOCKER = "crossover", "docker"
+RUNTIMES = (CROSSOVER, DOCKER)
+
+
 @dataclass(frozen=True)
 class Install:
+    """The CrossOver runtime: GMod's Windows server under wine, in BOTTLE."""
     wine: Path
     bottle: str
     gmod_windows: str
     gmod_dir: Path
+    build: Callable[[Layout], Path] = field(default=server_root.build, compare=False)
+
+    runtime = CROSSOVER
+    adopts_server = True  # wine gives the server parent 1: start finds it (new_server)
+    serves_add_map = True  # add_map.py's worker places maps in this root (start_map_worker)
+
+    @property
+    def load_timeout(self) -> float:
+        return MAP_LOAD_TIMEOUT
+
+    def launch_argv(self, instance: Instance, config: "ServerConfig") -> List[str]:
+        """Builds the instance's root, and the command that runs the server in it."""
+        self.build(Layout.of(instance))
+        return command_line(self, config)
+
+    def halt(self, instance: Instance) -> None:
+        """Nothing beyond signalling what it launched (Server.stop)."""
 
     @classmethod
     def on(cls, wine: Path, instance: Instance) -> "Install":
@@ -237,9 +268,8 @@ class ServerConfig:
             raise ValueError(f"maxplayers {self.maxplayers}: bots need at least {MIN_SLOTS} slots")
 
 
-def command_line(install: Install, config: ServerConfig) -> List[str]:
-    if install.bottle != BOTTLE:
-        raise WrongBottle(f"servers run only in the bottle {BOTTLE!r}, not {install.bottle!r}")
+def server_arguments(config: ServerConfig) -> List[str]:
+    """What srcds is started with, under wine or in a container alike."""
     convars = [
         ("ip", config.ip),
         ("maxplayers", str(config.maxplayers)),
@@ -253,12 +283,7 @@ def command_line(install: Install, config: ServerConfig) -> List[str]:
         convars.append(("sv_setsteamaccount", config.steam_account))
     if config.sourcetv:
         convars.append(("tv_enable", "1"))
-    argv = [
-        str(install.wine), "--bottle", install.bottle, "--no-gui", "--no-update",
-        "--workdir", install.gmod_windows,
-        "--cx-app", install.gmod_windows + "\\" + SERVER_EXE,
-        "-console", "-game", "garrysmod", "-port", str(config.port),
-    ]
+    argv = ["-console", "-game", "garrysmod", "-port", str(config.port)]
     if not config.sourcetv:
         argv.append("-nohltv")
     if not config.lua_refresh:
@@ -268,6 +293,45 @@ def command_line(install: Install, config: ServerConfig) -> List[str]:
     for name, value in convars:
         argv += ["+" + name, value]
     return argv + ["+map", config.map]
+
+
+def command_line(install: Install, config: ServerConfig) -> List[str]:
+    if install.bottle != BOTTLE:
+        raise WrongBottle(f"servers run only in the bottle {BOTTLE!r}, not {install.bottle!r}")
+    return [
+        str(install.wine), "--bottle", install.bottle, "--no-gui", "--no-update",
+        "--workdir", install.gmod_windows,
+        "--cx-app", install.gmod_windows + "\\" + SERVER_EXE,
+    ] + server_arguments(config)
+
+
+@dataclass(frozen=True)
+class Docker:
+    """The docker runtime: GMod's Linux server in a container (srcds_docker.py),
+    which docker publishes at the address the server binds."""
+    paths: srcds_docker.HostPaths
+    run: Callable[..., subprocess.CompletedProcess] = field(default=subprocess.run, compare=False)
+
+    runtime = DOCKER
+    adopts_server = False  # the server is the container's: docker stops it
+    serves_add_map = False  # add_map.py places maps in the CrossOver root; this one is in a volume
+    INSTALL_TIMEOUT = 1200  # a first start downloads GMod's server into its volume
+
+    @property
+    def load_timeout(self) -> float:
+        return MAP_LOAD_TIMEOUT + self.INSTALL_TIMEOUT
+
+    def launch_argv(self, instance: Instance, config: ServerConfig) -> List[str]:
+        """Makes the image when docker lacks it, and the command that runs the container."""
+        srcds_docker.ensure_image(self.run)
+        inside = dataclasses.replace(config, ip=ALL_INTERFACES)
+        return srcds_docker.run_argv(instance, config.ip, config.port, server_arguments(inside), self.paths)
+
+    def halt(self, instance: Instance) -> None:
+        self.run(srcds_docker.stop_command(instance), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+Runtime = Union[Install, Docker]
 
 
 # RCON ---------------------------------------------------------------------------------
@@ -393,18 +457,20 @@ class Launched:
     launcher: int
     port: int
     server: Optional[int] = None  # the Windows process, once found (new_server)
-    host: str = LOCALHOST  # the address it binds (+ip)
+    host: str = LOCALHOST  # the address it binds (+ip, or where docker publishes it)
+    runtime: str = CROSSOVER  # what runs it (RUNTIMES); a record from before runtimes is CrossOver's
 
     def text(self) -> str:
         return json.dumps({"supervisor": self.supervisor, "launcher": self.launcher, "port": self.port,
-                           "server": self.server, "host": self.host})
+                           "server": self.server, "host": self.host, "runtime": self.runtime})
 
     @classmethod
     def parse(cls, text: str) -> "Launched":
         data = json.loads(text)
         server = data.get("server")
         return cls(int(data["supervisor"]), int(data["launcher"]), int(data["port"]),
-                   int(server) if server is not None else None, data.get("host", LOCALHOST))
+                   int(server) if server is not None else None, data.get("host", LOCALHOST),
+                   data.get("runtime", CROSSOVER))
 
     def alive(self, processes: str) -> bool:
         return bool(stop_targets(self, processes))
@@ -486,7 +552,7 @@ SERVER_PROCESS_TIMEOUT = 60
 
 @dataclass(frozen=True)
 class Server:
-    install: Install
+    install: Runtime
     config: ServerConfig
     host: str = LOCALHOST
     instance: Instance = MAIN
@@ -496,8 +562,7 @@ class Server:
         return InstanceFiles.of(self.instance)
 
     def start(self) -> None:
-        server_root.build(Layout.of(self.instance))
-        argv = command_line(self.install, self.config)  # refuses any bottle but Steam
+        argv = self.install.launch_argv(self.instance, self.config)  # CrossOver's refuses any bottle but GModServer
         pid_file, log = self.files.pid, self.files.log
         launched = read_launched(pid_file)
         if launched and launched.alive(running_processes()):
@@ -507,21 +572,25 @@ class Server:
         ARTIFACTS.mkdir(parents=True, exist_ok=True)
         pid_file.unlink(missing_ok=True)
         before = set(_process_table(running_processes()))
-        supervisor = [sys.executable, str(Path(__file__).resolve()), SUPERVISOR_MARK, str(log), str(pid_file),
-                      str(self.config.port), "--"]
-        subprocess.Popen(supervisor + argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+        supervisor = supervisor_command(log, pid_file, self.config.port, self.config.ip, argv, self.install.runtime)
+        subprocess.Popen(supervisor, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                          stderr=subprocess.DEVNULL, start_new_session=True)
         deadline = time.monotonic() + LAUNCH_RECORD_TIMEOUT
         while not pid_file.exists():
             if time.monotonic() > deadline:
                 raise ServerDown("the supervisor did not record its launch")
             time.sleep(0.2)
+        if not self.install.adopts_server:
+            if self.install.serves_add_map:
+                start_map_worker(self.instance)
+            return
         deadline = time.monotonic() + SERVER_PROCESS_TIMEOUT
         while time.monotonic() < deadline:
             server = new_server(read_launched(pid_file), before, running_processes())
             if server is not None:
                 pid_file.write_text(dataclasses.replace(read_launched(pid_file), server=server).text())
-                start_map_worker(self.instance)
+                if self.install.serves_add_map:
+                    start_map_worker(self.instance)
                 return
             time.sleep(0.5)
         raise ServerDown("no new server process appeared on the port; see " + str(log))
@@ -563,6 +632,7 @@ class Server:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline and launched.alive(running_processes()):
             time.sleep(1)
+        self.install.halt(self.instance)
         for pid in stop_targets(launched, running_processes()):
             os.kill(pid, signal.SIGTERM)
         self.files.pid.unlink()
@@ -595,12 +665,27 @@ def start_map_worker(instance: Instance) -> None:
                          start_new_session=True)
 
 
-def supervise(log_path: Path, pid_file: Path, port: int, argv: List[str]) -> int:
+def supervisor_command(log: Path, pid_file: Path, port: int, host: str, argv: List[str],
+                       runtime: str = CROSSOVER) -> List[str]:
+    """This script as the supervisor of `argv`, which records `host` as where
+    the server is reached: under CrossOver its +ip, in a container where
+    docker publishes it."""
+    return [sys.executable, str(Path(__file__).resolve()), SUPERVISOR_MARK, str(log), str(pid_file), str(port),
+            host, runtime, "--"] + argv
+
+
+def supervisor_args(args: List[str]) -> Tuple[Path, Path, int, str, List[str], str]:
+    """supervisor_command's arguments from SUPERVISOR_MARK on, read back."""
+    _, log, pid_file, port, host, runtime, separator, *argv = args
+    assert separator == "--", args
+    return Path(log), Path(pid_file), int(port), host, argv, runtime
+
+
+def supervise(log_path: Path, pid_file: Path, port: int, host: str, argv: List[str], runtime: str) -> int:
     master, slave = console_pty()
     proc = subprocess.Popen(argv, stdin=slave, stdout=slave, stderr=slave)
     os.close(slave)
-    host = argv[argv.index("+ip") + 1]
-    pid_file.write_text(Launched(os.getpid(), proc.pid, port, host=host).text())
+    pid_file.write_text(Launched(os.getpid(), proc.pid, port, host=host, runtime=runtime).text())
     with open(log_path, "wb") as log:
         while True:
             try:
@@ -657,6 +742,12 @@ def started_host(instance: Instance = MAIN) -> str:
     return launched.host if launched else LOCALHOST
 
 
+def started_runtime(pid_file: Path) -> str:
+    """What runs the server the record names: CrossOver when there is none."""
+    launched = read_launched(pid_file)
+    return launched.runtime if launched else CROSSOVER
+
+
 def started_port(default: int, instance: Instance = MAIN) -> int:
     launched = read_launched(InstanceFiles.of(instance).pid)
     return launched.port if launched else default
@@ -676,9 +767,11 @@ def rcon_command(instance: Instance, text: str, timeout: float = 10) -> str:
 
 def make_server(map_name: str, port: int, lua_refresh: bool = True, maxplayers: int = DEFAULT_MAXPLAYERS,
                 ip: Optional[str] = None, instance: Instance = MAIN, p2p: bool = True,
-                gamemode: str = "sandcastle", sourcetv: bool = False) -> Server:
-    """ip: the address to bind; by default the running server's (rcon, stop), else 127.0.0.1."""
-    install = Install.discover(instance)
+                gamemode: str = "sandcastle", sourcetv: bool = False, runtime: Optional[str] = None) -> Server:
+    """ip: the address to bind; by default the running server's (rcon, stop), else 127.0.0.1.
+    runtime: what runs it (RUNTIMES); by default the running server's, else CrossOver."""
+    runtime = runtime or started_runtime(InstanceFiles.of(instance).pid)
+    install = Docker(srcds_docker.HostPaths.of_host()) if runtime == DOCKER else Install.discover(instance)
     ip = ip or started_host(instance)
     config = ServerConfig(map_name, port, password(), maxplayers, lua_refresh=lua_refresh, ip=ip, p2p=p2p,
                           steam_account=steam_account(instance), gamemode=gamemode, sourcetv=sourcetv)
@@ -687,7 +780,7 @@ def make_server(map_name: str, port: int, lua_refresh: bool = True, maxplayers: 
 
 def main() -> int:
     if sys.argv[1:2] == [SUPERVISOR_MARK]:
-        return supervise(Path(sys.argv[2]), Path(sys.argv[3]), int(sys.argv[4]), sys.argv[6:])
+        return supervise(*supervisor_args(sys.argv[1:]))
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--instance", type=int, default=MAIN_INSTANCE,
                     help="which server: 1, the main one, or another run beside it")
@@ -708,6 +801,10 @@ def main() -> int:
                        help="the gamemode to run; base loads quickest, for engineering what needs no game")
     start.add_argument("--sourcetv", action="store_true",
                        help="run SourceTV, without which the server records no demo (sv_demo_autorecord)")
+    start.add_argument("--runtime", choices=RUNTIMES, default=CROSSOVER,
+                       help="what runs the server: crossover, GMod's Windows server in the GModServer bottle "
+                            "(the default), or docker, its Linux server in a container (srcds_docker.py), "
+                            "with the repo's modules' linux64 builds (native_linux.sh)")
     rcon = sub.add_parser("rcon")
     rcon.add_argument("command")
     sub.add_parser("stop")
@@ -719,11 +816,11 @@ def main() -> int:
         if args.action == "start":
             port = args.port or files.port
             server = make_server(args.map, port, args.lua_refresh, args.maxplayers, bind_address(args.ip), instance,
-                                 args.p2p, args.gamemode, args.sourcetv)
+                                 args.p2p, args.gamemode, args.sourcetv, args.runtime)
             server.start()
             if args.console:
                 open_console(files.log)
-            server.wait_for_map(args.map, MAP_LOAD_TIMEOUT)
+            server.wait_for_map(args.map, server.install.load_timeout)
             print(f"{args.map} is up on port {port}")
         elif args.action == "rcon":
             print(rcon_command(instance, args.command))
