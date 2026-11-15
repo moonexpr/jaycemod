@@ -1,6 +1,9 @@
--- features.payload.model: the team_train_watcher's decisions (team_train_watcher.cpp).
+-- team_train_watcher's model (its entity's model.lua): the watcher's decisions
+-- (team_train_watcher.cpp), and a cart moved by hand: driven (GMod's drive
+-- system) or held by the physgun, along its track.
 local T = dofile ("tests/harness.lua")
-local P = T.require ("features.payload.model")
+local P = dofile ("addons/sandcastle/gamemodes/sandcastle/entities/entities/team_train_watcher/model.lua")
+local Wetsands = T.require ("features.payload.model")
 local Capture = gameplay.capture
 local Master = T.require ("games.gameplay.capture.master")
 local Teams = gameplay.teams
@@ -449,11 +452,72 @@ T.test ("an advancing cart does not recede", function ()
 	T.eq (P.MayRecede (true),  false)
 end)
 
-T.test ("the cart's top speed is the map's times the admin's scale", function ()
-	T.eq (P.MaxSpeed (90, 1),                     90,                    "the map's")
-	T.eq (P.MaxSpeed (90, 2),                     180,                   "doubled")
-	T.eq (P.MaxSpeed (90, P.CART_SPEED_MAX * 10), 90 * P.CART_SPEED_MAX, "scale clamped high")
-	T.eq (P.MaxSpeed (90, 0),                     90 * P.CART_SPEED_MIN, "scale clamped low")
+T.test ("the cart's top speed is the map's times the scale the scenario gives", function ()
+	T.eq (P.MaxSpeed (90, 1), 90,  "the map's")
+	T.eq (P.MaxSpeed (90, 2), 180, "doubled")
+end)
+
+T.test ("Wetsands' admin keeps the scale within the editor's range", function ()
+	T.eq (Wetsands.SpeedScale (2),     2,                       "in range")
+	T.eq (Wetsands.SpeedScale (100),   Wetsands.CART_SPEED_MAX, "clamped high")
+	T.eq (Wetsands.SpeedScale (0),     Wetsands.CART_SPEED_MIN, "clamped low")
+	T.eq (Wetsands.CART_SPEED_DEFAULT, 1,                       "the map's own speed")
+end)
+
+T.test ("Wetsands names the watcher's audiences as the watcher does", function ()
+	T.eq (Wetsands.AUDIENCE_ALL,     P.AUDIENCE_ALL)
+	T.eq (Wetsands.AUDIENCE_PUSHERS, P.AUDIENCE_PUSHERS)
+	T.eq (Wetsands.CAPPERS_BLOCKED,  P.CAPPERS_BLOCKED)
+end)
+
+-- Moved by hand ----------------------------------------------------------------------
+
+T.test ("a driver's keys set the cart's speed: forward, back, or standing", function ()
+	T.eq (P.DriveSpeed (true, false),  1,  "forward")
+	T.eq (P.DriveSpeed (false, true),  -1, "back")
+	T.eq (P.DriveSpeed (false, false), 0,  "neither")
+	T.eq (P.DriveSpeed (true, true),   0,  "both cancel")
+end)
+
+-- A track with a corner: 100 along x, then 100 along y.
+local TRACK = { { x = 0, y = 0, z = 0 }, { x = 100, y = 0, z = 0 }, { x = 100, y = 100, z = 0 } }
+local TRACK_AT = { 0, 100, 200 }
+
+T.test ("a point is held to the track: the distance along it of the nearest point on it", function ()
+	T.eq (P.AlongTrack (TRACK, TRACK_AT, { x = 40, y = 30, z = 9 }),   40,  "beside the first leg")
+	T.eq (P.AlongTrack (TRACK, TRACK_AT, { x = 130, y = 60, z = 0 }),  160, "beside the second leg")
+	T.eq (P.AlongTrack (TRACK, TRACK_AT, { x = -50, y = 0, z = 0 }),   0,   "before the start: the start")
+	T.eq (P.AlongTrack (TRACK, TRACK_AT, { x = 100, y = 400, z = 0 }), 200, "past the goal: the goal")
+end)
+
+T.test ("a track of one node holds everything to it", function ()
+	T.eq (P.AlongTrack ({ { x = 5, y = 5, z = 5 } }, { 0 }, { x = 90, y = 0, z = 0 }), 0)
+end)
+
+T.test ("a held cart goes toward where it is held, slowing as it nears, and stands once there", function ()
+	T.eq (P.GrabSpeed (1000, 0),                       1,   "far ahead: full speed")
+	T.eq (P.GrabSpeed (0, 1000),                       -1,  "far behind: full speed back")
+	T.eq (P.GrabSpeed (P.GRAB_SLOW_WITHIN / 2, 0),     0.5, "near: slower")
+	T.eq (P.GrabSpeed (100 + P.GRAB_REACHED / 2, 100), 0,   "there")
+	T.eq (P.GrabSpeed (100 - P.GRAB_REACHED / 2, 100), 0,   "there, from ahead")
+end)
+
+T.test ("the watcher drives a map-driven cart while a hand moves it", function ()
+	T.eq (P.WatcherDrives (false, false, true),  true,  "the map's cart, in hand")
+	T.eq (P.WatcherDrives (false, false, false), false, "the map's cart, let go")
+end)
+
+T.test ("a cart in hand does not recede", function ()
+	T.eq (P.MayRecede (false, true),  false)
+	T.eq (P.MayRecede (false, false), true)
+end)
+
+T.test ("a hand's speed is the cart's, whoever is on it; let go, the cart's own", function ()
+	local pushed = { numCappers = 3, hill = P.HILL_NONE, currentSpeed = 1, receding = false }
+	local speed, receding = P.HandledSpeed (pushed, -1)
+	T.eq (speed,                        -1,    "held back against its pushers")
+	T.eq (receding,                     false, "not receding: it is held")
+	T.eq (P.HandledSpeed (pushed, nil), 1,     "let go: its pushers'")
 end)
 
 -- WatcherThink's concepts, on a change of speed level: the cart stopping

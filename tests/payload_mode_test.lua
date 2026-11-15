@@ -7,7 +7,8 @@ local T = dofile ("tests/harness.lua")
 local Rounds = gameplay.rounds
 local ControlPoints = T.require ("features.rounds.control_points")
 local PayloadMode = T.require ("features.payload.round")
-local Payload = T.require ("features.payload.model")
+local Payload = dofile ("addons/sandcastle/gamemodes/sandcastle/entities/entities/team_train_watcher/model.lua")
+local Admin = T.require ("features.payload.model")
 local Race = T.require ("features.payload.race")
 local Hud = T.require ("features.payload.hud")
 local Timer = T.require ("games.gameplay.rounds.timer")
@@ -373,10 +374,10 @@ T.test ("the cart's indicator: blocked, rolling back, its pushers, or the rollba
 end)
 
 T.test ("the admin's cart speed scale is clamped to the editor's range", function ()
-	T.eq (Payload.SpeedScale (2),     2,                      "in range")
-	T.eq (Payload.SpeedScale (100),   Payload.CART_SPEED_MAX, "clamped high")
-	T.eq (Payload.SpeedScale (0),     Payload.CART_SPEED_MIN, "clamped low")
-	T.eq (Payload.CART_SPEED_DEFAULT, 1,                      "the map's own speed")
+	T.eq (Admin.SpeedScale (2),     2,                    "in range")
+	T.eq (Admin.SpeedScale (100),   Admin.CART_SPEED_MAX, "clamped high")
+	T.eq (Admin.SpeedScale (0),     Admin.CART_SPEED_MIN, "clamped low")
+	T.eq (Admin.CART_SPEED_DEFAULT, 1,                    "the map's own speed")
 end)
 
 -- Seams --------------------------------------------------------------------------------
@@ -404,18 +405,40 @@ end)
 
 T.test ("the payload controller defines every method other code calls", function ()
 	local text = T.RealmSource ("payload", "sv")
-	for _, name in ipairs ({ "CartSpeedScale", "SetCartSpeedScale", "HasMultipleTrains", "BindWatcher", "BindEscort" }) do
+	for _, name in ipairs ({ "CartSpeedScale", "SetCartSpeedScale", "HasMultipleTrains", "Watchers", "BindEscort", "ChooseMode" }) do
 		T.eq (text:find ("function Controller:" .. name .. "%s*%(") ~= nil, true, name)
 	end
 end)
 
-T.test ("the payload bindings reach the controller, not the old globals", function ()
-	local watcher = Read (ENTITIES .. "team_train_watcher.lua")
-	for _, old in ipairs ({ "WS.Payload", "WS.CartSpeedScale", "WS.HoldTimersForWatchers" }) do
-		T.eq (watcher:find (old, 1, true), nil, old)
+-- Sandcastle's cart stands on its own: its watcher, its model, the race's
+-- logic and the game name no WS, and reach the gamemode as its controllers.
+local GAMERULES = "addons/sandcastle/gamemodes/sandcastle/gamemode/gamerules/"
+local STANDALONE =
+{
+	ENTITIES .. "team_train_watcher/init.lua",
+	ENTITIES .. "team_train_watcher/model.lua",
+	ENTITIES .. "tf_logic_multiple_escort.lua",
+	GAMERULES .. "game_payload.lua",
+	"addons/sandcastle/gamemodes/sandcastle/gamemode/drive_cart.lua"
+}
+
+T.test ("Sandcastle's cart names no WS", function ()
+	for _, path in ipairs (STANDALONE) do
+		T.eq (Read (path):find ("%f[%w_]WS%f[^%w_]"), nil, path)
 	end
-	T.eq (watcher:find (":BindWatcher (self)", 1, true) ~= nil, true, "the watcher binds")
-	T.eq (Read (ENTITIES .. "tf_logic_multiple_escort.lua"):find (":BindEscort (self)", 1, true) ~= nil, true, "the escort binds")
+end)
+
+T.test ("the watcher and the race's logic are the gamemode's controllers", function ()
+	local watcher = Read (ENTITIES .. "team_train_watcher/init.lua")
+	T.eq (watcher:find ('GAMEMODE:AddController%s*%(%s*{%s*type%s*=%s*"cart"') ~= nil, true, "the watcher: a cart")
+	local escort = Read (ENTITIES .. "tf_logic_multiple_escort.lua")
+	T.eq (escort:find ('GAMEMODE:AddController%s*%(%s*{%s*type%s*=%s*"cart_race"') ~= nil, true, "the escort: a race")
+end)
+
+T.test ("Wetsands loads its payload feature for a map's cart, and for a race", function ()
+	local init = Read (T.ROOT .. "init.lua")
+	T.eq (init:find ('controller.type == "cart"', 1, true) ~= nil,      true, "a cart")
+	T.eq (init:find ('controller.type == "cart_race"', 1, true) ~= nil, true, "a race")
 end)
 
 T.test ("the payload view reads only networked state", function ()
