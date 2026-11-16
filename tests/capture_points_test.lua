@@ -771,4 +771,24 @@ T.test ("a capture's owner event names its cappers; any other change of owner no
 	T.eq (#forced [1].cappers, 0, "forced")
 end)
 
+-- Points holding their own state ------------------------------------------------------
+
+T.test ("a set over points holding their own state changes that state, and a set rebuilt finds it as it was", function ()
+	local a = Point ("a", 0, NOBODY)
+	local b = Point ("b", 1, BLU)
+	a.state, b.state = control_point.New (a), control_point.New (b)
+	local set = Set ({ a, b })
+	local events = set:SetOwner ("a", RED, Capture.CAUSE_CAPTURE, true, { "Ann" })
+	T.eq (events [1].id, "a", "the point's event, through the set")
+	T.eq (a.state.owner, RED, "on the point itself")
+	set:SetLocked ("b", true)
+	set:SetUnlockTime ("b", 10, 100)
+	local again = Set ({ a, b })
+	T.eq (again:Owner ("a"),              RED,          "the owner it has")
+	T.eq (again:Locked ("b"),             true,         "its lock")
+	T.eq (again:UnlockAt ("b"),           110,          "its unlock time, which a spec alone never carried")
+	T.eq (Kinds (again:Tick (111, true)), "unlocked:b", "still coming")
+	T.eq (b.state.locked,                 false,        "on the point itself")
+end)
+
 T.finish ()
