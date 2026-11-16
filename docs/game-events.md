@@ -34,6 +34,10 @@ event rides net2's one message, under the event's name.
 - **`system_client_ready` now follows net2's handshake.** The client sends
   it once the server has answered its hello, a few ticks after
   `InitPostEntity`. A request made before then is held and sent then.
+- **Each definition is registered with net2,** which compares the client's
+  definitions with the server's as it loads and warns of a difference
+  (`docs/net2.md`, "Registries"). A feature's definitions are compared as a
+  registry of their own, `wetsands/<feature>`.
 - **Numbers, vectors and angles arrive exact.** Floats are no longer cut to
   32 bits, and vectors no longer lose precision.
 

@@ -87,6 +87,42 @@ when a round ends. Sandcastle's client listener calls the gamemode's
 screen where the server's `PrintMessage` used to. A derived gamemode can
 override `GM:RoundWinAnnounce` to present it its own way.
 
+## Registries: a client's copy held to the server's
+
+Each addon that sends messages may keep a registry of them, and net2
+compares the client's registries with the server's. This catches a client
+running an older or newer copy of an addon. It is not a security control:
+a client that lies sends the server's fingerprint back.
+
+- `net2.Registry(name[, { onMismatch = ... }])` gives an addon its
+  registry, and `registry:Define(message, shape)` lists a message. A shape
+  is anything describing what the message carries; only its fingerprint is
+  compared. A message in no registry is ad hoc, as before, and is never
+  compared.
+- A registry's fingerprint is a CRC-32 of its definitions, sorted, so the
+  order they were defined in does not matter.
+- A client reports its fingerprints once the server has answered its hello,
+  and again whenever one changes. The server compares each with its own,
+  once for each pair of fingerprints, and again when its own changes. A
+  registry only one side has is not compared, so a feature a client has not
+  loaded yet is no mismatch.
+- On a mismatch, the server decides by its own registry's `onMismatch`:
+  - `"warn"` (the default): both sides report it, and messages go on.
+  - `"error"`: that registry's messages stop both ways for that client, on
+    both sides, and `net2.OnMismatch(id, fn(registry, policy[, ply]))`
+    runs, so the addon can turn itself off for that player. net2 cannot
+    unload an addon's Lua.
+  - `"kick"`: the client is disconnected, with a message naming the
+    registry.
+- A client whose registry comes to match (its file run again, or a Lua
+  refresh) is let through again.
+- Only shapes are compared. A handler whose meaning changed while its
+  fields stayed the same passes.
+
+`WS.Events` registers every definition: a feature's in `wetsands/<feature>`
+(taken from the path of the file calling `Define`), the rest in `wetsands`,
+all on `"warn"`.
+
 ## For testing
 
 ### net2's debug layer
@@ -137,6 +173,10 @@ latency.
 
   Check them on the dev server (`dev.reload` can't reload a shared module,
   so use `dev.run` or a map change).
+- **A client's file path is unchecked in game.** `WS.Events` names a
+  feature's registry from `debug.getinfo(2, "S").source`, matching
+  `/features/<name>/`. The server's path is known; the form a client sees
+  for a file the server sent was never observed.
 - **The auditor's hooks are unchecked in game:** whether
   `GetCurrentCommand` answers inside `PostEntityFireBullets` on both realms,
   and whether that hook's trace is the lag-compensated one.

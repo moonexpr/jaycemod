@@ -99,7 +99,7 @@ local function World ()
 	local function Load (realm, server)
 		SERVER, CLIENT = server, not server
 		net2 = {}
-		for _, method in ipairs ({ "Send", "Receive", "Accept", "OnReady" }) do
+		for _, method in ipairs ({ "Send", "Receive", "Accept", "OnReady", "Registry" }) do
 			net2 [method] = function (...) return realm [method] (realm, ...) end
 		end
 		WS = { Events = nil }
@@ -286,6 +286,35 @@ T.test ("a transaction's answer comes back to the client that asked", function (
 	T.eq (bought:State (),                                                   Transaction.COMMITTED, "committed")
 	T.eq (refused:State (),                                                  Transaction.DECLINED, "declined")
 	T.eq (Transaction.IsRefusal (refused:Refusal (), { [SOLD_OUT] = true }), true, "with the server's refusal")
+end)
+
+-- A Define as a feature's shared file makes it, from where that file lives.
+local function DefineIn (events, file, name, fields)
+	local code = "local E, fields = ... E.Define (" .. string.format ("%q", name) .. ", fields)"
+	local chunk = assert (load (code, "@" .. file))
+	chunk (events, fields)
+end
+
+local CAPTURE = "addons/sandcastle/gamemodes/wetsands/gamemode/features/capture/sh.lua"
+
+T.test ("each definition is registered with net2, a feature's in a registry of its own", function ()
+	local w = World ()
+	local E = w.server
+	local mismatches = {}
+	w.serverRealm:OnMismatch ("test", function (name, policy) mismatches [#mismatches + 1] = name .. ":" .. policy end)
+	w:Define ("game_point", { cp = E.UInt (8) })
+	DefineIn (w.server, CAPTURE, "game_captured", { team = E.Team () })
+	DefineIn (w.client, CAPTURE, "game_captured", { team = E.Team () })
+	T.eq (w.serverRealm.registryOf.game_point,    "wetsands",         "the core's in wetsands")
+	T.eq (w.serverRealm.registryOf.game_captured, "wetsands/capture", "a feature's in its own")
+	w:Join ()
+	w:Step (2)
+	T.eq (#mismatches, 0, "the same definitions match")
+	-- the client's copy of the feature changed
+	DefineIn (w.client, CAPTURE, "game_captured", { team = E.Team (), cp = E.UInt (8) })
+	w:Step (3)
+	T.eq (mismatches [1], "wetsands/capture:warn", "found, and warned of")
+	T.eq (#mismatches,    1,                       "the core's registry still matches")
 end)
 
 T.finish ()

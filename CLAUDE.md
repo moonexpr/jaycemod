@@ -42,7 +42,8 @@ Sandcastle's messages between server and clients are `net2`'s, and its
 events `game_events`', built on it (`docs/net2.md`): no kinds, a name made
 up where it is used, names beginning `net2_` the library's own.
 Wetsands' game events (`WS.Events`: v1's registry, carried on net2 by
-`sh_events.lua`, `docs/game-events.md`) are namespaced by kind, and
+`sh_events.lua`, `docs/game-events.md`, its definitions in net2's registries,
+which compare a client's copy with the server's) are namespaced by kind, and
 the registry refuses any other name: `system_` for the gamemode core's own
 (`system_client_ready`, `system_transaction_settled`, `system_feature_load`,
 `system_server_convars`), a contract within a major release, so kept as few

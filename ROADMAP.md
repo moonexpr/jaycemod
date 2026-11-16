@@ -12,6 +12,7 @@ names under `docs/`.
    - [x] net2's debug layer (trace, delay, loss) and the hit auditor.
    - [ ] Check it in game: the unreliable cap, the per-tick budget, prediction, the world and `NULL` entities.
    - [x] Carry Wetsands' `WS.Events` on net2 (the adapter; the registry and call sites unchanged).
+   - [x] net2's registries: each addon's messages fingerprinted, a client's copy held to the server's (warn, error or kick); `WS.Events` registers its definitions.
    - [ ] Move `WS.Events`' call sites onto game_events and retire v1's registry (`includes/system/events.lua`): decide what checks a client's request once the schemas go.
    - [ ] Cancelling a transfer, a declared schema per name for hot messages.
    - [ ] Move presentation (the announcer, the HUD's reactions) to client listeners.
