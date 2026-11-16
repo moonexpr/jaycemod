@@ -11,7 +11,8 @@ names under `docs/`.
    - [x] net2 the transport and game_events on it, with their tests; the round's end announced through them.
    - [x] net2's debug layer (trace, delay, loss) and the hit auditor.
    - [ ] Check it in game: the unreliable cap, the per-tick budget, prediction, the world and `NULL` entities.
-   - [ ] Move Wetsands' `WS.Events` onto game_events and retire v1's `includes/system/events.lua`.
+   - [x] Carry Wetsands' `WS.Events` on net2 (the adapter; the registry and call sites unchanged).
+   - [ ] Move `WS.Events`' call sites onto game_events and retire v1's registry (`includes/system/events.lua`): decide what checks a client's request once the schemas go.
    - [ ] Cancelling a transfer, a declared schema per name for hot messages.
    - [ ] Move presentation (the announcer, the HUD's reactions) to client listeners.
 2. **Multi-file controllers, checked in game**

@@ -5,8 +5,9 @@
 `game_events.lua`, tested by `tests/net2_test.lua` and
 `tests/game_events_test.lua`. It supersedes the game events v2 design
 (`docs/game-events-v2.md`, `-plan.md`, `-research.md`, `-handoff.md`). Those
-documents stay as the record of what was weighed. Wetsands still runs v1
-(`WS.Events`) until it moves onto net2.
+documents stay as the record of what was weighed. Wetsands' `WS.Events`
+is carried on net2 too (`docs/game-events.md`); its registry and its call
+sites are still v1's.
 
 ## Why it changed from v2
 
@@ -148,6 +149,9 @@ latency.
 - **Tables go to every ready client.** There is no per-team table yet.
 - **A large payload can wait indefinitely** while smaller messages use a
   peer's whole budget every tick.
-- **Wetsands' `WS.Events`** (32 `Fire` sites, `Transact`/`Serve` on
-  foundation's transactions) is still v1. Moving it is the next step. Its
-  `system_`/`game_` naming rule has no counterpart in net2.
+- **Wetsands' `WS.Events` keeps v1's registry.** Its transport is net2,
+  but `Define`, the field types and the `system_`/`game_` naming rule
+  remain, and its call sites are unchanged. `Transact`/`Serve` still run on
+  foundation's transactions, over net2. Moving the call sites onto
+  `game_events` and dropping the definitions is a separate step, and means
+  deciding what checks a client's request once the schemas go.
