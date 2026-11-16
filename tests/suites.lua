@@ -59,7 +59,7 @@ return
 		tests =
 		{
 			"rounds_*", "gamemode_ready", "gamemode_round_players_ready", "gamemode_tournament", "gameplay",
-			"games_gameplay_rounds_*", "games_gameplay_capture_*", "capture_*", "objective_snapshots", "koth", "flag", "round_manager", "game_timer", "net2", "game_events", "hit_audit",
+			"games_gameplay_rounds_*", "games_gameplay_capture_*", "capture_*", "objective_snapshots", "koth", "flag", "round_manager", "game_timer", "net2", "game_events", "hit_audit", "gestures_*",
 			"mvm", "payload_mode", "spawn_*", "teams_controller", "players_teams*",
 			"player_classes", "player_spectator",
 			"features_rounds_*", "features_world_*", "features_capture_*", "features_arena_*", "features_payload_*"
@@ -76,7 +76,7 @@ return
 			E .. "entities/team_", E .. "entities/tf_logic_", E .. "entities/game_", E .. "entities/func_respawnroom",
 			E .. "entities/func_capturezone", E .. "entities/trigger_capture_area", E .. "entities/item_teamflag",
 			E .. "entities/info_observer_point", G .. "includes/modules/round_manager.lua", G .. "includes/modules/game_timer.lua",
-			G .. "includes/modules/net2.lua", G .. "includes/modules/game_events.lua", G .. "includes/modules/hit_audit.lua",
+			G .. "includes/modules/net2.lua", G .. "includes/modules/game_events.lua", G .. "includes/modules/hit_audit.lua", G .. "gestures/",
 			E .. "entities/tf_gamerules", E .. "entities/ws_gamerules", E .. "entities/edit_"
 		}
 	},
