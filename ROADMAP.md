@@ -9,6 +9,7 @@ names under `docs/`.
    before the playtest: local dispatch, self-describing encoding, replicated
    tables, calls, admission and rate limits, in the Sandcastle base gamemode.
    - [x] net2 the transport and game_events on it, with their tests; the round's end announced through them.
+   - [x] net2's debug layer (trace, delay, loss) and the hit auditor.
    - [ ] Check it in game: the unreliable cap, the per-tick budget, prediction, the world and `NULL` entities.
    - [ ] Move Wetsands' `WS.Events` onto game_events and retire v1's `includes/system/events.lua`.
    - [ ] Cancelling a transfer, a declared schema per name for hot messages.
