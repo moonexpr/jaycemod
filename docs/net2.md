@@ -86,6 +86,45 @@ when a round ends. Sandcastle's client listener calls the gamemode's
 screen where the server's `PrintMessage` used to. A derived gamemode can
 override `GM:RoundWinAnnounce` to present it its own way.
 
+## For testing
+
+### net2's debug layer
+
+Each realm has its own, set by `net2.SetDebug` or these convars (the
+server's console for what the server sends, a client's for what that client
+sends):
+
+| Convar | What |
+|---|---|
+| `net2_debug_trace 1` | Prints each message the realm sends and takes: its name, size and player. |
+| `net2_debug_delay <ms>` | Holds everything the realm sends that long, in order. |
+| `net2_debug_loss <0..1>` | Drops that share of unreliable messages. Reliable ones are never dropped, as on the engine's channel. |
+
+### The hit auditor
+
+`includes/modules/hit_audit.lua` measures how often a client's bullets hit
+what the server's did. It changes no shot: the server's trace still
+decides.
+
+- With the server's `hit_audit 1`, each client records what its predicted
+  bullets hit (`PostEntityFireBullets`) and claims them over net2, one
+  message per player command.
+- The server records its own bullets for the same command number and
+  compares pellet by pellet: agree, client only (the client hit what the
+  server missed), server only, or different entities. It also keeps the
+  worst distance between the two hit positions where they agreed.
+- `hit_audit_print` on the server prints the counts by weapon, and
+  `hit_audit_reset` starts them over.
+- With `hit_audit_show 1` and `developer 1` on a client, each disagreement
+  of that client's own shots is drawn for four seconds: its hit in yellow,
+  the server's in red.
+- Claims are held to 66 a second per player, 32 pellets a command and 64
+  shots waiting; a shot one realm never reports is counted unmatched after
+  two seconds.
+
+Run it with `net2_debug_delay` on a client to see how the counts move with
+latency.
+
 ## What is not settled
 
 - **Nothing has been run in game.** The numbers that hold up in tests may
@@ -97,6 +136,9 @@ override `GM:RoundWinAnnounce` to present it its own way.
 
   Check them on the dev server (`dev.reload` can't reload a shared module,
   so use `dev.run` or a map change).
+- **The auditor's hooks are unchecked in game:** whether
+  `GetCurrentCommand` answers inside `PostEntityFireBullets` on both realms,
+  and whether that hook's trace is the lag-compensated one.
 - **Entities a client hasn't received yet** decode as `NULL`, as GMod's
   `net.ReadEntity` does. Sending an entity before it is in the client's PVS
   loses it.
