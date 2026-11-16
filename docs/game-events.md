@@ -14,18 +14,32 @@ arrives.
 | Part | File | Job |
 |---|---|---|
 | Model | `gamemode/foundation/events.lua` (`foundation.events`) | Registry, field types, validation, wire format, listeners, request allowlist and rate limit. Pure; tested in `tests/events_test.lua`. |
-| Adapter | `gamemode/ws/sh_events.lua` (`WS.Events`) | Carries the registry on GMod's `net` library. `sh_core.lua` includes it before anything else. |
+| Adapter | `gamemode/sh_events.lua` (`WS.Events`) | Carries the registry on net2 (`docs/net2.md`). `sh_core.lua` includes it before anything else. Tested in `tests/ws_events_adapter_test.lua`. |
 
-## The two net messages
+## The transport: net2
 
-Only these two network strings exist, and only the adapter registers them.
-`tests/events_test.lua` fails if any other file calls
-`util.AddNetworkString`, `net.Start` or `net.Receive`.
+Since 2026-11-16 the adapter carries events on net2, not on net messages of
+its own. `ws_game_event_fire` and `ws_game_event_request` are gone; every
+event rides net2's one message, under the event's name.
 
-| Name | Direction |
-|---|---|
-| `ws_game_event_fire` | server to clients |
-| `ws_game_event_request` | client to server |
+- **The registry still decides what an event is.** `Fire` and `Request`
+  hold the fields to the definition, fill the defaults and run the
+  listeners, as before. The registry's own wire format (ids, typed writes)
+  is no longer used.
+- **A client's request is checked on arrival.** The server holds what
+  arrives to the definition before any listener runs, and drops what does
+  not fit. net2 admits requests at the definition's `rate`.
+- **Events reach clients at the tick's end,** with the tick's other events,
+  not at the moment of `Fire`. The server's own listeners still run at once.
+- **`system_client_ready` now follows net2's handshake.** The client sends
+  it once the server has answered its hello, a few ticks after
+  `InitPostEntity`. A request made before then is held and sent then.
+- **Each definition is registered with net2,** which compares the client's
+  definitions with the server's as it loads and warns of a difference
+  (`docs/net2.md`, "Registries"). A feature's definitions are compared as a
+  registry of their own, `wetsands/<feature>`.
+- **Numbers, vectors and angles arrive exact.** Floats are no longer cut to
+  32 bits, and vectors no longer lose precision.
 
 ## API
 
@@ -51,7 +65,8 @@ E.Request(name, fields)           -- client only; for client-sendable events
   bots and loading clients are skipped. Anything a joining client needs, the
   server sends when `client_ready` arrives. The feature loader does this with
   `feature_load`.
-- On the client, `WS.LocalReady()` becomes true at `InitPostEntity`.
+- On the client, `WS.LocalReady()` becomes true once the server has answered
+  its hello.
 - A listener `id` works like `hook.Add`'s: listening again under the same id
   replaces that listener in its place. Listeners run in the order they were
   added.

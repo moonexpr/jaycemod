@@ -5,8 +5,9 @@
 `game_events.lua`, tested by `tests/net2_test.lua` and
 `tests/game_events_test.lua`. It supersedes the game events v2 design
 (`docs/game-events-v2.md`, `-plan.md`, `-research.md`, `-handoff.md`). Those
-documents stay as the record of what was weighed. Wetsands still runs v1
-(`WS.Events`) until it moves onto net2.
+documents stay as the record of what was weighed. Wetsands' `WS.Events`
+is carried on net2 too (`docs/game-events.md`); its registry and its call
+sites are still v1's.
 
 ## Why it changed from v2
 
@@ -86,6 +87,48 @@ when a round ends. Sandcastle's client listener calls the gamemode's
 screen where the server's `PrintMessage` used to. A derived gamemode can
 override `GM:RoundWinAnnounce` to present it its own way.
 
+## Registries: a client's copy held to the server's
+
+Each addon that sends messages may keep a registry of them, and net2
+compares the client's registries with the server's. This catches a client
+running an older or newer copy of an addon. It is not a security control:
+a client that lies sends the server's fingerprint back.
+
+- Registries are optional. An addon with none of its own lists its messages
+  with `net2.Define(message, shape)`, which puts them in the default
+  registry (`"default"`). The default registry only ever warns; asking it
+  for `error` or `kick` is refused.
+- An addon that wants its own policy makes its own registry:
+  `net2.Registry(name[, { onMismatch = ... }])`, then
+  `registry:Define(message, shape)`.
+- A shape is anything describing what the message carries; only its
+  fingerprint is compared.
+- A message in no registry at all is ad hoc, as before, and is never
+  compared.
+- A registry's fingerprint is a CRC-32 of its definitions, sorted, so the
+  order they were defined in does not matter.
+- A client reports its fingerprints once the server has answered its hello,
+  and again whenever one changes. The server compares each with its own,
+  once for each pair of fingerprints, and again when its own changes. A
+  registry only one side has is not compared, so a feature a client has not
+  loaded yet is no mismatch.
+- On a mismatch, the server decides by its own registry's `onMismatch`:
+  - `"warn"` (the default): both sides report it, and messages go on.
+  - `"error"`: that registry's messages stop both ways for that client, on
+    both sides, and `net2.OnMismatch(id, fn(registry, policy[, ply]))`
+    runs, so the addon can turn itself off for that player. net2 cannot
+    unload an addon's Lua.
+  - `"kick"`: the client is disconnected, with a message naming the
+    registry.
+- A client whose registry comes to match (its file run again, or a Lua
+  refresh) is let through again.
+- Only shapes are compared. A handler whose meaning changed while its
+  fields stayed the same passes.
+
+`WS.Events` registers every definition: a feature's in `wetsands/<feature>`
+(taken from the path of the file calling `Define`), the rest in `wetsands`,
+all on `"warn"`.
+
 ## For testing
 
 ### net2's debug layer
@@ -136,6 +179,10 @@ latency.
 
   Check them on the dev server (`dev.reload` can't reload a shared module,
   so use `dev.run` or a map change).
+- **A client's file path is unchecked in game.** `WS.Events` names a
+  feature's registry from `debug.getinfo(2, "S").source`, matching
+  `/features/<name>/`. The server's path is known; the form a client sees
+  for a file the server sent was never observed.
 - **The auditor's hooks are unchecked in game:** whether
   `GetCurrentCommand` answers inside `PostEntityFireBullets` on both realms,
   and whether that hook's trace is the lag-compensated one.
@@ -148,6 +195,9 @@ latency.
 - **Tables go to every ready client.** There is no per-team table yet.
 - **A large payload can wait indefinitely** while smaller messages use a
   peer's whole budget every tick.
-- **Wetsands' `WS.Events`** (32 `Fire` sites, `Transact`/`Serve` on
-  foundation's transactions) is still v1. Moving it is the next step. Its
-  `system_`/`game_` naming rule has no counterpart in net2.
+- **Wetsands' `WS.Events` keeps v1's registry.** Its transport is net2,
+  but `Define`, the field types and the `system_`/`game_` naming rule
+  remain, and its call sites are unchanged. `Transact`/`Serve` still run on
+  foundation's transactions, over net2. Moving the call sites onto
+  `game_events` and dropping the definitions is a separate step, and means
+  deciding what checks a client's request once the schemas go.

@@ -811,9 +811,13 @@ T.test ("a trace sees each message a realm sends and takes", function ()
 	local w = World ()
 	local _, client = w:Ready (1, 2)
 	local seen = {}
-	w.server:SetDebug ({
-		trace = function (way, name, bytes) seen [#seen + 1] = way .. ":" .. name .. ":" .. (bytes > 0 and "n" or "0") end,
-	})
+	w.server:SetDebug (
+		{
+			trace = function (way, name, bytes)
+				seen [#seen + 1] = way .. ":" .. name .. ":" .. (bytes > 0 and "n" or "0")
+			end
+		}
+	)
 	w.server:Accept ("up", { count = 5, seconds = 1 })
 	w:Step ()
 	seen = {}
@@ -837,7 +841,7 @@ T.test ("a delay holds every message that long, in order", function ()
 	w:Step (3)
 	T.eq (#heard, 0, "held")
 	w:Step (6)
-	T.eq (#heard, 2, "let go once the delay has passed")
+	T.eq (#heard,             2, "let go once the delay has passed")
 	T.eq (heard [1].fields.n, 1, "in order")
 end)
 
@@ -852,10 +856,262 @@ T.test ("loss drops unreliable messages only", function ()
 	w:Step ()
 	w.server:Send ("snap", { n = 2 }, { unreliable = true })
 	w:Step ()
-	T.eq (#snaps, 1, "one of two lost")
+	T.eq (#snaps,             1, "one of two lost")
 	T.eq (snaps [1].fields.n, 2, "the second, whose draw was over the loss")
-	T.eq (#events, 1, "the reliable one arrives regardless")
+	T.eq (#events,            1, "the reliable one arrives regardless")
 	Raises (function () w.server:SetDebug ({ lag = 1 }) end, "bad_options")
+end)
+
+-- Registries: each addon's names and shapes, fingerprinted, the client's held to the server's
+
+-- An addon's registry, the same in a realm as a shared file makes it: shapes
+-- by name, in the order given.
+local function Register (realm, name, shapes, options)
+	local registry = realm:Registry (name, options)
+	for _, entry in ipairs (shapes) do registry:Define (entry [1], entry [2]) end
+	return registry
+end
+
+local SHAPES =
+{
+	{ "addon_point", { cp = "integer", name = "string" } },
+	{ "addon_menu", { choice = "integer" } }
+}
+
+local OTHER =
+{
+	{ "addon_point", { cp = "integer", name = "string", owner = "entity" } },
+	{ "addon_menu", { choice = "integer" } }
+}
+
+-- What each realm's OnMismatch heard: { registry, policy, ply }.
+local function Mismatches (realm)
+	local heard = {}
+	realm:OnMismatch ("test", function (name, policy, ply)
+		heard [#heard + 1] = { name = name, policy = policy, ply = ply }
+	end)
+	return heard
+end
+
+T.test ("a registry's fingerprint is its definitions, whatever order they were given in", function ()
+	local w = World ()
+	local _, client = w:Join (1, 2)
+	local a = Register (w.server, "addon", SHAPES)
+	local b = Register (client, "addon", { SHAPES [2], SHAPES [1] })
+	T.eq (a:Fingerprint (), b:Fingerprint (), "the same definitions, the same print")
+	local c = Register (client, "other", OTHER)
+	T.eq (a:Fingerprint () ~= c:Fingerprint (), true,     "a changed shape, another print")
+	T.eq (type (a:Fingerprint ()),              "number", "a number")
+	Raises (function () w.server:Registry ("bad", { onMismatch = "explode" }) end, "bad_options")
+	Raises (function () w.server:Registry (5) end,                                 "bad_name")
+end)
+
+T.test ("matching registries are said nothing of, and their messages go on", function ()
+	local w = World ()
+	local server = Mismatches (w.server)
+	Register (w.server, "addon", SHAPES)
+	local ply, client = w:Join (1, 2)
+	Register (client, "addon", SHAPES)
+	local onClient = Mismatches (client)
+	local heard = Hear (client, "addon_point")
+	client:Start ()
+	w:Step (4)
+	w.server:Send ("addon_point", { cp = 1, name = "a" })
+	w:Step ()
+	T.eq (#server,    0, "nothing on the server")
+	T.eq (#onClient,  0, "nothing on the client")
+	T.eq (#heard,     1, "the message arrived")
+	T.eq (#w.reports, 0, "nothing reported")
+end)
+
+T.test ("a client whose registry differs is warned of by default, and its messages go on", function ()
+	local w = World ()
+	local server = Mismatches (w.server)
+	Register (w.server, "addon", SHAPES)
+	local ply, client = w:Join (1, 2)
+	Register (client, "addon", OTHER)
+	local onClient = Mismatches (client)
+	local heard = Hear (client, "addon_point")
+	client:Start ()
+	w:Step (4)
+	T.eq (#server,             1,       "the server heard")
+	T.eq (server [1].name,     "addon", "which registry")
+	T.eq (server [1].policy,   "warn",  "the default")
+	T.eq (server [1].ply,      ply,     "which player")
+	T.eq (onClient [1].policy, "warn",  "the client told too")
+	T.eq (#w.reports,          2,       "reported on both")
+	w.server:Send ("addon_point", { cp = 1, name = "a" })
+	w:Step (2)
+	T.eq (#heard,  1, "still sent")
+	T.eq (#server, 1, "told once")
+end)
+
+T.test ("error stops a registry's messages to and from that client, and only that registry's", function ()
+	local w = World ()
+	Register (w.server, "addon", SHAPES, { onMismatch = "error" })
+	w.server:Accept ("addon_menu", { count = 10, seconds = 1 })
+	w.server:Accept ("loose",      { count = 10, seconds = 1 })
+	local ply, client = w:Join (1, 2)
+	Register (client, "addon", OTHER)
+	local onClient = Mismatches (client)
+	local points, loose = Hear (client, "addon_point"), Hear (w.server, "loose")
+	local menus = Hear (w.server, "addon_menu")
+	client:Start ()
+	w:Step (4)
+	T.eq (onClient [1].policy, "error", "the client told it is stopped")
+	-- a client that skips its own block, so only the server's stops anything
+	local own = client.peer.blocked
+	client.peer.blocked = {}
+	w.server:Send ("addon_point", { cp = 1, name = "a" })
+	w:Step (2)
+	T.eq (#points, 0, "the server sends it none of them")
+	client.peer.blocked = own
+	local sent, why = client:Send ("addon_menu", { choice = 1 })
+	client:Send ("loose", {})
+	w:Step (2)
+	T.eq (sent,   false,     "the client sends none")
+	T.eq (why,    "blocked", "and says why")
+	T.eq (#loose, 1,         "a name in no registry goes on")
+	client.peer.blocked = {}
+	client:Send ("addon_menu", { choice = 1 })
+	w:Step (2)
+	T.eq (#menus, 0, "the server drops what it sends of them")
+end)
+
+T.test ("kick disconnects the client, naming the addon", function ()
+	local w = World ()
+	Register (w.server, "addon", SHAPES, { onMismatch = "kick" })
+	local ply, client = w:Join (1, 2)
+	Register (client, "addon", OTHER)
+	client:Start ()
+	w:Step (4)
+	T.eq (#w.kicked,                                          1,    "kicked")
+	T.eq (w.kicked [1].ply,                                   ply,  "that client")
+	T.eq (w.kicked [1].reason:find ("addon", 1, true) ~= nil, true, "the reason names the addon")
+end)
+
+T.test ("a registry either realm makes after the client loads is compared then", function ()
+	local w = World ()
+	local server = Mismatches (w.server)
+	local ply, client = w:Join (1, 2)
+	client:Start ()
+	w:Step (4)
+	-- a feature the client loads later, its registry made as it loads
+	Register (client, "feature", OTHER)
+	w:Step (3)
+	T.eq (#server, 0, "the server has no such registry: nothing to compare")
+	Register (w.server, "feature", SHAPES)
+	w:Step (3)
+	T.eq (#server,         1,         "once the server has it, it is compared")
+	T.eq (server [1].name, "feature", "that registry")
+	-- one only the server has stays unsaid
+	Register (w.server, "server_only", SHAPES)
+	w:Step (3)
+	T.eq (#server, 1, "a registry the client has not loaded is not a mismatch")
+end)
+
+T.test ("a registry the server changes after the client reported is held against it again", function ()
+	local w = World ()
+	local server = Mismatches (w.server)
+	local registry = Register (w.server, "addon", SHAPES)
+	local ply, client = w:Join (1, 2)
+	Register (client, "addon", SHAPES)
+	client:Start ()
+	w:Step (4)
+	T.eq (#server, 0, "matching")
+	registry:Define ("addon_more", { n = "integer" })
+	w:Step (2)
+	T.eq (#server, 1, "the server's change found")
+end)
+
+T.test ("a client that starts again is held again, and one that comes to match is let through", function ()
+	local w = World ()
+	Register (w.server, "addon", SHAPES, { onMismatch = "error" })
+	local ply, client = w:Join (1, 2)
+	local registry = Register (client, "addon", OTHER)
+	local points = Hear (client, "addon_point")
+	client:Start ()
+	w:Step (4)
+	-- a Lua refresh with nothing fixed: still stopped
+	client:Start ()
+	w:Step (4)
+	local own = client.peer.blocked
+	client.peer.blocked = {}
+	w.server:Send ("addon_point", { cp = 1, name = "a" })
+	w:Step (2)
+	T.eq (#points, 0, "still stopped after it starts again")
+	client.peer.blocked = own
+	-- the client's file is fixed and run again: its registry is defined again
+	registry:Define ("addon_point", SHAPES [1] [2])
+	w:Step (3)
+	w.server:Send ("addon_point", { cp = 1, name = "a" })
+	local _, why = client:Send ("addon_menu", { choice = 1 })
+	w:Step (2)
+	T.eq (#points,          1,    "sent again once it matches")
+	T.eq (why ~= "blocked", true, "and the client's own block lifted")
+end)
+
+T.test ("an addon with no registry of its own defines into the default one, which only warns", function ()
+	local w = World ()
+	local server = Mismatches (w.server)
+	w.server:Define ("loose_point", { cp = "integer" })
+	local ply, client = w:Join (1, 2)
+	client:Define ("loose_point", { cp = "string" })
+	local heard = Hear (client, "loose_point")
+	T.eq (w.server:Registry ().name,       Net2.DEFAULT_REGISTRY, "the default registry")
+	T.eq (w.server.registryOf.loose_point, Net2.DEFAULT_REGISTRY, "holds it")
+	client:Start ()
+	w:Step (4)
+	T.eq (server [1].name,   Net2.DEFAULT_REGISTRY, "a difference found")
+	T.eq (server [1].policy, "warn",                "and only warned of")
+	w.server:Send ("loose_point", { cp = 1 })
+	w:Step (2)
+	T.eq (#heard, 1, "its messages go on")
+	Raises (function () w.server:Registry (nil, { onMismatch = "kick" }) end,                    "bad_options")
+	Raises (function () w.server:Registry (Net2.DEFAULT_REGISTRY, { onMismatch = "error" }) end, "bad_options")
+	T.eq (w.server:Registry (nil, { onMismatch = "warn" }).policy, "warn", "warn it may be told")
+end)
+
+T.test ("a name in no registry at all is never compared", function ()
+	local w = World ()
+	local server = Mismatches (w.server)
+	local ply, client = w:Join (1, 2)
+	client:Start ()
+	w:Step (4)
+	w.server:Send ("ad_hoc", { n = 1 })
+	w:Step (2)
+	T.eq (#server,                                     0,   "nothing compared")
+	T.eq (w.server.registries [Net2.DEFAULT_REGISTRY], nil, "and no default registry made")
+end)
+
+T.test ("a client may say what its registries are only so often", function ()
+	local w = World ()
+	local server = Mismatches (w.server)
+	Register (w.server, "addon", SHAPES)
+	local ply, client = w:Join (1, 2)
+	client:Start ()
+	w:Step (4)
+	for print = 1, Net2.PRINTS_RATE.count + 5 do
+		client:Internal ("net2_prints", { prints = { { name = "addon", print = print } } })
+	end
+	w:Step (2)
+	T.eq (#server, Net2.PRINTS_RATE.count, "those past its rate dropped")
+end)
+
+T.test ("what a client says of its registries is held to bounds", function ()
+	local w = World ()
+	local server = Mismatches (w.server)
+	Register (w.server, "addon", SHAPES)
+	local ply, client = w:Join (1, 2)
+	client:Start ()
+	w:Step (4)
+	local many = {}
+	for i = 1, Net2.REGISTRIES + 1 do many [i] = { name = "r" .. i, print = 1 } end
+	for _, prints in ipairs ({ "x", { 5 }, { { name = 5, print = 1 } }, { { name = "addon", print = "x" } }, many }) do
+		client:Internal ("net2_prints", { prints = prints })
+	end
+	w:Step (2)
+	T.eq (#server, 0, "none taken")
 end)
 
 -- Connections
