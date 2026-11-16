@@ -143,6 +143,15 @@ players now; a method called on one runs on each of them (`RED:AddCondition("URI
 | `BLU` | BLU's players |
 | `SPEC` | The spectators |
 
+### ULX
+
+The workbench's ULX commands (`lua/ulx/modules/sh/sandcastle_dev.lua`), in chat or the console:
+
+| Chat | What |
+|---|---|
+| `!thirdperson`, `!firstperson` | The caller's view from behind them, to see their own model; anyone may |
+| `!give <players> <class>` | A weapon to each player (the spawn menu's weapons complete); admins |
+
 `!print` of a NextSoldier (ulx_luadev's overlay) adds its `behavior:` and `group:` stacks, through
 the `ULXLuaDevDescribe` hook the workbench answers.
 
