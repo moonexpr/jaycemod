@@ -94,10 +94,16 @@ compares the client's registries with the server's. This catches a client
 running an older or newer copy of an addon. It is not a security control:
 a client that lies sends the server's fingerprint back.
 
-- `net2.Registry(name[, { onMismatch = ... }])` gives an addon its
-  registry, and `registry:Define(message, shape)` lists a message. A shape
-  is anything describing what the message carries; only its fingerprint is
-  compared. A message in no registry is ad hoc, as before, and is never
+- Registries are optional. An addon with none of its own lists its messages
+  with `net2.Define(message, shape)`, which puts them in the default
+  registry (`"default"`). The default registry only ever warns; asking it
+  for `error` or `kick` is refused.
+- An addon that wants its own policy makes its own registry:
+  `net2.Registry(name[, { onMismatch = ... }])`, then
+  `registry:Define(message, shape)`.
+- A shape is anything describing what the message carries; only its
+  fingerprint is compared.
+- A message in no registry at all is ad hoc, as before, and is never
   compared.
 - A registry's fingerprint is a CRC-32 of its definitions, sorted, so the
   order they were defined in does not matter.
