@@ -141,7 +141,8 @@ local function NewWorld (options)
 	env.GAMEMODE =
 	{
 		AddController = function (_, controller) World.controllers [#World.controllers + 1] = controller end,
-		IsGameplay = function () return World.gameplay end
+		-- the mode as the world sees it: castle_gamerules
+		GameRules = function () return { GetGameplay = function () return World.gameplay end } end
 	}
 	-- a global the watcher does not know is an error: WS above all
 	setmetatable (env, { __index = function (_, key) error ("the watcher read the global " .. tostring (key), 2) end })

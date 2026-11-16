@@ -82,6 +82,15 @@ mode answers by the `ControlPointRules` hook), tells each event to the
 `round_manager.AddTeamScore` (`control_point_capture`). Wetsands' capture
 feature files the points in order and adds what a change means to its mode.
 
+The mode and the round are represented to the world by one entity,
+`castle_gamerules` (`GAMEMODE:GameRules()`): `GetGameplay()` (gameplay mode;
+sandbox when not) and `GetRoundState()`. The switch (`sandcastle_gameplay`)
+and the round (`round_manager.State()`) are systems; the gamemode
+(`gamemode/castle_gamerules.lua`) makes the entity when asked, tells it each
+change, and makes it again, as things are then, after a cleanup. An entity
+that must know the mode asks it; a game (`gamerules/game_*.lua`) never does,
+and goes by the round alone (`tests/game_rules_round_test.lua`).
+
 Check the systems a change touches, never all of them:
 `.devtools/bin/check_lua.sh --changed` runs the groups of the suites your
 changes touch, `check_lua.sh GROUP...` named ones (`--list` shows the

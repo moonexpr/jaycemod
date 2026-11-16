@@ -550,6 +550,8 @@ local function CtfGame (limit, flagRules, gameplay, roundState)
 				GetRoundState = function () return roundState end
 			},
 			ROUND_ACTIVE = "active",
+			ROUND_PREPARE = "prepare",
+			ROUND_OVER = "over",
 			HUD_PRINTCENTER = "center",
 			PrintMessage = function (_, text) printed [#printed + 1] = text end,
 			team = { GetName = function (t) return t == BLUE and "BLU" or "RED" end },
@@ -664,13 +666,14 @@ T.test ("the invaders' spawn room keeps the flag when the scenario names them", 
 	T.eq (model:State (), Flag.CARRIED, "kept")
 end)
 
-T.test ("with no mode's answer, flags can be taken in sandbox, and in gameplay only during a round", function ()
-	local function MayBeCapped (gameplay, state)
-		return (CtfGame (1, nil, gameplay, state)):GetRules ().FlagMayBeCapped
+T.test ("with no mode's answer, flags can be taken but while a round is being prepared or is over", function ()
+	local function MayBeCapped (state)
+		return (CtfGame (1, nil, nil, state)):GetRules ().FlagMayBeCapped
 	end
-	T.eq (MayBeCapped (false, "waiting"), true,  "sandbox")
-	T.eq (MayBeCapped (true, "waiting"),  false, "gameplay, between rounds")
-	T.eq (MayBeCapped (true, "active"),   true,  "gameplay, in a round")
+	T.eq (MayBeCapped ("waiting"), true,  "no round on, in sandbox or waiting for one")
+	T.eq (MayBeCapped ("prepare"), false, "preparing")
+	T.eq (MayBeCapped ("active"),  true,  "in a round")
+	T.eq (MayBeCapped ("over"),    false, "over")
 end)
 
 -- A player as GMod has one, for the entities' own answers.
