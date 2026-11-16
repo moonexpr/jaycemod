@@ -2,11 +2,17 @@
 -- world of one server realm and client realms joined by a fake transport.
 local T = dofile ("tests/harness.lua")
 
-dofile ("addons/sandcastle/gamemodes/sandcastle/gamemode/includes/modules/net2.lua")
-local Net2 = package.loaded.net2
-
 -- Engine values, as the host recognises them.
 local EntityMeta, VectorMeta, AngleMeta = {}, {}, {}
+
+-- GMod's type names an engine value by its class ("Player", "Entity", "Vector", "Angle"), never
+-- "userdata": net2 reads it as it loads, as the game's.
+local luaType   = type
+local GMOD_TYPE = { [EntityMeta] = "Player", [VectorMeta] = "Vector", [AngleMeta] = "Angle" }
+type            = function (v) return GMOD_TYPE [getmetatable (v) or false] or luaType (v) end
+dofile ("addons/sandcastle/gamemodes/sandcastle/gamemode/includes/modules/net2.lua")
+type = luaType
+local Net2 = package.loaded.net2
 local NULL = setmetatable ({}, EntityMeta)
 local function Ent (index, teamNumber)
 	return setmetatable ({ index = index, team = teamNumber }, EntityMeta)
@@ -167,6 +173,13 @@ local function Raises (fn, kind)
 	T.eq (ok,                                         false, "raises " .. kind)
 	T.eq (tostring (err):find (kind, 1, true) ~= nil, true,  "the error names " .. kind .. ": " .. tostring (err))
 end
+
+T.test ("an error reads as [net2], what went wrong, and its kind", function ()
+	local w       = World ()
+	local ok, err = pcall (function () w.server:Send ("e", { f = print }) end)
+	T.eq (ok,                                                                    false, "raises")
+	T.eq (tostring (err):find ("[net2] fields.f is a function. error=bad_fields", 1, true) ~= nil, true, tostring (err))
+end)
 
 -- Codec
 
