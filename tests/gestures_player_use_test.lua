@@ -164,4 +164,11 @@ T.test ("a used button or door glows stronger than a taken item's ghost", functi
 	T.eq (Use.INTERACT_PASSES > Use.PASSES,   true, "brighter")
 end)
 
+T.test ("a held object's halo spreads well past its edge", function ()
+	T.defined (Carry.HALO_BLUR,   "HALO_BLUR")
+	T.defined (Carry.HALO_PASSES, "HALO_PASSES")
+	T.eq (Carry.HALO_BLUR >= Use.GHOST_BLUR, true, "at least a ghost's spread")
+	T.eq (Carry.HALO_PASSES > Use.PASSES,    true, "brighter than a ghost's")
+end)
+
 T.finish ()
