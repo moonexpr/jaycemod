@@ -86,9 +86,9 @@ end
 -- Gameplay's win conditions set mp_winlimit to 0 for a map whose captures score (an attack/defend
 -- map's stopwatch): a win limit there would end the match a capture in.
 T.test ("mp_winlimit may be 0, no limit: a team's wins then never take the match", function ()
-	T.eq (convars.mp_winlimit.min, 0, "0 allowed")
+	T.eq (convars.mp_winlimit.min,  0,     "0 allowed")
 	T.eq (Rounds.TakesMatch (5, 0), false, "no limit")
-	T.eq (Rounds.TakesMatch (3, 3), true, "the limit reached")
+	T.eq (Rounds.TakesMatch (3, 3), true,  "the limit reached")
 	T.eq (Rounds.TakesMatch (2, 3), false, "short of it")
 end)
 
@@ -96,14 +96,14 @@ T.test ("a round that runs out of time ends with nobody winning", function ()
 	InRound ()
 	T.defined (Timer.Remaining (Timer.ROUND), "its clock")
 	Run (Timer.Remaining (Timer.ROUND) - 1)
-	T.eq (hookArgs.winner,              nil,          "not yet")
+	T.eq (hookArgs.winner, nil,          "not yet")
 	T.eq (Rounds.State (), ROUND_ACTIVE, "still on")
 	Run (1)
-	T.eq (hookArgs.winner,              TF_TEAM_UNASSIGNED,   "nobody")
-	T.eq (Rounds.State (), ROUND_OVER,           "over")
-	T.eq (next (teamScores),            nil,                  "no score")
-	T.eq (fired [1].name,               "teamplay_round_win", "announced")
-	T.eq (fired [1].fields.team,        TF_TEAM_UNASSIGNED,   "as a stalemate")
+	T.eq (hookArgs.winner,       TF_TEAM_UNASSIGNED,   "nobody")
+	T.eq (Rounds.State (),       ROUND_OVER,           "over")
+	T.eq (next (teamScores),     nil,                  "no score")
+	T.eq (fired [1].name,        "teamplay_round_win", "announced")
+	T.eq (fired [1].fields.team, TF_TEAM_UNASSIGNED,   "as a stalemate")
 end)
 
 T.test ("a team's clock running out closes the round for it", function ()
@@ -121,7 +121,7 @@ T.test ("a new phase stops every clock of the last one", function ()
 	Timer.Start (Timer.TeamClock (RED), 1000, { outcome = { team = RED } })
 	Rounds.RoundOutcome ({ team = RED })
 	Run (2)
-	T.eq (Rounds.State (),          ROUND_OVER, "over")
+	T.eq (Rounds.State (),                       ROUND_OVER, "over")
 	T.eq (Timer.Running (Timer.TeamClock (RED)), false,      "the team's clock")
 end)
 
@@ -166,6 +166,113 @@ end)
 
 T.test ("only RoundOutcome closes a round from outside", function ()
 	T.eq (Rounds.Win, nil, "the old name is gone")
+end)
+
+-- The match's phases, told as they come ------------------------------------------------
+
+local BLUE = 3
+local events, limits, ready, scores
+do
+	local Base = hook.Run
+	hook.Run = function (name, a, b)
+		if name == "MatchEvent" then
+			events [#events + 1] = b and a .. ":" .. b or a
+			return
+		end
+		if name == "MatchLimits" then return limits end
+		return Base (name, a, b)
+	end
+	team.NumPlayers = function () return ready and 1 or 0 end
+	team.GetScore = function (t) return scores [t] or 0 end
+	local AddScore = team.AddScore
+	team.AddScore = function (t, score)
+		scores [t] = (scores [t] or 0) + score
+		AddScore (t, score)
+	end
+end
+
+-- A match from nothing, with these limits.
+local function NewMatch (matchLimits)
+	Fresh ()
+	events, limits, ready, scores = {}, matchLimits, true, {}
+	game_manager.Tiebreaker = function () end
+	Rounds.Think (false)
+end
+
+local function Told ()
+	local told = table.concat (events, " ")
+	events = {}
+	return told
+end
+
+T.test ("how a match is over: a team's wins, the rounds played, or the lead, whichever comes first", function ()
+	local Over = Rounds.MatchOver
+	T.eq (Over (1, 0, 1, {}),           false, "no limits: never")
+	T.eq (Over (2, 1, 3, { wins = 3 }), false, "short of the wins")
+	local over, winner = Over (3, 1, 4, { wins = 3 })
+	T.eq (over,   true, "the wins reached")
+	T.eq (winner, RED,  "by RED")
+	over, winner = Over (1, 3, 4, { difference = 2 })
+	T.eq (over,   true, "the lead reached")
+	T.eq (winner, BLUE, "by BLU")
+	over, winner = Over (2, 2, 4, { rounds = 4 })
+	T.eq (over,                                                     true,  "the rounds played")
+	T.eq (winner,                                                   nil,   "level: nobody's match")
+	T.eq (Over (2, 2, 3, { rounds = 4, wins = 0, difference = 0 }), false, "0 is no limit")
+end)
+
+T.test ("a match waits for its teams, sets up, starts once, and tells each round", function ()
+	NewMatch ({ wins = 2 })
+	ready = false
+	Run (2)
+	T.eq (Told (), "PreStart", "waiting for players")
+	ready = true
+	Run (1)
+	T.eq (Told (), "PreEnd SetupStart", "the teams are there: setting up")
+	Run (6)
+	T.eq (Told (), "SetupEnd GameStart RoundStart", "the game starts with its first round")
+	Rounds.RoundOutcome ({ team = RED })
+	Run (1)
+	T.eq (Told (), "RoundEnd", "the round is over, the match is not")
+	Run (20)
+	T.eq (Told (), "SetupStart SetupEnd RoundStart", "the next round: the game does not start twice")
+	Rounds.RoundOutcome ({ team = RED })
+	Run (9)
+	T.eq (Told (), "RoundEnd WinTeam:" .. RED .. " GameDone", "RED takes the match, and the game is done")
+end)
+
+T.test ("a round nobody wins goes to the tie breaker a map can play", function ()
+	NewMatch ({ rounds = 1 })
+	local bonus
+	game_manager.Tiebreaker = function () return "game_sudden_death" end
+	game_manager.SetBonus = function (name) bonus = name end
+	Run (7)
+	Told ()
+	Run (Timer.Remaining (Timer.ROUND) + 1)
+	T.eq (Told (), "RoundEnd TieBreakStart SetupStart", "the tie breaker begins")
+	T.eq (bonus,   "game_sudden_death",                 "the map's")
+	Run (6)
+	T.eq (Told (), "SetupEnd RoundStart", "its round")
+	Rounds.RoundOutcome ({ team = BLUE })
+	Run (9)
+	T.eq (Told (), "RoundEnd TieBreakEnd WinTeam:" .. BLUE .. " GameDone", "settled, and with it the match")
+	T.eq (bonus,   nil,                                                    "the tie breaker over")
+end)
+
+T.test ("a match that runs out of rounds level is done with no winner", function ()
+	NewMatch ({ rounds = 1 })
+	Run (7)
+	Told ()
+	Run (Timer.Remaining (Timer.ROUND) + 8)
+	T.eq (Told (), "RoundEnd GameDone", "done, nobody's")
+end)
+
+T.test ("with no limits told, the match goes by mp_winlimit", function ()
+	NewMatch (nil)
+	Run (7)
+	Rounds.RoundOutcome ({ team = RED })
+	Run (8)
+	T.eq (Told (), "SetupStart SetupEnd GameStart RoundStart RoundEnd", "one win of three: the match goes on")
 end)
 
 T.finish ()

@@ -14,6 +14,7 @@ local TRANSMIT = "always"
 -- server (the operator's switch and round_manager's round), and the hooks.
 local function Realm (server)
 	local realm = { gameplay = false, round = WAITING, made = 0, entities = {}, hooks = {}, callbacks = {} }
+	realm.companions, realm.commands, realm.outcomes = {}, {}, {}
 	local class = {}
 	local env
 	local function Spawned ()
@@ -27,6 +28,9 @@ local function Realm (server)
 		function ent:DrawShadow () end
 		function ent:SetSolid () end
 		function ent:SetMoveType () end
+		function ent:StoreOutput (name) self.stored [#self.stored + 1] = name end
+		function ent:TriggerOutput (name) realm.outputs [#realm.outputs + 1] = name end
+		ent.stored = {}
 		realm.entities [#realm.entities + 1] = ent
 		return ent
 	end
@@ -40,7 +44,12 @@ local function Realm (server)
 			AddCSLuaFile = function () end,
 			IsValid = function (ent) return ent ~= nil and ent.valid == true end,
 			GetConVar = function () return { GetBool = function () return realm.gameplay end } end,
-			round_manager = { State = function () return realm.round end },
+			round_manager =
+			{
+				State = function () return realm.round end,
+				RoundOutcome = function (outcome) realm.outcomes [#realm.outcomes + 1] = outcome end
+			},
+			RunConsoleCommand = function (...) realm.commands [#realm.commands + 1] = table.concat ({ ... }, " ") end,
 			cvars = { AddChangeCallback = function (name, fn) realm.callbacks [name] = fn end },
 			hook = { Add = function (event, _, fn) realm.hooks [event] = fn end },
 			ents =
@@ -49,20 +58,36 @@ local function Realm (server)
 					realm.made = realm.made + 1
 					return Spawned ()
 				end,
-				FindByClass = function ()
+				FindByClass = function (class)
 					realm.finds = (realm.finds or 0) + 1
 					local found = {}
 					for _, ent in ipairs (realm.entities) do
 						if ent.valid then found [#found + 1] = ent end
 					end
+					if class == "*_gamerules" then
+						for _, ent in ipairs (realm.companions) do found [#found + 1] = ent end
+					end
 					return found
 				end
 			}
 		}, { __index = _G })
-	env.ENT, env.GM = class, {}
+	env.ENT, env.GM = class, { IsGameplay = function () return realm.gameplay end }
+	realm.outputs = {}
 	setfenv (assert (loadfile (ENTITY)), env) ()
 	setfenv (assert (loadfile (GAMEMODE_FILE)), env) ()
 	realm.gm, realm.class, realm.Spawned = env.GM, class, Spawned
+	-- One the map has, with these keyvalues.
+	function realm.Placed (kv)
+		local ent = Spawned ()
+		for key, value in pairs (kv) do ent:KeyValue (key, value) end
+		ent:Spawn ()
+		return ent
+	end
+	function realm:Outputs ()
+		local fired = table.concat (self.outputs, ",")
+		self.outputs = {}
+		return fired
+	end
 	return realm
 end
 
@@ -135,6 +160,156 @@ T.test ("a client reads the one the server sent, found once, and sandbox with no
 	T.eq (client.finds, finds, "not searched for again while it is there")
 	sent.valid = false
 	T.eq (client.gm:GetRoundState (), WAITING, "gone with a cleanup: no round until the next comes")
+end)
+
+-- A companion to a map's other gamerules ------------------------------------------------
+
+local RED, BLUE = TEAM_RED, TEAM_BLUE
+
+T.test ("a map's own is the one used, with what the map set on it", function ()
+	local server = Realm (true)
+	local placed = server.Placed (
+		{
+			spawnmenu = "1",
+			spawnflags = "6",
+			team_scramble = "1",
+			team_balance = "0",
+			max_wins = "2",
+			max_rounds = "5",
+			max_win_difference = "0",
+			observer_point = "overview",
+			spectator_free_roam = "1",
+			OnGameStart = "relay,Trigger,,0,-1"
+		}
+	)
+	server.hooks.InitPostEntity ()
+	local rules = server.gm:GameRules ()
+	T.eq (rules,                         placed,        "the map's")
+	T.eq (server.made,                   0,             "none made beside it")
+	T.eq (rules.stored [1],              "OnGameStart", "its outputs kept")
+	T.eq (rules:GetSpawnMenu (),         1,             "the spawn menu allowed")
+	T.eq (rules:GetSpawnDisabled (),     6,             "but for weapons and NPCs")
+	T.eq (rules:GetTeamScramble (),      true,          "teams scrambled")
+	T.eq (rules:GetTeamBalance (),       false,         "not balanced")
+	T.eq (rules:GetMaxWins (),           2,             "wins a team needs")
+	T.eq (rules:GetMaxRounds (),         5,             "rounds in all")
+	T.eq (rules:GetMaxWinDifference (),  0,             "no lead that ends it")
+	T.eq (rules:GetObserverPoint (),     "overview",    "where a player first looks from")
+	T.eq (rules:GetSpectatorFreeRoam (), true,          "spectators roam")
+end)
+
+T.test ("one the map set nothing on leaves every choice to the gamemode", function ()
+	local server = Realm (true)
+	server.hooks.InitPostEntity ()
+	local rules = server.gm:GameRules ()
+	T.eq (rules:GetSpawnMenu (),         -1,    "the spawn menu by the mode")
+	T.eq (rules:GetSpawnDisabled (),     0,     "nothing disabled")
+	T.eq (rules:GetTeamScramble (),      false, "no scramble")
+	T.eq (rules:GetTeamBalance (),       false, "no balance")
+	T.eq (rules:GetMaxWins (),           0,     "no wins suggested")
+	T.eq (rules:GetObserverPoint (),     "",    "no observation point")
+	T.eq (rules:GetSpectatorFreeRoam (), false, "no free roam")
+	T.eq (server.gm:MatchLimits ().wins, nil,   "so the match's wins are mp_winlimit's")
+end)
+
+T.test ("the match's limits are what the map suggests", function ()
+	local server = Realm (true)
+	server.Placed ({ max_wins = "2", max_rounds = "5", max_win_difference = "0" })
+	server.hooks.InitPostEntity ()
+	local limits = server.gm:MatchLimits ()
+	T.eq (limits.wins,       2,   "wins")
+	T.eq (limits.rounds,     5,   "rounds")
+	T.eq (limits.difference, nil, "0 suggests nothing")
+end)
+
+T.test ("each of the match's events fires its output", function ()
+	local server = Realm (true)
+	server.hooks.InitPostEntity ()
+	local rules = server.gm:GameRules ()
+	for _, event in ipairs (
+		{
+			"PreStart", "PreEnd", "SetupStart", "SetupEnd", "GameStart", "RoundStart", "RoundEnd",
+			"TieBreakStart", "TieBreakEnd", "GameDone"
+		}
+	) do
+		rules:MatchEvent (event)
+		T.eq (server:Outputs (), "On" .. event, event)
+	end
+	rules:MatchEvent ("WinTeam", RED)
+	T.eq (server:Outputs (), "OnWinTeam1", "RED's match")
+	rules:MatchEvent ("WinTeam", BLUE)
+	T.eq (server:Outputs (), "OnWinTeam2", "BLU's match")
+end)
+
+T.test ("it hears of the match first, then a map's other gamerules do", function ()
+	local server = Realm (true)
+	server.hooks.InitPostEntity ()
+	local heard = {}
+	server.companions [1] =
+	{
+		valid = true,
+		MatchEvent = function (_, event, team)
+			heard [#heard + 1] = { event = event, team = team, after = #server.outputs }
+		end
+	}
+	server.companions [2] = { valid = true } -- gamerules that take no match events
+	server.gm:MatchEvent ("WinTeam", BLUE)
+	T.eq (server:Outputs (), "OnWinTeam2", "castle_gamerules' output")
+	T.eq (#heard,            1,            "the companion told once")
+	T.eq (heard [1].event,   "WinTeam",    "the event")
+	T.eq (heard [1].team,    BLUE,         "and its team")
+	T.eq (heard [1].after,   1,            "after castle_gamerules fired its own")
+end)
+
+T.test ("the spawn menu goes by the mode unless the map says, and a map may disable kinds", function ()
+	local sandbox = Realm (true)
+	sandbox.hooks.InitPostEntity ()
+	T.eq (sandbox.gm:SpawnAllowed ("props"), true, "sandbox: allowed")
+	sandbox.gameplay = true
+	T.eq (sandbox.gm:SpawnAllowed ("props"), false, "gameplay: not")
+	local allowed = Realm (true)
+	allowed.gameplay = true
+	allowed.Placed ({ spawnmenu = "1", spawnflags = "6" })
+	allowed.hooks.InitPostEntity ()
+	T.eq (allowed.gm:SpawnAllowed (),          true,  "the map allows it in gameplay")
+	T.eq (allowed.gm:SpawnAllowed ("props"),   true,  "props")
+	T.eq (allowed.gm:SpawnAllowed ("weapons"), false, "weapons disabled")
+	T.eq (allowed.gm:SpawnAllowed ("npcs"),    false, "NPCs disabled")
+	local refused = Realm (true)
+	refused.Placed ({ spawnmenu = "0" })
+	refused.hooks.InitPostEntity ()
+	T.eq (refused.gm:SpawnAllowed ("props"),                        false, "the map refuses it in sandbox")
+	T.eq (pcall (refused.gm.SpawnAllowed, refused.gm, "furniture"), false, "an unknown kind is our mistake")
+end)
+
+T.test ("a kind is disabled only by the map's word: its flag, or the spawn menu refused", function ()
+	local plain = Realm (true)
+	plain.gameplay = true
+	plain.hooks.InitPostEntity ()
+	T.eq (plain.gm:SpawnDisabled ("npcs"), false, "gameplay alone disables no kind: a mode makes its own NPCs")
+	local flagged = Realm (true)
+	flagged.Placed ({ spawnflags = "4" })
+	flagged.hooks.InitPostEntity ()
+	T.eq (flagged.gm:SpawnDisabled ("npcs"),     true,  "NPCs flagged")
+	T.eq (flagged.gm:SpawnDisabled ("vehicles"), false, "vehicles not")
+	local refused = Realm (true)
+	refused.Placed ({ spawnmenu = "0" })
+	refused.hooks.InitPostEntity ()
+	T.eq (refused.gm:SpawnDisabled ("vehicles"),                     true,  "the menu refused: every kind")
+	T.eq (pcall (refused.gm.SpawnDisabled, refused.gm, "furniture"), false, "an unknown kind is our mistake")
+end)
+
+T.test ("its inputs change the mode and close the round", function ()
+	local server = Realm (true)
+	server.hooks.InitPostEntity ()
+	local rules = server.gm:GameRules ()
+	T.eq (rules:AcceptInput ("SetGameplay", nil, nil, "1"), true,                    "SetGameplay taken")
+	T.eq (server.commands [1],                              "sandcastle_gameplay 1", "the operator's switch")
+	rules:AcceptInput ("RoundWin", nil, nil, tostring (BLUE))
+	T.eq (server.outcomes [1].team, BLUE, "the round to BLU")
+	rules:AcceptInput ("RoundStalemate")
+	T.eq (server.outcomes [2].team,   nil,   "a stalemate")
+	T.eq (rules:AcceptInput ("Kill"), false, "any other is the engine's")
 end)
 
 T.finish ()

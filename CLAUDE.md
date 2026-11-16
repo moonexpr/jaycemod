@@ -82,14 +82,29 @@ mode answers by the `ControlPointRules` hook), tells each event to the
 `round_manager.AddTeamScore` (`control_point_capture`). Wetsands' capture
 feature files the points in order and adds what a change means to its mode.
 
-The mode and the round are represented to the world by one entity,
-`castle_gamerules` (`GAMEMODE:GameRules()`): `GetGameplay()` (gameplay mode;
-sandbox when not) and `GetRoundState()`. The switch (`sandcastle_gameplay`)
-and the round (`round_manager.State()`) are systems; the gamemode
-(`gamemode/castle_gamerules.lua`) makes the entity when asked, tells it each
-change, and makes it again, as things are then, after a cleanup. An entity
-that must know the mode asks it; a game (`gamerules/game_*.lua`) never does,
-and goes by the round alone (`tests/game_rules_round_test.lua`).
+The mode, the round and the match are represented to the world by one
+entity, `castle_gamerules` (`GAMEMODE:GameRules()`), a companion to a map's
+other gamerules (`tf_gamerules`), never in their place. The switch
+(`sandcastle_gameplay`) and the match (`round_manager`) are systems; the
+gamemode (`gamemode/castle_gamerules.lua`) uses the map's own entity or
+makes one, tells it each change, and makes it again, as things are then,
+after a cleanup. It decides nothing: `GetGameplay()` (sandbox when not),
+`GetRoundState()`, and what the map set on it for the gamemode to go by:
+`spawnmenu` and `spawnflags` (`GAMEMODE:SpawnAllowed([kind])`, by the mode
+unless the map says; `SpawnDisabled(kind)`, the map's word against `props`,
+`weapons`, `npcs`, `entities`, `vehicles` or `tools`), `max_wins`,
+`max_rounds`, `max_win_difference` (`GAMEMODE:MatchLimits()`, which
+`round_manager.MatchOver` ends the match by, `mp_winlimit` for wins left
+unsaid), and `team_scramble`, `team_balance`, `observer_point`,
+`spectator_free_roam`, which it holds and nothing enforces yet. Inputs
+`SetGameplay`, `RoundWin`, `RoundStalemate`. `round_manager` tells the match
+by the `MatchEvent(event, team)` hook; `GAMEMODE:MatchEvent` gives it to
+`castle_gamerules` first (`OnPreStart`, `OnPreEnd`, `OnSetupStart`,
+`OnSetupEnd`, `OnGameStart`, `OnRoundStart`, `OnRoundEnd`,
+`OnTieBreakStart`, `OnTieBreakEnd`, `OnWinTeam1`, `OnWinTeam2`,
+`OnGameDone`), then to every other `*_gamerules` with a `MatchEvent`. An
+entity that must know the mode asks it; a game (`gamerules/game_*.lua`)
+never does, and goes by the round alone (`tests/game_rules_round_test.lua`).
 
 Check the systems a change touches, never all of them:
 `.devtools/bin/check_lua.sh --changed` runs the groups of the suites your
