@@ -22,7 +22,7 @@ NextSoldier, the AI-war's NextBot soldiers. Below, `gamemode/` is
 | `addons/wartactics/` | The tactics engine, its own addon: the strategy soldiers are organised by (fire teams, squads, lanes, posts, scenarios, the tactical, squad and scenario monitors), apart from NextSoldier but for one bridge module, its modules in `lua/wartactics/`, published as `wartactics.<module>` (index below) |
 | `addons/foundation/lua/foundation/` | Nothing but its namespaces and three plain globals at its root (`transaction`, `configstore`, `nodegraph`): foundation is copied to the globals, so it stays small and generic. A feature's or mode's model is the feature's `model.lua` and its parts (`docs/foundation-game-split-plan.md`) |
 | `gamemodes/sandcastle/gamemode/` | Sandbox's own files, changed where the gameplay mode needs it, plus `rounds.lua` (rounds, match) and `includes/modules/game_manager.lua`. No foundation and no feature loader. TF2's map entities live in its `entities/`; those still calling `WS` run only under Wetsands until they call gamemode modules directly, modules reaching the gamemode through its hooks, and waits on its callbacks being coroutines |
-| `gamemode/includes/modules/<name>.lua` (either gamemode) | Libraries and managers only (`game_manager`, `round_manager`, `game_timer`, `net2`: the net library taken further, `game_events`: events on it, and `hit_audit`: clients' bullet hits against the server's, `docs/net2.md`), never a gameplay model: each a global library declared with a named `module("<name>")`, never `module(...)`, loaded by `include` from `shared.lua` (GMod's `require` searches only `lua/includes/modules/`, which a gamemode's folder is not) |
+| `gamemode/includes/modules/<name>.lua` (either gamemode) | Libraries and managers only (`game_manager`, `round_manager`, `game_timer`, `net2`: the net library taken further, `game_events`: events on it, `hit_audit`: clients' bullet hits against the server's, `docs/net2.md`, and `map_io`: the map's entity I/O, below), never a gameplay model: each a global library declared with a named `module("<name>")`, never `module(...)`, loaded by `include` from `shared.lua` (GMod's `require` searches only `lua/includes/modules/`, which a gamemode's folder is not) |
 | `gamerules/game_*.lua` (either gamemode) | The games a map can play (payload and the like), classes registered with `game_manager` as `player_class/` files are with `player_manager`, each included by hand in `shared.lua`; a class of the same name registered by a derived gamemode replaces it. A game may produce models for its own internal use; they are non-binding. Map entities stand on their own, alike in sandbox and gameplay, rely on no game's model and name no game: they reach the games through `game_manager` (`GetCurrentScenario():GetRules()`, every key optional with the entity's own default) and `round_manager` (`AddTeamScore`, `RoundOutcome`) |
 | `gamemode/features/<feature>/` | Controllers: `sv.lua`/`cl.lua`/`sh.lua` composition roots and their `<realm>_<part>.lua` parts |
 | `gamemode/entities/weapons/` | Standard SWEPs: CS:S stats are grouped on terminal weapons; `base_cstrike`, `base_cstrike_melee` and `base_cstrike_grenade` own shared behavior |
@@ -48,6 +48,21 @@ the registry refuses any other name: `system_` for the gamemode core's own
 (`system_client_ready`, `system_transaction_settled`, `system_feature_load`,
 `system_server_convars`), a contract within a major release, so kept as few
 as possible; `game_` for every other.
+
+The map's entity I/O is Sandcastle's `map_io`, on the server
+(`gamemodes/sandcastle/gamemode/includes/modules/map_io.lua`, bound to the
+engine and kept in step by its `gamemode/map_io.lua`): `New(world)` → a map
+over a world port (`Entities`, `NameOf`, `ClassOf`, `IsValid`, `FirstPlayer`,
+`Fire`): `FindByName`, `FindByClass`, `FirstByName`, `Each(class, fn)`
+(names and classes without case, a trailing `*` a prefix, never an entity
+no longer valid), `Track`, `Forget`, `Reindex`, `Recache`,
+`RecordKeyValue`, `KeyValues`, `FireOutput`, `AcceptInput`,
+`Observe(kind, name, fn)`/`Unobserve`; `ParseOutput`. The map being played:
+`Map()`, `Named(name)` (the first of that targetname, or `NULL`),
+`Record(class)` (an engine class whose keyvalues and outputs are kept, as
+its Lua would keep them: `team_control_point`, `path_track`),
+`KeyValues(ent)`, `FireOutput(caller, name, activator)`. Wetsands'
+`WS.MapIO`, `WS.FindByName`, `WS.KeyValues` and `WS.FireOutput` are these.
 
 Check the systems a change touches, never all of them:
 `.devtools/bin/check_lua.sh --changed` runs the groups of the suites your
@@ -336,7 +351,6 @@ never features or ws; a published foundation module never requires games;
 | Module | API |
 |---|---|
 | `world.snapshot` | A model's state as plain data and back: `Spec{ name, skip, times, machines }`, `Take(model, spec, now[, refs])`, `Apply(model, snapshot, spec, now[, refs])`. Times kept as seconds from now, state_machine machines as their state (`Machine:Restore`), entities and other non-data through `refs` (`Encode`, `Decode`), weak tables as data; Apply writes raw and clears what the snapshot lacks. The models' `Snapshot`/`Restore` (the dev workbench's capture) |
-| `world.io` | A map's entity lookups and output connections, through a world port |
 | `world.trace` | Source's traces by shape over an engine port (`Hull`, `Line`, `Vector`, `mask`, `group`): `New(engine)` → `Cube(origin, size)`, `Player(origin, scale)`, `Sphere(origin, radius)` (rays, the nearest hit and all), `Frustum(origin, view)` (`view`: `forward`, `fov`, `vfov`, `range`, `cols`, `rows`), each then `(mask, group, filter)`; with no origin a preset, callable, whose `:Each(origins[, fn])` is a generator. `sh_traces.lua` publishes them as the globals `TraceCube`, `TracePlayer`, `TraceSphere`, `TraceFrustum` over `util` |
 | `gameplay.tactics` | The tactics engine interface: `ENGINE` (a port), `Check(engine)` |
 | `list.drawlist` | `New()` → draw callbacks named by dotted paths, run in order (by order, a tie by path): `Add(path, order, draw[, when])` (a path again replaces it), `HideElements(path)`/`ShowElements(path)` (the code's: a path hides all under it), `SetHidden(paths)` (the player's, apart), `Draw(...)`, `Entries()`; `ParseNames(text)`. The HUD's (`WS.HUD`, `cl_hud_hidden`) |

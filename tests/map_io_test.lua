@@ -1,7 +1,7 @@
--- games.world.io: entity lookups over cached name and class maps,
--- recorded output connections, and observers of outputs and inputs.
+-- map_io: entity lookups over cached name and class maps, recorded output
+-- connections, observers of outputs and inputs, and the map being played.
 local T = dofile ("tests/harness.lua")
-local MapIO = world.io
+local MapIO = map_io
 
 -- A world of plain entity tables: { name, class, valid }. It counts full
 -- scans, so a test can see a lookup served from the cache, and logs fires.
@@ -217,6 +217,93 @@ end)
 T.test ("observing an unknown kind is refused", function ()
 	local io = MapIO.New (World ())
 	T.eq (pcall (io.Observe, io, "sideways", "OnTrigger", function () end), false, "raises")
+end)
+
+T.test ("an AddOutput input naming a targetname files the entity under its new name", function ()
+	local world = World ()
+	local door = world:Add ("door_red", "func_door")
+	local io = MapIO.New (world)
+	T.eq (io:FirstByName ("door_red"), door, "under its name")
+	io:AcceptInput (door, "AddOutput", "classname func_door_rotating", nil, nil)
+	door.name = "ignored"
+	T.eq (io:FirstByName ("door_red"), door, "another keyvalue leaves it filed where it was")
+	io:AcceptInput (door, "addoutput", " TargetName door_blu", nil, nil)
+	door.name = "door_blu" -- the engine applies the input after it is heard
+	T.eq (io:FirstByName ("door_blu"), door, "under its new name")
+	T.eq (io:FirstByName ("door_red"), nil,  "no longer under the old")
+	io:AcceptInput (door, "AddOutput", nil, nil, nil)
+end)
+
+-- The map being played ------------------------------------------------------------
+
+NULL = NULL or {}
+
+-- Each test binds its own world: what the gamemode does once.
+local function Bound ()
+	local world = World ()
+	MapIO.Bind (world)
+	return world
+end
+
+T.test ("the map being played is the one bound, until another is", function ()
+	local world = Bound ()
+	local relay = world:Add ("relay", "logic_relay")
+	T.eq (MapIO.Map ():FirstByName ("relay"), relay, "the bound world's entities")
+	local map = MapIO.Map ()
+	T.eq (MapIO.Map (), map, "one map")
+	Bound ()
+	T.eq (MapIO.Map () ~= map, true, "a world bound again is a new map")
+end)
+
+T.test ("an entity is named by its targetname, NULL for no name or an unknown one", function ()
+	local world = Bound ()
+	local door = world:Add ("door_red", "func_door")
+	world:Add ("door_red", "func_door")
+	T.eq (MapIO.Named ("door_red"), door, "the first so named")
+	T.eq (MapIO.Named ("DOOR_RED"), door, "without case")
+	T.eq (MapIO.Named ("nobody"),   NULL, "an unknown name")
+	T.eq (MapIO.Named (nil),        NULL, "no name (a keyvalue the map left out)")
+	T.eq (MapIO.Named (""),         NULL, "an empty name")
+end)
+
+T.test ("only a recorded class has its keyvalues kept", function ()
+	local world = Bound ()
+	local point = world:Add ("cap_a", "team_control_point")
+	local prop = world:Add ("crate", "prop_dynamic")
+	MapIO.Record ("team_control_point")
+	T.eq (MapIO.Records ("team_control_point"), true,  "recorded")
+	T.eq (MapIO.Records ("prop_dynamic"),       false, "not recorded")
+	MapIO.EntityKeyValue (point, "point_index", "2")
+	MapIO.EntityKeyValue (point, "OnCapTeam1",  "relay,Trigger,,0,-1")
+	MapIO.EntityKeyValue (prop,  "model",       "models/crate.mdl")
+	T.eq (MapIO.KeyValues (point).point_index, "2", "the point's value")
+	T.eq (#MapIO.KeyValues (point).outputs,    1,   "the point's output")
+	T.eq (MapIO.KeyValues (prop).model,        nil, "nothing of the prop")
+end)
+
+T.test ("a recorded entity's output fires on the map being played", function ()
+	local world = Bound ()
+	local point = world:Add ("cap_a", "team_control_point")
+	local relay = world:Add ("relay", "logic_relay")
+	MapIO.Record ("team_control_point")
+	MapIO.EntityKeyValue (point, "OnCapTeam1", "relay,Trigger,,0,-1")
+	MapIO.FireOutput (point, "OnCapTeam1", point)
+	T.eq (#world.fired,           1,         "fired once")
+	T.eq (world.fired [1].target, relay,     "at the relay")
+	T.eq (world.fired [1].input,  "Trigger", "its input")
+end)
+
+T.test ("a map cleaned up keeps what was recorded of entities still there, and finds the new ones", function ()
+	local world = Bound ()
+	local point = world:Add ("cap_a", "team_control_point")
+	MapIO.Record ("team_control_point")
+	MapIO.EntityKeyValue (point, "point_index", "2")
+	T.eq (MapIO.Named ("cap_a"), point, "found")
+	point.valid = false
+	local again = world:Add ("cap_a", "team_control_point")
+	T.eq (MapIO.Named ("cap_a"), NULL, "the removed one is never returned, the new one not yet known")
+	MapIO.Map ():Recache ()
+	T.eq (MapIO.Named ("cap_a"), again, "the new one after the cleanup's recache")
 end)
 
 T.finish ()

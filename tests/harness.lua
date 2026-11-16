@@ -9,6 +9,7 @@ T.ROOT = "addons/sandcastle/gamemodes/wetsands/gamemode/"
 TEAM_RED, TEAM_BLUE, TF_TEAM_UNASSIGNED = 2, 3, 0
 baseclass = baseclass or { Set = function () end }
 dofile ("addons/sandcastle/gamemodes/sandcastle/gamemode/includes/modules/game_manager.lua")
+dofile ("addons/sandcastle/gamemodes/sandcastle/gamemode/includes/modules/map_io.lua")
 dofile ("addons/sandcastle/gamemodes/sandcastle/gamemode/gamerules/game_default.lua")
 dofile ("addons/sandcastle/gamemodes/sandcastle/gamemode/gamerules/game_ctf.lua")
 
