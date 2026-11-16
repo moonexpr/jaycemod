@@ -59,7 +59,7 @@ return
 		tests =
 		{
 			"rounds_*", "gamemode_ready", "gamemode_round_players_ready", "gamemode_tournament", "gameplay",
-			"games_gameplay_rounds_*", "games_gameplay_capture_*", "capture_*", "objective_snapshots", "koth", "flag", "round_manager", "game_timer", "map_io", "map_io_binding", "control_point", "net2", "game_events", "hit_audit", "gesture", "gestures_*",
+			"games_gameplay_rounds_*", "games_gameplay_capture_*", "capture_*", "objective_snapshots", "koth", "flag", "round_manager", "game_timer", "map_io", "map_io_binding", "control_point", "control_point_binding", "game_control_points", "net2", "game_events", "hit_audit", "gesture", "gestures_*",
 			"mvm", "payload_mode", "spawn_*", "teams_controller", "players_teams*",
 			"player_classes", "player_spectator", "player_expressive_base",
 			"features_rounds_*", "features_world_*", "features_capture_*", "features_arena_*", "features_payload_*"

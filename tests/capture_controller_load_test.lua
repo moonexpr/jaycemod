@@ -19,7 +19,8 @@ local SOURCE = T.ROOT .. "features/capture/sv.lua"
 local WIRING =
 {
 	"cvars tf_caplinear ws_capture",
-	"hook AcceptInput ws_capture_point",
+	"hook ControlPointEvent ws_capture",
+	"hook ControlPointRules ws_capture",
 	"hook PostCleanupMap ws_capture",
 	"hook Think ws_capture"
 }

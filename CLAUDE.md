@@ -64,6 +64,24 @@ its Lua would keep them: `team_control_point`, `path_track`),
 `KeyValues(ent)`, `FireOutput(caller, name, activator)`. Wetsands'
 `WS.MapIO`, `WS.FindByName`, `WS.KeyValues` and `WS.FireOutput` are these.
 
+A control point is Sandcastle's `control_point`
+(`gamemodes/sandcastle/gamemode/control_point.lua`): the engine has the
+class `team_control_point` and nothing in it, so the file is what its
+entity would be. `New(spec)` → a point's state (`owner`, `locked`,
+`unlockAt`, its sounds and icons), whose changes return events
+(`SetOwner(team, cause, mayBeCaptured, cappers)`, `SetLocked`,
+`SetUnlockTime`, `Think`, `RoundActivate`, `CaptureStarted`; `CAUSE_*`,
+`HEAR_*`, `CP_WARN`). On the server the point does the rest itself, from
+the map's keyvalues: `Of(ent)` (its state, made once), `All()`,
+`SetOwner(ent, team, cause, cappers)`, `ForceOwner`, `SetLocked`,
+`SetUnlockTime`, `RoundActivate`, `CaptureStarted`, `ApplyModel`; its
+inputs, timed unlock, model, sounds and outputs. It asks the scenario
+`PointsMayBeCaptured` and `PointsUnlock` (`game_control_points`, which a
+mode answers by the `ControlPointRules` hook), tells each event to the
+`ControlPointEvent(ent, e)` hook, and a team's capture to
+`round_manager.AddTeamScore` (`control_point_capture`). Wetsands' capture
+feature files the points in order and adds what a change means to its mode.
+
 Check the systems a change touches, never all of them:
 `.devtools/bin/check_lua.sh --changed` runs the groups of the suites your
 changes touch, `check_lua.sh GROUP...` named ones (`--list` shows the
