@@ -45,11 +45,16 @@ function dev.Rounds ()
 end
 
 -- fn once the gamemode and the map's entities are up: now when they are
--- (a reload of the workbench), else at InitPostEntity.
+-- (a reload of the workbench), else at InitPostEntity. The workbench serves
+-- Sandcastle's gamemode; a server running another (Club Random, mounted on the
+-- same dev server) has no WS, and fn never runs there: failing inside
+-- InitPostEntity, it would stop every hook after it, that gamemode's own.
 function dev.WhenReady (id, fn)
 	if WS and WS.gamemodeLoaded and #ents.GetAll () > 1 then
 		fn ()
 		return
 	end
-	hook.Add ("InitPostEntity", "sandcastle_dev_" .. id, fn)
+	hook.Add ("InitPostEntity", "sandcastle_dev_" .. id, function ()
+		if WS then fn () end
+	end)
 end
