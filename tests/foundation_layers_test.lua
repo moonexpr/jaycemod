@@ -206,6 +206,11 @@ local NEXTSOLDIER = {
 	["behavior/intention"] = "nextsoldier",
 	["behavior/monitor"] = "nextsoldier",
 	["behavior/registry"] = "nextsoldier",
+	["player"] = "nextsoldier",
+	["player/usercmd"] = "nextsoldier",
+	["player/commands"] = "nextsoldier",
+	["player/puppets"] = "nextsoldier",
+	["player/base_nextbot_player"] = "nextsoldier",
 }
 
 -- wartactics/'s modules: the AI war's tactics engine, the strategy its
