@@ -98,14 +98,14 @@ end
 
 local function Follower (spot, team, kit, name)
 	local follower = ents.Create ("npc_pathfollower")
-	follower.NSToolManaged, follower.NSRadioName = true, name
+	follower.ToolManaged, follower.RadioName = true, name
 	follower:SetPos (spot)
 	follower:Spawn ()
 	follower:Activate ()
-	follower:NSSetTeam (team)
-	follower:NSSetDriver ("legs")
-	follower:NSHoldFeet (false)
-	follower:NSKit (kit)
+	follower:SetWarTeam (team)
+	follower:SetDriver ("legs")
+	follower:HoldFeet (false)
+	follower:WarKit (kit)
 	return follower
 end
 
@@ -133,9 +133,9 @@ local function Give (order, members)
 	local positions = {}
 	for i, member in ipairs (members) do positions [i] = Point (member:GetPos ()) end
 	local at = Vector (order.point.x, order.point.y, order.point.z)
-	local places = order:Places (positions, nextsoldier.engine.GroupSpacing (), members [1]:NSLegsAdmit (at),
-		function (around) return members [1]:NSLegsAdmit (around) end)
-	for i, member in ipairs (members) do member:NSLegsGive (order, places [i]) end
+	local places = order:Places (positions, nextsoldier.engine.GroupSpacing (), members [1]:LegsAdmit (at),
+		function (around) return members [1]:LegsAdmit (around) end)
+	for i, member in ipairs (members) do member:LegsGive (order, places [i]) end
 	order:Lead (members [1])
 	return order
 end
@@ -160,7 +160,7 @@ end
 local function Laid ()
 	if not T.blueOrder then return false end
 	for _, member in ipairs (Living (T.blue)) do
-		local place = member:NSLegsPlace ()
+		local place = member:LegsPlace ()
 		if place and member:GetPos ():Distance2D (Vector (place.x, place.y, place.z)) > LAID then return false end
 	end
 	return true
@@ -252,7 +252,7 @@ local function Calls (order, key)
 	for i = T.heard [key] + 1, #channel do
 		local call = channel [i]
 		local namer = IsValid (order.leader) and order.leader or T.blue [1]
-		Log (string.format ("radio %s -> %s: %s", namer:NSLegsNameOf (call.from), namer:NSLegsNameOf (call.to), call.text))
+		Log (string.format ("radio %s -> %s: %s", namer:LegsNameOf (call.from), namer:LegsNameOf (call.to), call.text))
 	end
 	T.heard [key] = #channel
 end
@@ -269,7 +269,7 @@ local function Occupation (now)
 		Director.Set (T.blueOrder, wartactics.bridge.Overwatch ({ target = function () return strike end }))
 		local guards = 0
 		for _, member in ipairs (T.blue) do
-			if T.blueOrder:PatrolOf (member:NSLegsPlace ()) then guards = guards + 1 end
+			if T.blueOrder:PatrolOf (member:LegsPlace ()) then guards = guards + 1 end
 		end
 		Log (string.format ("BLU given the occupation: %d of %d on patrol round a loop of %d stops", guards, #T.blue, #T.blueOrder.loop))
 		return
@@ -278,7 +278,7 @@ local function Occupation (now)
 	if not T.silenced and now - T.occupiedAt >= SILENCE_AFTER then
 		local silenced = 0
 		for i, member in ipairs (T.blue) do
-			if silenced < (T.spec.silence or 1) and IsValid (member) and member:Health () > 0 and order:PatrolOf (member:NSLegsPlace ()) then
+			if silenced < (T.spec.silence or 1) and IsValid (member) and member:Health () > 0 and order:PatrolOf (member:LegsPlace ()) then
 				T.silenced, silenced = member, silenced + 1
 				Log (string.format ("blue %d silenced at %.0f,%.0f", i, member:GetPos ().x, member:GetPos ().y))
 				member:TakeDamage (10000)
@@ -377,7 +377,7 @@ function T.Start (name)
 	for i = 1, spec.red do T.red [i] = Follower (reds [i]:GetPos (), WS.TEAM_RED, KIT, "red " .. i) end
 	for i = 1, spec.blue do
 		local blue = Follower (blues [i]:GetPos (), WS.TEAM_BLUE, spec.kit, "blue " .. i)
-		blue:NSKit ({ health = spec.health * blue:GetMaxHealth () })
+		blue:WarKit ({ health = spec.health * blue:GetMaxHealth () })
 		blue:SetHealth (blue:GetMaxHealth ())
 		T.blue [i] = blue
 	end

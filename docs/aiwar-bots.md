@@ -100,7 +100,7 @@ nearby starts and goals, is the next step if that hitch shows.
 ## Not yet
 
 - Bots have no voice lines (the speech reads a DrGBase soldier's
-  `NSVoiceLines`), so they call nothing out.
+  `VoiceLines`), so they call nothing out.
 - They do not sit on the cart, strike poses, or follow it; the kit's
   `damage` and `runSpeed` (DrGBase's) are not applied.
 - A Resistance medic's kit (the vortigaunt's) has no arms: a bot given that

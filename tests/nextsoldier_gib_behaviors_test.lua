@@ -24,23 +24,23 @@ local function Distance (a, b) return math.sqrt ((a.x - b.x) ^ 2 + (a.y - b.y) ^
 local function Member (order, place)
 	local me = { order = order, place = place or { x = 100, y = 0, z = 0 }, sensed = 0, headed = 0, now = 0,
 		draws = { 0.5 }, drawn = 0, refuse = function () return false end, seats = {}, asked = 0, said = {} }
-	function me:NSLegsOrder () return self.order end
-	function me:NSLegsSense () self.sensed = self.sensed + 1 end
-	function me:NSLegsPlace () return self.place end
-	function me:NSLegsAt () return self.at or self.place end
+	function me:LegsOrder () return self.order end
+	function me:LegsSense () self.sensed = self.sensed + 1 end
+	function me:LegsPlace () return self.place end
+	function me:LegsAt () return self.at or self.place end
 	function me:Now () return self.now end
-	function me:NSLegsDraw ()
+	function me:LegsDraw ()
 		self.drawn = self.drawn + 1
 		return self.draws [(self.drawn - 1) % #self.draws + 1]
 	end
-	function me:NSLegsAdmit ()
+	function me:LegsAdmit ()
 		return function (spot) if self.refuse (spot) then return nil end return spot end
 	end
-	function me:NSLegsSeats () self.asked = self.asked + 1 return self.seats end
-	function me:NSLegsHeadFor (spot, gait, keepOut) self.headed, self.spot, self.gait, self.keepOut = self.headed + 1, spot, gait, keepOut end
-	function me:NSLegsSay (line) self.said [#self.said + 1] = line end
-	function me:NSLegsDanger () return self.danger end
-	function me:NSLegsContact () return self.contact == true end
+	function me:LegsSeats () self.asked = self.asked + 1 return self.seats end
+	function me:LegsHeadFor (spot, gait, keepOut) self.headed, self.spot, self.gait, self.keepOut = self.headed + 1, spot, gait, keepOut end
+	function me:LegsSay (line) self.said [#self.said + 1] = line end
+	function me:LegsDanger () return self.danger end
+	function me:LegsContact () return self.contact == true end
 	return me
 end
 

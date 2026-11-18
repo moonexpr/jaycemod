@@ -10,8 +10,8 @@ local R = dofile ("tests/fake_room.lua")
 
 local function Me (order)
 	local me = { order = order, said = {} }
-	function me:NSLegsOrder () return self.order end
-	function me:NSLegsSay (line, call) self.said [#self.said + 1] = call or line end
+	function me:LegsOrder () return self.order end
+	function me:LegsSay (line, call) self.said [#self.said + 1] = call or line end
 	return me
 end
 

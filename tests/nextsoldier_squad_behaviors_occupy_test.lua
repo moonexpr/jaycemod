@@ -255,7 +255,7 @@ T.test ("guards silent together are all missing, and the leader's request counts
 			guards [#guards + 1] = member
 		end
 	end
-	order:Answered (guards [1].me, guards [1].me:NSLegsAt ())
+	order:Answered (guards [1].me, guards [1].me:LegsAt ())
 	leader.me.now = Occupy.CHECK_TIMEOUT + 1
 	leader.orders:Update (leader.me)
 	T.eq (#F.Calls (leader.me, "LOST"), #guards - 1, "the director told of each")

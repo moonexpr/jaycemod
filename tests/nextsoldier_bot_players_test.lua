@@ -21,7 +21,7 @@ local navigator =
 	PlanRoute = function (_, _, cost) planned = cost return { Vec (0, 0, 0), Vec (100, 0, 0) } end
 }
 local function ValidPlayer ()
-	local ply = { NSNavigator = navigator }
+	local ply = { BotNavigator = navigator }
 	function ply:GetPos () return Vec (0, 0, 0) end
 	function ply:Team () return 3 end
 	function ply:EntIndex () return 7 end

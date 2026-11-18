@@ -8,9 +8,9 @@ local function Me (fields)
 	local me = { wanted = "Idle", may = true, tool = 0, errands = 0 }
 	for key, value in pairs (fields or {}) do me [key] = value end
 	function me:MayAct () return self.may end
-	function me:NSWantedBehavior () return self.wanted end
-	function me:NSUpdateToolBehavior () self.tool = self.tool + 1 end
-	function me:NSUpdateErrand () self.errands = self.errands + 1 end
+	function me:WantedBehavior () return self.wanted end
+	function me:UpdateToolBehavior () self.tool = self.tool + 1 end
+	function me:UpdateErrand () self.errands = self.errands + 1 end
 	return me
 end
 
