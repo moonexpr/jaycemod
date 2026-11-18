@@ -142,6 +142,8 @@ ARTIFACTS = REPO / ".devtools" / "artifacts"
 PASSWORD_FILE = main_checkout(REPO) / ".devtools" / "artifacts" / "rcon_password"
 # the main server's Steam game server login token (GSLT), the operator's; gitignored
 STEAM_ACCOUNT_FILE = ARTIFACTS / "steam_account_token"
+# the operator's Steam Web API key, passed as -authkey with a Workshop collection; gitignored
+WEB_API_KEY_FILE = ARTIFACTS / "steam_web_api_key"
 PID_FILE = ARTIFACTS / "srcds.pid"
 PROCESS_LOG = ARTIFACTS / "srcds.log"
 
@@ -258,6 +260,8 @@ class ServerConfig:
     p2p: bool = True  # -p2p: public, anyone joins through Steam's relays (connect p2p:<steamid64>)
     steam_account: str = ""  # a game server login token; empty logs on anonymously
     sourcetv: bool = False  # SourceTV up from the first map (server-side demos), else -nohltv
+    workshop_collection: str = ""  # a Workshop collection's id, whose addons and maps the server mounts
+    authkey: str = ""  # a Steam Web API key (-authkey), for the server's Workshop downloads
 
     def __post_init__(self):
         if not MAP_NAME.match(self.map):
@@ -266,6 +270,8 @@ class ServerConfig:
             raise ValueError("the RCON password must be non-empty, without spaces or quotes")
         if self.maxplayers < MIN_SLOTS:
             raise ValueError(f"maxplayers {self.maxplayers}: bots need at least {MIN_SLOTS} slots")
+        if self.workshop_collection and not self.workshop_collection.isdigit():
+            raise ValueError(f"not a Workshop collection id: {self.workshop_collection!r}")
 
 
 def server_arguments(config: ServerConfig) -> List[str]:
@@ -283,7 +289,11 @@ def server_arguments(config: ServerConfig) -> List[str]:
         convars.append(("sv_setsteamaccount", config.steam_account))
     if config.sourcetv:
         convars.append(("tv_enable", "1"))
+    if config.workshop_collection:
+        convars.append(("host_workshop_collection", config.workshop_collection))
     argv = ["-console", "-game", "garrysmod", "-port", str(config.port)]
+    if config.authkey:
+        argv += ["-authkey", config.authkey]
     if not config.sourcetv:
         argv.append("-nohltv")
     if not config.lua_refresh:
@@ -729,12 +739,26 @@ def password() -> str:
     return PASSWORD_FILE.read_text().strip()
 
 
-def steam_account(instance: Instance, path: Path = STEAM_ACCOUNT_FILE) -> str:
-    """The main server's game server token, or "" (anonymous): a token logs on
-    one server at a time, so a second instance would knock the main one off."""
+def steam_account(instance: Instance, path: Path = STEAM_ACCOUNT_FILE,
+                  keychain: Optional[Tuple[str, str]] = None, run=subprocess.run) -> str:
+    """The instance's game server token, or "" (anonymous). keychain (service, account) names
+    a token of its own in the login keychain, for any instance; else the main server's file: a
+    token logs on one server at a time, so a second instance on it would knock the main one off."""
+    if keychain:
+        service, account = keychain
+        found = run(["security", "find-generic-password", "-s", service, "-a", account, "-w"],
+                    capture_output=True, text=True)
+        if found.returncode != 0 or not found.stdout.strip():
+            raise ServerDown(f"no keychain item {service!r} for account {account!r}")
+        return found.stdout.strip()
     if instance != MAIN or not path.exists():
         return ""
     return path.read_text().strip()
+
+
+def web_api_key(path: Path = WEB_API_KEY_FILE) -> str:
+    """The operator's Steam Web API key, or "" when there is none."""
+    return path.read_text().strip() if path.exists() else ""
 
 
 def started_host(instance: Instance = MAIN) -> str:
@@ -767,14 +791,17 @@ def rcon_command(instance: Instance, text: str, timeout: float = 10) -> str:
 
 def make_server(map_name: str, port: int, lua_refresh: bool = True, maxplayers: int = DEFAULT_MAXPLAYERS,
                 ip: Optional[str] = None, instance: Instance = MAIN, p2p: bool = True,
-                gamemode: str = "sandcastle", sourcetv: bool = False, runtime: Optional[str] = None) -> Server:
+                gamemode: str = "sandcastle", sourcetv: bool = False, runtime: Optional[str] = None,
+                workshop_collection: str = "", keychain: Optional[Tuple[str, str]] = None) -> Server:
     """ip: the address to bind; by default the running server's (rcon, stop), else 127.0.0.1.
     runtime: what runs it (RUNTIMES); by default the running server's, else CrossOver."""
     runtime = runtime or started_runtime(InstanceFiles.of(instance).pid)
     install = Docker(srcds_docker.HostPaths.of_host()) if runtime == DOCKER else Install.discover(instance)
     ip = ip or started_host(instance)
     config = ServerConfig(map_name, port, password(), maxplayers, lua_refresh=lua_refresh, ip=ip, p2p=p2p,
-                          steam_account=steam_account(instance), gamemode=gamemode, sourcetv=sourcetv)
+                          steam_account=steam_account(instance, keychain=keychain), gamemode=gamemode, sourcetv=sourcetv,
+                          workshop_collection=workshop_collection,
+                          authkey=web_api_key() if workshop_collection else "")
     return Server(install, config, reach_address(ip), instance)
 
 
@@ -801,6 +828,14 @@ def main() -> int:
                        help="the gamemode to run; base loads quickest, for engineering what needs no game")
     start.add_argument("--sourcetv", action="store_true",
                        help="run SourceTV, without which the server records no demo (sv_demo_autorecord)")
+    start.add_argument("--workshop-collection", default="",
+                       help="a Workshop collection's id (+host_workshop_collection): the server downloads and mounts "
+                            "its addons and maps, with -authkey from .devtools/artifacts/steam_web_api_key if present")
+    start.add_argument("--steam-account-keychain", metavar="SERVICE", default="",
+                       help="log on with the game server token in the login keychain under SERVICE "
+                            "(e.g. \"Steam GSAM 1\"), any instance's own; by default the main one's file")
+    start.add_argument("--keychain-account", default="moonexpr",
+                       help="the keychain account the token is under (default %(default)s)")
     start.add_argument("--runtime", choices=RUNTIMES, default=CROSSOVER,
                        help="what runs the server: crossover, GMod's Windows server in the GModServer bottle "
                             "(the default), or docker, its Linux server in a container (srcds_docker.py), "
@@ -816,7 +851,9 @@ def main() -> int:
         if args.action == "start":
             port = args.port or files.port
             server = make_server(args.map, port, args.lua_refresh, args.maxplayers, bind_address(args.ip), instance,
-                                 args.p2p, args.gamemode, args.sourcetv, args.runtime)
+                                 args.p2p, args.gamemode, args.sourcetv, args.runtime, args.workshop_collection,
+                                 (args.steam_account_keychain, args.keychain_account)
+                                 if args.steam_account_keychain else None)
             server.start()
             if args.console:
                 open_console(files.log)

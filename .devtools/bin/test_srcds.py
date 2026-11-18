@@ -96,6 +96,25 @@ class CommandLine(unittest.TestCase):
             self.assertEqual(srcds.steam_account(Instance(1), token), "ABC123")
             self.assertEqual(srcds.steam_account(Instance(2), token), "")
 
+    def test_a_keychain_token_logs_any_instance_on(self):
+        # its own token, so it knocks no other server off Steam
+        asked = []
+
+        def run(argv, **_):
+            asked.append(argv)
+            return subprocess.CompletedProcess(argv, 0, stdout="DEF456\n", stderr="")
+
+        keychain = ("Steam GSAM 1", "moonexpr")
+        self.assertEqual(srcds.steam_account(Instance(2), Path("/nowhere"), keychain, run), "DEF456")
+        self.assertEqual(asked, [["security", "find-generic-password", "-s", "Steam GSAM 1", "-a", "moonexpr", "-w"]])
+
+    def test_a_keychain_item_that_is_not_there_is_refused(self):
+        def run(argv, **_):
+            return subprocess.CompletedProcess(argv, 44, stdout="", stderr="not found")
+
+        with self.assertRaises(srcds.ServerDown):
+            srcds.steam_account(Instance(2), Path("/nowhere"), ("Steam GSAM 9", "moonexpr"), run)
+
     def test_keeps_thinking_while_empty(self):
         self.assertEqual(self._convar("sv_hibernate_think"), "1")
 
@@ -150,6 +169,32 @@ class AServerOnAnotherGamemode(unittest.TestCase):
         config = srcds.ServerConfig("gm_construct", 27025, "pw", 24, gamemode="base")
         argv = srcds.command_line(INSTALL, config)
         self.assertEqual(argv[argv.index("+gamemode") + 1], "base")
+
+
+class AServerWithAWorkshopCollection(unittest.TestCase):
+    # GMod's dedicated server downloads and mounts each addon and map of the collection itself.
+    CONFIG = ServerConfig(map="gm_construct", port=27035, rcon_password="pw", maxplayers=24)
+
+    def test_none_by_default(self):
+        argv = command_line(INSTALL, self.CONFIG)
+        self.assertNotIn("+host_workshop_collection", argv)
+        self.assertNotIn("-authkey", argv)
+
+    def test_the_collection_is_set_before_the_map(self):
+        argv = command_line(INSTALL, dataclasses.replace(self.CONFIG, workshop_collection="3841223527"))
+        at = argv.index("+host_workshop_collection")
+        self.assertEqual(argv[at + 1], "3841223527")
+        self.assertLess(at, argv.index("+map"))
+
+    def test_a_web_api_key_is_passed_as_authkey(self):
+        config = dataclasses.replace(self.CONFIG, workshop_collection="3841223527", authkey="KEY")
+        argv = command_line(INSTALL, config)
+        self.assertEqual(argv[argv.index("-authkey") + 1], "KEY")
+        self.assertLess(argv.index("-authkey"), argv.index("+ip"))
+
+    def test_a_collection_that_is_not_an_id_is_refused(self):
+        with self.assertRaises(ValueError):
+            dataclasses.replace(self.CONFIG, workshop_collection="3841223527 +exec evil")
 
 
 class ServerConfigRefuses(unittest.TestCase):

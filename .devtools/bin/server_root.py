@@ -334,6 +334,17 @@ def workshop_archive(workshop: Path, item: str) -> Path:
     return archives[0]
 
 
+def subscribed_archive(layout: "Layout", item: str) -> Path:
+    """A SERVER_WORKSHOP item: the operator's subscription, else steamcmd's download of it
+    beside the maps, for a subscription Steam has let go of (its folder gone, or left empty)."""
+    try:
+        return workshop_archive(layout.workshop, item)
+    except FileNotFoundError:
+        if not (layout.maps / item).is_dir():
+            raise
+        return workshop_archive(layout.maps, item)
+
+
 def place_gamemodes(layout: "Layout", path: Path) -> None:
     """The shared install's gamemodes, linked as one; with an override (a
     worktree's gamemode), a folder of links to each of them but the game's own
@@ -459,7 +470,7 @@ def build(layout: Layout) -> Path:
         if archive.name not in listed:
             archive.unlink()
     for name, item in SERVER_WORKSHOP.items():
-        place_archive(cache / f"{name}.gma", workshop_archive(layout.workshop, item))
+        place_archive(cache / f"{name}.gma", subscribed_archive(layout, item))
     for name, item in maps.items():
         place_archive(game / "cache" / map_archive_name(item), downloaded_archive(layout, name, item))
     for name, item in SERVER_DOWNLOADS.items():

@@ -269,4 +269,54 @@ own field offsets are not checked at run time, only against this build.
 
 The same RTTI shows the rest of the kit in the binary: `CLuaNextBotBody` (`IBody`),
 `CLuaNextBotVision` (`IVision`, with `CKnownEntity`), `CLuaLocomotion`
-(`NextBotGroundLocomotion`), `PathFollower`, `ChasePath`. None has been touched yet.
+(`NextBotGroundLocomotion`), `PathFollower`, `ChasePath`. `PathFollower` and `ChasePath`
+have not been touched yet.
+
+## The components: actor.body, actor.vision, actor.intention
+
+As GMod gives a NextBot `loco`, an actor (a `CLuaNextBot`, or a NextSoldier bot player) gets
+its other components as Lua objects: `actor.body` (`CLuaBody`), `actor.vision` (`CLuaVision`)
+and `actor.intention` (`CLuaIntention`). `nextsoldier.engine.Components(actor)` sets them;
+`base_nextsoldier` calls it in `Initialize`, and `player.CreateNextSoldier` does it itself.
+`native/src/actor.rs` holds what was read from the binary and checks it at bind;
+`actor_bind.rs` is the binding.
+
+**What the binary showed** (`.devtools/bin/vtable_dis.py` disassembles a class's slots):
+
+- INextBot hands out its components at slots 49 (body), 50 (intention) and 51 (vision), each
+  made the first time it is asked: a `CLuaNextBot`'s vision, and all of a player's. Once made,
+  a component registers with its bot, and INextBot's update runs it.
+- **MSVC reorders overloads.** Each overloaded virtual's overloads sit together, the last
+  declared first, so every pair is the SDK header's reversed: `GetClosestKnown(filter)` is 50
+  and `(team)` 51, `IsAbleToSee(pos)` 60 and `(entity)` 61, `IsInFieldOfView(entity)` 64 and
+  `(pos)` 65, `IsLookingAt(entity)` 71 and `(pos)` 72. The bind checks each from its code.
+- **Vision is the engine's, in C++.** IVision scans, recognizes and remembers at the bot's
+  update rate. `CLuaNextBotVision` adds a range (+0x260) and a slot 73 to set it; a bot player
+  has a plain `IVision`, with no range of its own to set.
+- **No body aims a head.** In GMod's build, IBody's `AimHeadTowards` is a stub on both
+  `CLuaNextBotBody` and a player's plain `IBody`, and `IsHeadSteady` always answers yes. So
+  `actor.body`'s head methods are `body/look.rs`'s on a soldier with a head (`engine.Look`),
+  and the rest of the body (activity, hull, solid mask, eyes) is the engine's.
+- A `CKnownEntity` is 64 bytes in a `CUtlVector` that moves, so Lua is never given one: it
+  gets the entity, or a table of what is known. Its handle keeps the entity's index in its low
+  14 bits, so an index needs no search.
+
+**What each holds.** An object holds its actor's index and address, checked against the entity
+list on every call (an actor removed is refused by name, never dereferenced), and asks for the
+component each time. `actor.intention`'s methods are `engine.*`'s with the actor as itself.
+A component slot that moves in a GMod update refuses only `Components` (the reason in
+`engine.componentsRefused`), never the rest of the binding.
+
+**Not yet.** The AI war's soldiers still see through `nextsoldier.senses.vision`, in Lua; moving
+them onto `actor.vision` is where the saving is. `GetPrimaryKnownThreat` takes its enemies
+from the engine's `IsEnemy` (teams), not a soldier's relations. A head's `AimHeadTowards` at an
+entity looks at where its eyes are when asked, not as it moves.
+
+**What was proved** on sandbox (instance 1, gm_construct), by
+`.devtools/bin/nextsoldier_components_check.lua`: two bare NextBots following paths (GMod's
+`MoveToPos`) and a NextSoldier bot player get all three objects. The engine's vision recognizes
+the other bot and answers what it knows of it (`GetKnown`, `GetKnownEntities`,
+`GetClosestKnown`, `GetKnownCount`), sight and view (`IsAbleToSee`, `IsInFieldOfView`,
+`IsLookingAt`, the lines of sight) and its settings. The body gives the engine's hull, eyes,
+mask and group. A bot player's range, a head aim on a bot with no head of ours, `NULL` and a
+removed actor are each refused by name, and nothing crashed.
