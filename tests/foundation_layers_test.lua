@@ -3,23 +3,25 @@
 -- six categories, ranked bottom-up, or is pending a move out of
 -- foundation. A category may require only itself and the categories below
 -- it, in any tree, and no tree requires a feature or a ws/ file.
-local T = dofile("tests/harness.lua")
+local T = dofile ("tests/harness.lua")
 
 local FOUNDATION = T.File ("foundation/")
 local FOUNDATION_PREFIX = "^foundation%."
 local OUTSIDE_PREFIXES = { "^features%.", "^includes%." }
 
-local RANK = {
+local RANK =
+{
 	structures = 1,
 	formalisms = 2,
 	gameplay = 3,
 	nextsoldier = 4,
 	wartactics = 4,
-	bridge = 5,
+	bridge = 5
 }
 
 -- The modules that stay, by category.
-local CATEGORY = {
+local CATEGORY =
+{
 	["graph/pathfinder"] = "structures",
 	["tree/heap"] = "structures",
 	["encoding/consolecfg"] = "structures",
@@ -82,11 +84,12 @@ local CATEGORY = {
 	["wetsands/path/hl2"] = "nextsoldier",
 	["wetsands/path/scatter"] = "nextsoldier",
 	["wetsands/path/tfbot"] = "nextsoldier",
-	["wetsands/navsearch"] = "nextsoldier",
+	["wetsands/navsearch"] = "nextsoldier"
 }
 
 -- games/'s modules, by the same categories (docs/foundation-game-split-plan.md).
-local GAMES = {
+local GAMES =
+{
 	["world/snapshot"] = "structures",
 	["world/nav_attributes"] = "structures",
 
@@ -157,20 +160,21 @@ local GAMES = {
 	["gameplay/capture/point_timer"] = "gameplay",
 	["gameplay/rounds/timer"] = "gameplay",
 	["gameplay/rounds/limits"] = "gameplay",
-	["npc/targeting"] = "gameplay",
+	["npc/targeting"] = "gameplay"
 }
 
 -- nextsoldier/'s modules: NextSoldier, the soldier itself, in its collections
 -- (world, body, locomotion, senses, behavior), a subsystem of its own beside
 -- the gamemode that runs without the war's tactics engine.
-local NEXTSOLDIER = {
-	["base"] = "nextsoldier",
+local NEXTSOLDIER =
+{
 	["host"] = "nextsoldier",
 	["world"] = "nextsoldier",
 	["world/doors"] = "nextsoldier",
 	["world/portal"] = "nextsoldier",
 	["world/nav_gaps"] = "nextsoldier",
 	["world/nav_stairs"] = "nextsoldier",
+	["body/attention"] = "nextsoldier",
 	["body/gaze"] = "nextsoldier",
 	["body/gestures"] = "nextsoldier",
 	["body/jump"] = "nextsoldier",
@@ -180,6 +184,7 @@ local NEXTSOLDIER = {
 	["body/weapons"] = "nextsoldier",
 	["locomotion"] = "nextsoldier",
 	["locomotion/ladder"] = "nextsoldier",
+	["locomotion/pursuit"] = "nextsoldier",
 	["locomotion/leap"] = "nextsoldier",
 	["locomotion/probe"] = "nextsoldier",
 	["locomotion/reach_memo"] = "nextsoldier",
@@ -189,6 +194,7 @@ local NEXTSOLDIER = {
 	["senses/vision"] = "nextsoldier",
 	["behavior"] = "nextsoldier",
 	["behavior/action"] = "nextsoldier",
+	["behavior/battery"] = "nextsoldier",
 	["behavior/ctfbot"] = "nextsoldier",
 	["behavior/pathfollower"] = "nextsoldier",
 	["behavior/group_identity"] = "nextsoldier",
@@ -203,15 +209,14 @@ local NEXTSOLDIER = {
 	["squad/behaviors/occupy"] = "nextsoldier",
 	["squad/behaviors/fortify"] = "nextsoldier",
 	["squad/behaviors/member"] = "nextsoldier",
-	["behavior/intention"] = "nextsoldier",
-	["behavior/monitor"] = "nextsoldier",
-	["behavior/registry"] = "nextsoldier",
+	["behavior/intention"] = "nextsoldier"
 }
 
 -- wartactics/'s modules: the AI war's tactics engine, the strategy its
 -- soldiers are organised by (fire teams, squads, lanes, posts, the
 -- scenarios), on NextSoldier and never under it.
-local WARTACTICS = {
+local WARTACTICS =
+{
 	["fireteam"] = "wartactics",
 	["scenarios"] = "wartactics",
 	["monitors"] = "wartactics",
@@ -233,7 +238,7 @@ local WARTACTICS = {
 	["zone"] = "wartactics",
 	["tuning"] = "wartactics",
 	["bot_quota"] = "wartactics",
-	["hazards"] = "wartactics",
+	["hazards"] = "wartactics"
 }
 
 -- The modules still to move, and where each goes: none. A module bound out
@@ -254,80 +259,81 @@ local API_EXTENSIONS = { list = true, world = true }
 
 -- The trees: where each lives, the dotted prefix of its module names, and
 -- its categories.
-local TREES = {
+local TREES =
+{
 	{ dir = FOUNDATION, prefix = FOUNDATION_PREFIX, category = CATEGORY, pending = PENDING },
 	{ dir = T.ROOT .. "includes/", prefix = "^games%.", category = GAMES, pending = {} },
-	{ dir = T.File("nextsoldier/"), prefix = "^nextsoldier%.", category = NEXTSOLDIER, pending = {} },
-	{ dir = T.File("wartactics/"), prefix = "^wartactics%.", category = WARTACTICS, pending = {} },
+	{ dir = T.File ("nextsoldier/"), prefix = "^nextsoldier%.", category = NEXTSOLDIER, pending = {} },
+	{ dir = T.File ("wartactics/"), prefix = "^wartactics%.", category = WARTACTICS, pending = {} }
 }
 
-local function Modules(tree)
-	local list = assert(io.popen("find " .. tree.dir .. " -name '*.lua'"))
+local function Modules (tree)
+	local list = assert (io.popen ("find " .. tree.dir .. " -name '*.lua'"))
 	local modules = {}
-	for path in list:lines() do
-		if not path:match(INDEX) and not path:match(INIT) then
-			local module = path:sub(#tree.dir + 1, -#".lua" - 1)
+	for path in list:lines () do
+		if not path:match (INDEX) and not path:match (INIT) then
+			local module = path:sub (#tree.dir + 1, -#".lua" - 1)
 			if tree.prefix == "^games%." then
-				module = module:gsub("^extensions/", "")
-				if module:find("/", 1, true) then modules[module] = true end
+				module = module:gsub ("^extensions/", "")
+				if module:find ("/", 1, true) then modules [module] = true end
 			else
-				modules[module] = true
+				modules [module] = true
 			end
 		end
 	end
-	list:close()
+	list:close ()
 	return modules
 end
 
-local function Exists(tree, module)
-	local namespace = module:match("^([%w_]+)/")
-	local directory = tree.prefix == "^games%." and API_EXTENSIONS[namespace] and "extensions/" or ""
-	local file = io.open(tree.dir .. directory .. module .. ".lua")
-	if file then file:close() end
+local function Exists (tree, module)
+	local namespace = module:match ("^([%w_]+)/")
+	local directory = tree.prefix == "^games%." and API_EXTENSIONS [namespace] and "extensions/" or ""
+	local file = io.open (tree.dir .. directory .. module .. ".lua")
+	if file then file:close () end
 	return file ~= nil
 end
 
 -- The modules a module uses: by require, or by reading its global.
-local function Requires(tree, module)
-	local namespace = module:match("^([%w_]+)/")
-	local directory = tree.prefix == "^games%." and API_EXTENSIONS[namespace] and "extensions/" or ""
-	local file = assert(io.open(tree.dir .. directory .. module .. ".lua"))
-	local text = file:read("*a")
-	file:close()
-	return T.Uses(text)
+local function Requires (tree, module)
+	local namespace = module:match ("^([%w_]+)/")
+	local directory = tree.prefix == "^games%." and API_EXTENSIONS [namespace] and "extensions/" or ""
+	local file = assert (io.open (tree.dir .. directory .. module .. ".lua"))
+	local text = file:read ("*a")
+	file:close ()
+	return T.Uses (text)
 end
 
 -- A required name's tree and its module there, or nil for no tree's.
-local function Place(name)
-	for _, tree in ipairs(TREES) do
-		if name:match(tree.prefix) then
-			return tree, (name:gsub(tree.prefix, ""):gsub("%.", "/"))
+local function Place (name)
+	for _, tree in ipairs (TREES) do
+		if name:match (tree.prefix) then
+			return tree, (name:gsub (tree.prefix, ""):gsub ("%.", "/"))
 		end
 	end
 end
 
-T.test("every module is categorised or pending a move, and every entry exists", function()
-	for _, tree in ipairs(TREES) do
-		for module in pairs(Modules(tree)) do
-			local places = (tree.category[module] and 1 or 0) + (tree.pending[module] and 1 or 0)
-			T.eq(places, 1, tree.dir .. module .. " is in exactly one of its categories and PENDING")
+T.test ("every module is categorised or pending a move, and every entry exists", function ()
+	for _, tree in ipairs (TREES) do
+		for module in pairs (Modules (tree)) do
+			local places = (tree.category [module] and 1 or 0) + (tree.pending [module] and 1 or 0)
+			T.eq (places, 1, tree.dir .. module .. " is in exactly one of its categories and PENDING")
 		end
-		for module, category in pairs(tree.category) do
-			T.eq(Exists(tree, module), true, tree.dir .. module .. " exists")
-			T.eq(RANK[category] ~= nil, true, module .. "'s category " .. category .. " is ranked")
+		for module, category in pairs (tree.category) do
+			T.eq (Exists (tree, module),  true, tree.dir .. module .. " exists")
+			T.eq (RANK [category] ~= nil, true, module .. "'s category " .. category .. " is ranked")
 		end
-		for module in pairs(tree.pending) do
-			T.eq(Exists(tree, module), true, "PENDING entry " .. module .. " exists")
+		for module in pairs (tree.pending) do
+			T.eq (Exists (tree, module), true, "PENDING entry " .. module .. " exists")
 		end
 	end
 end)
 
-T.test("foundation, games, nextsoldier and wartactics require nothing from features or ws", function()
-	for _, tree in ipairs(TREES) do
-		for module in pairs(Modules(tree)) do
-			for _, name in ipairs(Requires(tree, module)) do
-				for _, prefix in ipairs(OUTSIDE_PREFIXES) do
-					T.eq(name:match(prefix), nil, tree.dir .. module .. " requires " .. name)
+T.test ("foundation, games, nextsoldier and wartactics require nothing from features or ws", function ()
+	for _, tree in ipairs (TREES) do
+		for module in pairs (Modules (tree)) do
+			for _, name in ipairs (Requires (tree, module)) do
+				for _, prefix in ipairs (OUTSIDE_PREFIXES) do
+					T.eq (name:match (prefix), nil, tree.dir .. module .. " requires " .. name)
 				end
 			end
 		end
@@ -336,36 +342,36 @@ end)
 
 -- NextSoldier and the tactics engine are siblings, on what is below them and
 -- reading nothing of each other; only the bridge knows both.
-T.test("nextsoldier and wartactics read nothing of each other", function()
+T.test ("nextsoldier and wartactics read nothing of each other", function ()
 	local APART = { nextsoldier = "^wartactics%.", wartactics = "^nextsoldier%." }
-	for _, tree in ipairs(TREES) do
-		for module, category in pairs(tree.category) do
-			local other = APART[category]
+	for _, tree in ipairs (TREES) do
+		for module, category in pairs (tree.category) do
+			local other = APART [category]
 			if other then
-				for _, name in ipairs(Requires(tree, module)) do
-					T.eq(name:match(other), nil, module .. " (" .. category .. ") reads " .. name)
+				for _, name in ipairs (Requires (tree, module)) do
+					T.eq (name:match (other), nil, module .. " (" .. category .. ") reads " .. name)
 				end
 			end
 		end
 	end
 end)
 
-T.test("a categorised module requires only categorised modules at its rank or below", function()
-	for _, tree in ipairs(TREES) do
-		for module, category in pairs(tree.category) do
-			local allowed = KNOWN_INVERSIONS[module] or {}
-			for _, name in ipairs(Requires(tree, module)) do
-				local required, path = Place(name)
+T.test ("a categorised module requires only categorised modules at its rank or below", function ()
+	for _, tree in ipairs (TREES) do
+		for module, category in pairs (tree.category) do
+			local allowed = KNOWN_INVERSIONS [module] or {}
+			for _, name in ipairs (Requires (tree, module)) do
+				local required, path = Place (name)
 				if required then
-					local rank = RANK[required.category[path]]
-					local ordered = rank ~= nil and rank <= RANK[category]
-					T.eq(ordered or allowed[path] == true, true,
+					local rank = RANK [required.category [path]]
+					local ordered = rank ~= nil and rank <= RANK [category]
+					T.eq (ordered or allowed [path] == true, true,
 						module .. " (" .. category .. ") requires " .. name
-							.. " (" .. tostring(required.category[path] or required.pending[path]) .. ")")
+							.. " (" .. tostring (required.category [path] or required.pending [path]) .. ")")
 				end
 			end
 		end
 	end
 end)
 
-T.finish()
+T.finish ()

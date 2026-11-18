@@ -158,7 +158,7 @@ local function Enlist (war, t)
 		{
 			war = war,
 			member = member,
-			behaviors = nextsoldier.behavior.registry.Shared:Compile ()
+			behaviors = nextsoldier.behavior.action.Registered ()
 		}, me)
 	npc:Update (TICK)
 	return me, npc, member
