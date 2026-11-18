@@ -76,17 +76,28 @@ local function Made (class, fields)
 	return ply, engine, services
 end
 
+-- A class's own behaviour, deriving from the base's root, as base_nextbot2's classes do.
+local BaseRoot = action_registry.Get ("NextBotPlayer")
+local TestRoot = action_registry.Register ("TestPlayerRoot", {}, "NextBotPlayer")
+function TestRoot:OnStart (me)
+	me.started = me.started + 1
+	return self:Continue ()
+end
+function TestRoot:Update (me, interval)
+	me.updated = me.updated + interval
+	return BaseRoot.Update (self, me, interval)
+end
+
 Player.Register ("test_player",
 	{
 		Base = "base_nextbot_player",
+		Behavior = "TestPlayerRoot",
 		LocomotionDefaults = { RunSpeed = 300 },
 		started = 0,
 		updated = 0
 	}
 )
 local TestClass = Player.Get ("test_player")
-function TestClass:BehaveStart () self.started = self.started + 1 end
-function TestClass:BehaveUpdate (interval) self.updated = self.updated + interval end
 function TestClass:InitialAction () return { name = "TestFirst" } end
 
 T.test ("the services are held to their port", function ()
@@ -114,9 +125,9 @@ T.test ("a bot of a class gets its root and its puppets, and its health is the g
 	T.eq (ply.health,       0,             "a regular player's: the gamemode spawns it")
 	T.eq (#engine.inserted, 1,             "its root inserted")
 	local root = engine.inserted [1]
-	T.eq (root.bot,         ply,           "on it")
-	T.eq (root.me,          ply,           "told it")
-	T.eq (root.action.name, "test_player", "named for its class")
+	T.eq (root.bot,         ply,              "on it")
+	T.eq (root.me,          ply,              "told it")
+	T.eq (root.action.name, "TestPlayerRoot", "its class's behaviour")
 	for _, kind in ipairs ({ "locomotion", "body", "vision" }) do
 		T.eq (engine.puppeted [kind] and engine.puppeted [kind].bot, ply, kind .. " puppeted")
 	end
@@ -169,19 +180,53 @@ T.test ("no slot for a bot makes none", function ()
 	T.eq (Player.Create ("test_player", "Bot"), nil, "none")
 end)
 
-T.test ("puppets refused, the bot is driven from Lua alone and says why", function ()
-	local ply, engine = Made ("test_player", { puppet_refused = "IBody has 83 slots" })
-	T.eq (next (engine.puppeted),    nil,                  "nothing puppeted")
-	T.eq (ply.state.puppets.refused, "IBody has 83 slots", "why")
+T.test ("a kind the binary does not puppet is driven from Lua alone and says why; the rest are puppeted", function ()
+	local why = "ILocomotion's slot order is not yet read from the binary"
+	local ply, engine = Made ("test_player", { puppet_refused = { locomotion = why } })
+	T.eq (engine.puppeted.locomotion,                            nil, "locomotion not puppeted")
+	T.eq (ply.state.puppets.refused.locomotion,                  why, "why")
+	T.eq (engine.puppeted.body and engine.puppeted.body.bot,     ply, "its body puppeted")
+	T.eq (engine.puppeted.vision and engine.puppeted.vision.bot, ply, "its vision puppeted")
+end)
+
+T.test ("its root sets its pace each update: its run, held to its walk while its battery is spent", function ()
+	local ply, engine = Made ("test_player")
+	local root = engine.inserted [1].action
+	root:Update (ply, 0.1)
+	T.eq (ply.state.loco.pace,                                      300,  "its run")
+	T.eq (ply:Battery ():Level (10) < ply.BatteryDefaults.Capacity, true, "a sprint is paid for")
+	ply:SpendBattery (ply.BatteryDefaults.Capacity)
+	T.eq (ply:IsExhausted (), true, "spent")
+	root:Update (ply, 0.1)
+	T.eq (ply.state.loco.pace,      ply.LocomotionDefaults.WalkSpeed,       "held to its walk")
+	T.eq (root:ShouldRetreat (ply), nextsoldier.behavior.action.ANSWER_YES, "it would rather retreat")
+	nextsoldier.player.puppets.Locomotion:Approach (ply, Vec (1000, 0, 0), 1)
+	local cmd = {}
+	local set = {}
+	for _, name in ipairs ({ "ClearMovement", "ClearButtons", "SetButtons", "SetSideMove", "SetUpMove", "SetImpulse" }) do
+		cmd [name] = function () end
+	end
+	function cmd:SetForwardMove (v) set.forward = v end
+	function cmd:SetViewAngles () end
+	ply:StartCommand (cmd)
+	T.near (set.forward, ply.LocomotionDefaults.WalkSpeed, 1e-6, "its command at that pace")
+end)
+
+T.test ("its legs, when it names them, go in beside its behaviour", function ()
+	Player.Register ("test_legged", { Base = "test_player", Legs = "TestPlayerRoot" })
+	local grouped
+	local ply = Made ("test_legged", { InsertGroup = function (bot, action, me) grouped = { bot = bot, action = action } end })
+	T.eq (grouped and grouped.bot, ply,              "inserted on it")
+	T.eq (grouped.action.name,     "TestPlayerRoot", "the legs it names")
 end)
 
 T.test ("its root starts the bot, updates it and contains its first action", function ()
 	local ply, engine = Made ("test_player")
 	local root = engine.inserted [1].action
 	root:OnStart (ply)
-	T.eq (ply.started, 1, "BehaveStart")
+	T.eq (ply.started, 1, "its behaviour started")
 	root:Update (ply, 0.25)
-	T.eq (ply.updated,                            0.25,        "BehaveUpdate, told the interval")
+	T.eq (ply.updated,                            0.25,        "updated, told the interval")
 	T.eq (root:InitialContainedAction (ply).name, "TestFirst", "its first action")
 end)
 
@@ -386,7 +431,8 @@ T.test ("its default hooks are base_nextbot2's", function ()
 	local base = Player.Get ("base_nextbot_player")
 	for _, name in ipairs ({ "SetupProfile", "OnProfile", "RootAction", "InitialAction", "Reset", "IsAlive", "IsDead",
 		"OnInjured", "OnKilled", "OnDeath", "OnRemove", "BehaveStart", "BehaveUpdate", "CalcDesiredSpeed", "Think",
-		"BodyUpdate", "NSDebugStack", "NSDebugWatch", "OnNewEnemy", "OnEnemyChange", "OnLastEnemy", "OnFetchEnemy",
+		"BodyUpdate", "DebugStack", "DebugWatch", "DebugBehaviorChanged", "LegsAction", "Battery", "IsExhausted",
+		"SpendBattery", "RewardBattery", "OnNewEnemy", "OnEnemyChange", "OnLastEnemy", "OnFetchEnemy",
 		"OnSpotted", "OnLost", "OnComputePath", "OnUpdateAnimation" }) do
 			T.eq (type (base [name]), "function", name)
 		end

@@ -286,6 +286,28 @@ def test_building_again_changes_nothing(layout):
     assert sorted((str(p), str(p.readlink()) if p.is_symlink() else "") for p in root.rglob("*")) == before
 
 
+def test_a_workshop_item_gone_from_the_subscriptions_is_taken_from_steamcmd(layout, tmp_path):
+    steamcmd = layout.maps
+    for item in SERVER_WORKSHOP.values():
+        (steamcmd / item).mkdir(parents=True)
+        (steamcmd / item / "addon.gma").write_bytes(b"GMAD" + item.encode())
+    unsubscribed = replace(layout, workshop=tmp_path / "empty")
+    cache = build(unsubscribed) / "garrysmod" / "cache"
+    for name, item in SERVER_WORKSHOP.items():
+        assert (cache / f"{name}.gma").resolve() == steamcmd / item / "addon.gma"
+
+
+def test_a_workshop_items_emptied_folder_is_taken_from_steamcmd(layout, tmp_path):
+    emptied = tmp_path / "emptied"
+    for item in SERVER_WORKSHOP.values():
+        (emptied / item).mkdir(parents=True)
+        (layout.maps / item).mkdir(parents=True)
+        (layout.maps / item / "addon.gma").write_bytes(b"GMAD" + item.encode())
+    cache = build(replace(layout, workshop=emptied)) / "garrysmod" / "cache"
+    for name, item in SERVER_WORKSHOP.items():
+        assert (cache / f"{name}.gma").resolve() == layout.maps / item / "addon.gma"
+
+
 def test_a_workshop_item_not_downloaded_is_refused(layout, tmp_path):
     missing = Layout(layout.shared, layout.root, tmp_path / "empty", layout.lua, layout.tf, layout.luadev_port, layout.maps)
     with pytest.raises(FileNotFoundError):

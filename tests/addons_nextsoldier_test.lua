@@ -117,7 +117,7 @@ T.test ("the collections are the addon's only exports, each file a part at its p
 	local keys = {}
 	for key in pairs (nextsoldier) do keys [#keys + 1] = key end
 	table.sort (keys)
-	T.eq (table.concat (keys, ","), "base,behavior,body,bots,host,locomotion,player,senses,squad,world")
+	T.eq (table.concat (keys, ","), "behavior,body,bots,host,locomotion,player,senses,squad,world")
 	T.eq (nextsoldier.world.doors,             package.loaded ["nextsoldier.world.doors"], "a part is its module")
 	T.eq (type (nextsoldier.world.BrushSweep), "function", "a single export is a function of its collection")
 end)
