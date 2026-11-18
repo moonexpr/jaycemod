@@ -43,7 +43,7 @@ decoded once at the boundary.
 
 ## Where a soldier plugs in
 
-- **An entity:** `base_nextsoldier`. A class's `ENT:NSInitialAction()` returns its first
+- **An entity:** `base_nextsoldier`. A class's `ENT:InitialAction()` returns its first
   action, inserted in `BehaveStart`, which is the first moment a link holds: the root's
   `InvokeOnStart` sets its child from `InitialContainedAction` just before calling it.
 - **A player bot:** `player.CreateNextSoldier(botName)`, then `nextsoldier.engine.Insert`.
