@@ -141,12 +141,18 @@ end)
 T.test ("a host is held to the port before a soldier reads it", function ()
 	local Host = nextsoldier.host
 	T.eq (pcall (Host.Install, {}), false, "a host lacking the port's methods is refused")
-	local kept = Host.current
+	local kept, keptSoldier = Host.current, Host.soldier
 	local host = {}
 	for _, method in ipairs (Host.PORT:Methods ()) do host [method] = function () end end
 	T.eq (Host.Install (host), host)
 	T.eq (Host.current,        host)
-	Host.current = kept
+	T.eq (Host.Soldier (), host, "a soldier's mode answers both ports")
+	local nextbot = {}
+	for _, method in ipairs (Host.NEXTBOT:Methods ()) do nextbot [method] = function () end end
+	T.eq (Host.Install (nextbot),   nextbot, "a plain NextBot's host needs NEXTBOT alone")
+	T.eq (#Host.NEXTBOT:Methods (), 5,       "Movement, PathClearance, PathDebug, Marksmanship, SolidMask")
+	T.eq (pcall (Host.Soldier),     false,   "a soldier asks for the rest, and is refused naming it")
+	Host.current, Host.soldier = kept, keptSoldier
 end)
 
 T.test ("jumping is the base's, whatever class asks it to", function ()
