@@ -9,7 +9,7 @@ local Response = T.require ("responserules")
 local Script = T.require ("responserules_script")
 local Speech = nextsoldier.body.responserules
 local Voices = T.require ("includes.voices")
-local Payload = T.require ("features.payload.model")
+local Payload = dofile ("addons/sandcastle/gamemodes/sandcastle/entities/entities/team_train_watcher/model.lua")
 
 local SCRIPTS = "addons/nextsoldier/scripts/"
 local ROOT = "responserules/response_rules.txt"
@@ -328,7 +328,7 @@ T.test ("every Combine soldier line the rules speak is in the gamemode's voice p
 	local count = 0
 	for path in text:gmatch ('"(npc/combine_soldier/[^"]+)"') do
 		count = count + 1
-		local f = io.open ("addons/sandcastle/gamemodes/sandcastle/content/sound/" .. path, "rb")
+		local f = io.open ("addons/sandcastle/gamemodes/wetsands/content/sound/" .. path, "rb")
 		T.eq (f ~= nil, true, path)
 		if f then f:close () end
 	end

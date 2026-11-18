@@ -152,4 +152,30 @@ T.test ("results carry what they name, an event's its priority", function ()
 	T.eq (a:New ():TryContinue ().type, Action.CONTINUE,        "tries nothing")
 end)
 
+T.test ("what walks the body itself holds its legs while it runs, and lets go as it ends or is covered", function ()
+	local sent = {}
+	local engine = nextsoldier.engine
+	nextsoldier.engine = { Event = function (bot, name, holder) sent [#sent + 1] = { bot = bot, name = name, holder = holder } end }
+	local me = Me ({ ent = "bot", tend = { x = 5 } })
+	for _, class in ipairs ({ CTFBot.Taunt, CTFBot.TendBuildings, CTFBot.DeliverFlag, CTFBot.FetchFlag }) do
+		sent = {}
+		local action = class:New ()
+		Named (action:OnStart (me), Action.CONTINUE)
+		action:OnSuspend (me)
+		action:OnResume (me)
+		action:OnEnd (me)
+		T.eq (#sent,           4,                   class.name .. ": held, let go, held, let go")
+		T.eq (sent [1].name,   Action.LEGS_HOLD,    "held as it starts")
+		T.eq (sent [2].name,   Action.LEGS_RELEASE, "let go while covered")
+		T.eq (sent [3].name,   Action.LEGS_HOLD,    "held again as it resumes")
+		T.eq (sent [4].name,   Action.LEGS_RELEASE, "let go as it ends")
+		T.eq (sent [1].bot,    "bot",               "the soldier's bot")
+		T.eq (sent [1].holder, action,              "by the action itself")
+	end
+	local taunt = CTFBot.Taunt:New ()
+	taunt:OnStart (me)
+	T.eq (taunt.endsAt, CTFBot.TAUNT_SECONDS, "its own OnStart runs after")
+	nextsoldier.engine = engine
+end)
+
 T.finish ()

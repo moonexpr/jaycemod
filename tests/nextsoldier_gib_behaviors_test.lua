@@ -758,4 +758,28 @@ T.test ("staging and hiding, a member keeps out of the room; going in, it does n
 	T.eq (member.me.keepOut, nil, "going in, the room open to it")
 end)
 
+T.test ("held by its main tree, any legs action waits until every holder has let go", function ()
+	local order = Muster ()
+	local me, _, orders = OnOrder (order)
+	local first, second = {}, {}
+	local held = orders:OnLegsHold (me, first)
+	T.eq (held.type, Action.SUSPEND_FOR, "suspended for a wait")
+	T.eq (held.priority, Action.RESULT_IMPORTANT)
+	local wait = held.action
+	T.eq (wait.name, "LegsWait")
+	T.eq (wait:OnLegsHold (me, second).type,   Action.CONTINUE, "a second holder joins it")
+	T.eq (wait:OnLegsRelease (me, first).type, Action.CONTINUE, "one let go: still held")
+	T.eq (wait:Update (me).type, Action.CONTINUE)
+	local done = wait:OnLegsRelease (me, second)
+	T.eq (done.type, Action.DONE, "the last let go: done, its legs resume")
+	T.eq (wait:Update (me).type, Action.DONE)
+	for _, class in ipairs ({ GIB.LegsAtEase, GIB.LegsPatrol, GIB.LegsAssault, GIB.LegsRegroup }) do
+		T.eq (class:New ({ order = order }):OnLegsHold (me, first).type, Action.SUSPEND_FOR, class.name .. " is held too")
+	end
+	local plain = GIB.LegsWait:New ()
+	T.eq (plain:Update (me).type,               Action.CONTINUE,    "a plain wait, no holders: waits on")
+	T.eq (plain:OnLegsRelease (me, first).type, Action.CONTINUE,    "not ended by a release")
+	T.eq (plain:OnLegsHold (me, first).type,    Action.SUSPEND_FOR, "and held as any")
+end)
+
 T.finish ()

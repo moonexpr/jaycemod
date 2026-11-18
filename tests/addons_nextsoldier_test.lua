@@ -57,10 +57,14 @@ T.test ("the gamemode keeps no NextSoldier module", function ()
 	T.eq (#Lines ("ls " .. T.ROOT .. "nextsoldier/ 2>/dev/null"), 0, T.ROOT .. "nextsoldier/")
 end)
 
+local GAMEMODE_ENTITIES = "addons/sandcastle/gamemodes/wetsands/entities/entities/"
+
 T.test ("the soldier's base is the addon's; the gamemode's actors and combatants are the gamemode's", function ()
-	local GAMEMODE_ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
-	T.eq (Exists (ADDON .. "lua/entities/base_nextsoldier.lua"), true,  "the base in the addon")
-	T.eq (Exists (GAMEMODE_ENTITIES .. "base_nextsoldier.lua"),  false, "the base out of the gamemode")
+	for _, base in ipairs ({ "base_nextbot2", "base_nextsoldier" }) do
+		T.eq (Exists (ADDON .. "lua/entities/" .. base .. "/init.lua"), true, base .. " in the addon, a folder entity")
+		T.eq (Exists (ADDON .. "lua/entities/" .. base .. "/shared.lua"), true, base .. "'s shared part")
+		T.eq (Exists (GAMEMODE_ENTITIES .. base .. ".lua"), false, base .. " out of the gamemode")
+	end
 	for _, class in ipairs (GAMEMODE_BASES) do
 		T.eq (Exists (GAMEMODE_ENTITIES .. class .. ".lua"),        true,  class .. " in the gamemode")
 		T.eq (Exists (ADDON .. "lua/entities/" .. class .. ".lua"), false, class .. " out of the addon")
@@ -76,6 +80,18 @@ end
 
 local function Code (path)
 	return (Read (path):gsub ("%-%-%[%[.-%]%]", ""):gsub ("%-%-[^\n]*", ""))
+end
+
+-- A folder entity's code, every file of it, and its base's under it: the soldier's base is
+-- base_nextsoldier on base_nextbot2.
+local function BaseCode ()
+	local parts = {}
+	for _, base in ipairs ({ "base_nextbot2", "base_nextsoldier" }) do
+		for _, path in ipairs (Lines ("find " .. ADDON .. "lua/entities/" .. base .. " -name '*.lua' | sort")) do
+			parts [#parts + 1] = Code (path)
+		end
+	end
+	return table.concat (parts, "\n")
 end
 
 T.test ("NextSoldier reads nothing of the gamemode, whose host hands it what it needs", function ()
@@ -97,7 +113,7 @@ T.test ("NextSoldier loads by plain includes, a line a file, each its own module
 	T.eq (Code (T.ROOT .. "shared_loader.lua"):find ('Index("nextsoldier/', 1, true), nil, "not an Index of the gamemode's")
 
 	local lines, order = {}, {}
-	for path in init:gmatch ('Load%s*%("([%w_/.]+)"%)') do
+	for path in init:gmatch ('Load%w*%s*%("([%w_/.]+)"%)') do
 		T.eq (lines [path], nil, path .. " loaded once")
 		lines [path] = true
 		order [#order + 1] = path
@@ -117,7 +133,7 @@ T.test ("the collections are the addon's only exports, each file a part at its p
 	local keys = {}
 	for key in pairs (nextsoldier) do keys [#keys + 1] = key end
 	table.sort (keys)
-	T.eq (table.concat (keys, ","), "base,behavior,body,bots,host,locomotion,senses,squad,world")
+	T.eq (table.concat (keys, ","), "behavior,body,bots,host,locomotion,senses,squad,world")
 	T.eq (nextsoldier.world.doors,             package.loaded ["nextsoldier.world.doors"], "a part is its module")
 	T.eq (type (nextsoldier.world.BrushSweep), "function", "a single export is a function of its collection")
 end)
@@ -134,17 +150,17 @@ T.test ("a host is held to the port before a soldier reads it", function ()
 end)
 
 T.test ("jumping is the base's, whatever class asks it to", function ()
-	local base = Code (ADDON .. "lua/entities/base_nextsoldier.lua")
+	local base = BaseCode ()
 	local war = Code (T.ROOT .. "sh_war_soldier.lua")
 	for _, method in ipairs (
 		{
-			"OnStartClimbing", "CustomClimbing", "NSVaultPlan", "NSVaultRun", "NSVault", "NSHop", "NSHopPlain", "NSTakeHop",
-			"JumpAct", "JumpSequence", "PlaysJump"
+			"OnStartClimbing", "CustomClimbing", "VaultPlan", "VaultRun", "Vault", "Hop", "HopPlain", "TakeHop",
+			"SprintPathGoal", "JumpAct", "JumpSequence", "PlaysJump"
 		}
 	) do
 		T.eq (base:find ("function ENT:" .. method .. "%s*%(") ~= nil, true, method .. " in the base")
 	end
-	for _, method in ipairs ({ "CustomClimbing", "NSVaultPlan", "NSVaultRun", "NSVault", "NSHop", "NSHopPlain" }) do
+	for _, method in ipairs ({ "CustomClimbing", "VaultPlan", "VaultRun", "Vault", "Hop", "HopPlain" }) do
 		T.eq (war:find ("function ENT:" .. method .. "%s*%("), nil, method .. " out of the war's soldier")
 	end
 end)
@@ -155,17 +171,18 @@ T.test ("the response rules are merged into the addon", function ()
 	T.eq (T.Path ("responserules"), ADDON .. "lua/includes/modules/responserules.lua", "GMod's require finds it")
 end)
 
-T.test ("the base takes the one model it is given and falls as a player falls", function ()
-	local base = Code (ADDON .. "lua/entities/base_nextsoldier.lua")
-	T.eq (base:find ("self:SetModel(self.Model)", 1, true) ~= nil, true, "its model")
-	T.eq (base:find ("Models", 1, true), nil, "no list to draw one from")
-	T.eq (base:find ('self.loco:SetGravity(GetConVar("sv_gravity"):GetFloat())', 1, true) ~= nil, true, "a player's gravity")
+T.test ("the base takes the one model its profile gives and falls as a player falls", function ()
+	local base = BaseCode ()
+	T.eq (base:find ("bot:SetModel(profile.Model)", 1, true) ~= nil,            true, "its model")
+	T.eq (base:find ("Models", 1, true),                                        nil,  "no list to draw one from")
+	T.eq (base:find ("loco:SetGravity(SV_GRAVITY:GetFloat())", 1, true) ~= nil, true, "a player's gravity")
+	T.eq (base:find ('GetConVar("sv_gravity")', 1, true) ~= nil,                true, "sv_gravity's")
 end)
 
 T.test ("a path's climb lands past the ledge's foot, and plans its path again from there", function ()
-	local base = Code (ADDON .. "lua/entities/base_nextsoldier.lua")
+	local base = BaseCode ()
 	T.eq (base:find ("Leap.Landing(after, pos, goal.type == CLIMB_UP)", 1, true) ~= nil, true, "where it lands")
-	T.eq (base:find ("end, ledge, function() PathAgain(self) end)", 1, true) ~= nil,     true, "its path planned again")
+	T.eq (base:find ("done = function() bot.state.loco:Repath() end", 1, true) ~= nil,   true, "its path planned again")
 end)
 
 T.test ("a rappel shows a rope and sounds, for as long as it lasts", function ()
@@ -177,10 +194,10 @@ T.test ("a rappel shows a rope and sounds, for as long as it lasts", function ()
 end)
 
 T.test ("a hard landing slows the body while it recovers", function ()
-	local base = Code (ADDON .. "lua/entities/base_nextsoldier.lua")
+	local base = BaseCode ()
 	local war = Code (T.ROOT .. "sh_war_soldier.lua")
 	T.eq (base:find ("Locomotion.Recovering(", 1, true) ~= nil, true, "its speed each tick")
-	T.eq (war:find ("if Noise.HardLanding (fall) then self:NSImpact () end", 1, true) ~= nil, true, "on a hard landing")
+	T.eq (war:find ("if Noise.HardLanding (fall) then self:HardLanding () end", 1, true) ~= nil, true, "on a hard landing")
 end)
 
 T.finish ()

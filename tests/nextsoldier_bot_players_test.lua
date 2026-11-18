@@ -32,6 +32,7 @@ end
 local added
 local hooks = {}
 local givenGroup
+local inserted, ended = {}, {}
 local environment = setmetatable (
 	{
 		Vector = Vec,
@@ -78,7 +79,9 @@ local environment = setmetatable (
 			{
 				engine =
 				{
-					Insert = function () end,
+					Insert = function (ent) inserted [#inserted + 1] = ent end,
+					End = function (ent) ended [#ended + 1] = ent end,
+					EndGroup = function (ent) ended [#ended + 1] = ent end,
 					Stack = function () return { { name = "TacticalMonitor", depth = 1 } } end
 				},
 				behavior =
@@ -344,10 +347,21 @@ T.test ("one it did not find is no route", function ()
 	T.eq (soldier.walk, nil, "not walked: it runs into whatever lies between")
 end)
 
-T.test ("it is given its group's tree beside its orders", function ()
-	givenGroup = nil
+T.test ("each life it is given its trees afresh, its orders and its group's beside them", function ()
+	givenGroup, inserted, ended = nil, {}, {}
 	local soldier = New ()
-	T.eq (givenGroup, soldier.ent, "on it")
+	T.eq (givenGroup, nil, "none before it spawns")
+	environment.timer = { Simple = function () end }
+	hooks.PlayerSpawn (soldier.ent)
+	T.eq (givenGroup,   soldier.ent, "its group's, on it")
+	T.eq (inserted [1], soldier.ent, "and its orders")
+	T.eq (#ended,       2,           "what an earlier life left ended first, both trees")
+	ended = {}
+	hooks.PlayerDeath (soldier.ent)
+	T.eq (#ended, 2, "its death ends both: nothing runs on after it")
+	ended = {}
+	hooks.PlayerDeath ({})
+	T.eq (#ended, 0, "another player's death is none of its")
 end)
 
 T.finish ()

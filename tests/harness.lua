@@ -28,6 +28,10 @@ T.MODULE_DIRS =
 	"addons/ulx_luadev/lua/includes/modules/"
 }
 
+-- Lua's own require finds them too, as GMod's finds lua/includes/modules/ (NextSoldier's
+-- sh_init.lua requires action_registry by name).
+for i = #T.MODULE_DIRS, 1, -1 do package.path = T.MODULE_DIRS [i] .. "?.lua;" .. package.path end
+
 -- The trees an addon ships under its own lua/ that the gamemode's loader
 -- reads from the LUA path's root (shared_loader.lua's ADDON_TREES): tree ->
 -- the addon's lua/ folder.
