@@ -117,6 +117,20 @@ win64's `server.dll`), `ulx addmap` (no worker is started), and luadev's
 socket until a linux64 LuaSocket is put at
 `.devtools/artifacts/docker/gmsv_luasocket_linux64.dll`.
 
+**HolyLib's vprof on the Linux server**, for the dev workbench's `dev.vprof`
+(`dev_vprof_*`): fetch HolyLib's pinned release once, then start with
+`--holylib`. The root links its `.vdf` and `gmsv_holylib_linux64.so`, and the
+server starts with every HolyLib module off but vprof
+(`-holylib_startdisabled -holylib_enable_vprof 1`). A start without
+`--holylib` takes the links away again. CrossOver refuses it: on Windows,
+HolyLib's vprof shows no hooks.
+
+```bash
+python3 .devtools/bin/holylib.py fetch       # .devtools/artifacts/holylib/, each file held to its SHA-256
+dt srcds start --runtime docker --holylib --map pl_upward
+dt srcds rcon 'dev_vprof_status'
+```
+
 Instance *n* runs from its own root, `GarrysModServer-n` (its own
 `console.log`, `data/` and `cache/`), with its own launch record and log
 (`.devtools/artifacts/srcds-n.pid`, `srcds-n.log`) and its own luadev port.

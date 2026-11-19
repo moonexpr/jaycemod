@@ -17,6 +17,8 @@ server's console writes to. In it, this module (enter):
    to the repo, the Workshop downloads and TF2, each mounted at its host
    path so the links resolve in the container as they do on the host; the
    repo's binary modules are their linux64 builds (native_linux.sh);
+   With --holylib, the root links HolyLib's plugin (holylib.py fetches it),
+   and without, any link a run with it left is taken away;
 4. becomes the server (srcds_run_x64 -norestart).
 
 The game port is published at the address srcds.py binds (UDP, and TCP for
@@ -50,6 +52,7 @@ LOCALHOST = "127.0.0.1"
 GMOD_APP, GMOD_BRANCH = "4020", "x86-64"  # the 64-bit build, which the repo's modules are built for
 STOP_GRACE = 10  # seconds docker stop gives the server before it kills it
 ENTRY = Path(".devtools") / "bin" / "srcds_docker.py"
+HOLYLIB_FLAG = "--holylib"  # the entry's: build the root with HolyLib's plugin
 
 
 def container_name(instance: Instance) -> str:
@@ -99,10 +102,12 @@ class HostPaths:
         return [f"{self.repo}:{self.repo}"] + [f"{path}:{path}:ro" for path in read_only]
 
 
-def run_argv(instance: Instance, host: str, port: int, server_args: List[str], paths: HostPaths) -> List[str]:
+def run_argv(instance: Instance, host: str, port: int, server_args: List[str], paths: HostPaths,
+             holylib: bool = False) -> List[str]:
     """`docker run` for the instance's container, bound at `host`, running
     srcds with `server_args` (which bind +ip 0.0.0.0: the container's own
-    interface, which the published ports reach)."""
+    interface, which the published ports reach); `holylib`, its root built
+    with HolyLib's plugin (server_root.py's LINUX_HOLYLIB)."""
     luadev = instance.luadev_port
     args = ["docker", "run", "--rm", "-i", "-t", "--init", "--name", container_name(instance),
             "--workdir", str(CONTAINER_ROOT),
@@ -113,6 +118,8 @@ def run_argv(instance: Instance, host: str, port: int, server_args: List[str], p
     for mount in paths.mounts():
         args += ["-v", mount]
     entry = ["python3", str(paths.repo / ENTRY), "--instance", str(instance.number)] + paths.argv()
+    if holylib:
+        entry.append(HOLYLIB_FLAG)
     return args + [IMAGE] + entry + ["--"] + server_args
 
 
@@ -146,9 +153,11 @@ def mount_cfg(tf: Path) -> str:
 MOUNT_CFG = CONTAINER_GMOD / "garrysmod" / "cfg" / "mount.cfg"
 
 
-def container_layout(instance: Instance, paths: HostPaths, added_maps: Mapping[str, str]) -> Layout:
+def container_layout(instance: Instance, paths: HostPaths, added_maps: Mapping[str, str],
+                     holylib: bool = False) -> Layout:
     return Layout(CONTAINER_GMOD, CONTAINER_ROOT, paths.workshop, paths.repo / ".devtools" / "bin" / "server_root",
-                  paths.tf, instance.luadev_port, paths.maps, paths.gamemode, added_maps, LINUX, ALL_INTERFACES)
+                  paths.tf, instance.luadev_port, paths.maps, paths.gamemode, added_maps, LINUX, ALL_INTERFACES,
+                  holylib)
 
 
 def server_command(server_args: List[str]) -> List[str]:
@@ -157,12 +166,12 @@ def server_command(server_args: List[str]) -> List[str]:
 
 def enter(instance: Instance, paths: HostPaths, server_args: List[str], run: Run = subprocess.run,
           build: Callable[[Layout], Path] = server_root.build, execv: Callable = os.execv,
-          mount_cfg_path: Path = MOUNT_CFG) -> None:
-    """Install, mount TF2, build the root, become the server."""
+          mount_cfg_path: Path = MOUNT_CFG, holylib: bool = False) -> None:
+    """Install, mount TF2, build the root (with HolyLib's plugin, or without), become the server."""
     run(install_command(), check=True)
     mount_cfg_path.write_text(mount_cfg(paths.tf))
     added = server_root.read_added_maps(paths.repo / ".devtools" / "artifacts" / "added_maps.json")
-    build(container_layout(instance, paths, added))
+    build(container_layout(instance, paths, added, holylib))
     command = server_command(server_args)
     execv(command[0], command)
 
@@ -172,8 +181,9 @@ def main() -> int:
     split = args.index("--")
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--instance", type=int, default=MAIN_INSTANCE)
+    ap.add_argument(HOLYLIB_FLAG, action="store_true")
     known, _ = ap.parse_known_args(args[:split])
-    enter(Instance(known.instance), HostPaths.parse(args[:split]), args[split + 1:])
+    enter(Instance(known.instance), HostPaths.parse(args[:split]), args[split + 1:], holylib=known.holylib)
     return 0
 
 

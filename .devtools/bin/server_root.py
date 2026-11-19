@@ -45,6 +45,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Mapping
 
+import holylib
 from gma import Gma, GmaFile, write_gma
 from vpk import Vpk
 
@@ -155,6 +156,12 @@ LINUX_NATIVE_BINARIES = {
     "gmsv_foundation_linux64.dll": REPO / f"addons/foundation/native/target/{LINUX_TARGET}/release/libfoundation.so",
     "gmsv_nextsoldier_linux64.dll": REPO / f"addons/nextsoldier/native/target/{LINUX_TARGET}/release/libnextsoldier.so",
     "gmsv_luasocket_linux64.dll": REPO / ".devtools/artifacts/docker/gmsv_luasocket_linux64.dll",
+}
+# HolyLib, a server plugin (holylib.py fetches its pinned release), in a root built to run it
+# (srcds.py start --runtime docker --holylib): path under the server's garrysmod/ -> the fetched file
+LINUX_HOLYLIB = {
+    "addons/holylib_linux_64.vdf": holylib.DIR / "holylib_linux_64.vdf",
+    "lua/bin/gmsv_holylib_linux64.so": holylib.DIR / "gmsv_holylib_linux64.so",
 }
 # addons built in this repo, linked into the server's addons/: name -> folder
 REPO_ADDONS = {
@@ -279,15 +286,18 @@ class Platform:
     """What a server root differs by between GMod's builds: the programs it
     copies rather than links (name -> how, path and source), the binary
     modules it links from the shared lua/bin (SERVER_BINARIES) and those built
-    from this repo (NATIVE_BINARIES), each linked once it exists."""
+    from this repo (NATIVE_BINARIES), each linked once it exists, and HolyLib's
+    files where the build runs it (none: it is not run there)."""
     name: str
     executables: Mapping[str, Callable[[Path, Path], None]]
     server_binaries: Mapping[str, str]
     native_binaries: Mapping[str, Path]
+    holylib: Mapping[str, Path] = field(default_factory=dict)
 
 
 WINDOWS = Platform("win64", {SERVER_EXE: console_exe}, SERVER_BINARIES, NATIVE_BINARIES)
-LINUX = Platform("linux64", {LINUX_SERVER: copy_program, LINUX_RUN: copy_program}, {}, LINUX_NATIVE_BINARIES)
+LINUX = Platform("linux64", {LINUX_SERVER: copy_program, LINUX_RUN: copy_program}, {}, LINUX_NATIVE_BINARIES,
+                 LINUX_HOLYLIB)
 
 
 @dataclass(frozen=True)
@@ -303,6 +313,7 @@ class Layout:
     added_maps: Mapping[str, str] = field(default_factory=dict)  # add_map.py's, mounted beside SERVER_MAPS
     platform: Platform = WINDOWS  # the build of GMod the root runs
     luadev_host: str = LOCALHOST  # the address luadev_socket.lua binds, written to LUADEV_HOST_FILE
+    holylib: bool = False  # HolyLib's plugin linked in (the platform's), else any link to it taken away
 
     @classmethod
     def of(cls, instance: Instance) -> "Layout":
@@ -415,6 +426,27 @@ def place_archive(path: Path, archive: Path) -> None:
     path.write_bytes(archive_bytes(archive))
 
 
+class HolyLibUnavailable(ValueError):
+    pass
+
+
+def place_holylib(layout: Layout, game: Path) -> None:
+    """HolyLib's .vdf and binary linked into the root when the layout runs it; otherwise any
+    link a build that ran it left is taken away, or srcds would load the plugin anyway."""
+    files = layout.platform.holylib
+    if layout.holylib and not files:
+        raise HolyLibUnavailable(f"HolyLib is not run on the {layout.platform.name} server")
+    for path, source in files.items():
+        target = game / path
+        if not layout.holylib:
+            if target.is_symlink():
+                target.unlink()
+            continue
+        if not source.exists():
+            raise FileNotFoundError(f"HolyLib: no {source}; fetch it with: .devtools/bin/holylib.py fetch")
+        link(target, source)
+
+
 def build(layout: Layout) -> Path:
     layout.root.mkdir(exist_ok=True)
     programs = layout.platform.executables
@@ -447,6 +479,7 @@ def build(layout: Layout) -> Path:
         link(addons / entry.name, entry)
     for name, source in REPO_ADDONS.items():
         link(addons / name, source)
+    place_holylib(layout, game)
     mounts = addons / "server_mounts" / "lua"
     for path, source in SERVER_LUA.items():
         target = mounts / path

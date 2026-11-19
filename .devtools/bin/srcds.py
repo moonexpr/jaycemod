@@ -8,6 +8,7 @@ r"""Run Garry's Mod's dedicated server under CrossOver and drive it with RCON.
   srcds.py console                                     follow its console in an iTerm window
   srcds.py --instance 2 start ...                      the same for a second server beside the first
   srcds.py start --runtime docker ...                  GMod's Linux server in a container (srcds_docker.py)
+  srcds.py start --runtime docker --holylib ...        and HolyLib's vprof (holylib.py fetch first)
 
 Each instance (server_root.Instance; 1, the default, is the main server) has
 its own root, launch record srcds[-n].pid, log srcds[-n].log and default port
@@ -78,6 +79,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Deque, Dict, List, Optional, Set, Tuple, Union
 
+import holylib
 import server_root
 import srcds_docker
 from server_root import MAIN_INSTANCE, Instance, Layout
@@ -262,6 +264,7 @@ class ServerConfig:
     sourcetv: bool = False  # SourceTV up from the first map (server-side demos), else -nohltv
     workshop_collection: str = ""  # a Workshop collection's id, whose addons and maps the server mounts
     authkey: str = ""  # a Steam Web API key (-authkey), for the server's Workshop downloads
+    holylib: bool = False  # HolyLib's plugin, every module off but vprof (holylib.py); the docker runtime only
 
     def __post_init__(self):
         if not MAP_NAME.match(self.map):
@@ -300,6 +303,8 @@ def server_arguments(config: ServerConfig) -> List[str]:
         argv.append("-disableluarefresh")
     if config.p2p:
         argv.append("-p2p")
+    if config.holylib:
+        argv += holylib.SERVER_ARGS
     for name, value in convars:
         argv += ["+" + name, value]
     return argv + ["+map", config.map]
@@ -335,7 +340,8 @@ class Docker:
         """Makes the image when docker lacks it, and the command that runs the container."""
         srcds_docker.ensure_image(self.run)
         inside = dataclasses.replace(config, ip=ALL_INTERFACES)
-        return srcds_docker.run_argv(instance, config.ip, config.port, server_arguments(inside), self.paths)
+        return srcds_docker.run_argv(instance, config.ip, config.port, server_arguments(inside), self.paths,
+                                     holylib=config.holylib)
 
     def halt(self, instance: Instance) -> None:
         self.run(srcds_docker.stop_command(instance), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -792,16 +798,20 @@ def rcon_command(instance: Instance, text: str, timeout: float = 10) -> str:
 def make_server(map_name: str, port: int, lua_refresh: bool = True, maxplayers: int = DEFAULT_MAXPLAYERS,
                 ip: Optional[str] = None, instance: Instance = MAIN, p2p: bool = True,
                 gamemode: str = "sandcastle", sourcetv: bool = False, runtime: Optional[str] = None,
-                workshop_collection: str = "", keychain: Optional[Tuple[str, str]] = None) -> Server:
+                workshop_collection: str = "", keychain: Optional[Tuple[str, str]] = None,
+                holylib_plugin: bool = False) -> Server:
     """ip: the address to bind; by default the running server's (rcon, stop), else 127.0.0.1.
-    runtime: what runs it (RUNTIMES); by default the running server's, else CrossOver."""
+    runtime: what runs it (RUNTIMES); by default the running server's, else CrossOver.
+    holylib_plugin: run HolyLib's vprof (holylib.py), which only the docker runtime does."""
     runtime = runtime or started_runtime(InstanceFiles.of(instance).pid)
+    if holylib_plugin and runtime != DOCKER:
+        raise ValueError("--holylib needs --runtime docker: HolyLib's vprof shows no hooks on Windows")
     install = Docker(srcds_docker.HostPaths.of_host()) if runtime == DOCKER else Install.discover(instance)
     ip = ip or started_host(instance)
     config = ServerConfig(map_name, port, password(), maxplayers, lua_refresh=lua_refresh, ip=ip, p2p=p2p,
                           steam_account=steam_account(instance, keychain=keychain), gamemode=gamemode, sourcetv=sourcetv,
                           workshop_collection=workshop_collection,
-                          authkey=web_api_key() if workshop_collection else "")
+                          authkey=web_api_key() if workshop_collection else "", holylib=holylib_plugin)
     return Server(install, config, reach_address(ip), instance)
 
 
@@ -840,6 +850,9 @@ def main() -> int:
                        help="what runs the server: crossover, GMod's Windows server in the GModServer bottle "
                             "(the default), or docker, its Linux server in a container (srcds_docker.py), "
                             "with the repo's modules' linux64 builds (native_linux.sh)")
+    start.add_argument("--holylib", action="store_true",
+                       help="with --runtime docker: load HolyLib (fetched by holylib.py) with only its vprof module "
+                            "on, for the dev workbench's dev.vprof")
     rcon = sub.add_parser("rcon")
     rcon.add_argument("command")
     sub.add_parser("stop")
@@ -853,7 +866,7 @@ def main() -> int:
             server = make_server(args.map, port, args.lua_refresh, args.maxplayers, bind_address(args.ip), instance,
                                  args.p2p, args.gamemode, args.sourcetv, args.runtime, args.workshop_collection,
                                  (args.steam_account_keychain, args.keychain_account)
-                                 if args.steam_account_keychain else None)
+                                 if args.steam_account_keychain else None, args.holylib)
             server.start()
             if args.console:
                 open_console(files.log)

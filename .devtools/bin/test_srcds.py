@@ -587,6 +587,23 @@ class Runtimes(unittest.TestCase):
             server = srcds.make_server("gm_construct", 27025, ip="127.0.0.1", runtime="docker")
         self.assertIsInstance(server.install, srcds.Docker)
 
+    def test_docker_with_holylib_builds_its_root_with_the_plugin_and_starts_only_vprof(self):
+        config = dataclasses.replace(self.CONFIG, holylib=True)
+        argv = self.docker([]).launch_argv(Instance(2), config)
+        entry, server_args = argv[:argv.index("--")], argv[argv.index("--") + 1:]
+        self.assertIn(srcds_docker.HOLYLIB_FLAG, entry)
+        self.assertIn("-holylib_startdisabled", server_args)
+        self.assertEqual(server_args[server_args.index("-holylib_enable_vprof") + 1], "1")
+        self.assertLess(server_args.index("-holylib_startdisabled"), server_args.index("+map"))
+        plain = self.docker([]).launch_argv(Instance(2), self.CONFIG)
+        self.assertNotIn(srcds_docker.HOLYLIB_FLAG, plain)
+        self.assertFalse(any(arg.startswith("-holylib") for arg in plain))
+
+    def test_holylib_is_refused_under_crossover(self):
+        with unittest.mock.patch.object(srcds, "password", lambda: "pw"):
+            with self.assertRaisesRegex(ValueError, "--runtime docker"):
+                srcds.make_server("gm_construct", 27025, ip="127.0.0.1", runtime="crossover", holylib_plugin=True)
+
     def test_rcon_and_stop_use_the_runtime_that_started_the_server(self):
         with tempfile.TemporaryDirectory() as tmp:
             record = Path(tmp) / "srcds.pid"

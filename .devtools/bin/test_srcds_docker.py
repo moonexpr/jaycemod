@@ -16,6 +16,7 @@ from srcds_docker import (
     GMOD_VOLUME,
     IMAGE,
     STEAMCMD_VOLUME,
+    HOLYLIB_FLAG,
     HostPaths,
     container_layout,
     container_name,
@@ -199,6 +200,24 @@ def test_entering_installs_mounts_tf2_builds_the_root_and_becomes_the_server(tmp
     command = server_command(SERVER_ARGS)
     assert box.steps == [("run", "steamcmd"), ("build", CONTAINER_ROOT), ("exec", command[0], tuple(command))]
     assert box.cfg.read_text() == mount_cfg(PATHS.tf)
+
+
+def test_the_entry_asks_for_holylib_only_when_the_server_runs_it():
+    entry = lambda args: args[args.index(IMAGE):args.index("--")]
+    assert HOLYLIB_FLAG not in entry(argv())
+    assert HOLYLIB_FLAG in entry(run_argv(Instance(1), "0.0.0.0", 27025, SERVER_ARGS, PATHS, holylib=True))
+
+
+def test_the_containers_layout_runs_holylib_when_asked():
+    assert not container_layout(Instance(1), PATHS, {}).holylib
+    assert container_layout(Instance(1), PATHS, {}, holylib=True).holylib
+
+
+def test_entering_with_holylib_builds_the_root_with_it(tmp_path):
+    box, layouts = Container(tmp_path), []
+    enter(Instance(1), PATHS, SERVER_ARGS, run=box.run, build=layouts.append, execv=box.execv,
+          mount_cfg_path=box.cfg, holylib=True)
+    assert [layout.holylib for layout in layouts] == [True]
 
 
 def test_a_failed_install_starts_nothing(tmp_path):
