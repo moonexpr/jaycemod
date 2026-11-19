@@ -200,7 +200,7 @@ T.test ("TDBN names a control point defender's job, its side by short name, and 
 	local s = battle.soldiers [1]
 	local _, frames = s.npc:Stack ()
 	local job, role = Orders.JobOf (s.npc:Describe ())
-	T.eq (Debug.Tdbn (frames), job .. " ( CPDefender ( NextSoldier::" .. role .. " ) )", s.npc:Describe ())
+	T.eq (Debug.Tdbn (frames), job .. " ( CPDefender ( WarSoldier::" .. role .. " ) )", s.npc:Describe ())
 end)
 
 T.test ("A/D: attackers take only offense roles, defenders only defense roles", function ()

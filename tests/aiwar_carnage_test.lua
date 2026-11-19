@@ -108,12 +108,12 @@ local Track = math.polyline
 local STATE = T.require ("games.gameplay.rounds.state")
 
 local TICK = 0.25
-local SEEK = "NextSoldier/StrategyMonitor/SeekAndDestroy"
+local SEEK = "WarSoldier/StrategyMonitor/SeekAndDestroy"
 -- A trip buries the action that took it: the trip shows, a level up. The
 -- hunt's trips are weak: they give way to any enemy at hand.
-local TRIP = "NextSoldier/StrategyMonitor/WeakTravel"
-local HIDE_TRIP = "NextSoldier/StrategyMonitor/Travel"
-local HUMILIATED = "NextSoldier/StrategyMonitor/Humiliated"
+local TRIP = "WarSoldier/StrategyMonitor/WeakTravel"
+local HIDE_TRIP = "WarSoldier/StrategyMonitor/Travel"
+local HUMILIATED = "WarSoldier/StrategyMonitor/Humiliated"
 local SPAWNS =
 {
 	[RED] = { P (3000, 0), P (3000, 800), P (-2000, 0) },
@@ -328,10 +328,10 @@ T.test ("a winner retreating to cover when the hunt begins leaves it within a ti
 	Tick (me, npc)
 	me.health = 20
 	Tick (me, npc)
-	T.eq (npc:Describe (), "NextSoldier/StrategyMonitor/RetreatToCover", "retreating")
+	T.eq (npc:Describe (), "WarSoldier/StrategyMonitor/RetreatToCover", "retreating")
 	war:SetField (CarnageField (nil, BLUE))
 	Tick (me, npc)
-	T.eq (npc:Describe () ~= "NextSoldier/StrategyMonitor/RetreatToCover", true, "left it")
+	T.eq (npc:Describe () ~= "WarSoldier/StrategyMonitor/RetreatToCover", true, "left it")
 	Tick (me, npc)
 	T.eq (Runs (npc, "SeekAndDestroy"), true, "hunting")
 end)
