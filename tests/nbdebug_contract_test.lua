@@ -12,6 +12,8 @@ local WAR_SOLDIER = ROOT .. "sh_war_soldier.lua"
 local PATHFOLLOWER = ROOT .. "../entities/entities/npc_pathfollower.lua"
 local NAV_CLEARANCE = ROOT .. "includes/nav_clearance.lua"
 local NAV = ROOT .. "sv_nav.lua"
+-- the path cost's Lua twin (nextsoldier.locomotion.PricedInLua), beside the native one
+local LOCOMOTION = "addons/nextsoldier/lua/nextsoldier/locomotion.lua"
 local BOT_SOLDIER = ROOT .. "features/aiwar/sv_bot_soldier.lua"
 local BOT_NAVIGATOR = ROOT .. "../entities/entities/ws_bot_navigator.lua"
 
@@ -43,6 +45,7 @@ local shared = T.RealmSource ("nbdebug", "sh")
 local aiwar = T.RealmSource ("aiwar", "sv")
 local nextsoldier, warSoldier = ReadFile (NEXTSOLDIER), ReadFile (WAR_SOLDIER)
 local pathfollower = ReadFile (PATHFOLLOWER)
+local locomotion = ReadFile (LOCOMOTION)
 local navClearance, nav, botSoldier = ReadFile (NAV_CLEARANCE), ReadFile (NAV), ReadFile (BOT_SOLDIER)
 local botNavigator = ReadFile (BOT_NAVIGATOR)
 
@@ -130,10 +133,12 @@ T.test ("the shared path generator rejects areas and openings the agent's collis
 	T.eq (navClearance:find ("endpos = to", 1, true) ~= nil, true, "sweeps along the crossing direction")
 	T.eq (nav:find ("function WS.NavHullClearance (entity, mask)", 1, true) ~= nil, true, "navigation-layer API")
 	T.eq (nextsoldier:find ("Host.current:PathClearance(self)", 1, true) ~= nil, true, "NextBot uses the shared primitive")
-	T.eq (nextsoldier:find ("return cost(area, fromArea, ladder, elevator, length, fits)", 1, true) ~= nil, true, "passes clearance to the cost pipeline")
-	T.eq (nextsoldier:find ("if fits == false then return -1 end", 1, true) ~= nil, true, "default generator rejects an unfit area")
-	T.eq (nextsoldier:find ("Walkable(fromArea:ComputeAdjacentConnectionHeightChange(area)", 1, true) ~= nil, true, "default generator rejects a rise beyond the body's jump")
-	T.eq (warSoldier:find ("Base ().GetPathGenerator (self, self.PathCost () or NoPath)", 1, true) ~= nil, true, "combat costs go through the shared generator")
+	T.eq (nextsoldier:find ("if native and native.Direct then return native.New(spec) end", 1, true) ~= nil, true, "the native cost first")
+	T.eq (nextsoldier:find ("return Locomotion.PricedInLua(spec)", 1, true) ~= nil, true, "else its Lua twin")
+	T.eq (locomotion:find ("return cost (area, fromArea, ladder, elevator, length, fits)", 1, true) ~= nil, true, "passes clearance to the cost pipeline")
+	T.eq (locomotion:find ("if fits == false then return -1 end", 1, true) ~= nil, true, "default generator rejects an unfit area")
+	T.eq (locomotion:find ("Walkable (fromArea:ComputeAdjacentConnectionHeightChange (area)", 1, true) ~= nil, true, "default generator rejects a rise beyond the body's jump")
+	T.eq (warSoldier:find ("Base ().GetPathGenerator (self, self.PathCost () or NoPath, bound)", 1, true) ~= nil, true, "combat costs go through the shared generator")
 	T.eq (botSoldier:find ("WS.NavHullClearance (self.ent, WS.ClipMasks ().brushes)", 1, true) ~= nil, true, "bot players use their player hull")
 	T.eq (botSoldier:find ("fits = clearance:Area (area)", 1, true) ~= nil, true, "bot player routes reject an unfit area")
 	T.eq (botSoldier:find ("fits = clearance:Link (fromArea, area)", 1, true) ~= nil, true, "bot player routes reject an unfit opening")
