@@ -204,7 +204,9 @@ do
 			local init = assert (loadfile (T.File (T.NEXTSOLDIER_INIT)))
 			setfenv (init, setmetatable (
 				{
-					include = function (file) return dofile (T.File (file)) end
+					include = function (file) return dofile (T.File (file)) end,
+					-- GMod's: a module by its bare name, from an addon's includes/modules (action_registry)
+					require = T.require
 				}, { __index = _G, __newindex = _G })) ()
 		end
 		RunIndex (path)
