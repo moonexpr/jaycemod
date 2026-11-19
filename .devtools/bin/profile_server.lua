@@ -6,6 +6,8 @@
 --   server_lua.py 'WSProfile.Start(60, WSProfile.ACTIONS)'  and NS actions, events, queries
 --   server_lua.py 'WSProfile.Start(20, WSProfile.COARSE, { alloc = true })'
 --                                                           and what each allocates
+--   server_lua.py 'WSProfile.Start(60, WSProfile.COARSE, { vprof = true })'
+--                                                           and each in a VProf scope (HolyLib)
 --   server_lua.py 'return WSProfile.Report(40)'             the most demanding functions
 --
 -- It wraps, in place, every hook, the methods of every scripted entity class
@@ -31,6 +33,19 @@
 -- reading, and a nested call's would be counted again by its caller. A
 -- NextBot's behaviour coroutine is measured whole, by the entity method that
 -- resumes it.
+--
+-- With { vprof = true } (HolyLib's vprof library on the server, read by the
+-- dev workbench's dev.vprof) each wrapper on the main thread also enters a
+-- VProf scope by its name, in the budget group WSProfile, so the wrapped
+-- functions land in the engine's own tree beside its C++ (NextBots, physics,
+-- networking) and GMod's calls into Lua. VProf is started for the window, from
+-- nothing, unless it was already running, and stopped after if it was not;
+-- Report then adds VProf's own report. A scoped wrapper runs its function under
+-- pcall, so a scope is never left open: an error is raised again with its
+-- message as it was, but its traceback starts at the wrapper. A call in a
+-- coroutine is left unscoped, since a yield would leave its scope open. VProf
+-- keeps every scope's name until it is terminated: the names here are fixed
+-- (hooks, classes, modules), so a window allocates them once.
 WSProfile = WSProfile or {}
 local P = WSProfile
 
@@ -83,7 +98,7 @@ local function Finish (name, stack, depth, started, kb, ...)
 	return ...
 end
 
-local function Wrap (name, fn)
+local function Measure (name, fn)
 	return function (...)
 		local key = coroutine_running () or MAIN
 		local stack = stacks [key]
@@ -97,6 +112,17 @@ local function Wrap (name, fn)
 		local kb = allocating and depth == 1 and key == MAIN and collectgarbage ("count")
 		return Finish (name, stack, depth, SysTime (), kb, fn (...))
 	end
+end
+
+-- VProf's library and its reading (the dev workbench's sandcastle_dev_vprof) for
+-- a window that asked for it, or nil.
+local VPROF_GROUP = "WSProfile"
+local vprofLib, VProf, vprofStarted
+
+local function Wrap (name, fn)
+	local measured = Measure (name, fn)
+	if vprofLib then return VProf.Scoped (vprofLib, name, VPROF_GROUP, measured) end
+	return measured
 end
 
 -- Replace t[key] with a wrapper named name, remembering the original.
@@ -199,6 +225,11 @@ function P.Unwrap ()
 	end
 	restore = {}
 	hook.Remove ("Tick", FRAME_HOOK)
+	if vprofLib then
+		if vprofStarted and vprofLib.IsEnabled () then vprofLib.Stop () end
+		P.vprof = vprofLib
+		vprofLib, vprofStarted = nil, false
+	end
 	if allocating then
 		allocating = false
 		collectgarbage ("restart")
@@ -213,9 +244,27 @@ end
 -- still without the hot, tiny module functions.
 P.FINE, P.COARSE, P.ACTIONS = "fine", "coarse", "actions"
 
+-- VProf's library and the workbench's reading of it, or why not.
+local function VProfLibrary ()
+	if not vprof then return nil, "HolyLib's vprof library is not loaded (holylib_enable_vprof)" end
+	if not (dev and dev.require) then return nil, "the dev workbench is not loaded: it reads VProf" end
+	return vprof, dev.require ("sandcastle_dev_vprof")
+end
+
 function P.Start (seconds, scope, options)
 	if P.running then P.Unwrap () end
 	options = options or {}
+	P.vprof = nil
+	if options.vprof then
+		local lib, reading = VProfLibrary ()
+		if not lib then error ("WSProfile: " .. reading, 2) end
+		vprofLib, VProf = lib, reading
+		vprofStarted = not lib.IsEnabled ()
+		if vprofStarted then
+			lib.Reset ()
+			lib.Start ()
+		end
+	end
 	stats, stacks, restore = {}, setmetatable ({}, { __mode = "k" }), {}
 	P.stats = stats
 	local seen = {}
@@ -246,7 +295,8 @@ function P.Start (seconds, scope, options)
 		allocating = true
 	end
 	timer.Create ("ws_profile_window", seconds, 1, P.Unwrap)
-	return string.format ("profiling %d wrapped functions for %d s", #restore, seconds)
+	return string.format ("profiling %d wrapped functions for %d s%s", #restore, seconds,
+		vprofLib and ", each in a VProf scope" or "")
 end
 
 local MS = 1000
@@ -305,6 +355,10 @@ function P.Report (n)
 		for _, kb in ipairs (mem) do least, most = math.min (least, kb), math.max (most, kb) end
 		lines [#lines + 1] = string.format ("Lua memory %.0f kB now (least %.0f, most %.0f), range %.0f kB/s of the window",
 			mem [#mem], least, most, (most - least) / math.max (elapsed, 1))
+	end
+	local lib = vprofLib or P.vprof
+	if lib then
+		for _, line in ipairs (VProf.Format (VProf.Read (lib, { rows = n }))) do lines [#lines + 1] = line end
 	end
 	return table.concat (lines, "\n")
 end

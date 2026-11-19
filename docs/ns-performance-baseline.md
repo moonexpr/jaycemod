@@ -533,6 +533,41 @@ Two ideas are worth building in: allocation per top-level hook (outermost
 calls only, no coroutines, so the figures hold), and, once clients are in
 the tests, net message cost.
 
+## Tools considered: HolyLib's vprof
+
+[RaphaelIT7/gmod-holylib](https://github.com/RaphaelIT7/gmod-holylib#vprof)
+is a binary module (not copied here; the operator installs it on the
+server) whose `vprof` library reads and drives the engine's own profiler,
+VProf, from Lua. It also scopes GMod's calls into Lua: `CLuaGamemode::Call
+(<hook>)` and `CScriptedEntity::Call (...)` in the budget group `GMOD`, and,
+with `holylib_vprof_trackscripts 1`, every script GMod calls into, by line
+and source.
+
+It fills the one gap the sampler leaves: H17 found 23 to 60 % of the
+server thread outside Lua, charged to the hook dispatcher, with nothing to
+say what it was. VProf's budget groups (NPCs, physics, networking, the
+game frame) name it. Wired in two places:
+
+- The dev workbench's `dev.vprof` (`dev_vprof_*`, indexed in
+  `.claude/rules/live-server.md`; the reading is
+  `sandcastle_dev_vprof`, tested in `tests/dev_vprof_test.lua`):
+  self time by budget group and the top scopes per tick, from the tree.
+  `dev_vprof_window <s> sample` runs the LuaJIT sampler over the same
+  window, so the two reports describe the same ticks.
+- `profile_server.lua`'s `{ vprof = true }`: each wrapped function in a
+  VProf scope of its own (group `WSProfile`), so the wrappers' functions
+  sit in the engine's tree under the GMod call that reached them.
+
+Caveats, from HolyLib's source as of 2026-11: its text export
+(`holylib_vprof_exportreport`) is not captured on x86-64, so the
+workbench reads the tree instead; VProf keeps every scope name until
+`vprof.Term`, so only fixed names are scoped; and a scope must not be
+left open: a wrapped call runs under `pcall` (an error loses its inner
+traceback), and a coroutine's call is not scoped. None of it has run
+yet on the dev server: CrossOver's server is Windows x64, and HolyLib's
+Windows support is younger than its Linux; the docker runtime (Linux
+x64) is the safer first try.
+
 ## Treatment D: route searches replayed offline, and what failed searches teach
 
 Measuring a route-search change no longer needs a live war.
