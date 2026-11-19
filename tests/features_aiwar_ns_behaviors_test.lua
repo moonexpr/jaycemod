@@ -9,20 +9,14 @@ local Orders = T.require ("features.aiwar.ns_behaviors")
 -- what the war registered, compiled as the controller compiles it
 local BEHAVIORS = nextsoldier.behavior.action.Registered ()
 
--- The registered behaviours with more of a test's own over them, by name: what the war takes as
--- its compiled behaviours (Get, Has, Names).
-local function With (extra)
-	local behaviors = {}
-	function behaviors:Get (name) return extra [name] or BEHAVIORS:Get (name) end
-	function behaviors:Has (name) return extra [name] ~= nil or BEHAVIORS:Has (name) end
-	function behaviors:Names ()
-		local names = BEHAVIORS:Names ()
-		for name in pairs (extra) do
-			if not BEHAVIORS:Has (name) then names [#names + 1] = name end
-		end
-		return names
-	end
-	return behaviors
+-- The registered behaviours with these over them (name -> class), as a mode's own would be.
+local function Behaviors (over)
+	return
+	{
+		Get = function (_, name) return over [name] or BEHAVIORS:Get (name) end,
+		Has = function (_, name) return over [name] ~= nil or BEHAVIORS:Has (name) end,
+		Names = function () return BEHAVIORS:Names () end
+	}
 end
 local Behavior = nextsoldier.behavior
 local Track = math.polyline
@@ -112,7 +106,7 @@ T.test ("a registered scenario's own monitor runs under ScenarioMonitor, and lea
 	local Holdout = nextsoldier.behavior.action.Monitor ("Holdout", function (state) return HoldLine:New (state) end)
 	local field = Field ({})
 	field.scenario = { name = "holdout", monitor = "Holdout" }
-	local me, npc, war = Enlist ({ field = field, behaviors = With ({ Holdout = Holdout }) })
+	local me, npc, war = Enlist ({ field = field, behaviors = Behaviors ({ Holdout = Holdout }) })
 	Tick (me, npc)
 	T.eq (npc:Describe ():find ("ScenarioMonitor/Holdout/HoldLine", 1, true) ~= nil, true, npc:Describe ())
 	local plain = Field ({})
@@ -292,9 +286,9 @@ T.test ("DrGBase asks the orders whether to attack: the humiliated hold fire", f
 	Tick (me, npc)
 	T.eq (npc:Query ("ShouldAttack", "them"), N.ANSWER_NO, "humiliated: no")
 	T.eq (npc:Query ("ShouldHurry"), N.ANSWER_YES, "and away")
-	T.eq (npc:Describe (), "NextSoldier/StrategyMonitor/Humiliated", "the tactical monitor and all under it buried")
+	T.eq (npc:Describe (), "WarSoldier/StrategyMonitor/Humiliated", "the tactical monitor and all under it buried")
 	local _, frames = npc:Stack ()
-	T.eq (Debug.Tdbn (frames), "NextSoldier::TacticalMonitor<Humiliated>", "TDBN: humiliation supersedes the tactical monitor")
+	T.eq (Debug.Tdbn (frames), "WarSoldier::TacticalMonitor<Humiliated>", "TDBN: humiliation supersedes the tactical monitor")
 	me.disarmed = false
 	Tick (me, npc, 2)
 	T.eq (npc:Query ("ShouldAttack", "them"),    N.ANSWER_UNDEFINED, "rearmed")
@@ -543,8 +537,8 @@ T.test ("a soldier badly hurt gets off the cart and retreats to cover, until hea
 	T.eq (me.seated, true, "riding")
 	me.health = 30
 	Tick (me, npc)
-	T.eq (npc:Describe (), "NextSoldier/StrategyMonitor/RetreatToCover", "retreating, its squad and job waiting")
-	T.eq (me.seated,       false,                                        "off the cart")
+	T.eq (npc:Describe (), "WarSoldier/StrategyMonitor/RetreatToCover", "retreating, its squad and job waiting")
+	T.eq (me.seated,       false,                                       "off the cart")
 	Tick (me, npc)
 	Near (me.moving, cover, "to cover from the threat")
 	T.eq (npc:Query ("ShouldHurry"), N.ANSWER_YES, "running")
@@ -563,7 +557,7 @@ T.test ("a soldier hurt hard in a moment retreats even with health left", functi
 	npc:Event ("OnInjured", "attacker", 20)
 	me.health = 55
 	Tick (me, npc)
-	T.eq (npc:Describe (), "NextSoldier/StrategyMonitor/RetreatToCover", "45 of 100 in a moment")
+	T.eq (npc:Describe (), "WarSoldier/StrategyMonitor/RetreatToCover", "45 of 100 in a moment")
 end)
 
 -- Chasing
@@ -622,8 +616,8 @@ T.test ("a soldier that needs to retreat does not start a chase", function ()
 	me.enemy, me.enemyHandle, me.enemyPos, me.enemyHealth = true, "pusher", P (1400, 0), 0.2
 	me.health = 30
 	Tick (me, npc, 2)
-	T.eq (npc:State ().chases, nil,                                          "no chase")
-	T.eq (npc:Describe (),     "NextSoldier/StrategyMonitor/RetreatToCover", "it retreats instead")
+	T.eq (npc:State ().chases, nil,                                         "no chase")
+	T.eq (npc:Describe (),     "WarSoldier/StrategyMonitor/RetreatToCover", "it retreats instead")
 end)
 
 T.test ("a chaser that gets hurt badly still retreats", function ()
@@ -633,7 +627,7 @@ T.test ("a chaser that gets hurt badly still retreats", function ()
 	T.eq (Orders.JobOf (npc:Describe ()), "Chase", "chasing")
 	me.health = 20
 	Tick (me, npc)
-	T.eq (npc:Describe (), "NextSoldier/StrategyMonitor/RetreatToCover", "retreat wins")
+	T.eq (npc:Describe (), "WarSoldier/StrategyMonitor/RetreatToCover", "retreat wins")
 end)
 
 -- Squads
@@ -2040,7 +2034,7 @@ T.test ("a retreat or a trip for health ends as the soldier's job turns urgent",
 	me.kits = { kit }
 	me.health = 30
 	Tick (me, npc, 3)
-	T.eq (npc:Describe (), "NextSoldier/StrategyMonitor/FindHealth", "for the kit: " .. npc:Describe ())
+	T.eq (npc:Describe (), "WarSoldier/StrategyMonitor/FindHealth", "for the kit: " .. npc:Describe ())
 	war:SetField (StubField ({ urgent = true }))
 	Tick (me, npc, 2)
 	T.eq (Orders.JobOf (npc:Describe ()) ~= nil, true, "urgent: back on its job: " .. npc:Describe ())
@@ -2048,7 +2042,7 @@ T.test ("a retreat or a trip for health ends as the soldier's job turns urgent",
 		enemyPos = P (600, 0), walkable = function () return true end })
 	them.health = 30
 	Tick (them, theirs)
-	T.eq (theirs:Describe (), "NextSoldier/StrategyMonitor/RetreatToCover", "retreating")
+	T.eq (theirs:Describe (), "WarSoldier/StrategyMonitor/RetreatToCover", "retreating")
 	theirWar:SetField (StubField ({ urgent = true }))
 	Tick (them, theirs, 2)
 	T.eq (Orders.JobOf (theirs:Describe ()) ~= nil, true, "urgent: the retreat ends too: " .. theirs:Describe ())
@@ -2085,13 +2079,13 @@ T.test ("a soldier in cover leaves for a near kit once the enemy has drawn off",
 	me.kits = { kit }
 	me.health = 30
 	Tick (me, npc)
-	T.eq (npc:Describe (), "NextSoldier/StrategyMonitor/RetreatToCover", "retreating")
+	T.eq (npc:Describe (), "WarSoldier/StrategyMonitor/RetreatToCover", "retreating")
 	me.health = 60 -- urgency 0.4: it waits for safety 0.6
 	Tick (me, npc, 2)
-	T.eq (npc:Describe (), "NextSoldier/StrategyMonitor/RetreatToCover", "the enemy too near to go")
+	T.eq (npc:Describe (), "WarSoldier/StrategyMonitor/RetreatToCover", "the enemy too near to go")
 	me.enemyPos = P (5000, 0)
 	Tick (me, npc, 2)
-	T.eq (npc:Describe (), "NextSoldier/StrategyMonitor/FindHealth", "it has drawn off: for the kit")
+	T.eq (npc:Describe (), "WarSoldier/StrategyMonitor/FindHealth", "it has drawn off: for the kit")
 	Near (me.moving, kit.pos, "to the kit")
 	me.kits = {}
 	Tick (me, npc, 2)
@@ -2110,7 +2104,7 @@ T.test ("a soldier calls out as it falls back to cover, and again as it leaves c
 	T.eq (#me.announced, 1, "once, while it stays in cover")
 	me.enemyPos = P (5000, 0)
 	Tick (me, npc, 2)
-	T.eq (npc:Describe (), "NextSoldier/StrategyMonitor/FindHealth")
+	T.eq (npc:Describe (), "WarSoldier/StrategyMonitor/FindHealth")
 	T.eq (me.announced [2], Speech.CONCEPT_GET_HEALTH, "going for health")
 	T.eq (#me.announced, 2)
 end)
@@ -2121,13 +2115,13 @@ T.test ("a soldier on fire goes for health whatever the danger; one with a medic
 	me.kits = { kit }
 	me.health, me.burning = 30, true
 	Tick (me, npc, 3)
-	T.eq (npc:Describe (), "NextSoldier/StrategyMonitor/FindHealth", "burning: straight for it")
+	T.eq (npc:Describe (), "WarSoldier/StrategyMonitor/FindHealth", "burning: straight for it")
 	local them, theirs, _, member = Enlist ({ role = AiWar.DEFEND, team = RED, covers = { P (200, 0) }, enemyPos = P (400, 0) })
 	them.kits = { kit }
 	them.health, them.burning = 30, true
 	member.medicAt = them.now + 10 -- a medic treats it
 	Tick (them, theirs, 3)
-	T.eq (theirs:Describe (), "NextSoldier/StrategyMonitor/RetreatToCover", "its medic heals it where it hides")
+	T.eq (theirs:Describe (), "WarSoldier/StrategyMonitor/RetreatToCover", "its medic heals it where it hides")
 end)
 
 -- CallMedic: under CALL_MEDIC_HEALTH a soldier calls for a medic, once a
@@ -2149,18 +2143,19 @@ T.test ("a hurt soldier calls for a medic, then gets on with its job", function 
 end)
 
 T.test ("the war owns its behaviours and gives them to NextSoldier through its registry", function ()
-	local owned = { "NextSoldier", "StrategyMonitor", "TacticalMonitor", "SquadMonitor", "ScenarioMonitor", "Travel",
+	local owned = { "WarSoldier", "StrategyMonitor", "TacticalMonitor", "SquadMonitor", "ScenarioMonitor", "Travel",
 		"Chase", "Idle", "Humiliated", "SeekAndDestroy", "RetreatToCover", "FindHealth", "CallMedic" }
 	for _, name in ipairs (owned) do T.eq (BEHAVIORS:Has (name), true, name .. " is registered") end
 end)
 
-T.test ("a soldier's root is the NextSoldier its compiled behaviours give", function ()
-	local Stand = N.Action:Extend ("StandIn")
+T.test ("a soldier's root is the WarSoldier its compiled behaviours give", function ()
+	local Stand = action_registry.Get ("Action"):Extend ("StandIn")
 	local war = AiWar.War.New ()
 	war:Assign ({ [BLUE] = true })
 	war:SetField (Field ({}))
 	local member = war:Enlist ("me", BLUE, true)
-	local npc = N.Npc.New (Orders, { war = war, member = member, behaviors = With ({ NextSoldier = Stand }) }, FS.Soldier ({}))
+	local npc = N.Npc.New (Orders, { war = war, member = member, behaviors = Behaviors ({ WarSoldier = Stand }) },
+		FS.Soldier ({}))
 	npc:Update (TICK)
 	T.eq (npc:Describe ():match ("^StandIn") ~= nil, true, npc:Describe ())
 end)

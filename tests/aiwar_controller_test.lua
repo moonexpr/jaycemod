@@ -549,6 +549,56 @@ T.test ("a soldier held up by a door in its way finds the door", function ()
 	T.eq (controller.soldiers [soldier].soldier:DoorAhead ({ x = 100, y = 0, z = 0 }), door, "the door")
 end)
 
+-- A door that holds a soldier stands right before it: the sweep for one reaches 96 u toward its
+-- target, not all the way (swept to a far target every tick, a few held soldiers took a whole tick).
+T.test ("a held soldier sweeps for a door only within reach of it", function ()
+	local w = World ()
+	local controller = Started (w, PayloadMode.Mode)
+	local soldier = FakeSoldier (1)
+	soldier.GetClass = function () return "npc_nextsoldier" end
+	soldier.GetPos = function () return Vector (0, 0, 0) end
+	soldier.IsNextBot = function () return false end
+	soldier.SetFactionRelationship = function () end
+	controller:Enlist (soldier, BLUE, false)
+	local swept
+	w.trace = function (t)
+		swept = swept or t
+		return { Hit = false }
+	end
+	T.eq (controller.soldiers [soldier].soldier:DoorAhead ({ x = 3000, y = 0, z = 0 }), nil, "none")
+	T.near (swept.endpos.x, 96, 1e-6, "swept 96 u toward it")
+end)
+
+-- Each soldier's tree is its own job of the calendar's "trees" system, not run inside the field's
+-- think: told the time since it last ran (held to a second), while the war acts; it leaves once the
+-- soldier is discharged.
+T.test ("a soldier's tree is a job of its own on the calendar, while the war acts", function ()
+	local w = World ()
+	local controller = Started (w, PayloadMode.Mode)
+	local soldier = FakeSoldier (1)
+	soldier.GetClass = function () return "npc_nextsoldier" end
+	soldier.GetPos = function () return Vector (0, 0, 0) end
+	soldier.IsNextBot = function () return false end
+	soldier.SetFactionRelationship = function () end
+	local before = controller.calendar:Report ().trees.jobs
+	controller:Enlist (soldier, BLUE, false)
+	T.eq (controller.calendar:Report ().trees.jobs, before + 1, "its job, in the trees system")
+	local entry = controller.soldiers [soldier]
+	local told = {}
+	entry.npc = { Update = function (_, interval) told [#told + 1] = interval end }
+	controller.Acting = function () return true end
+	entry.treeAt = 10
+	T.eq (controller:TreeJob (soldier, entry, 10.25), nil,  "due again a period on")
+	T.eq (told [1],                                   0.25, "told the time since it ran")
+	controller:TreeJob (soldier, entry, 30)
+	T.eq (told [2], 1, "a long wait held to a second")
+	controller.Acting = function () return false end
+	controller:TreeJob (soldier, entry, 30.25)
+	T.eq (#told, 2, "not while the war does not act")
+	controller.soldiers [soldier] = nil
+	T.eq (controller:TreeJob (soldier, entry, 31), false, "discharged: the job leaves")
+end)
+
 -- A controller over a war of n BLU soldiers (entity indexes 1 to n).
 local function Squadded (n)
 	local w = World ()

@@ -39,8 +39,9 @@ T.test ("the engine is published refused, saying it binds only win64's server", 
 	T.eq (engine.Insert, nil, "Insert, which needs the binding")
 end)
 
-T.test ("the binary publishes nothing of the war's: its scenarios are wartactics' own Lua", function ()
-	T.eq (Opened ().wartactics, nil, "no wartactics")
+T.test ("no wartactics at NextSoldier's level: its binary publishes no scenarios", function ()
+	local opened = Opened ()
+	T.eq (opened.wartactics, nil, "wartactics.scenarios is the war's own Lua")
 end)
 
 T.finish ()

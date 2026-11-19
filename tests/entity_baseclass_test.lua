@@ -27,6 +27,14 @@ T.test ("an entity file reaches no class but its own base with baseclass.Get as 
 		local text = f:read ("*a")
 		f:close ()
 		local base = text:match ('\nENT%.Base = "([%w_]+)"') or text:match ('^ENT%.Base = "([%w_]+)"')
+		-- a folder entity's base is set in its shared.lua, which init.lua and cl_init.lua include
+		local shared = not base and path:match ("^(.*/)[%w_]+%.lua$")
+		local sharedFile = shared and path:match ("/entities/[%w_]+/[%w_]+%.lua$") and io.open (shared .. "shared.lua", "r")
+		if sharedFile then
+			local sharedText = sharedFile:read ("*a")
+			sharedFile:close ()
+			base = sharedText:match ('\nENT%.Base = "([%w_]+)"') or sharedText:match ('^ENT%.Base = "([%w_]+)"')
+		end
 		for line in text:gmatch ("[^\n]+") do
 			local reached = line:match ('^local [%w_]+ = baseclass%.Get%s*%("([%w_]+)"%)')
 			if reached then

@@ -6,15 +6,27 @@ local T = dofile ("tests/harness.lua")
 
 local ROOT = T.ROOT
 local COMMANDS = ROOT .. "sv_nbdebug.lua"
-local NEXTSOLDIER = T.ADDON_TREES.nextsoldier .. "entities/base_nextsoldier.lua"
+-- The soldier's base: base_nextsoldier on base_nextbot2, folder entities, read whole.
+local NEXTSOLDIER = { T.ADDON_TREES.nextsoldier .. "entities/base_nextbot2", T.ADDON_TREES.nextsoldier .. "entities/base_nextsoldier" }
 local WAR_SOLDIER = ROOT .. "sh_war_soldier.lua"
 local PATHFOLLOWER = ROOT .. "../entities/entities/npc_pathfollower.lua"
 local NAV_CLEARANCE = ROOT .. "includes/nav_clearance.lua"
 local NAV = ROOT .. "sv_nav.lua"
+-- the path cost's Lua twin (nextsoldier.locomotion.PricedInLua), beside the native one
+local LOCOMOTION = "addons/nextsoldier/lua/nextsoldier/locomotion.lua"
 local BOT_SOLDIER = ROOT .. "features/aiwar/sv_bot_soldier.lua"
 local BOT_NAVIGATOR = ROOT .. "../entities/entities/ws_bot_navigator.lua"
 
 local function ReadFile (path)
+	if type (path) == "table" then
+		local parts = {}
+		for _, folder in ipairs (path) do
+			local list = assert (io.popen ("find " .. folder .. " -name '*.lua' | sort"))
+			for file in list:lines () do parts [#parts + 1] = ReadFile (file) end
+			list:close ()
+		end
+		return table.concat (parts, "\n")
+	end
 	local f = assert (io.open (path, "r"))
 	local text = f:read ("*a")
 	f:close ()
@@ -33,6 +45,7 @@ local shared = T.RealmSource ("nbdebug", "sh")
 local aiwar = T.RealmSource ("aiwar", "sv")
 local nextsoldier, warSoldier = ReadFile (NEXTSOLDIER), ReadFile (WAR_SOLDIER)
 local pathfollower = ReadFile (PATHFOLLOWER)
+local locomotion = ReadFile (LOCOMOTION)
 local navClearance, nav, botSoldier = ReadFile (NAV_CLEARANCE), ReadFile (NAV), ReadFile (BOT_SOLDIER)
 local botNavigator = ReadFile (BOT_NAVIGATOR)
 
@@ -81,10 +94,11 @@ T.test ("the debug controller includes every live base_nextsoldier not already r
 end)
 
 T.test ("base_nextsoldier reports watched path searches and records the passed cost generator", function ()
-	T.eq (nextsoldier:find ("self.DebugPathWatch", 1, true) ~= nil,          true, "path watch")
+	T.eq (nextsoldier:find ("bot.DebugPathWatch", 1, true) ~= nil,           true, "path watch")
 	T.eq (nextsoldier:find ("recorder:Record(area:GetID()", 1, true) ~= nil, true, "cost calls")
 	T.eq (nextsoldier:find ("path:GetAllSegments() or {}", 1, true) ~= nil,  true, "unreachable paths have no segments")
-	T.eq (nextsoldier:find ('hook.Run("WSNpcPathComputed"', 1, true) ~= nil, true, "path report")
+	T.eq (nextsoldier:find ('hook.Run("OnPathComputed"', 1, true) ~= nil,    true, "path report, naming nothing of the mode")
+	T.eq (controller:find ('hook.Add ("OnPathComputed",', 1, true) ~= nil,   true, "which the PATH layer hears")
 end)
 
 T.test ("the PATH layer draws each watched NextSoldier's live engine path and goal sphere", function ()
@@ -119,10 +133,12 @@ T.test ("the shared path generator rejects areas and openings the agent's collis
 	T.eq (navClearance:find ("endpos = to", 1, true) ~= nil, true, "sweeps along the crossing direction")
 	T.eq (nav:find ("function WS.NavHullClearance (entity, mask)", 1, true) ~= nil, true, "navigation-layer API")
 	T.eq (nextsoldier:find ("Host.current:PathClearance(self)", 1, true) ~= nil, true, "NextBot uses the shared primitive")
-	T.eq (nextsoldier:find ("return cost(area, fromArea, ladder, elevator, length, fits)", 1, true) ~= nil, true, "passes clearance to the cost pipeline")
-	T.eq (nextsoldier:find ("if fits == false then return -1 end", 1, true) ~= nil, true, "default generator rejects an unfit area")
-	T.eq (nextsoldier:find ("Walkable(fromArea:ComputeAdjacentConnectionHeightChange(area)", 1, true) ~= nil, true, "default generator rejects a rise beyond the body's jump")
-	T.eq (warSoldier:find ("Base ().GetPathGenerator (self, self.PathCost () or NoPath)", 1, true) ~= nil, true, "combat costs go through the shared generator")
+	T.eq (nextsoldier:find ("if self.NativePathCost and native and native.Direct then return native.New(spec) end", 1, true) ~= nil, true, "the native cost first")
+	T.eq (nextsoldier:find ("return Locomotion.PricedInLua(spec)", 1, true) ~= nil, true, "else its Lua twin")
+	T.eq (locomotion:find ("return cost (area, fromArea, ladder, elevator, length, fits)", 1, true) ~= nil, true, "passes clearance to the cost pipeline")
+	T.eq (locomotion:find ("if fits == false then return -1 end", 1, true) ~= nil, true, "default generator rejects an unfit area")
+	T.eq (locomotion:find ("Walkable (fromArea:ComputeAdjacentConnectionHeightChange (area)", 1, true) ~= nil, true, "default generator rejects a rise beyond the body's jump")
+	T.eq (warSoldier:find ("Base ().GetPathGenerator (self, self.PathCost () or NoPath, bound)", 1, true) ~= nil, true, "combat costs go through the shared generator")
 	T.eq (botSoldier:find ("WS.NavHullClearance (self.ent, WS.ClipMasks ().brushes)", 1, true) ~= nil, true, "bot players use their player hull")
 	T.eq (botSoldier:find ("fits = clearance:Area (area)", 1, true) ~= nil, true, "bot player routes reject an unfit area")
 	T.eq (botSoldier:find ("fits = clearance:Link (fromArea, area)", 1, true) ~= nil, true, "bot player routes reject an unfit opening")
@@ -132,7 +148,7 @@ T.test ("the shared path generator rejects areas and openings the agent's collis
 end)
 
 T.test ("the path follower stool sets what its selected followers answer", function ()
-	local stool = ReadFile ("addons/sandcastle/gamemodes/sandcastle/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
+	local stool = ReadFile ("addons/sandcastle/gamemodes/wetsands/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
 	T.eq (stool:find ("nextsoldier.behavior.YES_NO_QUERIES", 1, true) ~= nil, true, "a box for each yes-or-no query")
 	T.eq (stool:find ("panel:CheckBox (", 1, true) ~= nil, true, "the boxes")
 	T.eq (stool:find ("follower:Respond (name,", 1, true) ~= nil, true, "the boxes reach the follower")
@@ -140,21 +156,21 @@ T.test ("the path follower stool sets what its selected followers answer", funct
 end)
 
 T.test ("the path follower stool holds its followers' feet: each plans and shows its path instead", function ()
-	local stool = ReadFile ("addons/sandcastle/gamemodes/sandcastle/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
+	local stool = ReadFile ("addons/sandcastle/gamemodes/wetsands/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
 	T.eq (stool:find ("\"ns_pathfollower_hold\"", 1, true) ~= nil, true, "one box for every mode")
 	T.eq (stool:find ("ent:HoldFeet (hold)", 1, true) ~= nil, true, "the box reaches the follower")
 	T.eq (pathfollower:find ("NSShowPathOnly", 1, true), nil, "no path-only of its own: the war soldier's held feet")
 	T.eq (warSoldier:find ("self:PlanPath (target, PATH_TOLERANCE)", 1, true) ~= nil, true, "the path it would walk")
 	T.eq (nextsoldier:find ("function ENT:PlanPath(", 1, true) ~= nil, true, "as the base plans one it follows")
-	T.eq (nextsoldier:find ("= self:PlanPath(goal, tolerance)", 1, true) ~= nil, true, "the same planning")
+	T.eq (nextsoldier:find ("self.state.loco:Plan(FOLLOW, goal, tolerance", 1, true) ~= nil, true, "the same planning")
 end)
 
 T.test ("one follower is driven by the stool's mode: its bench, its legs alone, or the war", function ()
-	local stool = ReadFile ("addons/sandcastle/gamemodes/sandcastle/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
+	local stool = ReadFile ("addons/sandcastle/gamemodes/wetsands/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
 	T.eq (stool:find ("follower:SetDriver (", 1, true) ~= nil, true, "the stool sets it")
 	T.eq (pathfollower:find ("function ENT:SetDriver (driver)", 1, true) ~= nil, true, "the follower switches")
 	T.eq (pathfollower:find ("nextsoldier.engine.End (self)", 1, true) ~= nil, true, "its tree ended")
-	T.eq (pathfollower:find ("nextsoldier.engine.Insert(self, action)", 1, true) ~= nil, true, "and the driver's put in")
+	T.eq (pathfollower:find ("nextsoldier.engine.Insert (self, action)", 1, true) ~= nil, true, "and the driver's put in")
 	T.eq (pathfollower:find ("if self.nsStarted then", 1, true) ~= nil, true, "once the bot has started: before, its start puts it in")
 	T.eq (pathfollower:find ("controller:Enlist (self, self:WarTeam (), false)", 1, true) ~= nil, true, "in the war, enlisted")
 	T.eq (pathfollower:find ("controller:Discharge (self)", 1, true) ~= nil, true, "and let go")
@@ -197,9 +213,9 @@ T.test ("a follower on its legs runs two stacks: a squad member's main stack and
 		true, "its main stack fights")
 	T.eq (pathfollower:find ("nextsoldier.engine.InsertGroup (self, GroupIdentity.InitialAction (", 1, true) ~= nil, true,
 		"its leggings beside it")
-	T.eq (pathfollower:find ("nextsoldier.engine.UpdateGroup (self)", 1, true) ~= nil, true, "updated each tick")
-	T.eq (pathfollower:find ("nextsoldier.engine.EndGroup (self)", 1, true) ~= nil,    true, "and ended with it")
-	T.eq (pathfollower:find ("self.Brain = self.nsStackBrain", 1, true) ~= nil,        true, "its main stack answers what it is asked")
+	T.eq (pathfollower:find ("nextsoldier.engine.UpdateGroup", 1, true), nil, "updated by its intention, not by Lua")
+	T.eq (pathfollower:find ("nextsoldier.engine.EndGroup (self)", 1, true) ~= nil, true, "and ended with it")
+	T.eq (pathfollower:find ("self.Brain = self.nsStackBrain", 1, true) ~= nil, true, "its main stack answers what it is asked")
 end)
 
 T.test ("a follower on its legs walks to within the legs' reach of its spot, not the soldier's tolerance", function ()
@@ -234,7 +250,7 @@ T.test ("what a head logged reaches the overlay beside the behaviour's lines", f
 end)
 
 T.test ("in the war, the stool sets the conditions its followers' orders meet", function ()
-	local stool = ReadFile ("addons/sandcastle/gamemodes/sandcastle/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
+	local stool = ReadFile ("addons/sandcastle/gamemodes/wetsands/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
 	T.eq (stool:find ("wartactics.fireteam.Report (", 1, true) ~= nil, true, "a contact reported as a member's sighting is")
 	T.eq (stool:find ("fireTeam.lanesOff", 1, true) ~= nil,            true, "lanes toggled on their squads")
 	T.eq (warSoldier:find ("if self.FeetHeld then return self:ShowHeldPath (enemy) end", 1, true) ~= nil, true,
@@ -242,7 +258,7 @@ T.test ("in the war, the stool sets the conditions its followers' orders meet", 
 end)
 
 T.test ("annotating, the stool marks the map through the war's and the builder's own calls", function ()
-	local stool = ReadFile ("addons/sandcastle/gamemodes/sandcastle/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
+	local stool = ReadFile ("addons/sandcastle/gamemodes/wetsands/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
 	T.eq (stool:find ('WS.Feature ("builder"):Do ("Place", ply, trace,', 1, true) ~= nil, true, "objectives placed as the Gameplay tools do")
 	T.eq (stool:find ('WS.Feature ("aiwar"):Mark (kind, PanelTeam (tool), at)', 1, true) ~= nil, true, "marks given to the war")
 	T.eq (stool:find ("controller:GiveMission (fireTeam, kind, at)", 1, true) ~= nil, true, "a squad's mission by hand")

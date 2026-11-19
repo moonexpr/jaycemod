@@ -5,18 +5,20 @@
 local T = dofile ("tests/harness.lua")
 local Class = core.class
 local Bridge = wartactics.bridge
+local Root = action_registry.Get ("Action")
 
 local MONITORS = { "TacticalMonitor", "SquadMonitor", "ScenarioMonitor" }
 
-T.test ("the monitors are NextSoldier's actions", function ()
-	local Action = action_registry.Get ("Action")
+T.test ("the monitors are NextSoldier's actions, on the chart's Action", function ()
 	for _, name in ipairs (MONITORS) do
-		T.eq (Class.IsA (Bridge [name], Action), true, name)
+		T.eq (Class.IsA (Bridge [name]:New ({}), Root),                         true, name)
+		T.eq (Class.IsA (Bridge [name]:New ({}), generator.state_chart.Action), true, name .. ", the Lua twin's")
 	end
 end)
 
 T.test ("the registry gives the classes themselves, with no wrapper", function ()
-	for _, name in ipairs (MONITORS) do T.eq (action_registry.Get (name), Bridge [name], name) end
+	local registered = nextsoldier.behavior.action.Registered ()
+	for _, name in ipairs (MONITORS) do T.eq (registered:Get (name), Bridge [name], name) end
 end)
 
 T.test ("the monitors are built once", function ()

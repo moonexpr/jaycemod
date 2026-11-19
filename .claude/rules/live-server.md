@@ -124,6 +124,27 @@ inputs, wins); `status`, `trace`, `timers` and the two proofs still work.
 | `dev.harness.check_off()` | `dev_harness_check_off` | Prove the harness, off, left the gamerules as they were |
 | `dev.harness.check_equivalence()` | `dev_harness_check_equivalence` | Prove map inputs do the same with the harness on and off |
 
+### VProf (HolyLib)
+
+The engine's own profiler, read as data through [HolyLib](https://github.com/RaphaelIT7/gmod-holylib#vprof)'s
+`vprof` library: the server thread's time by budget group and by scope, the engine's C++ (NextBots,
+physics, networking) beside the Lua (`GMOD`: `CLuaGamemode::Call (<hook>)`, `CScriptedEntity::Call
+(...)`). It names the time the LuaJIT sampler charges to the hook dispatcher. Needs HolyLib on the
+server, `holylib_enable_vprof 1`; without it each refuses. Times are ms; per frame is per tick.
+`.devtools/bin/profile_server.lua`'s `WSProfile.Start(s, scope, { vprof = true })` puts each wrapped
+function in a scope of its own (group `WSProfile`), so they land in the same tree.
+
+| Function | Command | What |
+|---|---|---|
+| `dev.vprof.status()` | `dev_vprof_status` | Loaded, running, frames and ms sampled, the last and peak frame, `holylib_vprof_*` convars |
+| `dev.vprof.start(opts)` | `dev_vprof_start [scripts] [keep]` | Start VProf, reset first unless `keep`; `scripts` sets `holylib_vprof_trackscripts`: a scope for every script GMod calls into |
+| `dev.vprof.stop(opts)` | `dev_vprof_stop [rows] [tree]` | Stop it and return the report |
+| `dev.vprof.report(opts)` | `dev_vprof_report [rows] [tree]` | Self time by budget group, then the top scopes (merged by name: calls, total, self, peak, per frame); `{ rows, limit, tree, text }` |
+| `dev.vprof.reset()` | `dev_vprof_reset` | Forget what it sampled, and the peaks |
+| `dev.vprof.counters()` | `dev_vprof_counters` | VProf's counters by name |
+| `dev.vprof.window(seconds, opts)` | `dev_vprof_window <seconds> [rows] [scripts] [sample]` | VProf over a window from nothing; `sample` runs the LuaJIT sampler (wsprofile) over the same window. Asynchronous: the report lands in `dev.last_vprof` (`lua` the sampler's) |
+| `dev.vprof.cancel()` | `dev_vprof_cancel` | End a window early, stopping what it started |
+
 ### Entities
 
 | Function | Command | What |

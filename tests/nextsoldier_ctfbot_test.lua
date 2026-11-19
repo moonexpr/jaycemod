@@ -44,24 +44,17 @@ T.test ("the tree is native monitors over the scenario's actions, and a robot ne
 	T.eq (tactical.never_retreats,         true,    "MvM's rule")
 	T.eq (tactical.commands.taunt ().name, "Taunt", "what it suspends for")
 	local scenario = tactical.scenario
-	T.eq (scenario.choose,                      CTFBot.Choose,   "its own chooser")
-	T.eq (scenario.monitors,                    CTFBot.MONITORS, "the places it chooses among")
-	T.eq (scenario.behaviors.FetchFlag ().name, "FetchFlag",     "what a scenario's monitor names")
+	T.eq (scenario.choose,                      CTFBot.Choose,   "its own plain chooser, no wartactics")
+	T.eq (scenario.monitors,                    CTFBot.MONITORS, "the names its places run")
+	T.eq (scenario.behaviors.FetchFlag ().name, "FetchFlag",     "what a place's monitor names")
 end)
 
--- What the chooser has it play in a round's mode: a monitor's name, or nil for nothing.
-local function Plays (mode)
-	local me = Me ()
-	me.mode = mode
-	local place = CTFBot.Choose (me)
-	return place and CTFBot.MONITORS [place]
-end
-
 T.test ("MvM and CTF play the flag, and anything else plays nothing", function ()
+	local function Plays (mode) return CTFBot.MONITORS [CTFBot.Choose (Me ({ mode = mode })) or 0] end
 	T.eq (Plays ("mvm"),  "FetchFlag", "MvM")
 	T.eq (Plays ("ctf"),  "FetchFlag", "CTF")
 	T.eq (Plays ("koth"), nil,         "koth")
-	T.eq (Plays (nil),    nil,         "no rounds")
+	T.eq (Plays (false),  nil,         "no rounds")
 end)
 
 T.test ("with the flag the scenario monitor's interrupt buries what it runs under its delivery", function ()
@@ -156,6 +149,32 @@ T.test ("results carry what they name, an event's its priority", function ()
 	Named (tried, Action.SUSPEND_FOR, "Probe", "now")
 	T.eq (tried.priority,               Action.RESULT_CRITICAL, "its priority")
 	T.eq (a:New ():TryContinue ().type, Action.CONTINUE,        "tries nothing")
+end)
+
+T.test ("what walks the body itself holds its legs while it runs, and lets go as it ends or is covered", function ()
+	local sent = {}
+	local engine = nextsoldier.engine
+	nextsoldier.engine = { Event = function (bot, name, holder) sent [#sent + 1] = { bot = bot, name = name, holder = holder } end }
+	local me = Me ({ ent = "bot", tend = { x = 5 } })
+	for _, class in ipairs ({ CTFBot.Taunt, CTFBot.TendBuildings, CTFBot.DeliverFlag, CTFBot.FetchFlag }) do
+		sent = {}
+		local action = class:New ()
+		Named (action:OnStart (me), Action.CONTINUE)
+		action:OnSuspend (me)
+		action:OnResume (me)
+		action:OnEnd (me)
+		T.eq (#sent,           4,                   class.name .. ": held, let go, held, let go")
+		T.eq (sent [1].name,   Action.LEGS_HOLD,    "held as it starts")
+		T.eq (sent [2].name,   Action.LEGS_RELEASE, "let go while covered")
+		T.eq (sent [3].name,   Action.LEGS_HOLD,    "held again as it resumes")
+		T.eq (sent [4].name,   Action.LEGS_RELEASE, "let go as it ends")
+		T.eq (sent [1].bot,    "bot",               "the soldier's bot")
+		T.eq (sent [1].holder, action,              "by the action itself")
+	end
+	local taunt = CTFBot.Taunt:New ()
+	taunt:OnStart (me)
+	T.eq (taunt.endsAt, CTFBot.TAUNT_SECONDS, "its own OnStart runs after")
+	nextsoldier.engine = engine
 end)
 
 T.finish ()

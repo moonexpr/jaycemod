@@ -450,7 +450,7 @@ local PASS = { passthrough = true }
 local function SoldierTo (role)
 	return
 	{
-		F ("NextSoldier", 1, PASS),
+		F ("WarSoldier", 1, PASS),
 		F ("StrategyMonitor", 2, PASS),
 		F ("TacticalMonitor", 3, PASS),
 		F ("SquadMonitor", 4, PASS),
@@ -471,8 +471,8 @@ T.test ("TDBN puts the terminal first, drops the passthrough monitors, and names
 			F ("DefendPoint", 8)
 		}
 	)
-	T.eq (Debug.Tdbn (frames), "DefendPoint ( CPDefender ( NextSoldier::SquadLeader ) )", "TDBN")
-	T.eq (Debug.Obn (frames), "NextSoldier ( StrategyMonitor ( TacticalMonitor ( SquadMonitor ( SquadLeader"
+	T.eq (Debug.Tdbn (frames), "DefendPoint ( CPDefender ( WarSoldier::SquadLeader ) )", "TDBN")
+	T.eq (Debug.Obn (frames), "WarSoldier ( StrategyMonitor ( TacticalMonitor ( SquadMonitor ( SquadLeader"
 		.. " ( ScenarioMonitor ( ControlPointDefender ( DefendPoint ) ) ) ) ) ) )", "OBN: every level, full names")
 end)
 
@@ -486,9 +486,9 @@ T.test ("TDBN writes an action superseded by the one suspended over it as Supers
 			F ("HoldPoint", 8, { suspended = true })
 		}
 	)
-	T.eq (Debug.Tdbn (frames), "DefendPoint<SquadRaid> ( CPDefender<CPLeader> ( NextSoldier::SquadLeader ) )",
+	T.eq (Debug.Tdbn (frames), "DefendPoint<SquadRaid> ( CPDefender<CPLeader> ( WarSoldier::SquadLeader ) )",
 		"the active line only: the superseded defender's own job is left out")
-	T.eq (Debug.Obn (frames), "NextSoldier ( StrategyMonitor ( TacticalMonitor ( SquadMonitor ( SquadLeader"
+	T.eq (Debug.Obn (frames), "WarSoldier ( StrategyMonitor ( TacticalMonitor ( SquadMonitor ( SquadLeader"
 		.. " ( ScenarioMonitor ( ControlPointDefender<CPLeader> ( DefendPoint<SquadRaid> ) ) ) ) ) ) )", "OBN")
 end)
 
@@ -501,16 +501,16 @@ end)
 T.test ("a superseded monitor is no longer a passthrough, and the terminal always shows", function ()
 	local humiliated =
 	{
-		F ("NextSoldier", 1, PASS),
+		F ("WarSoldier", 1, PASS),
 		F ("StrategyMonitor", 2, PASS),
 		F ("Humiliated", 3),
 		F ("TacticalMonitor", 3, { passthrough = true, suspended = true }),
 		F ("SquadMonitor", 4, { passthrough = true, suspended = true })
 	}
-	T.eq (Debug.Tdbn (humiliated), "NextSoldier::TacticalMonitor<Humiliated>", "superseded monitor")
-	T.eq (Debug.Tdbn ({ F ("NextSoldier", 1, PASS), F ("StrategyMonitor", 2, PASS) }), "NextSoldier::StrategyMonitor",
+	T.eq (Debug.Tdbn (humiliated), "WarSoldier::TacticalMonitor<Humiliated>", "superseded monitor")
+	T.eq (Debug.Tdbn ({ F ("WarSoldier", 1, PASS), F ("StrategyMonitor", 2, PASS) }), "WarSoldier::StrategyMonitor",
 		"a passthrough terminal")
-	T.eq (Debug.Tdbn ({ F ("NextSoldier", 1, PASS) }), "NextSoldier", "the root alone")
+	T.eq (Debug.Tdbn ({ F ("WarSoldier", 1, PASS) }), "WarSoldier", "the root alone")
 end)
 
 T.test ("a root that runs behavior of its own is a level like any other", function ()

@@ -32,7 +32,7 @@ end
 local added
 local hooks = {}
 local givenGroup
-local ended = {}
+local inserted, ended = {}, {}
 local environment = setmetatable (
 	{
 		Vector = Vec,
@@ -42,7 +42,6 @@ local environment = setmetatable (
 		util = { TraceHull = function (trace) swept = trace return { Hit = false } end, TraceLine = function () return { Hit = true } end },
 		navmesh = { GetNearestNavArea = function () return nil end },
 		hook = { Add = function (name, _, run) hooks [name] = run end },
-		timer = { Simple = function () end },
 		concommand = { Add = function () end },
 		player = { CreateNextSoldier = function () return added end },
 		wartactics = { scenarios = {} },
@@ -80,16 +79,16 @@ local environment = setmetatable (
 			{
 				engine =
 				{
-					Insert = function () end,
-					End = function (ent) ended [#ended + 1] = { tree = "main", ent = ent } end,
-					EndGroup = function (ent) ended [#ended + 1] = { tree = "legs", ent = ent } end,
+					Insert = function (ent) inserted [#inserted + 1] = ent end,
+					End = function (ent) ended [#ended + 1] = ent end,
+					EndGroup = function (ent) ended [#ended + 1] = ent end,
 					Stack = function () return { { name = "TacticalMonitor", depth = 1 } } end
 				},
 				behavior =
 				{
 					action = nextsoldier.behavior.action,
 					group_identity = { Give = function (ent) givenGroup = ent return true end },
-					ctfbot = { InitialAction = function () return {} end }
+					ctfbot = { Compile = function () return {} end, InitialAction = function () return {} end }
 				}
 			}, { __index = nextsoldier })
 	}, { __index = _G })
@@ -348,15 +347,21 @@ T.test ("one it did not find is no route", function ()
 	T.eq (soldier.walk, nil, "not walked: it runs into whatever lies between")
 end)
 
-T.test ("each life it is given its group's tree beside its orders, and at its death both end", function ()
+T.test ("each life it is given its trees afresh, its orders and its group's beside them", function ()
+	givenGroup, inserted, ended = nil, {}, {}
 	local soldier = New ()
-	givenGroup = nil
+	T.eq (givenGroup, nil, "none before it spawns")
+	environment.timer = { Simple = function () end }
 	hooks.PlayerSpawn (soldier.ent)
-	T.eq (givenGroup, soldier.ent, "given at its spawn")
+	T.eq (givenGroup,   soldier.ent, "its group's, on it")
+	T.eq (inserted [1], soldier.ent, "and its orders")
+	T.eq (#ended,       2,           "what an earlier life left ended first, both trees")
 	ended = {}
 	hooks.PlayerDeath (soldier.ent)
-	T.eq (#ended,        2,           "both trees ended")
-	T.eq (ended [1].ent, soldier.ent, "its own")
+	T.eq (#ended, 2, "its death ends both: nothing runs on after it")
+	ended = {}
+	hooks.PlayerDeath ({})
+	T.eq (#ended, 0, "another player's death is none of its")
 end)
 
 T.finish ()

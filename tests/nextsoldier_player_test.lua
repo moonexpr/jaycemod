@@ -189,7 +189,8 @@ T.test ("a kind the binary does not puppet is driven from Lua alone and says why
 	T.eq (engine.puppeted.vision and engine.puppeted.vision.bot, ply, "its vision puppeted")
 end)
 
-T.test ("its root sets its pace each update: its run, held to its walk while its battery is spent", function ()
+T.test ("its root sets its pace each update: its run, held to its walk while its battery is spent (batteries on)", function ()
+	nextsoldier.behavior.battery.Enable (true)
 	local ply, engine = Made ("test_player")
 	local root = engine.inserted [1].action
 	root:Update (ply, 0.1)
@@ -210,6 +211,17 @@ T.test ("its root sets its pace each update: its run, held to its walk while its
 	function cmd:SetViewAngles () end
 	ply:StartCommand (cmd)
 	T.near (set.forward, ply.LocomotionDefaults.WalkSpeed, 1e-6, "its command at that pace")
+	nextsoldier.behavior.battery.Enable (false)
+end)
+
+T.test ("batteries off (the default), its run is never held to its walk however it sprints", function ()
+	local ply, engine = Made ("test_player")
+	local root = engine.inserted [1].action
+	ply:SpendBattery (ply.BatteryDefaults.Capacity)
+	T.eq (ply:IsExhausted (), false, "never spent")
+	root:Update (ply, 0.1)
+	T.eq (ply.state.loco.pace,                                                300,   "its run")
+	T.eq (root:ShouldRetreat (ply) == nextsoldier.behavior.action.ANSWER_YES, false, "no retreat for want of charge")
 end)
 
 T.test ("its legs, when it names them, go in beside its behaviour", function ()
