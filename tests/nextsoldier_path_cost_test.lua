@@ -194,6 +194,17 @@ T.test ("the twin asks a bot once a link across its searches, its verdicts kept 
 	T.eq (told [2] [1], true, "kept")
 end)
 
+T.test ("a search prices at most spec.links links: past them each is refused", function ()
+	for _, make in ipairs ({ Native.New, Locomotion.PricedInLua }) do
+		local cost = make (Spec ({ links = 2 }))
+		T.eq (cost (A, nil), 0, "the first area is no link")
+		T.eq (cost (A, B), 150)
+		T.eq (cost (A, B), 150)
+		T.eq (cost (A, B), -1, "the third link")
+	end
+	Same ("no limit", Spec (), A, B, nil, nil, 150)
+end)
+
 T.test ("a spec it cannot price is refused, naming the field", function ()
 	local ok, why = pcall (Native.New, {})
 	T.eq (ok, false)

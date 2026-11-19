@@ -549,6 +549,26 @@ T.test ("a soldier held up by a door in its way finds the door", function ()
 	T.eq (controller.soldiers [soldier].soldier:DoorAhead ({ x = 100, y = 0, z = 0 }), door, "the door")
 end)
 
+-- A door that holds a soldier stands right before it: the sweep for one reaches 96 u toward its
+-- target, not all the way (swept to a far target every tick, a few held soldiers took a whole tick).
+T.test ("a held soldier sweeps for a door only within reach of it", function ()
+	local w = World ()
+	local controller = Started (w, PayloadMode.Mode)
+	local soldier = FakeSoldier (1)
+	soldier.GetClass = function () return "npc_nextsoldier" end
+	soldier.GetPos = function () return Vector (0, 0, 0) end
+	soldier.IsNextBot = function () return false end
+	soldier.SetFactionRelationship = function () end
+	controller:Enlist (soldier, BLUE, false)
+	local swept
+	w.trace = function (t)
+		swept = swept or t
+		return { Hit = false }
+	end
+	T.eq (controller.soldiers [soldier].soldier:DoorAhead ({ x = 3000, y = 0, z = 0 }), nil, "none")
+	T.near (swept.endpos.x, 96, 1e-6, "swept 96 u toward it")
+end)
+
 -- Each soldier's tree is its own job of the calendar's "trees" system, not run inside the field's
 -- think: told the time since it last ran (held to a second), while the war acts; it leaves once the
 -- soldier is discharged.
