@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from server_root import GAMEMODE_ENV, LINUX, LUADEV_HOST_FILE, LUADEV_PORT_FILE, WINDOWS, REPO, REPO_ADDONS, REPO_DATA, ROOT, ROOT_WINDOWS, SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS,\
+from server_root import GAMEMODE_ENV, LINUX, LINUX_HOLYLIB, HolyLibUnavailable, LUADEV_HOST_FILE, LUADEV_PORT_FILE, WINDOWS, REPO, REPO_ADDONS, REPO_DATA, ROOT, ROOT_WINDOWS, SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS,\
     TF_SCRIPTS_DIR, SERVER_DOWNLOADS, SERVER_MAPS, SERVER_PACKS, map_archive_name, Instance, Layout, NotAnExe, build, console_exe, read_added_maps, write_added_maps
 from test_vpk import DIR_ARCHIVE, entry, write_pak
 
@@ -572,3 +572,47 @@ def test_the_build_tells_a_containers_lua_luadev_listens_where_a_published_port_
 
 def test_a_layout_of_an_instance_is_the_windows_servers():
     assert Layout.of(Instance(1)).platform is WINDOWS
+
+
+# HolyLib (holylib.py): a server plugin the Linux server loads when started --holylib, its .vdf in
+# addons/ naming its binary in lua/bin/. Left in a root after such a run, it would load on every start.
+@pytest.fixture
+def holylib_files(tmp_path: Path):
+    fetched = {}
+    for path in LINUX_HOLYLIB:
+        source = tmp_path / "holylib" / Path(path).name
+        source.parent.mkdir(exist_ok=True)
+        source.write_bytes(b"holylib")
+        fetched[path] = source
+    return fetched
+
+
+def test_a_root_run_with_holylib_links_its_vdf_and_binary(linux_layout, holylib_files):
+    platform = replace(LINUX, holylib=holylib_files)
+    root = build(replace(linux_layout, platform=platform, holylib=True))
+    for path, source in holylib_files.items():
+        assert (root / "garrysmod" / path).resolve() == source, path
+
+
+def test_a_root_run_without_holylib_after_one_with_it_drops_the_plugin(linux_layout, holylib_files):
+    platform = replace(LINUX, holylib=holylib_files)
+    root = build(replace(linux_layout, platform=platform, holylib=True))
+    build(replace(linux_layout, platform=platform))
+    for path in holylib_files:
+        assert not (root / "garrysmod" / path).is_symlink(), path
+
+
+def test_holylib_not_fetched_is_refused_with_how_to_fetch_it(linux_layout, tmp_path):
+    platform = replace(LINUX, holylib={"addons/holylib_linux_64.vdf": tmp_path / "absent.vdf"})
+    with pytest.raises(FileNotFoundError, match="holylib.py fetch"):
+        build(replace(linux_layout, platform=platform, holylib=True))
+
+
+def test_holylib_is_refused_on_the_windows_server(layout):
+    with pytest.raises(HolyLibUnavailable):
+        build(replace(layout, holylib=True))
+
+
+def test_the_linux_server_runs_holylibs_64_bit_plugin_from_its_vdf():
+    assert set(LINUX_HOLYLIB) == {"addons/holylib_linux_64.vdf", "lua/bin/gmsv_holylib_linux64.so"}
+    assert WINDOWS.holylib == {}

@@ -563,10 +563,12 @@ Caveats, from HolyLib's source as of 2026-11: its text export
 workbench reads the tree instead; VProf keeps every scope name until
 `vprof.Term`, so only fixed names are scoped; and a scope must not be
 left open: a wrapped call runs under `pcall` (an error loses its inner
-traceback), and a coroutine's call is not scoped. None of it has run
-yet on the dev server: CrossOver's server is Windows x64, and HolyLib's
-Windows support is younger than its Linux; the docker runtime (Linux
-x64) is the safer first try.
+traceback), and a coroutine's call is not scoped. It runs on the docker
+runtime only (`srcds.py start --runtime docker --holylib`, after
+`holylib.py fetch`, which pins HolyLib's Release0.8 by hash): HolyLib's
+README says its vprof shows no hooks on Windows, so CrossOver is out.
+HolyLib loads with only vprof on, to keep its other detours off the shared
+server.
 
 ## Treatment D: route searches replayed offline, and what failed searches teach
 

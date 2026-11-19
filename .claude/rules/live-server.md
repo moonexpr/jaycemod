@@ -130,7 +130,8 @@ The engine's own profiler, read as data through [HolyLib](https://github.com/Rap
 `vprof` library: the server thread's time by budget group and by scope, the engine's C++ (NextBots,
 physics, networking) beside the Lua (`GMOD`: `CLuaGamemode::Call (<hook>)`, `CScriptedEntity::Call
 (...)`). It names the time the LuaJIT sampler charges to the hook dispatcher. Needs HolyLib on the
-server, `holylib_enable_vprof 1`; without it each refuses. Times are ms; per frame is per tick.
+server: `srcds.py start --runtime docker --holylib` after `holylib.py fetch` (the `dedicated-server`
+skill); without it each refuses. Times are ms; per frame is per tick.
 `.devtools/bin/profile_server.lua`'s `WSProfile.Start(s, scope, { vprof = true })` puts each wrapped
 function in a scope of its own (group `WSProfile`), so they land in the same tree.
 
