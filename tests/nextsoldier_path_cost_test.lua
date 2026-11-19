@@ -59,8 +59,17 @@ local function Clearance (areaFits, linkFits)
 	return clearance
 end
 
+-- The laid sprint jumps as nav_gaps' SprintLinks keeps them: links [from] [to] = true, from
+-- "from>to" keys.
 local function Sprints (laid)
-	return { Get = function (self, a, b) return laid [a .. ">" .. b] end }
+	local links = {}
+	for key in pairs (laid) do
+		local a, b = key:match ("^(%d+)>(%d+)$")
+		a, b = tonumber (a), tonumber (b)
+		links [a] = links [a] or {}
+		links [a] [b] = true
+	end
+	return links
 end
 
 local LIMITS = { jumpHeight = 64, deathDropHeight = 200 }

@@ -133,7 +133,7 @@ T.test ("the shared path generator rejects areas and openings the agent's collis
 	T.eq (navClearance:find ("endpos = to", 1, true) ~= nil, true, "sweeps along the crossing direction")
 	T.eq (nav:find ("function WS.NavHullClearance (entity, mask)", 1, true) ~= nil, true, "navigation-layer API")
 	T.eq (nextsoldier:find ("Host.current:PathClearance(self)", 1, true) ~= nil, true, "NextBot uses the shared primitive")
-	T.eq (nextsoldier:find ("if native and native.Direct then return native.New(spec) end", 1, true) ~= nil, true, "the native cost first")
+	T.eq (nextsoldier:find ("if self.NativePathCost and native and native.Direct then return native.New(spec) end", 1, true) ~= nil, true, "the native cost first")
 	T.eq (nextsoldier:find ("return Locomotion.PricedInLua(spec)", 1, true) ~= nil, true, "else its Lua twin")
 	T.eq (locomotion:find ("return cost (area, fromArea, ladder, elevator, length, fits)", 1, true) ~= nil, true, "passes clearance to the cost pipeline")
 	T.eq (locomotion:find ("if fits == false then return -1 end", 1, true) ~= nil, true, "default generator rejects an unfit area")
