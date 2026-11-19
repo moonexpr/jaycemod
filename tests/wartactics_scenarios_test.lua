@@ -130,8 +130,8 @@ T.test ("a spec missing a part is refused, blamed on the caller", function ()
 	end
 end)
 
-T.test ("a server has the native twin, whole; elsewhere it is the Lua one", function ()
-	T.eq (debug.getinfo (Scenarios.New, "S").what == "C", T.NATIVE, "New")
+T.test ("it is the war's own Lua on every realm: NextSoldier's binary publishes no twin of it", function ()
+	T.eq (debug.getinfo (Scenarios.New, "S").what, "Lua", "New")
 	local compiled = Registry ({ ANY }):Compile (BEHAVIORS)
 	T.eq (compiled:Choose ({}),        compiled:Entries () [1], "one entry is one value, however it is reached")
 	T.eq (Scenarios.FREEFORM_PRIORITY, 0,                       "the war's own")

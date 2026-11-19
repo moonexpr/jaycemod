@@ -31,13 +31,13 @@ local spots = { center, center + Vector (CROWD, 0, 0), center + Vector (0, CROWD
 local members = {}
 for i, spot in ipairs (spots) do
 	local member = ents.Create ("npc_pathfollower")
-	member.NSToolManaged = true
+	member.ToolManaged = true
 	member:SetPos (spot + Vector (0, 0, 1))
 	member:Spawn ()
 	member:Activate ()
-	member:NSSetTeam (WS.TEAM_BLUE)
-	member:NSSetDriver ("legs")
-	member:NSHoldFeet (true)
+	member:SetWarTeam (WS.TEAM_BLUE)
+	member:SetDriver ("legs")
+	member:HoldFeet (true)
 	members [i] = member
 end
 
@@ -45,15 +45,15 @@ end
 local function Line (member, i)
 	local names = {}
 	for j, frame in ipairs (nextsoldier.engine.Stack (member)) do names [j] = frame.name end
-	local push = member:GetNW2Vector ("NSLegsPush", vector_origin)
-	local place = member:GetNW2Vector ("NSLegsPlace", vector_origin)
-	local spot = member:GetNW2Vector ("NSLegsSpot", vector_origin)
+	local push = member:GetNW2Vector ("LegsPush", vector_origin)
+	local place = member:GetNW2Vector ("LegsPlace", vector_origin)
+	local spot = member:GetNW2Vector ("LegsSpot", vector_origin)
 	local path = member:GetPath ()
 	return string.format ("%s | order %q mode %d place %.0f,%.0f,%.0f spot %.0f from it, path %s, stands %s | moved %.0f | push %.2f,%.2f spacing %.0f",
-		table.concat (names, " > "), member:GetNW2String ("NSLegsOrder", ""), member:GetNW2Int ("NSLegsMode", -1),
+		table.concat (names, " > "), member:GetNW2String ("LegsOrder", ""), member:GetNW2Int ("LegsMode", -1),
 		place.x, place.y, place.z, spot:Distance (place), tostring (path and path:IsValid ()),
-		tostring (member:GetNW2Bool ("NSLegsStands", false)), member:GetPos ():Distance2D (spots [i]),
-		push.x, push.y, member:GetNW2Float ("NSLegsSpacing", 0))
+		tostring (member:GetNW2Bool ("LegsStands", false)), member:GetPos ():Distance2D (spots [i]),
+		push.x, push.y, member:GetNW2Float ("LegsSpacing", 0))
 end
 
 local function Read ()
@@ -70,8 +70,8 @@ local function Tell (order)
 	current = order
 	local positions = {}
 	for i, member in ipairs (members) do positions [i] = Point (member:GetPos ()) end
-	local places = order:Places (positions, nextsoldier.engine.GroupSpacing (), members [1]:NSLegsAdmit (Vector (order.point.x, order.point.y, order.point.z)))
-	for i, member in ipairs (members) do member:NSLegsGive (order, places [i]) end
+	local places = order:Places (positions, nextsoldier.engine.GroupSpacing (), members [1]:LegsAdmit (Vector (order.point.x, order.point.y, order.point.z)))
+	for i, member in ipairs (members) do member:LegsGive (order, places [i]) end
 	order:Lead (members [1])
 end
 
@@ -93,7 +93,7 @@ local steps =
 	function ()
 		result [#result + 1] = string.format ("CASUALTIES lost %d of %d, mode %d, routed %s\n", current.lost, current.size,
 			current.mode, tostring (current.routed)) .. Read ()
-		for _, member in ipairs (members) do if IsValid (member) then member:NSLegsGive (nil) end end
+		for _, member in ipairs (members) do if IsValid (member) then member:LegsGive (nil) end end
 	end,
 	function ()
 		result [#result + 1] = "DISSOLVED\n" .. Read ()

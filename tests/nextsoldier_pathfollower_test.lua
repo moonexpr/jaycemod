@@ -7,28 +7,28 @@ local PathFollower = nextsoldier.behavior.pathfollower
 local function Me (fields)
 	local me = { wanted = "Idle", may = true, tool = 0, errands = 0 }
 	for key, value in pairs (fields or {}) do me [key] = value end
-	function me:NSMayAct () return self.may end
-	function me:NSWantedBehavior () return self.wanted end
-	function me:NSUpdateToolBehavior () self.tool = self.tool + 1 end
-	function me:NSUpdateErrand () self.errands = self.errands + 1 end
+	function me:MayAct () return self.may end
+	function me:WantedBehavior () return self.wanted end
+	function me:UpdateToolBehavior () self.tool = self.tool + 1 end
+	function me:UpdateErrand () self.errands = self.errands + 1 end
 	return me
 end
 
 T.test ("a tool's follower starts idle and a console's on its errand", function ()
-	T.eq (PathFollower.InitialAction (true).name,  "Idle",   "waits to be sent")
-	T.eq (PathFollower.InitialAction (false).name, "Errand", "the bench's")
+	T.eq (PathFollower.InitialAction (true).name,  "PathIdle",   "waits to be sent")
+	T.eq (PathFollower.InitialAction (false).name, "PathErrand", "the bench's")
 end)
 
 T.test ("sent, an idle follower travels", function ()
 	local result = PathFollower.Idle:New ():Update (Me ({ wanted = "Travel" }))
 	T.eq (result.type,        Action.CHANGE_TO, "changes")
-	T.eq (result.action.name, "Travel",         "to its travel")
+	T.eq (result.action.name, "PathTravel",     "to its travel")
 end)
 
 T.test ("told to stop, a traveller goes idle", function ()
 	local result = PathFollower.Travel:New ():Update (Me ({ wanted = "Idle" }))
 	T.eq (result.type,        Action.CHANGE_TO, "changes")
-	T.eq (result.action.name, "Idle",           "to idle")
+	T.eq (result.action.name, "PathIdle",       "to idle")
 end)
 
 T.test ("each keeps its follower's steering going while it stays", function ()

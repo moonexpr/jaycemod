@@ -150,7 +150,7 @@ Where Lua's time goes (15v15, JIT on, share of the server thread):
 | 22.7 % | Lua route search: `ThinkSearches` → `Step` → `Expand` (17.9) → `Relax` (13.5) → `Cost` (7.0) → `FillStep` (4.0); the heap's `Pop`/`Before` 3.2 |
 | 17.3 % | DrGBase entity think (`shared.lua:233`): aiming (`GetShootPos`), animation, `ShouldRun` → NS `Query` |
 | 10.0 % | AI war controller think (`sv_field.lua:Think`): behaviour trees 6.2, respawns (`Reinforce`/`Draft`) 4.1 |
-| 8.7 % | DrGBase behaviour coroutine → `OnIdle` → `NSSteer` → `FollowPath` (6.9) → the engine's path compute with our Lua cost (`path.lua:75`) |
+| 8.7 % | DrGBase behaviour coroutine → `OnIdle` → `SteerSelf` → `FollowPath` (6.9) → the engine's path compute with our Lua cost (`path.lua:75`) |
 | 4.1 % | DrGBase `UpdateRelationshipWith` |
 | 4.0 % | DrGBase detection (`detection.lua:173`, `SpotEntity`) |
 | 2.3 % | cart riders (`CarrySeated` → `SetPos`) |
@@ -243,9 +243,9 @@ relationship pass included: 34 → 99 ms) dearer.
 
 **A2**:
 - `RelateToFactions` keeps on the soldier the dispositions it last gave it
-  (`NSRelations`) and calls DrGBase again only when they differ: a new
+  (`Relations`) and calls DrGBase again only when they differ: a new
   soldier, another team, or the losers changed.
-- `PassThrough` keeps one pair per two soldiers (`NSPasses`).
+- `PassThrough` keeps one pair per two soldiers (`Passes`).
 
 Result (same load, 60 s):
 

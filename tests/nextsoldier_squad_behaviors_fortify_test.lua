@@ -27,10 +27,10 @@ end
 local function Builder (order, place, kinds)
 	local me, _, orders = F.OnOrder (order, place)
 	me.built, me.swung = {}, 0
-	function me:NSLegsBuilds (kind) return kinds == nil or kinds [kind] == true end
+	function me:LegsBuilds (kind) return kinds == nil or kinds [kind] == true end
 	-- its team's building needing it most (me.tend), and its wrench on it within reach (me.reach)
-	function me:NSLegsTend () return self.tend end
-	function me:NSLegsWrench ()
+	function me:LegsTend () return self.tend end
+	function me:LegsWrench ()
 		if self.reach then self.swung = self.swung + 1 end
 		return self.reach == true
 	end
@@ -39,7 +39,7 @@ local function Builder (order, place, kinds)
 	me.standing = order.standing or {}
 	order.standing = me.standing
 	me.mine = {}
-	function me:NSLegsBuild (kind, at, facing)
+	function me:LegsBuild (kind, at, facing)
 		if self.refuse then return nil end
 		local handle = { kind = kind, at = at, facing = facing }
 		self.built [#self.built + 1] = handle
@@ -47,10 +47,10 @@ local function Builder (order, place, kinds)
 		self.mine [handle] = true
 		return handle
 	end
-	function me:NSLegsStands (handle) return self.standing [handle] == true end
+	function me:LegsStands (handle) return self.standing [handle] == true end
 	-- what it set down is its own (me.owns[handle] = true gives it another's, as a respawn keeps them)
 	me.owns = {}
-	function me:NSLegsOwns (handle) return self.mine [handle] == true or self.owns [handle] == true end
+	function me:LegsOwns (handle) return self.mine [handle] == true or self.owns [handle] == true end
 	return me, orders
 end
 
@@ -386,7 +386,7 @@ T.test ("a teleporter's ends are one builder's: one end up, the other is its bui
 	local exit = order:WorksOf (Fortify.EXIT) [1]
 	local ends = { [Fortify.ENTRANCE] = true, [Fortify.EXIT] = true }
 	local owner = Builder (order, exit.stand, ends)
-	order:SetBuilt (exit.id, owner:NSLegsBuild (Fortify.EXIT, exit.at, exit.facing))
+	order:SetBuilt (exit.id, owner:LegsBuild (Fortify.EXIT, exit.at, exit.facing))
 	local other, otherLegs = Builder (order, entrance.at, ends)
 	otherLegs:Update (other)
 	T.eq (order:Builder (entrance.id), nil, "not another's to build")

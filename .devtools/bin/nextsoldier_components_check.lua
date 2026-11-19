@@ -2,7 +2,7 @@
 -- live server with the binary in lua/bin, as returned data, on any gamemode (sandbox will do):
 --   dt gmod lua_run instance=N code="$(cat .devtools/bin/nextsoldier_components_check.lua)"
 --   (wait five seconds, while the path followers walk and their visions scan)
---   dt gmod lua_run instance=N code='return util.TableToJSON (NSComponentsCheck.Finish ())'
+--   dt gmod lua_run instance=N code='return util.TableToJSON (NextSoldierComponentsCheck.Finish ())'
 -- Two bare NextBots that follow paths from nav area to nav area (GMod's own MoveToPos, the
 -- simplest path follower), spawned in sight of each other, and a NextSoldier bot player. Start
 -- returns the checks that need no time; Finish what their visions came to know, then whether a
@@ -82,7 +82,7 @@ if not here then return "no two nav areas in sight of each other on " .. game.Ge
 local a, b = Spawn (here), Spawn (there)
 a:SetAngles ((there - here):Angle ())
 b:SetAngles ((here - there):Angle ())
-local soldier = player.CreateNextSoldier ("NSComponentsCheck")
+local soldier = player.CreateNextSoldier ("NextSoldierComponentsCheck")
 
 -- what each object is
 for _, bot in ipairs ({ a, soldier }) do
@@ -129,7 +129,7 @@ local stack = a.intention:Stack ()
 Check ("its intention answers Stack", istable (stack), stack and #stack)
 Check ("a soldier's intention answers Stack", istable (soldier.intention:Stack ()))
 
-NSComponentsCheck =
+NextSoldierComponentsCheck =
 {
 	Finish = function ()
 		local function known (bot, other)
@@ -155,7 +155,7 @@ NSComponentsCheck =
 		b:Remove ()
 		timer.Simple (0.2, function ()
 			local refusedGone, whyGone = Refused (gone.GetKnownCount, gone)
-			NSComponentsCheck.removal = { refused = refusedGone, why = whyGone }
+			NextSoldierComponentsCheck.removal = { refused = refusedGone, why = whyGone }
 			if IsValid (a) then a:Remove () end
 			if IsValid (soldier) then soldier:Kick ("check done") end
 		end)
