@@ -1,7 +1,7 @@
 -- A soldier's body noises (sh_war_soldier.lua's NoticeNoise) are told every bot in
 -- earshot: from one source at most once a NOTICE_INTERVAL, unless louder than the last
--- let through, so a crowd's steps are not an O(N^2) fan-out each tick (ARCHITECTURE
--- §7.4 #4 in nextsoldier).
+-- let through, so a crowd's steps are not an O(N^2) fan-out each tick (PERFORMANCE
+-- §2.2 #4 in nextsoldier).
 local T = dofile ("tests/harness.lua")
 
 local now = 0
