@@ -177,6 +177,23 @@ T.test ("the native asks a bot once a link whether it makes a sprint jump", func
 	T.eq (asked, 1)
 end)
 
+T.test ("the twin asks a bot once a link across its searches, its verdicts kept (sprintTold)", function ()
+	local asked, told = 0, {}
+	local function Spec_ ()
+		return Spec (
+			{
+				sprints = Sprints ({ ["2>1"] = {} }),
+				sprintJump = function () asked = asked + 1 return true end,
+				sprintTold = told
+			}
+		)
+	end
+	T.eq (Locomotion.PricedInLua (Spec_ ()) (A, B), 150)
+	T.eq (Locomotion.PricedInLua (Spec_ ()) (A, B), 150, "a second search")
+	T.eq (asked, 1)
+	T.eq (told [2] [1], true, "kept")
+end)
+
 T.test ("a spec it cannot price is refused, naming the field", function ()
 	local ok, why = pcall (Native.New, {})
 	T.eq (ok, false)
