@@ -21,7 +21,8 @@ local PARTS =
 	"sv_run",
 	"sv_reload",
 	"sv_entity",
-	"sv_easylua"
+	"sv_easylua",
+	"sv_vprof"
 }
 
 for _, part in ipairs (PARTS) do dev.load ("sandcastle_dev/" .. part .. ".lua") end

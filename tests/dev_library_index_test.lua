@@ -11,8 +11,8 @@ local WORKBENCH = "addons/sandcastle_dev/lua/sandcastle_dev/"
 -- dev.load and dev.require: the dev server's mount defines them
 local MOUNT = ".devtools/bin/server_root/sandcastle_dev.lua"
 
--- dev.harness's and dev.scenario's functions are defined on these locals
-local TABLES = { H = "dev.harness", S = "dev.scenario" }
+-- dev.harness's, dev.scenario's and dev.vprof's functions are defined on these locals
+local TABLES = { H = "dev.harness", S = "dev.scenario", V = "dev.vprof" }
 
 local function ReadFile (path)
 	local file = assert (io.open (path))
