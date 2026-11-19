@@ -118,7 +118,7 @@ NAV_AREAS = "return navmesh.IsLoaded() and navmesh.GetNavAreaCount() or 0"
 
 SEND_FOLLOWER = """
 NSBench = NSBench or {}
-hook.Add("NSPathFollowerDone", "ns_bench_run", function(follower, report)
+hook.Add("PathFollowerDone", "ns_bench_run", function(follower, report)
 	NSBench[follower.nsBenchKey or ""] = util.TableToJSON(report)
 end)
 local follower = ents.Create("npc_pathfollower")
@@ -126,7 +126,7 @@ follower:SetPos(%(start)s)
 follower:Spawn()
 follower.nsBenchKey = %(key)s
 NSBench[%(key)s] = false
-follower:NSErrand(%(goal)s, %(seconds)g)
+follower:Errand(%(goal)s, %(seconds)g)
 return follower:EntIndex()
 """
 

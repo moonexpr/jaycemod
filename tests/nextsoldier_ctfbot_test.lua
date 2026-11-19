@@ -40,26 +40,32 @@ local ENGINE =
 }
 
 T.test ("the tree is native monitors over the scenario's actions, and a robot never retreats", function ()
-	local compiled = CTFBot.Compile (wartactics.scenarios)
-	local tactical = CTFBot.InitialAction (ENGINE, compiled)
+	local tactical = CTFBot.InitialAction (ENGINE)
 	T.eq (tactical.never_retreats,         true,    "MvM's rule")
 	T.eq (tactical.commands.taunt ().name, "Taunt", "what it suspends for")
 	local scenario = tactical.scenario
-	T.eq (scenario.scenarios,                            compiled,    "it reads the registry")
-	T.eq (scenario.context (Me ({ mode = "ctf" })).mode, "ctf",       "it chooses by the rounds mode")
-	T.eq (scenario.behaviors.FetchFlag ().name,          "FetchFlag", "what a scenario's monitor names")
+	T.eq (scenario.choose,                      CTFBot.Choose,   "its own chooser")
+	T.eq (scenario.monitors,                    CTFBot.MONITORS, "the places it chooses among")
+	T.eq (scenario.behaviors.FetchFlag ().name, "FetchFlag",     "what a scenario's monitor names")
 end)
 
+-- What the chooser has it play in a round's mode: a monitor's name, or nil for nothing.
+local function Plays (mode)
+	local me = Me ()
+	me.mode = mode
+	local place = CTFBot.Choose (me)
+	return place and CTFBot.MONITORS [place]
+end
+
 T.test ("MvM and CTF play the flag, and anything else plays nothing", function ()
-	local compiled = CTFBot.Compile (wartactics.scenarios)
-	T.eq (compiled:Choose ({ mode = "mvm" }).monitor,  "FetchFlag", "MvM")
-	T.eq (compiled:Choose ({ mode = "ctf" }).monitor,  "FetchFlag", "CTF")
-	T.eq (compiled:Choose ({ mode = "koth" }).monitor, nil,         "koth")
-	T.eq (compiled:Choose ({}).monitor,                nil,         "no rounds")
+	T.eq (Plays ("mvm"),  "FetchFlag", "MvM")
+	T.eq (Plays ("ctf"),  "FetchFlag", "CTF")
+	T.eq (Plays ("koth"), nil,         "koth")
+	T.eq (Plays (nil),    nil,         "no rounds")
 end)
 
 T.test ("with the flag the scenario monitor's interrupt buries what it runs under its delivery", function ()
-	local interrupt = CTFBot.InitialAction (ENGINE, CTFBot.Compile (wartactics.scenarios)).scenario.interrupts [1]
+	local interrupt = CTFBot.InitialAction (ENGINE).scenario.interrupts [1]
 	T.eq (interrupt.when (Me ()),                    false,                                       "no flag")
 	T.eq (interrupt.when (Me ({ carrying = true })), true,                                        "the flag")
 	T.eq (interrupt.action ().name,                  "DeliverFlag",                               "its delivery")
@@ -69,7 +75,7 @@ end)
 local SENTRY = { x = 400 }
 
 T.test ("a building of its team to tend buries what it runs under its tending, but for the flag", function ()
-	local interrupt = CTFBot.InitialAction (ENGINE, CTFBot.Compile (wartactics.scenarios)).scenario.interrupts [2]
+	local interrupt = CTFBot.InitialAction (ENGINE).scenario.interrupts [2]
 	T.eq (interrupt.when (Me ()),                                   false,           "nothing to tend")
 	T.eq (interrupt.when (Me ({ tend = SENTRY })),                  true,            "a building")
 	T.eq (interrupt.when (Me ({ tend = SENTRY, carrying = true })), false,           "the flag first")

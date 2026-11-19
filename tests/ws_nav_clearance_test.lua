@@ -193,7 +193,7 @@ local CROUCH_HEIGHT = 36
 
 local function Crouching (mins, maxs)
 	local agent = Agent (mins, maxs)
-	agent.NSCrouchHeight = CROUCH_HEIGHT
+	agent.CrouchHeight = CROUCH_HEIGHT
 	return agent
 end
 
@@ -231,7 +231,7 @@ T.test ("bodies crouching to different heights keep apart caches", function ()
 	Clearance.Clear ()
 	local trace = function () return { Hit = false, StartSolid = false } end
 	local a, b = Crouching (V (-10, -10, 0), V (10, 10, 72)), Crouching (V (-10, -10, 0), V (10, 10, 72))
-	b.NSCrouchHeight = CROUCH_HEIGHT + 10
+	b.CrouchHeight = CROUCH_HEIGHT + 10
 	T.eq (Clearance.New (a, 7, trace, V) == Clearance.New (b, 7, trace, V), false)
 end)
 

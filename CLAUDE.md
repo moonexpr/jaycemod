@@ -355,7 +355,7 @@ gamemode: no `WS`, no `WS.require`, no `Defer`, no read of games
 plainly includes `nextsoldier/sh_init.lua`, which loads every file by a `Load`
 line, written by hand, and sends clients each. A file names its module
 (`module("nextsoldier.world.doors")`), which builds its table at that path.
-Jumping is the base's (`base_nextsoldier`: `NSHop(p)` commands one, a path's climbs and
+Jumping is the base's (`base_nextsoldier`: `Hop(p)` commands one, a path's climbs and
 gaps ask for one when the class sets `ClimbLedges`), so any class on it can.
 What the soldier needs of the mode hosting it comes through `nextsoldier.host`;
 the gamemode's host is `gamemode/sh_nextsoldier_host.lua`, its one place of

@@ -21,7 +21,7 @@ local navigator =
 	PlanRoute = function (_, _, cost) planned = cost return { Vec (0, 0, 0), Vec (100, 0, 0) } end
 }
 local function ValidPlayer ()
-	local ply = { NSNavigator = navigator }
+	local ply = { BotNavigator = navigator }
 	function ply:GetPos () return Vec (0, 0, 0) end
 	function ply:Team () return 3 end
 	function ply:EntIndex () return 7 end
@@ -32,6 +32,7 @@ end
 local added
 local hooks = {}
 local givenGroup
+local ended = {}
 local environment = setmetatable (
 	{
 		Vector = Vec,
@@ -41,6 +42,7 @@ local environment = setmetatable (
 		util = { TraceHull = function (trace) swept = trace return { Hit = false } end, TraceLine = function () return { Hit = true } end },
 		navmesh = { GetNearestNavArea = function () return nil end },
 		hook = { Add = function (name, _, run) hooks [name] = run end },
+		timer = { Simple = function () end },
 		concommand = { Add = function () end },
 		player = { CreateNextSoldier = function () return added end },
 		wartactics = { scenarios = {} },
@@ -79,13 +81,15 @@ local environment = setmetatable (
 				engine =
 				{
 					Insert = function () end,
+					End = function (ent) ended [#ended + 1] = { tree = "main", ent = ent } end,
+					EndGroup = function (ent) ended [#ended + 1] = { tree = "legs", ent = ent } end,
 					Stack = function () return { { name = "TacticalMonitor", depth = 1 } } end
 				},
 				behavior =
 				{
 					action = nextsoldier.behavior.action,
 					group_identity = { Give = function (ent) givenGroup = ent return true end },
-					ctfbot = { Compile = function () return {} end, InitialAction = function () return {} end }
+					ctfbot = { InitialAction = function () return {} end }
 				}
 			}, { __index = nextsoldier })
 	}, { __index = _G })
@@ -344,10 +348,15 @@ T.test ("one it did not find is no route", function ()
 	T.eq (soldier.walk, nil, "not walked: it runs into whatever lies between")
 end)
 
-T.test ("it is given its group's tree beside its orders", function ()
-	givenGroup = nil
+T.test ("each life it is given its group's tree beside its orders, and at its death both end", function ()
 	local soldier = New ()
-	T.eq (givenGroup, soldier.ent, "on it")
+	givenGroup = nil
+	hooks.PlayerSpawn (soldier.ent)
+	T.eq (givenGroup, soldier.ent, "given at its spawn")
+	ended = {}
+	hooks.PlayerDeath (soldier.ent)
+	T.eq (#ended,        2,           "both trees ended")
+	T.eq (ended [1].ent, soldier.ent, "its own")
 end)
 
 T.finish ()

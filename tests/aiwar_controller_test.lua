@@ -1112,7 +1112,7 @@ T.test ("a soldier's kit is its faction's, whichever team the faction fights for
 	local controller = Started (w, ControlPointsMode.Mode, {})
 	local function Kit (team, role)
 		local ent = FakeSoldier (1)
-		ent.NSKit = function (self, kit) self.kit = kit end
+		ent.WarKit = function (self, kit) self.kit = kit end
 		controller:Equip (ent, { soldier = { team = team } }, { role = role })
 		return ent.kit
 	end

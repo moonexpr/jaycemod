@@ -8,24 +8,24 @@ local F = {}
 
 function F.Member (order, place)
 	local me = { order = order, place = place or { x = 100, y = 0, z = 0 }, now = 0, said = {}, calls = {} }
-	function me:NSLegsOrder () return self.order end
-	function me:NSLegsSense () end
-	function me:NSLegsPlace () return self.place end
-	function me:NSLegsAt () return self.at or self.place end
+	function me:LegsOrder () return self.order end
+	function me:LegsSense () end
+	function me:LegsPlace () return self.place end
+	function me:LegsAt () return self.at or self.place end
 	function me:Now () return self.now end
-	function me:NSLegsDraw () return 0.5 end
-	function me:NSLegsAdmit () return self.admit or function (spot) return spot end end
-	function me:NSLegsSeats () return {} end
-	function me:NSLegsHeadFor (spot, gait) self.spot, self.gait = spot, gait end
-	function me:NSLegsSay (line, call)
+	function me:LegsDraw () return 0.5 end
+	function me:LegsAdmit () return self.admit or function (spot) return spot end end
+	function me:LegsSeats () return {} end
+	function me:LegsHeadFor (spot, gait) self.spot, self.gait = spot, gait end
+	function me:LegsSay (line, call)
 		self.said [#self.said + 1] = line
 		self.calls [#self.calls + 1] = call
 	end
-	function me:NSLegsDanger () return self.danger end
-	function me:NSLegsContact () return self.contact == true end
-	function me:NSLegsEnemyAt () return self.enemyAt end
-	function me:NSLegsHurt () return self.hurt == true end
-	function me:NSLegsNameOf (other) return other.name or "?" end
+	function me:LegsDanger () return self.danger end
+	function me:LegsContact () return self.contact == true end
+	function me:LegsEnemyAt () return self.enemyAt end
+	function me:LegsHurt () return self.hurt == true end
+	function me:LegsNameOf (other) return other.name or "?" end
 	return me
 end
 

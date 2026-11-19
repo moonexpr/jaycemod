@@ -7,7 +7,23 @@ local Debug = T.require ("features.nbdebug.model")
 local AiWar = T.require ("features.aiwar.model")
 local Orders = T.require ("features.aiwar.ns_behaviors")
 -- what the war registered, compiled as the controller compiles it
-local BEHAVIORS = nextsoldier.behavior.registry.Shared:Compile ()
+local BEHAVIORS = nextsoldier.behavior.action.Registered ()
+
+-- The registered behaviours with more of a test's own over them, by name: what the war takes as
+-- its compiled behaviours (Get, Has, Names).
+local function With (extra)
+	local behaviors = {}
+	function behaviors:Get (name) return extra [name] or BEHAVIORS:Get (name) end
+	function behaviors:Has (name) return extra [name] ~= nil or BEHAVIORS:Has (name) end
+	function behaviors:Names ()
+		local names = BEHAVIORS:Names ()
+		for name in pairs (extra) do
+			if not BEHAVIORS:Has (name) then names [#names + 1] = name end
+		end
+		return names
+	end
+	return behaviors
+end
 local Behavior = nextsoldier.behavior
 local Track = math.polyline
 local Teams = gameplay.teams
@@ -93,13 +109,10 @@ end
 -- has ScenarioMonitor run it in place of the doctrine's side.
 T.test ("a registered scenario's own monitor runs under ScenarioMonitor, and leaves with its scenario", function ()
 	local HoldLine = N.Action:Extend ("HoldLine")
-	local Holdout = nextsoldier.behavior.monitor.New ("Holdout", function (state) return HoldLine:New (state) end)
-	local registry = nextsoldier.behavior.registry.New ()
-	for _, name in ipairs (BEHAVIORS:Names ()) do registry:Register ({ name = name, behavior = BEHAVIORS:Get (name) }) end
-	registry:Register ({ name = "Holdout", behavior = Holdout })
+	local Holdout = nextsoldier.behavior.action.Monitor ("Holdout", function (state) return HoldLine:New (state) end)
 	local field = Field ({})
 	field.scenario = { name = "holdout", monitor = "Holdout" }
-	local me, npc, war = Enlist ({ field = field, behaviors = registry:Compile () })
+	local me, npc, war = Enlist ({ field = field, behaviors = With ({ Holdout = Holdout }) })
 	Tick (me, npc)
 	T.eq (npc:Describe ():find ("ScenarioMonitor/Holdout/HoldLine", 1, true) ~= nil, true, npc:Describe ())
 	local plain = Field ({})
@@ -2142,14 +2155,12 @@ T.test ("the war owns its behaviours and gives them to NextSoldier through its r
 end)
 
 T.test ("a soldier's root is the NextSoldier its compiled behaviours give", function ()
-	local registry = nextsoldier.behavior.registry.New ()
-	local Stand = nextsoldier.behavior.CHART:State ("StandIn")
-	registry:Register ({ name = "NextSoldier", behavior = Stand })
+	local Stand = N.Action:Extend ("StandIn")
 	local war = AiWar.War.New ()
 	war:Assign ({ [BLUE] = true })
 	war:SetField (Field ({}))
 	local member = war:Enlist ("me", BLUE, true)
-	local npc = N.Npc.New (Orders, { war = war, member = member, behaviors = registry:Compile () }, FS.Soldier ({}))
+	local npc = N.Npc.New (Orders, { war = war, member = member, behaviors = With ({ NextSoldier = Stand }) }, FS.Soldier ({}))
 	npc:Update (TICK)
 	T.eq (npc:Describe ():match ("^StandIn") ~= nil, true, npc:Describe ())
 end)

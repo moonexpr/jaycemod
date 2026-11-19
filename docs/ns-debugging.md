@@ -84,7 +84,7 @@ and selects it; left-click a follower adds it to or removes it from the
 selection (a cyan ring). Reload releases the selection. Spawned followers are
 on the player's cleanup list and undone with **Z**.
 
-The panel's **Mode** drives the whole selection its way (`ENT:NSSetDriver`):
+The panel's **Mode** drives the whole selection its way (`ENT:SetDriver`):
 switching modes switches what drives the followers, without respawning them.
 
 - **Path** (driver `path`): their bench. Right-click sends them to the aim,
@@ -95,8 +95,8 @@ switching modes switches what drives the followers, without respawning them.
   enemy contact at the aim.
 - **Annotate**: marks the map for the war. Followers keep their driver.
 
-**Hold their feet** is one setting for every mode (`NSHoldFeet`, the war
-soldier's `NSFeetHeld`): held, a follower plans and draws its path to where
+**Hold their feet** is one setting for every mode (`HoldFeet`, the war
+soldier's `FeetHeld`): held, a follower plans and draws its path to where
 its driver sends it (`ENT:PlanPath`, which `FollowPath` follows) but does not
 walk it. Uncheck it and they walk. Out of the war, a tool's follower takes no
 damage.
@@ -158,7 +158,7 @@ Each member's place shows as a cross, green for muster, orange for fall back
 and violet for an assault, and its way there as its path; a member staging
 heads for its place in the stack, the white ring. A
 place is only where a body fits, with no wall between it and the order's
-point (`NSLegsAdmit`). An order skips the places the map refuses and looks
+point (`LegsAdmit`). An order skips the places the map refuses and looks
 further out, up to three rings or rows past what its members need. A member
 left with no place gets a red cross at its own feet. Members furthest from the point choose their
 places first, so a straggler keeps to its own side. **Show spacing** draws
@@ -318,7 +318,7 @@ leggings' action (the base looks it up there) and any kind its mission's rules
   ("Move in!", "Fall back!", "Room clear!") are their leader's calls to the squad
   (`Line`). A follower says each in chat and the server's console, as
   `[BLU radio] blue 1 -> Overwatch: Lost contact with blue 2.`, a member by its
-  `NSRadioName`.
+  `RadioName`.
 - `squad/interactions/director.lua`: the director's port (`Request`) and its
   answers: `VACATE`, `DEFEND` (with a plan), `ATTACK` (with a target), `STANDBY`.
   With none, the leader's own word stands.

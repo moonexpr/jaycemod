@@ -138,13 +138,13 @@ T.test ("jumping is the base's, whatever class asks it to", function ()
 	local war = Code (T.ROOT .. "sh_war_soldier.lua")
 	for _, method in ipairs (
 		{
-			"OnStartClimbing", "CustomClimbing", "NSVaultPlan", "NSVaultRun", "NSVault", "NSHop", "NSHopPlain", "NSTakeHop",
+			"OnStartClimbing", "CustomClimbing", "VaultPlan", "VaultRun", "Vault", "Hop", "HopPlain", "TakeHop",
 			"JumpAct", "JumpSequence", "PlaysJump"
 		}
 	) do
 		T.eq (base:find ("function ENT:" .. method .. "%s*%(") ~= nil, true, method .. " in the base")
 	end
-	for _, method in ipairs ({ "CustomClimbing", "NSVaultPlan", "NSVaultRun", "NSVault", "NSHop", "NSHopPlain" }) do
+	for _, method in ipairs ({ "CustomClimbing", "VaultPlan", "VaultRun", "Vault", "Hop", "HopPlain" }) do
 		T.eq (war:find ("function ENT:" .. method .. "%s*%("), nil, method .. " out of the war's soldier")
 	end
 end)
@@ -172,15 +172,15 @@ T.test ("a rappel shows a rope and sounds, for as long as it lasts", function ()
 	local war = Code (T.ROOT .. "sh_war_soldier.lua")
 	T.eq (war:find ('ents.Create ("keyframe_rope")', 1, true) ~= nil, true, "the rope")
 	T.eq (war:find ("self:DeleteOnRemove (self.nsRope)", 1, true) ~= nil, true, "gone with the soldier")
-	T.eq (war:find ("if self.NSRappelling then self:NSRappelEnd (true) end", 1, true) ~= nil, true, "gone on landing")
-	T.eq (war:find ("if self.NSRappelling then self:NSRappelEnd (false) end", 1, true) ~= nil, true, "gone on death")
+	T.eq (war:find ("if self.Rappelling then self:RappelEnd (true) end", 1, true) ~= nil, true, "gone on landing")
+	T.eq (war:find ("if self.Rappelling then self:RappelEnd (false) end", 1, true) ~= nil, true, "gone on death")
 end)
 
 T.test ("a hard landing slows the body while it recovers", function ()
 	local base = Code (ADDON .. "lua/entities/base_nextsoldier.lua")
 	local war = Code (T.ROOT .. "sh_war_soldier.lua")
 	T.eq (base:find ("Locomotion.Recovering(", 1, true) ~= nil, true, "its speed each tick")
-	T.eq (war:find ("if Noise.HardLanding (fall) then self:NSImpact () end", 1, true) ~= nil, true, "on a hard landing")
+	T.eq (war:find ("if Noise.HardLanding (fall) then self:HardLanding () end", 1, true) ~= nil, true, "on a hard landing")
 end)
 
 T.finish ()

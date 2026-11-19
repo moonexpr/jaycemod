@@ -149,7 +149,7 @@ function Battle:Start (field)
 			{
 				war = self.war,
 				member = s.member,
-				behaviors = nextsoldier.behavior.registry.Shared:Compile ()
+				behaviors = nextsoldier.behavior.action.Registered ()
 			}, s.me)
 		s.npc:Update (FP.TICK)
 	end

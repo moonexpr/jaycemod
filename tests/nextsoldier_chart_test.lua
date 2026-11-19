@@ -17,19 +17,6 @@ local function Lines (command)
 	return lines
 end
 
-T.test ("the chart sees the soldier through the soldier port", function ()
-	T.eq (Behavior.CHART.port,                          Behavior.PORT)
-	T.eq (table.concat (Behavior.PORT:Methods (), " "), table.concat (Behavior.METHODS, " "))
-end)
-
-T.test ("a behaviour handles the chart's events and is refused any other", function ()
-	local Listening = Behavior.CHART:State ("Listening")
-	function Listening:OnHeard (me, pos) return self:Continue () end
-	function Listening:OnInjured (me, attacker, amount) return self:Continue () end
-	local Deaf = Behavior.CHART:State ("Deaf")
-	T.eq (pcall (function () function Deaf:OnTeleported (me) end end), false, "an undeclared event")
-end)
-
 T.test ("every event the soldier and the war send its orders is declared", function ()
 	local sent = {}
 	for name in Code (GAMEMODE .. "sh_war_soldier.lua"):gmatch ('Tell%s*%(self,%s*"(On%u[%w_]*)"') do sent [name] = true end

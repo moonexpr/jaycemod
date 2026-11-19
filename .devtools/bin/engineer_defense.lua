@@ -63,14 +63,14 @@ end
 
 local function Engineer (pos, opts)
 	local f = ents.Create ("npc_pathfollower")
-	f.NSToolManaged = true
+	f.ToolManaged = true
 	f.Weapons = { opts.weapon }
-	f.NSSentryLevel = opts.level
+	f.SentryLevel = opts.level
 	f:SetPos (OnMesh (pos) + Vector (0, 0, 4))
 	f:Spawn ()
 	f:Activate ()
-	f:NSSetTeam (WS.TEAM_RED)
-	f:NSSetDriver ("legs")
+	f:SetWarTeam (WS.TEAM_RED)
+	f:SetDriver ("legs")
 	return f
 end
 
@@ -115,9 +115,9 @@ function E.Start (opts)
 	local order = nextsoldier.squad.behaviors.fortify.Fortify (room, Point (E.home))
 	order:SetMode (Legs.MODE.STATIONARY)
 	order:SetRoom (room)
-	local admit = function (around) return E.engineers [1]:NSLegsAdmit (around) end
+	local admit = function (around) return E.engineers [1]:LegsAdmit (around) end
 	E.places = order:Places (positions, nextsoldier.engine.GroupSpacing (), admit (E.cap), admit)
-	for i, f in ipairs (E.engineers) do f:NSLegsGive (order, E.places [i]) end
+	for i, f in ipairs (E.engineers) do f:LegsGive (order, E.places [i]) end
 	order:Lead (E.engineers [1])
 	E.order = order
 	-- the war: BLU's squad alone
@@ -174,7 +174,7 @@ function E.Start (opts)
 				for object in pairs (E.owned [i] or {}) do
 					if IsValid (object) then object:SetBuilder (back) end
 				end
-				back:NSLegsGive (E.order, E.places [i])
+				back:LegsGive (E.order, E.places [i])
 				E.engineers [i] = back
 				Log ("engineer " .. i .. " back")
 			end

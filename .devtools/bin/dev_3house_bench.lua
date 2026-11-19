@@ -84,13 +84,13 @@ local function Spawn (spots)
 	Clear ()
 	for i, spot in ipairs (spots) do
 		local member = ents.Create ("npc_pathfollower")
-		member.NSToolManaged = true
+		member.ToolManaged = true
 		member:SetPos (spot)
 		member:Spawn ()
 		member:Activate ()
-		member:NSSetTeam (WS.TEAM_RED)
-		member:NSSetDriver ("legs")
-		member:NSHoldFeet (false)
+		member:SetWarTeam (WS.TEAM_RED)
+		member:SetDriver ("legs")
+		member:HoldFeet (false)
 		B.members [i] = member
 	end
 end
@@ -109,9 +109,9 @@ local function Give (order)
 	local positions = {}
 	for i, member in ipairs (members) do positions [i] = Point (member:GetPos ()) end
 	local at = Vector (order.point.x, order.point.y, order.point.z)
-	local places = order:Places (positions, nextsoldier.engine.GroupSpacing (), members [1]:NSLegsAdmit (at),
-		function (around) return members [1]:NSLegsAdmit (around) end)
-	for i, member in ipairs (members) do member:NSLegsGive (order, places [i]) end
+	local places = order:Places (positions, nextsoldier.engine.GroupSpacing (), members [1]:LegsAdmit (at),
+		function (around) return members [1]:LegsAdmit (around) end)
+	for i, member in ipairs (members) do member:LegsGive (order, places [i]) end
 	order:Lead (members [1])
 	B.order, B.starts, B.places = order, positions, places
 	return order
@@ -142,7 +142,7 @@ local function Stack (member)
 	return table.concat (names, " > ")
 end
 
-local function SpotOf (member) return member:GetNW2Vector ("NSLegsSpot", member:GetPos ()) end
+local function SpotOf (member) return member:GetNW2Vector ("LegsSpot", member:GetPos ()) end
 
 -- What a check found: whether every condition held, and a line for each member.
 local function Verdict (lines, failures)
@@ -219,7 +219,7 @@ local function Placement (throughDoor)
 	return failures
 end
 
-local function Resting (member) return member.NSStance ~= nil, "not resting at its place" end
+local function Resting (member) return member.Stance ~= nil, "not resting at its place" end
 
 -- The assault points planned, as failures: one without, one on the line in through the doorway,
 -- two in turn on the same side of it.
@@ -662,7 +662,7 @@ function B.Placements ()
 	for _, id in ipairs (Rooms.RoomOf (controller.rooms, navmesh.GetNearestNavArea (middle):GetID ()).areas) do inside [id] = true end
 	local starts = Around (staging, SIZE, 72)
 	local probe = ents.Create ("npc_pathfollower")
-	probe.NSToolManaged = true
+	probe.ToolManaged = true
 	probe:SetPos (staging)
 	probe:Spawn ()
 	local function P (v) return { x = v.x, y = v.y } end
@@ -675,8 +675,8 @@ function B.Placements ()
 			local order = Legs.Assault (room)
 			local positions = {}
 			for i, start in ipairs (starts) do positions [i] = Point (start) end
-			local places = order:Places (positions, nextsoldier.engine.GroupSpacing (), probe:NSLegsAdmit (middle),
-				function (around) return probe:NSLegsAdmit (around) end)
+			local places = order:Places (positions, nextsoldier.engine.GroupSpacing (), probe:LegsAdmit (middle),
+				function (around) return probe:LegsAdmit (around) end)
 			local case = { name = at [1], lo = P (room.lo), hi = P (room.hi), entry = P (room.entry),
 				enemy = room.enemy and P (room.enemy), ring = Legs.ENCIRCLE_RADIUS, band = Legs.ENCIRCLE_BAND, members = {},
 				entrances = {} }

@@ -45,7 +45,7 @@ local function Members ()
 			IsValid (ent) and ent:EntIndex () or -1, tostring (member and member.role), tostring (fireTeam and fireTeam.index),
 			tostring (fireTeam and fireTeam.lane and fireTeam.lane.kind), tostring (fireTeam and fireTeam.lanesOff),
 			target and string.format ("%.0f,%.0f,%.0f", target.x, target.y, target.z) or "none",
-			IsValid (ent) and ent:GetPos ():Distance (ent.nsCheckFrom) or -1, tostring (IsValid (ent) and ent.NSFeetHeld),
+			IsValid (ent) and ent:GetPos ():Distance (ent.nsCheckFrom) or -1, tostring (IsValid (ent) and ent.FeetHeld),
 			tostring (path and path:IsValid ()))
 	end
 	return table.concat (out, "\n")
@@ -74,18 +74,18 @@ local steps =
 		Note ("round state " .. tostring (WS.State ()))
 		for i = 1, COUNT do
 			local ent = ents.Create ("npc_pathfollower")
-			ent.NSToolManaged = true
+			ent.ToolManaged = true
 			ent:SetPos (at + Vector (i * 60, 0, 1))
 			ent:Spawn ()
 			ent:Activate ()
 			ent.nsCheckFrom = ent:GetPos ()
-			ent:NSSetTeam (team)
+			ent:SetWarTeam (team)
 			-- the first into the war starts a bench war
-			local ok, why = ent:NSSetDriver ("war")
+			local ok, why = ent:SetDriver ("war")
 			if i == 1 then
 				Note (string.format ("into the war: %s %s; bench %s; bots %d", tostring (ok), tostring (why), tostring (Controller.bench), #player.GetBots ()))
 			end
-			ent:NSHoldFeet (true)
+			ent:HoldFeet (true)
 			followers [i] = ent
 		end
 	end,
@@ -115,9 +115,9 @@ local steps =
 		Controller:Unmark ({ x = at.x, y = at.y + 300, z = at.z }, 64)
 		Controller:Unmark ({ x = at.x - 200, y = at.y, z = at.z }, 64)
 		-- out of the war again: the last out ends the bench war
-		for _, ent in ipairs (followers) do ent:NSSetDriver ("legs") end
+		for _, ent in ipairs (followers) do ent:SetDriver ("legs") end
 		Note (string.format ("all to their legs: war %s, drivers %s, stacks %s", tostring (Controller.war ~= nil),
-			followers [1]:NSDriver (), (function ()
+			followers [1]:Driver (), (function ()
 				local names = {}
 				for i, frame in ipairs (nextsoldier.engine.Stack (followers [1])) do names [i] = frame.name end
 				return table.concat (names, " > ")
