@@ -11,5 +11,14 @@
         ]
       }
     ]
+  },
+  "permissions": {
+    "allow": [
+      "mcp__github__issue_read",
+      "Bash(llvm-objdump *)",
+      "mcp__github__pull_request_read",
+      "Bash(nm *)",
+      "Bash(git push origin HEAD:main)"
+    ]
   }
 }
