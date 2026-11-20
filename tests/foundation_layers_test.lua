@@ -178,6 +178,7 @@ local NEXTSOLDIER =
 	["player"] = "nextsoldier",
 	["player/base_nextbot_player"] = "nextsoldier",
 	["player/sandbox"] = "nextsoldier",
+	["player/sandbox/blockout"] = "nextsoldier",
 	["player/sandbox/navmesh"] = "nextsoldier",
 	["player/commands"] = "nextsoldier",
 	["player/puppets"] = "nextsoldier",

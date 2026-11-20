@@ -36,7 +36,17 @@ local function FakePlayer ()
 end
 
 -- The native kinds the class makes, each a constructor recording its config.
-local KINDS = { "SandboxMainAction", "TacticalMonitor", "MissionMonitor", "SandboxGoToHidingSpot", "SandboxHide" }
+local KINDS =
+{
+	"SandboxMainAction",
+	"TacticalMonitor",
+	"MissionMonitor",
+	"SandboxGoToHidingSpot",
+	"SandboxHide",
+	"SandboxGoToSite",
+	"SandboxBuild",
+	"SandboxDefend"
+}
 
 -- An engine the bot is inserted into; bound, it has the sandbox's kinds.
 local function FakeEngine (bound)
@@ -57,8 +67,12 @@ end
 -- A world of hiding spots, whose routes run straight (unless `blocked` names the goal), and
 -- whose draws are given in turn (else the first).
 local function FakeWorld (spots)
-	local world = { spots = spots, blocked = {}, draws = {}, planned = {} }
+	local world = { spots = spots, open = { Vec (5000, 0, 0), Vec (0, 5000, 0) }, blocked = {}, draws = {}, planned = {} }
 	function world.HidingSpots () return world.spots end
+	function world.OpenGround (width)
+		world.width = width
+		return world.open
+	end
 	function world.PlanRoute (from, goal)
 		world.planned [#world.planned + 1] = goal
 		if world.blocked [goal] then return nil end
@@ -74,7 +88,18 @@ local function FakeWorld (spots)
 end
 
 -- A sandbox bot, its world, and the root it was inserted with.
-local function Made (bound)
+-- A builder whose blocks stand until knocked down (`gone`).
+local function FakeBuilder ()
+	local builder = { spawned = {}, gone = {} }
+	function builder.Spawn (block, owner)
+		builder.spawned [#builder.spawned + 1] = { block = block, owner = owner }
+		return #builder.spawned
+	end
+	function builder.Standing (handle) return not builder.gone [handle] end
+	return builder
+end
+
+local function Made (bound, class)
 	local engine = FakeEngine (bound ~= false)
 	Player.Install (
 		{
@@ -88,8 +113,10 @@ local function Made (bound)
 	)
 	local world = FakeWorld ({ Vec (1000, 0, 0), Vec (0, 1000, 0), Vec (-1000, 0, 0) })
 	Sandbox.Install (world)
-	local ply = Player.Create ("sandbox_player", "Wanderer")
-	return ply, world, engine.inserted [1]
+	local builder = FakeBuilder ()
+	Sandbox.InstallBuilder (builder)
+	local ply = Player.Create (class or "sandbox_player", "Wanderer")
+	return ply, world, engine.inserted [1], builder
 end
 
 T.test ("the world the sandbox player reads is held to its port", function ()
@@ -191,6 +218,90 @@ T.test ("the class answers every method and profile field the acts read", functi
 	end
 	T.eq (methods >= 15 and fields >= 3, true, "found them")
 	T.defined (ply.BatteryDefaults.SprintCost, "the sprint it spends")
+end)
+
+-- The build mission: a base blocked out on open ground, built a block at a time, then held.
+
+T.test ("the build mission goes to a site, builds, holds, and back", function ()
+	local ply, _, root = Made ()
+	local missions = root.config.tactical.config.scenario.config.missions
+	local go = missions [Sandbox.Place ("build")] (ply)
+	T.eq (go.kind, "SandboxGoToSite", "first, a site")
+	local build = go.config.build (ply)
+	T.eq (build.kind, "SandboxBuild", "there, it builds")
+	local defend = build.config.defend (ply)
+	T.eq (defend.kind,                    "SandboxDefend",   "built, it holds")
+	T.eq (defend.config.build (ply).kind, "SandboxBuild",    "repairs")
+	T.eq (defend.config.go (ply).kind,    "SandboxGoToSite", "no base, a site")
+	T.eq (build.config.go (ply).kind,     "SandboxGoToSite", "no base, a site")
+end)
+
+T.test ("sandbox_builder is a sandbox player on the build mission", function ()
+	local ply = Made (true, "sandbox_builder")
+	T.eq (ply:ChooseMission (), "build", "its profile's")
+	T.defined (ply.SandboxDefaults.BuildInterval, "the rest its base's")
+end)
+
+T.test ("it claims open ground its base fits, plans the base there and walks to it", function ()
+	local ply, world = Made ()
+	world.draws = { 2, 1 }
+	T.eq (ply:ClaimSite (),  true, "claimed")
+	T.eq (world.width,       nextsoldier.player.sandbox.blockout.Footprint (Sandbox.Spec (ply)), "as wide as its base")
+	T.eq (world.planned [1], world.open [2], "walking to the second")
+	T.eq (ply:Movement (),   "moving", "under way")
+	local plan = nextsoldier.player.sandbox.blockout.Plan (world.open [2], 90, Sandbox.Spec (ply))
+	T.eq (ply:BlockCount (), #plan, "planned, facing as drawn")
+end)
+
+T.test ("a site it cannot reach is given up; with none, it forgets those given up", function ()
+	local ply, world = Made ()
+	world.blocked [world.open [1]] = true
+	T.eq (ply:ClaimSite (),  false, "no route to the first")
+	T.eq (ply:BlockCount (), 0,     "no base")
+	T.eq (ply:ClaimSite (),  true,  "the second")
+	ply:ForgetSite ()
+	T.eq (ply:BlockCount (), 0,     "given up")
+	T.eq (ply:ClaimSite (),  false, "none left")
+	world.blocked = {}
+	T.eq (ply:ClaimSite (), true, "each again")
+end)
+
+T.test ("it places its base's blocks through its builder, and knows them standing", function ()
+	local ply, world, _, builder = Made ()
+	ply:ClaimSite ()
+	T.eq (ply:BlockStanding (3),           false,                    "not yet")
+	T.eq (ply:PlaceBlock (3),              true,                     "placed")
+	T.eq (builder.spawned [1].owner,       ply,                      "as its own")
+	T.eq (builder.spawned [1].block.model, Sandbox.Spec (ply).model, "of its plan")
+	T.eq (ply:BlockStanding (3),           true,                     "standing")
+	builder.gone [1] = true
+	T.eq (ply:BlockStanding (3), false, "knocked down")
+end)
+
+T.test ("with no base, it has no blocks and places none", function ()
+	local ply = Made ()
+	T.eq (ply:BlockCount (),     0,     "none")
+	T.eq (ply:PlaceBlock (1),    false, "nothing to place")
+	T.eq (ply:BlockStanding (1), false, "nothing standing")
+end)
+
+T.test ("holding its base, it stands still looking out of its doorway", function ()
+	local ply, world = Made ()
+	world.draws = { 1, 0 }
+	ply:ClaimSite ()
+	ply:HoldBase ()
+	local door = nextsoldier.player.sandbox.blockout.Door (world.open [1], 0, Sandbox.Spec (ply))
+	local aim = ply.state.body.aim
+	T.eq (ply:Movement (), "idle",                      "still")
+	T.eq (aim.at.x,        door.x,                      "looking out of its doorway")
+	T.eq (aim.at.y,        door.y,                      "looking out of its doorway")
+	T.eq (aim.at.z,        door.z + Sandbox.EYE_HEIGHT, "eye-high")
+	T.eq (aim.priority,    0,                           "a boring aim, anything else first")
+	T.eq (aim.expires,     10 + Sandbox.HOLD_LOOK,      "for a while")
+end)
+
+T.test ("the builder it uses is held to its port", function ()
+	Raises (function () Sandbox.InstallBuilder ({ Spawn = function () end }) end, "Standing")
 end)
 
 T.finish ()

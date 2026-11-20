@@ -11,7 +11,9 @@ local function Vec (x, y, z) return setmetatable ({ x = x, y = y, z = z or 0 }, 
 
 -- An area at x along a row, its spots, its neighbours given after, and a step up to each.
 local function Area (x, spots)
-	local area = { center = Vec (x, 0, 0), spots = spots or {}, adjacent = {}, rise = {} }
+	local area = { center = Vec (x, 0, 0), spots = spots or {}, adjacent = {}, rise = {}, sizeX = 50, sizeY = 50 }
+	function area:GetSizeX () return self.sizeX end
+	function area:GetSizeY () return self.sizeY end
 	function area:GetCenter () return self.center end
 	function area:GetHidingSpots () return self.spots end
 	function area:GetAdjacentAreas () return self.adjacent end
@@ -125,6 +127,17 @@ end)
 T.test ("without a teleporter, areas not joined have no route", function ()
 	local a, c = Area (0), Area (5000)
 	T.eq (World ({ a, c }, {}).PlanRoute (Vec (0, 0, 0), Vec (5000, 0, 0)), nil, "none")
+end)
+
+T.test ("its open ground is the middle of each area as wide as asked, both ways", function ()
+	local a, b, c = Area (0), Area (100), Area (200)
+	a.sizeX, a.sizeY = 400, 300
+	b.sizeX, b.sizeY = 400, 100
+	c.sizeX, c.sizeY = 300, 300
+	local open = World ({ a, b, c }, {}).OpenGround (300)
+	T.eq (#open,      2,   "a and c")
+	T.eq (open [1].x, 0,   "a's middle")
+	T.eq (open [2].x, 200, "c's middle")
 end)
 
 T.finish ()
