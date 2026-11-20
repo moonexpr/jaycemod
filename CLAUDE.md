@@ -368,7 +368,12 @@ the gamemode's host is `gamemode/sh_nextsoldier_host.lua`, its one place of
 wiring. The gamemode may read NextSoldier's collections; never the reverse.
 nextsoldier may require foundation, never wartactics, features or ws; neither
 foundation nor games requires it (`tests/foundation_layers_test.lua`). Tests
-are `tests/nextsoldier_<part>_test.lua`.
+and tools take Source's NextBot prefix, never `nextsoldier_`: `nb_` for what
+standard NextBot has (intention, vision, path costs, PathFollower, CTFBot,
+NextBotPlayer: `tests/nb_<part>_test.lua`), `nb2_` for our optimizations and
+extra work (squads, legs, batteries, rooms, rappels, sandbox missions, the
+native engine: `tests/nb2_<part>_test.lua`, `.devtools/bin/nb2_engine_check.lua`).
+A console command takes the system's prefix as Source's do (`bot_add`).
 
 A module's exports are collected by what they are about. A module used through
 a single export is that export on its collection, not a module of its own.

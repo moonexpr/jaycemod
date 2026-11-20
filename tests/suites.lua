@@ -39,7 +39,7 @@ return
 	{
 		name = "nextsoldier",
 		about = "NextSoldier, the soldier itself (its addon): movement, senses, body, behaviours, the response rules it speaks by",
-		tests = { "nextsoldier_*", "addons_nextsoldier", "responserules*", "combine_voice_pack" },
+		tests = { "nb_*", "nb2_*", "addons_nextsoldier", "responserules*", "combine_voice_pack" },
 		sources =
 		{
 			"addons/nextsoldier/", G .. "sh_nextsoldier_host.lua", "tests/fake_soldier.lua", "tests/fake_room.lua", "tests/fake_legs.lua",

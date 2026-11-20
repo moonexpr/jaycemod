@@ -1,6 +1,6 @@
 -- What the engine does with Actions addons/nextsoldier/native builds, checked on a live
 -- server with its binary in lua/bin (`gmsv_<module>_win64.dll`), as returned data:
---   dt gmod lua_run instance=N code="$(cat .devtools/bin/nextsoldier_engine_check.lua)"
+--   dt gmod lua_run instance=N code="$(cat .devtools/bin/nb2_engine_check.lua)"
 --   (wait five seconds)
 --   dt gmod lua_run instance=N code='return NSEngineCheck.Finish()'
 -- Finish returns every check with whether it held and removes its bots; half a

@@ -1,6 +1,6 @@
 -- actor.body, actor.vision and actor.intention (addons/nextsoldier/native, actor_bind.rs) on a
 -- live server with the binary in lua/bin, as returned data, on any gamemode (sandbox will do):
---   dt gmod lua_run instance=N code="$(cat .devtools/bin/nextsoldier_components_check.lua)"
+--   dt gmod lua_run instance=N code="$(cat .devtools/bin/nb2_components_check.lua)"
 --   (wait five seconds, while the path followers walk and their visions scan)
 --   dt gmod lua_run instance=N code='return util.TableToJSON (NextSoldierComponentsCheck.Finish ())'
 -- Two bare NextBots that follow paths from nav area to nav area (GMod's own MoveToPos, the

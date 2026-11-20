@@ -216,7 +216,7 @@ cohesion, filling a room when a squad assaults or ambushes one, and the set-up's
 
 On a live server (instance 3), on `srcds.py start --gamemode base` for the bare NextBots
 and player bots and the full gamemode for `base_nextsoldier`.
-`.devtools/bin/nextsoldier_engine_check.lua` repeats all but the map change.
+`.devtools/bin/nb2_engine_check.lua` repeats all but the map change.
 
 - A child starts before its container; `SuspendFor` buries and `Done` resumes, with
   the right prior and next actions; `ChangeTo` replaces; dead actions are deleted.
@@ -313,7 +313,7 @@ from the engine's `IsEnemy` (teams), not a soldier's relations. A head's `AimHea
 entity looks at where its eyes are when asked, not as it moves.
 
 **What was proved** on sandbox (instance 1, gm_construct), by
-`.devtools/bin/nextsoldier_components_check.lua`: two bare NextBots following paths (GMod's
+`.devtools/bin/nb2_components_check.lua`: two bare NextBots following paths (GMod's
 `MoveToPos`) and a NextSoldier bot player get all three objects. The engine's vision recognizes
 the other bot and answers what it knows of it (`GetKnown`, `GetKnownEntities`,
 `GetClosestKnown`, `GetKnownCount`), sight and view (`IsAbleToSee`, `IsInFieldOfView`,
