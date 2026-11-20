@@ -1,17 +1,24 @@
 -- nextsoldier.player.sandbox: the default AI of a sandbox player, a CLuaNextBotPlayer
--- class (sandbox_player) whose tree is SandboxMainAction > TacticalMonitor > MissionMonitor >
--- the mission it is on. Its first mission, wander: from hiding spot to hiding spot about the
--- map, hiding a while at each. Over fakes of the engine, the player and the world it reads
--- (its hiding spots, the routes between them).
+-- class (sandbox_player) whose tree is the binary's acts, SandboxMainAction > TacticalMonitor >
+-- MissionMonitor > the mission it is on (wander: SandboxGoToHidingSpot, SandboxHide), each a
+-- config its engine constructor makes. The acts themselves are tested in Rust
+-- (addons/nextsoldier/native/src/behavior/); here, the configs the class makes, the methods the
+-- acts read it through (act_bind.rs's SoldierLua), and its fall back without the binary. Over
+-- fakes of the engine, the player and the world it reads.
 local T = dofile ("tests/harness.lua")
 local Player = nextsoldier.player
 local Sandbox = nextsoldier.player.sandbox
-local Puppets = nextsoldier.player.puppets
-local Behavior = generator.state_chart.Behavior
 
 local VecMeta = {}
 VecMeta.__index = VecMeta
 function VecMeta:Length2D () return math.sqrt (self.x * self.x + self.y * self.y) end
+-- fn refused, its error naming what.
+local function Raises (fn, what)
+	local ok, err = pcall (fn)
+	T.eq (ok,                                         false, "refused: " .. what)
+	T.eq (tostring (err):find (what, 1, true) ~= nil, true,  "names " .. what .. ": " .. tostring (err))
+end
+
 local function Vec (x, y, z) return setmetatable ({ x = x, y = y, z = z or 0 }, VecMeta) end
 
 local function FakePlayer ()
@@ -28,18 +35,27 @@ local function FakePlayer ()
 	return ply
 end
 
-local function FakeEngine ()
+-- The native kinds the class makes, each a constructor recording its config.
+local KINDS = { "SandboxMainAction", "TacticalMonitor", "MissionMonitor", "SandboxGoToHidingSpot", "SandboxHide" }
+
+-- An engine the bot is inserted into; bound, it has the sandbox's kinds.
+local function FakeEngine (bound)
 	local engine = { inserted = {} }
 	function engine.Insert (bot, action, me) engine.inserted [#engine.inserted + 1] = action end
 	function engine.End () end
 	function engine.Stack () return {} end
 	function engine.GroupStack () return {} end
 	function engine.Puppet () return {} end
+	if bound then
+		for _, kind in ipairs (KINDS) do
+			engine [kind] = function (config) return { kind = kind, config = config } end
+		end
+	end
 	return engine
 end
 
--- A world of hiding spots, whose routes run straight from where a body stands to where it is
--- going (unless `blocked` names the goal), and whose draws are given in turn (else the first).
+-- A world of hiding spots, whose routes run straight (unless `blocked` names the goal), and
+-- whose draws are given in turn (else the first).
 local function FakeWorld (spots)
 	local world = { spots = spots, blocked = {}, draws = {}, planned = {} }
 	function world.HidingSpots () return world.spots end
@@ -57,143 +73,124 @@ local function FakeWorld (spots)
 	return world
 end
 
--- A sandbox bot, its world and clock, and its tree run as the chart runs an engine's.
-local function Made (spots)
-	local clock = { now = 10 }
-	local services =
-	{
-		Engine = FakeEngine (),
-		CreateBot = function () return FakePlayer () end,
-		Now = function () return clock.now end,
-		Angle = function (p, y, r) return { p = p, y = y, r = r } end,
-		RunConCommand = function () return false end,
-		AddHook = function () end
-	}
-	Player.Install (services)
-	local world = FakeWorld (spots or { Vec (1000, 0, 0), Vec (0, 1000, 0), Vec (-1000, 0, 0) })
+-- A sandbox bot, its world, and the root it was inserted with.
+local function Made (bound)
+	local engine = FakeEngine (bound ~= false)
+	Player.Install (
+		{
+			Engine = engine,
+			CreateBot = function () return FakePlayer () end,
+			Now = function () return 10 end,
+			Angle = function (p, y, r) return { p = p, y = y, r = r } end,
+			RunConCommand = function () return false end,
+			AddHook = function () end
+		}
+	)
+	local world = FakeWorld ({ Vec (1000, 0, 0), Vec (0, 1000, 0), Vec (-1000, 0, 0) })
 	Sandbox.Install (world)
 	local ply = Player.Create ("sandbox_player", "Wanderer")
-	local tree = Behavior:New (services.Engine.inserted [1], "test")
-	local bot = { ply = ply, world = world, clock = clock, tree = tree }
-	-- one update of its tree, the clock run on by dt
-	function bot:Tick (dt)
-		self.clock.now = self.clock.now + (dt or 0.1)
-		self.tree:Update (self.ply, dt or 0.1)
-	end
-	-- the names on its stack, outermost first
-	function bot:Stack ()
-		local names = {}
-		for _, frame in ipairs (self.tree:Stack ()) do names [#names + 1] = frame.name end
-		return table.concat (names, " > ")
-	end
-	return bot
+	return ply, world, engine.inserted [1]
 end
 
 T.test ("the world the sandbox player reads is held to its port", function ()
-	T.eq (pcall (Sandbox.Install, {}), false, "a world lacking its methods is refused")
+	Raises (function () Sandbox.Install ({ HidingSpots = function () end }) end, "PlanRoute")
 end)
 
-T.test ("its tree is SandboxMainAction > TacticalMonitor > MissionMonitor > the mission's", function ()
-	local bot = Made ()
-	bot:Tick ()
-	T.eq (bot:Stack (),     "SandboxMainAction > TacticalMonitor > MissionMonitor > SandboxGoToHidingSpot", "its stack")
-	T.eq (bot.ply.Behavior, "SandboxMainAction", "the class names its root")
+T.test ("its tree is SandboxMainAction > TacticalMonitor > MissionMonitor, made by the binary", function ()
+	local ply, _, root = Made ()
+	T.eq (root.kind,                 "SandboxMainAction", "its root")
+	T.eq (root.config.tactical.kind, "TacticalMonitor",   "over CTFBot's tactical monitor")
+	local monitor = root.config.tactical.config.scenario
+	T.eq (monitor.kind,      "MissionMonitor", "its scenario, the mission it is on")
+	T.eq (ply.state.unbound, nil,              "bound")
+	local place = monitor.config.choose (ply)
+	T.eq (place,                                      Sandbox.Place ("wander"), "wander, its profile's")
+	T.eq (monitor.config.missions [place] (ply).kind, "SandboxGoToHidingSpot",  "the mission's first action")
 end)
 
-T.test ("wandering, it walks a route planned to a hiding spot it drew", function ()
-	local bot = Made ()
-	bot.world.draws = { 2 }
-	bot:Tick ()
-	T.eq (bot.world.planned [1],   bot.world.spots [2], "a route to the spot drawn")
-	T.eq (bot.ply.state.loco.goal, bot.world.spots [2], "it makes for it")
+T.test ("wander goes to a spot, hides there, and goes on again", function ()
+	local ply, _, root = Made ()
+	local missions = root.config.tactical.config.scenario.config.missions
+	local go = missions [Sandbox.Place ("wander")] (ply)
+	local hide = go.config.hide (ply)
+	T.eq (hide.kind,                 "SandboxHide",           "there, it hides")
+	T.eq (hide.config.go (ply).kind, "SandboxGoToHidingSpot", "then goes on")
 end)
 
-T.test ("there, it hides crouched a while, then goes on to another spot", function ()
-	local bot = Made ()
-	bot.world.draws = { 1 }
-	bot:Tick ()
-	bot.ply.pos = bot.world.spots [1]
-	bot.world.draws = { 12 }
-	bot:Tick ()
-	T.eq (bot:Stack ():match ("[%w]+$"),            "SandboxHide",       "hiding")
-	T.eq (Puppets.Body:GetDesiredPosture (bot.ply), Puppets.Body.CROUCH, "crouched")
-	T.eq (bot.ply.state.loco.goal,                  nil,                 "still")
-	bot:Tick (11)
-	T.eq (bot:Stack ():match ("[%w]+$"), "SandboxHide", "not yet: it drew 12 seconds")
-	bot.world.draws = { 1 }
-	bot:Tick (2)
-	T.eq (bot:Stack ():match ("[%w]+$"),                  "SandboxGoToHidingSpot", "then on")
-	T.eq (Puppets.Body:GetDesiredPosture (bot.ply),       Puppets.Body.STAND,      "standing")
-	T.eq (bot.ply.state.loco.goal ~= bot.world.spots [1], true,                    "to another spot than this one")
+T.test ("a mission chosen that none registered is none", function ()
+	local ply, _, root = Made ()
+	ply.SandboxDefaults = { Mission = "nowhere", HideMin = 1, HideMax = 2 }
+	T.eq (root.config.tactical.config.scenario.config.choose (ply), nil, "no mission")
 end)
 
-T.test ("its hiding time is drawn within its profile's", function ()
-	local bot = Made ()
-	local profile = bot.ply.SandboxDefaults
-	T.defined (profile.HideMin, "HideMin")
-	T.defined (profile.HideMax, "HideMax")
-	bot.world.draws = { 1 }
-	bot:Tick ()
-	bot.ply.pos = bot.world.spots [1]
-	local asked
-	local draw = bot.world.Random
-	bot.world.Random = function (low, high)
-		asked = { low = low, high = high }
-		return draw (low, high)
+T.test ("a mission is one registered, its place kept when registered again", function ()
+	local place = Sandbox.Place ("wander")
+	local first = Sandbox.Mission ("wander")
+	Sandbox.RegisterMission ("wander", first)
+	T.eq (Sandbox.Place ("wander"), place, "the same place")
+	Raises (function () Sandbox.Mission ("nowhere") end,        "no sandbox mission")
+	Raises (function () Sandbox.RegisterMission (1, first) end, "by a name")
+	Raises (function () Sandbox.RegisterMission ("x", 1) end,   "first action")
+end)
+
+T.test ("with no SandboxMainAction in the binary, it runs the base's root and says why", function ()
+	local ply, _, root = Made (false)
+	T.eq (ply.state.unbound,                  "nextsoldier.engine has no SandboxMainAction", "why")
+	T.eq (root.kind,                          nil,                                           "no native config")
+	T.eq (type (root.InitialContainedAction), "function",                                    "the base's NextBotPlayer")
+end)
+
+T.test ("its hiding spots, by place from 1: how many, the last, those avoided", function ()
+	local ply = Made ()
+	T.eq (ply:HidingSpotCount (), 3,   "three")
+	T.eq (ply:LastSpot (),        nil, "none yet")
+	ply:SetLastSpot (2)
+	T.eq (ply:LastSpot (), 2,     "the last it hid at")
+	T.eq (ply:Avoided (3), false, "not avoided")
+	ply:Avoid (3)
+	T.eq (ply:Avoided (3), true, "avoided")
+	ply:ForgetAvoided ()
+	T.eq (ply:Avoided (3), false, "forgotten")
+end)
+
+T.test ("to a spot, it walks the route its world plans; none, and it goes nowhere", function ()
+	local ply, world = Made ()
+	T.eq (ply:MoveToSpot (2), true,            "a route")
+	T.eq (world.planned [1],  world.spots [2], "planned by its world")
+	T.eq (ply:Movement (),    "moving",        "under way")
+	world.blocked [world.spots [3]] = true
+	T.eq (ply:MoveToSpot (3), false,  "no route")
+	T.eq (ply:Movement (),    "idle", "going nowhere")
+end)
+
+T.test ("its draws are its world's, and it crouches through its body", function ()
+	local ply, world = Made ()
+	world.draws = { 4 }
+	T.eq (ply:Random (1, 9), 4, "its world's draw")
+	ply:Crouch (true)
+	T.eq (ply.state.body.posture, nextsoldier.player.puppets.Body.CROUCH, "crouched")
+	ply:Crouch (false)
+	T.eq (ply.state.body.posture, nextsoldier.player.puppets.Body.STAND, "standing")
+end)
+
+-- Every method the binary's acts call on the bot (act_bind.rs's SoldierLua), and every profile
+-- field they read, the class has.
+T.test ("the class answers every method and profile field the acts read", function ()
+	local source = io.open ("addons/nextsoldier/native/src/act_bind.rs"):read ("*a")
+	local ply = Made ()
+	local methods, fields = 0, 0
+	for call, name in source:gmatch ("self%.(%a+)%(c\"(%u%a+)\"") do
+		if call ~= "profile" then
+			methods = methods + 1
+			T.eq (type (ply [name]), "function", name)
+		end
 	end
-	bot:Tick ()
-	T.eq (asked.low,  profile.HideMin, "from its least")
-	T.eq (asked.high, profile.HideMax, "to its most")
-end)
-
-T.test ("a spot with no route there is passed over for another", function ()
-	local bot = Made ()
-	bot.world.blocked [bot.world.spots [1]] = true
-	bot.world.draws = { 1, 1 }
-	bot:Tick ()
-	T.eq (bot.world.planned [1], bot.world.spots [1], "it tried the first")
-	bot:Tick ()
-	T.eq (bot.world.planned [2] ~= bot.world.spots [1], true,                  "then not that one again")
-	T.eq (bot.ply.state.loco.goal,                      bot.world.planned [2], "and makes for the other")
-end)
-
-T.test ("a walk that stalls is given up for another spot", function ()
-	local bot = Made ()
-	bot.world.draws = { 1 }
-	bot:Tick ()
-	bot:Tick (nextsoldier.locomotion.route_walk.STALL_TIME + 1)
-	bot:Tick ()
-	T.eq (#bot.world.planned >= 2,                                       true, "it planned again")
-	T.eq (bot.world.planned [#bot.world.planned] ~= bot.world.spots [1], true, "elsewhere")
-end)
-
-T.test ("with no hiding spots it stands, and looks again a while later", function ()
-	local bot = Made ({})
-	bot:Tick ()
-	T.eq (bot.ply.state.loco.goal, nil, "nowhere to go")
-	bot.world.spots = { Vec (500, 0, 0) }
-	bot:Tick (0.1)
-	T.eq (bot.ply.state.loco.goal, nil, "not at once")
-	bot:Tick (Sandbox.wander.RETRY)
-	T.eq (bot.ply.state.loco.goal, bot.world.spots [1], "it found one")
-end)
-
-T.test ("its one spot is gone to again, there being no other", function ()
-	local bot = Made ({ Vec (500, 0, 0) })
-	bot:Tick ()
-	T.eq (bot.ply.state.loco.goal, bot.world.spots [1], "the only one")
-end)
-
-T.test ("a mission is one registered; the monitor changes to the one it chooses", function ()
-	T.eq (pcall (Sandbox.Mission, "no_such_mission"), false, "an unknown one refused")
-	local Patrol = nextsoldier.behavior.action.Extend ("TestSandboxPatrol")
-	Sandbox.RegisterMission ("test_patrol", function () return Patrol:New () end)
-	local bot = Made ()
-	bot:Tick ()
-	bot.ply.SandboxDefaults.Mission = "test_patrol"
-	bot:Tick ()
-	bot:Tick ()
-	T.eq (bot:Stack (), "SandboxMainAction > TacticalMonitor > MissionMonitor > TestSandboxPatrol", "the new mission")
+	for table_, field in source:gmatch ("profile%(c\"(%a+)\",%s*c\"(%a+)\"") do
+		fields = fields + 1
+		T.defined (ply [table_] [field], table_ .. "." .. field)
+	end
+	T.eq (methods >= 15 and fields >= 3, true, "found them")
+	T.defined (ply.BatteryDefaults.SprintCost, "the sprint it spends")
 end)
 
 T.finish ()

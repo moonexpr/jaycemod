@@ -24,7 +24,8 @@ local function FakePlayer (name)
 	function ply:SetHealth (h) self.health = h end
 	function ply:SetMaxHealth (h) self.maxHealth = h end
 	function ply:Alive () return self.alive end
-	function ply:GetPos () return Vec (0, 0, 0) end
+	ply.pos = Vec (0, 0, 0)
+	function ply:GetPos () return self.pos end
 	function ply:EyePos () return Vec (0, 0, 64) end
 	function ply:EyeAngles () return { p = 0, y = 0, r = 0 } end
 	function ply:IsOnGround () return self.onGround end
@@ -448,6 +449,84 @@ T.test ("its default hooks are base_nextbot2's", function ()
 		"OnSpotted", "OnLost", "OnComputePath", "OnUpdateAnimation" }) do
 			T.eq (type (base [name]), "function", name)
 		end
+end)
+
+-- Its locomotion walks a route to a goal (MoveTo), as its class plans it (PlanRoute), and says
+-- how the walk goes (Movement), stepping it as each command is made.
+local function Walker ()
+	local ply, _, services = Made ("test_player")
+	local planned = {}
+	function ply:PlanRoute (from, goal)
+		planned [#planned + 1] = goal
+		if goal.x < 0 then return nil end
+		return { from, Vec (goal.x / 2, 0, 0), goal }
+	end
+	-- Only a short leg is clear, so it walks waypoint by waypoint, never cutting across.
+	function ply:CanWalk (from, to) return math.abs (to.x - from.x) <= 500 end
+	return ply, services, planned
+end
+
+T.test ("sent to a goal, it walks the route its class plans, waypoint by waypoint", function ()
+	local ply, _, planned = Walker ()
+	T.eq (ply:Movement (),               "idle",   "going nowhere")
+	T.eq (ply:MoveTo (Vec (1000, 0, 0)), true,     "a route")
+	T.eq (planned [1].x,                 1000,     "planned to the goal")
+	T.eq (ply:Movement (),               "moving", "under way")
+	Pressed (ply)
+	T.eq (ply.state.loco.goal.x, 500, "makes for its first waypoint")
+	ply.pos = Vec (500, 0, 0)
+	Pressed (ply)
+	T.eq (ply.state.loco.goal.x, 1000, "then the next")
+end)
+
+T.test ("there, it has arrived and stands", function ()
+	local ply = Walker ()
+	ply:MoveTo (Vec (1000, 0, 0))
+	ply.pos = Vec (1000, 0, 0)
+	Pressed (ply)
+	T.eq (ply:Movement (),     "arrived", "arrived")
+	T.eq (ply.state.loco.goal, nil,       "standing")
+end)
+
+T.test ("no route, it does not move", function ()
+	local ply = Walker ()
+	T.eq (ply:MoveTo (Vec (-1000, 0, 0)), false,  "none")
+	T.eq (ply:Movement (),                "idle", "going nowhere")
+end)
+
+T.test ("no nearer for STALL_TIME, its walk has stalled", function ()
+	local ply, services = Walker ()
+	ply:MoveTo (Vec (1000, 0, 0))
+	Pressed (ply)
+	services.now = services.now + nextsoldier.locomotion.route_walk.STALL_TIME + 1
+	Pressed (ply)
+	T.eq (ply:Movement (),     "stalled", "stalled")
+	T.eq (ply.state.loco.goal, nil,       "standing")
+end)
+
+T.test ("stopped, it goes nowhere; a new life drops its walk", function ()
+	local ply = Walker ()
+	ply:MoveTo (Vec (1000, 0, 0))
+	ply:StopMoving ()
+	T.eq (ply:Movement (), "idle", "stopped")
+	ply:MoveTo (Vec (1000, 0, 0))
+	ply:Reset ()
+	T.eq (ply:Movement (), "idle", "a new life")
+end)
+
+T.test ("its pace, set by its root, is the speed its command moves it at", function ()
+	local ply = Walker ()
+	ply:SetPace (123)
+	ply:MoveTo (Vec (1000, 0, 0))
+	T.near (Pressed (ply).forward, 123, 1e-6, "at its pace")
+end)
+
+T.test ("a class plans a straight route by default", function ()
+	local ply = Made ("test_player")
+	local route = ply:PlanRoute (Vec (0, 0, 0), Vec (10, 0, 0))
+	T.eq (#route,                                      2,    "from and goal")
+	T.eq (route [2].x,                                 10,   "the goal")
+	T.eq (ply:CanWalk (Vec (0, 0, 0), Vec (10, 0, 0)), true, "every walk clear")
 end)
 
 T.finish ()

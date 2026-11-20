@@ -173,4 +173,22 @@ T.test ("a new waypoint is a new start", function ()
 	T.eq (walk:Stalled (P (STEP), 2 * Walk.STALL_TIME), true,  "and stalled after")
 end)
 
+-- A teleporter on the route: its entry, then where it sends the body, far off.
+local ENTRY = { x = STEP, y = 0, z = 0, teleport = true }
+local EXIT = { x = 5000, y = 5000, z = 0 }
+local BEYOND = { x = 5000 + STEP, y = 5000, z = 0 }
+
+T.test ("a teleporter's entry is walked into, and no waypoint past it made for before", function ()
+	local walk = Walk.New ({ P (0), ENTRY, EXIT, BEYOND })
+	T.eq (walk:Next (P (0), ALWAYS),    ENTRY, "its entry, though the exit is in a clear line")
+	T.eq (walk:Next (P (STEP), ALWAYS), ENTRY, "stood in it, not yet sent: still its entry")
+end)
+
+T.test ("sent through, it goes on from the teleporter's exit", function ()
+	local walk = Walk.New ({ P (0), ENTRY, EXIT, BEYOND })
+	walk:Next (P (0), ALWAYS)
+	T.eq (walk:Next (EXIT, NEVER), BEYOND, "at the exit: the waypoint after it")
+	T.eq (walk:Done (),            false,  "not over")
+end)
+
 T.finish ()

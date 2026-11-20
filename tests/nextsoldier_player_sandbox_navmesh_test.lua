@@ -25,9 +25,11 @@ local function Link (a, b)
 	b.adjacent [#b.adjacent + 1] = a
 end
 
-local function World (areas, traced)
+local function World (areas, traced, links, boxes)
 	local navmesh = {}
 	function navmesh.GetAllNavAreas () return areas end
+	-- the areas in a box: those the test says lie in it
+	function navmesh.FindInBox (mins) return (boxes or {}) [mins] or {} end
 	function navmesh.GetNearestNavArea (p)
 		local best, distance
 		for _, area in ipairs (areas) do
@@ -48,7 +50,8 @@ local function World (areas, traced)
 			Vector = Vec,
 			random = function (low) return low end,
 			mask = 1,
-			maxRise = 58
+			maxRise = 58,
+			teleports = function () return links or {} end
 		}
 	)
 end
@@ -88,6 +91,40 @@ T.test ("a walk is clear when a player's hull swept along it hits nothing", func
 	T.eq (world.CanWalk (Vec (0, 0, 0), Vec (500, 0, 0)),  true,  "clear")
 	T.eq (world.CanWalk (Vec (0, 0, 0), Vec (1000, 0, 0)), false, "blocked")
 	T.eq (traced [1].mask,                                 1,     "under the player's mask")
+end)
+
+-- A teleporter in area a, sending to c's x, the two not joined.
+local function Teleporter (a, c)
+	local mins, maxs = Vec (a.center.x - 10, -10, 0), Vec (a.center.x + 10, 10, 50)
+	local link =
+	{
+		mins = mins,
+		maxs = maxs,
+		entry = { x = a.center.x, y = 0, z = 0, teleport = true },
+		exit = Vec (c.center.x, 0, 0)
+	}
+	return link, { [mins] = { a } }
+end
+
+T.test ("a route goes through a teleporter: its entry, then its exit", function ()
+	local a, b, c = Area (0), Area (100), Area (5000)
+	Link (a, b)
+	local link, boxes = Teleporter (b, c)
+	local route = World ({ a, b, c }, {}, { link }, boxes).PlanRoute (Vec (0, 0, 0), Vec (5010, 0, 0))
+	T.eq (route ~= nil, true, "there is one")
+	local entry
+	for i, p in ipairs (route) do
+		if p.teleport then entry = i end
+	end
+	T.eq (entry ~= nil,        true, "it walks into the teleporter")
+	T.eq (route [entry].x,     100,  "at its entry")
+	T.eq (route [entry + 1].x, 5000, "then from its exit")
+	T.eq (route [#route].x,    5010, "to the goal")
+end)
+
+T.test ("without a teleporter, areas not joined have no route", function ()
+	local a, c = Area (0), Area (5000)
+	T.eq (World ({ a, c }, {}).PlanRoute (Vec (0, 0, 0), Vec (5000, 0, 0)), nil, "none")
 end)
 
 T.finish ()
