@@ -8,6 +8,7 @@
 --            through; the closest claim wins
 local G = "addons/sandcastle/gamemodes/sandcastle/gamemode/"
 local E = "addons/sandcastle/gamemodes/sandcastle/entities/"
+local W = "addons/sandcastle/gamemodes/wetsands/entities/"
 
 return
 {
@@ -75,9 +76,11 @@ return
 			"tests/fake_objective.lua", "tests/fake_points.lua",
 			E .. "entities/team_", E .. "entities/tf_logic_", E .. "entities/game_", E .. "entities/func_respawnroom",
 			E .. "entities/func_capturezone", E .. "entities/trigger_capture_area", E .. "entities/item_teamflag",
-			E .. "entities/info_observer_point", G .. "includes/modules/round_manager.lua", G .. "includes/modules/game_timer.lua",
+			E .. "entities/info_observer_point", G .. "hud/", G .. "includes/modules/round_manager.lua", G .. "includes/modules/game_timer.lua",
 			G .. "includes/modules/net2.lua", G .. "includes/modules/game_events.lua", G .. "includes/modules/hit_audit.lua", G .. "includes/modules/gesture.lua", G .. "gestures/",
-			E .. "entities/tf_gamerules", E .. "entities/ws_gamerules", E .. "entities/edit_"
+			E .. "entities/sc_gamerules", E .. "entities/logic_sc_", E .. "entities/edit_",
+			W .. "entities/tf_gamerules", W .. "entities/ws_gamerules", W .. "entities/team_",
+			W .. "entities/trigger_capture_area"
 		}
 	},
 	{

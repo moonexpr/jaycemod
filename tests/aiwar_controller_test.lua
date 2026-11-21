@@ -801,10 +801,13 @@ local function BombAndHatch (w, noHatch)
 	}
 	local hatch = Ent (Vector (-100, 0, 0))
 	hatch.WorldSpaceCenter = function () return Vector (-100, 0, 0) end
+	-- as the flag feature's controller answers: its flags and zones are the game's
+	local flags = { [bombEnt] = bomb }
+	local zones = noHatch and {} or { [hatch] = { enabled = true, team = BLUE, MayCapture = function (_, team) return team == BLUE end } }
 	w:Load ("flag",
 		{
-			flags = { [bombEnt] = bomb },
-			zones = noHatch and {} or { [hatch] = { enabled = true, team = BLUE, MayCapture = function (_, team) return team == BLUE end } },
+			Flags = function () return flags end,
+			Zones = function () return zones end,
 			tally = { Captures = function () return 0 end },
 			CapLimit = function () return 0 end
 		}

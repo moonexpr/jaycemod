@@ -440,10 +440,17 @@ T.test ("a win fires the master's and round's OnWonByTeam output", function ()
 	T.eq (Master.WinOutput (BLU), "OnWonByTeam2")
 end)
 
-local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
+-- Each gamemode's bindings: Sandcastle's own, and Wetsands', which take their place there.
+local ENTITIES =
+{
+	"addons/sandcastle/gamemodes/sandcastle/entities/entities/",
+	"addons/sandcastle/gamemodes/wetsands/entities/entities/"
+}
 
+-- The file's text, or nil where the gamemode has none.
 local function Read (path)
-	local f = assert (io.open (path, "rb"))
+	local f = io.open (path, "rb")
+	if not f then return nil end
 	local text = f:read ("*a")
 	f:close ()
 	return text
@@ -451,7 +458,15 @@ end
 
 T.test ("the capture bindings require no foundation module", function ()
 	for _, name in ipairs ({ "trigger_capture_area", "team_control_point_master", "team_control_point_round" }) do
-		T.eq (Read (ENTITIES .. name .. ".lua"):find ('require ("foundation.', 1, true), nil, name)
+		local found = 0
+		for _, folder in ipairs (ENTITIES) do
+			local text = Read (folder .. name .. ".lua")
+			if text then
+				found = found + 1
+				T.eq (text:find ('require ("foundation.', 1, true), nil, folder .. name)
+			end
+		end
+		T.eq (found > 0, true, name .. " is bound")
 	end
 end)
 

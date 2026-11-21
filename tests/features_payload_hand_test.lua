@@ -5,6 +5,8 @@
 local T = dofile ("tests/harness.lua")
 
 local DIR = "addons/sandcastle/gamemodes/sandcastle/entities/entities/team_train_watcher/"
+dofile ("addons/sandcastle/gamemodes/sandcastle/gamemode/includes/modules/cart_hud.lua")
+local CART_HUD = package.loaded.cart_hud
 local RED, BLUE, NOBODY = 2, 3, 0
 local ROUND_ACTIVE = 2
 local IN_ATTACK = 1
@@ -138,6 +140,12 @@ local function NewWorld (options)
 		GetCurrentScenario = function () return { GetRules = function () return World.rules end } end
 	}
 	env.round_manager = { AdjustTime = function (info) World.adjusted [#World.adjusted + 1] = info end }
+	-- the cart HUD's model, the gamemode's own module, as the watcher publishes by it
+	env.cart_hud = CART_HUD
+	-- what it networks to the HUD, kept by name
+	World.globals = {}
+	local function SetGlobal (name, value) World.globals [name] = value end
+	env.SetGlobal2Bool, env.SetGlobal2Float, env.SetGlobal2Int, env.SetGlobal2String = SetGlobal, SetGlobal, SetGlobal, SetGlobal
 	env.GAMEMODE =
 	{
 		AddController = function (_, controller) World.controllers [#World.controllers + 1] = controller end,

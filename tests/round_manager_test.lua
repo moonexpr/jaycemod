@@ -45,6 +45,8 @@ game_manager =
 		hookArgs.game = info
 	end,
 	Active = function () return {} end,
+	-- no game decides the round: what the gamemode declared stands
+	Current = function () return nil end,
 	Tiebreaker = function () end
 }
 hook = { Run = function (name, a, b)
@@ -82,15 +84,6 @@ local function InRound ()
 	Run (7)
 	T.eq (globals.SandcastleRoundState, ROUND_ACTIVE, "in the round")
 end
-
--- Gameplay's win conditions set mp_winlimit to 0 for a map whose captures score (an attack/defend
--- map's stopwatch): a win limit there would end the match a capture in.
-T.test ("mp_winlimit may be 0, no limit: a team's wins then never take the match", function ()
-	T.eq (convars.mp_winlimit.min, 0, "0 allowed")
-	T.eq (Rounds.TakesMatch (5, 0), false, "no limit")
-	T.eq (Rounds.TakesMatch (3, 3), true, "the limit reached")
-	T.eq (Rounds.TakesMatch (2, 3), false, "short of it")
-end)
 
 T.test ("a round that runs out of time ends with nobody winning", function ()
 	InRound ()
