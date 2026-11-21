@@ -20,6 +20,10 @@ local routeWalk =
 -- have it use the engine's search, as ns_bots_routes_engine 1 does.
 searches = { ns_bots_routes_engine = true }
 
+-- The npc controller as the bot soldier reads it: how many times the blockers have changed.
+local npcFeature = { generation = 0 }
+function npcFeature:BlockerGeneration () return self.generation end
+
 local Vec
 local VectorMeta = { __add = function (a, b) return Vec (a.x + b.x, a.y + b.y, a.z + b.z) end, __sub = function (a, b) return Vec (a.x - b.x, a.y - b.y, a.z - b.z) end }
 Vec = function (x, y, z) return setmetatable ({ x = x, y = y, z = z }, VectorMeta) end
@@ -42,9 +46,7 @@ local environment = setmetatable (
 		WS =
 		{
 			require = T.require,
-			Feature = function ()
-				return { BlockerGeneration = function () return 0 end }
-			end
+			Feature = function () return npcFeature end
 		},
 		nextsoldier =
 		{
@@ -131,7 +133,7 @@ T.test ("a straight path the engine found, within one area, is a route however f
 	T.eq (soldier.steer,       position, "on its way")
 end)
 
-T.test ("its route is planned again on a timer, whether or not its goal has moved", function ()
+T.test ("a route short of its goal is planned again on a timer, whether or not its goal has moved", function ()
 	local soldier = NewSoldier ({ { x = 200, y = 50, z = 0 }, goal })
 	local navigator = soldier:Navigator ()
 	soldier:Steer (1)
@@ -140,6 +142,51 @@ T.test ("its route is planned again on a timer, whether or not its goal has move
 	T.eq (navigator.plans, 1, "not every look: not within the least of its interval")
 	soldier:Steer (3.1)
 	T.eq (navigator.plans, 2, "and again, its goal where it was")
+end)
+
+-- A soldier that has walked its first, whole route (the search reached the goal), its timer due.
+local function Routed ()
+	local soldier = NewSoldier ({ { x = 200, y = 50, z = 0 }, goal }, true)
+	soldier:Steer (1)
+	return soldier, soldier:Navigator ()
+end
+
+T.test ("a whole route to a goal where it was is kept when its timer comes, not searched again", function ()
+	local soldier, navigator = Routed ()
+	soldier:Steer (3.1)
+	soldier:Steer (6.2)
+	T.eq (navigator.plans,     1,    "the one it has still gets it there")
+	T.eq (soldier.walk ~= nil, true, "and it walks it")
+end)
+
+T.test ("a whole route is planned again once its goal has moved", function ()
+	local soldier, navigator = Routed ()
+	soldier.moveTarget = { x = goal.x + 512, y = goal.y, z = goal.z }
+	soldier:Steer (3.1)
+	T.eq (navigator.plans, 2, "the goal it was planned for is not this one")
+end)
+
+T.test ("a whole route is planned again once a blocker has changed", function ()
+	local soldier, navigator = Routed ()
+	npcFeature.generation = npcFeature.generation + 1
+	soldier:Steer (3.1)
+	T.eq (navigator.plans, 2, "a door shut or a way opened since")
+end)
+
+T.test ("its orders asking for a route have one planned though the whole route holds", function ()
+	local soldier, navigator = Routed ()
+	environment.CurTime = function () return 1.5 end
+	soldier:Repath ()
+	soldier:Steer (3.1)
+	T.eq (navigator.plans, 2, "the orders know something the route does not")
+	environment.CurTime = function () return 1 end
+end)
+
+T.test ("a goal moved within a step of where it was keeps the whole route", function ()
+	local soldier, navigator = Routed ()
+	soldier.moveTarget = { x = goal.x + 8, y = goal.y, z = goal.z }
+	soldier:Steer (3.1)
+	T.eq (navigator.plans, 1, "the same place to go")
 end)
 
 T.test ("a route run out short of its goal is planned again, not stood at", function ()
