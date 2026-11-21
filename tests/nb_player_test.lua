@@ -1,5 +1,5 @@
 -- nextsoldier.player: the CLuaNextBotPlayer, a bot player (NextBotPlayer<CGMOD_Player>) run
--- by a Lua class as a CLuaNextBot is by its ENT, base_nextbot2's interface on a player: its
+-- by a Lua class as a CLuaNextBot is by its ENT, base_nb2's interface on a player: its
 -- profile, its root in the engine's Behavior, its life; and what a player has besides: the
 -- console commands it runs and the user command it is given. Its components (locomotion,
 -- body, vision) answer the engine from Lua puppets (nextsoldier.engine.Puppet). Over fakes of
@@ -77,7 +77,7 @@ local function Made (class, fields)
 	return ply, engine, services
 end
 
--- A class's own behaviour, deriving from the base's root, as base_nextbot2's classes do.
+-- A class's own behaviour, deriving from the base's root, as base_nb2's classes do.
 local BaseRoot = action_registry.Get ("NextBotPlayer")
 local TestRoot = action_registry.Register ("TestPlayerRoot", {}, "NextBotPlayer")
 function TestRoot:OnStart (me)
@@ -440,7 +440,7 @@ T.test ("the game's hooks reach its bots, and only them", function ()
 	T.eq (Player.Of (ply),  nil, "forgotten")
 end)
 
-T.test ("its default hooks are base_nextbot2's", function ()
+T.test ("its default hooks are base_nb2's", function ()
 	local base = Player.Get ("base_nextbot_player")
 	for _, name in ipairs ({ "SetupProfile", "OnProfile", "RootAction", "InitialAction", "Reset", "IsAlive", "IsDead",
 		"OnInjured", "OnKilled", "OnDeath", "OnRemove", "BehaveStart", "BehaveUpdate", "CalcDesiredSpeed", "Think",

@@ -1,8 +1,8 @@
--- base_nextbot2's SetupProfile: each bot's profile tables read through its class's to each
+-- base_nb2's SetupProfile: each bot's profile tables read through its class's to each
 -- base class's, and the walk up the bases ends. GMod's base_entity is its own base
 -- (ENT.Base = "base_entity"), which once held a spawn in that walk for good.
 local T = dofile ("tests/harness.lua")
-local FOLDER = "addons/nextsoldier/lua/entities/base_nextbot2/"
+local FOLDER = "addons/nextsoldier/lua/entities/base_nb2/"
 
 -- shared.lua as GMod runs it, ENT global, under stubs for what it reads at load.
 local function LoadShared ()
@@ -30,10 +30,10 @@ local Base = LoadShared ()
 -- Classes as scripted_ents stores them, GMod's own bases among them.
 local classes =
 {
-	base_entity   = { Base = "base_entity" },
-	base_nextbot2 = Base,
-	npc_middle    = { Base = "base_nextbot2", LocomotionDefaults = { WalkSpeed = 75 } },
-	npc_top       = { Base = "npc_middle", LocomotionDefaults = { RunSpeed = 400 } }
+	base_entity = { Base = "base_entity" },
+	base_nb2    = Base,
+	npc_middle  = { Base = "base_nb2", LocomotionDefaults = { WalkSpeed = 75 } },
+	npc_top     = { Base = "npc_middle", LocomotionDefaults = { RunSpeed = 400 } }
 }
 scripted_ents =
 {
@@ -48,7 +48,7 @@ local function Bot (class)
 end
 
 T.test ("the walk ends at base_entity, its own base", function ()
-	local bot = Bot ("base_nextbot2")
+	local bot = Bot ("base_nb2")
 	bot:SetupProfile ()
 	T.eq (bot.LocomotionDefaults.WalkSpeed, Base.LocomotionDefaults.WalkSpeed)
 end)

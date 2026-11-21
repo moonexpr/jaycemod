@@ -60,7 +60,7 @@ end)
 local GAMEMODE_ENTITIES = "addons/sandcastle/gamemodes/wetsands/entities/entities/"
 
 T.test ("the soldier's base is the addon's; the gamemode's actors and combatants are the gamemode's", function ()
-	for _, base in ipairs ({ "base_nextbot2", "base_nextsoldier" }) do
+	for _, base in ipairs ({ "base_nb2", "base_nextsoldier" }) do
 		T.eq (Exists (ADDON .. "lua/entities/" .. base .. "/init.lua"), true, base .. " in the addon, a folder entity")
 		T.eq (Exists (ADDON .. "lua/entities/" .. base .. "/shared.lua"), true, base .. "'s shared part")
 		T.eq (Exists (GAMEMODE_ENTITIES .. base .. ".lua"), false, base .. " out of the gamemode")
@@ -83,10 +83,10 @@ local function Code (path)
 end
 
 -- A folder entity's code, every file of it, and its base's under it: the soldier's base is
--- base_nextsoldier on base_nextbot2.
+-- base_nextsoldier on base_nb2.
 local function BaseCode ()
 	local parts = {}
-	for _, base in ipairs ({ "base_nextbot2", "base_nextsoldier" }) do
+	for _, base in ipairs ({ "base_nb2", "base_nextsoldier" }) do
 		for _, path in ipairs (Lines ("find " .. ADDON .. "lua/entities/" .. base .. " -name '*.lua' | sort")) do
 			parts [#parts + 1] = Code (path)
 		end

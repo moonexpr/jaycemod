@@ -37,15 +37,15 @@ T.test ("a reload refills the name in place, its derived classes reading the new
 end)
 
 T.test ("a second class claiming a name from another base is refused, the first left as it is", function ()
-	Registry.Register ("NextBot2", {})
+	Registry.Register ("NB2", {})
 	local OWNER = "base_nextsoldier/init.lua"
-	local Root = Registry.Register ("NextSoldier", { Root = function () return true end }, "NextBot2", OWNER)
+	local Root = Registry.Register ("NextSoldier", { Root = function () return true end }, "NB2", OWNER)
 	local ok, why = pcall (Registry.Register, "NextSoldier", { Monitor = true }, nil, OWNER)
 	T.eq (ok, false)
-	T.eq (tostring (why):find ("deriving from NextBot2, not Action", 1, true) ~= nil, true, tostring (why))
+	T.eq (tostring (why):find ("deriving from NB2, not Action", 1, true) ~= nil, true, tostring (why))
 	T.eq (Registry.Get ("NextSoldier") == Root, true)
 	T.eq (Registry.New ("NextSoldier"):Root (), true, "its hooks kept")
-	T.eq (Registry.BaseOf ("NextSoldier"), "NextBot2")
+	T.eq (Registry.BaseOf ("NextSoldier"), "NB2")
 end)
 
 T.test ("a name is its file's: another file claiming it, even from the same base, is refused", function ()

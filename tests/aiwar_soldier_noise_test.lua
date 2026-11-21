@@ -30,7 +30,7 @@ local function Listener ()
 	function bot:GetHearingCoefficient () return 1 end
 	function bot:GetRangeTo () return 10 end
 	function bot:VisibleVec () return true end
-	-- the base's helper (base_nextbot2's sh_helpers), not DrGBase's Timer, which it dropped
+	-- the base's helper (base_nb2's sh_helpers), not DrGBase's Timer, which it dropped
 	function bot:_Timer () self.heard = self.heard + 1 end
 	return bot
 end
