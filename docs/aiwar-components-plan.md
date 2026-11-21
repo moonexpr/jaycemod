@@ -145,15 +145,22 @@ GMod's `INextBotPlayerInput` (win64 `server.dll`, vtable at the player's
 - **A. Done 2026-11-20 (NextSoldier `141a9de`). Every button bound natively**: `player_input.rs` holds each slot to its
   bit (or its jump, or the scale's fields) at bind; `engine.Press<X>Button`,
   `Release<X>Button`, `SetButtonScale`.
-- **B. `player_body.Command` in Rust** (`body/drive.rs`, pure): the hand's
+- **B. Done (NextSoldier `d6738e1`). `player_body.Command` in Rust** (`body/drive.rs`, pure): the hand's
   pan (marksmanship as it is), turning at `TURN_RATE`, stuck and wedged,
   jump and crouch-jump, firing on target only and a semi-automatic's taps,
   reload, chase and avoid, hurdles, lintels, doors. Its 22 LuaJIT tests
   (`nextsoldier_player_body_test.lua`) are its contract, carried into Rust.
-- **C. Drive in `Upkeep`**: a soldier's standing orders run each tick beside
+- **C. Done (NextSoldier `1bfe755`). Drive in `Upkeep`**: a soldier's standing orders run each tick beside
   its head; position, velocity and ground read natively (as `reach.rs` reads
   fields, from GMod's own Lua C functions), the aim point from its
   `CLuaNextBotVision`'s estimate.
+  What made it work, read from the binary: `PhysicsSimulate` moves a bot player at its
+  `ILocomotion` slot 82 (`GetRunSpeed`) times the button scale, and the base answers 0, so a
+  bot player never moved by its own keys (a native `PlayerLocomotion` answers it with the
+  gait's speed: a walk is a slower run); it presses `IN_DUCK` whenever `IBody` slot 68
+  (`IsActualPosture(CROUCH)`) answers true, which the base always does (a native posture
+  answers it). Live: a bot sent 600 units ran straight there at 200 u/s, upright, the Lua key
+  path off for it.
 - **D. The war on it**: its look (0.2 s) sends the standing orders
   (`engine.Drive (ply, orders)`: target, gait, crouch and jump areas, hop,
   hurdle and lintel, door, look and its priority, enemy, pan, ranges, fire,
