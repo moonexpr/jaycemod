@@ -178,6 +178,34 @@ The bots ran at their class's speed, upright, and fought (1,080 shots, 22 kills)
 Next: the look's own cost (`Think/ws_aiwar_bots`, its route and footing work),
 which `PathFollower` on the native locomotion would take.
 
+### Where a look's time goes, and weapons picked by sightlines
+
+pl_upward, 27 bot players, 2026-11-20. Measured by leaving each part of a look
+out for 8 s and reading the calendar's own measure of its looks
+(`.devtools/bin/aiwar_look_probe.lua`'s `Ablate`; timing between lines charges
+a part with whatever else ran in it): a look about 1.35 ms, of which steering
+about 500 µs, `SendOrders` 400, the weapon pick 280, the vision 250, the feel
+ahead 160. A soldier's tree (`.devtools/bin/aiwar_tree_probe.lua`) about 730
+µs an update, `Objective:Update` 380 of it and the two monitors 110 to 150
+each. With the collector stopped the war fell only 6 %: the cost is calls
+into GMod (a first call about 2 µs, a repeat 0.25; every `ply:Method` through
+GMod's Lua `__index`), not garbage.
+
+The pick ran at every look over all ten weapons a bot carries. Now
+(`sv_bots.lua`'s `Arm`) it runs when the distance it fights or readies for
+crosses into another band of what it carries (`Arms.Thresholds`, `Arms.Band`:
+within a band, `Pick` chooses the same whatever the distance or the gun in
+hand), its enemy changes, or the gun in hand is spent. With no enemy, the
+distance is its place's sightline reach (`features.aiwar.sightlines`: 16 rays
+at eye height against what blocks sight, the distance three quarters of them
+go within; measured the first time a bot stands in an area, about 900 µs, and
+kept), not a fixed 1000: the bots held a crossbow, pistols, shotguns and SMGs
+by place where all held the SMG. A look re-picks on about one in five; head
+to head in the same ticks, `Arm` 40 µs a look against 209 for the old pick.
+The PVS was the other way to read a place's openness (the binary binds
+`GetPVSForCluster`), but it sees cluster to cluster, round corners and
+through closed doors; the rays read the walls.
+
 ### What slices 1 and 2 measured
 
 `hostility = "teams"` (`world::by_teams`, TF2's `CTFBot::IsEnemy`; each body's

@@ -139,6 +139,37 @@ T.test ("a carried weapon is asked its class once, however often it is measured"
 	end
 end)
 
+-- A soldier picks again only when the distance it fights or readies for crosses into another band
+-- of what it carries: within one, the pick is the same whatever the distance, whatever it holds.
+T.test ("within one band of its weapons, it picks the same weapon at any distance", function ()
+	local thresholds = Arms.Thresholds (ALL)
+	local held = { false }
+	for _, weapon in ipairs (ALL) do held [#held + 1] = weapon end
+	for band = 0, #thresholds do
+		local low = thresholds [band] or 0
+		local high = thresholds [band + 1] or low + 4000
+		for _, hand in ipairs (held) do
+			local first
+			for step = 1, 9 do
+				local distance = low + (high - low) * step / 10
+				T.eq (Arms.Band (thresholds, distance), band, "its band")
+				local pick = Arms.Pick (ALL, distance, hand or nil, Usable)
+				first = first or pick
+				T.eq (pick, first, string.format ("band %d at %.0f, holding %s", band, distance, hand and hand.class or "nothing"))
+			end
+		end
+	end
+end)
+
+T.test ("its bands part where its weapons' reaches end", function ()
+	local thresholds = Arms.Thresholds ({ SHOTGUN, MP5 })
+	T.eq (Arms.Band (thresholds, Arms.Reach (SHOTGUN) - 1) < Arms.Band (thresholds, Arms.Reach (SHOTGUN) + 1), true,
+		"past the shotgun's reach")
+	T.eq (Arms.Band (thresholds, Arms.Reach (MP5) - 1) < Arms.Band (thresholds, Arms.Reach (MP5) + 1), true,
+		"past the MP5's")
+	for i = 2, #thresholds do T.eq (thresholds [i] > thresholds [i - 1], true, "in order, once each") end
+end)
+
 T.test ("every Black Mesa gun can be aimed, measured and approached", function ()
 	for _, name in ipairs ({ "glock", "357", "mp5", "shotgun", "crossbow", "rpg", "tau", "gluon", "hivehand" }) do
 		local gun = Carried ("weapon_bmesa_" .. name)

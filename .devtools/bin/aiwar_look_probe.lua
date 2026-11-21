@@ -48,18 +48,6 @@ local function Look (Controller, skip, Add)
 		soldier.mayFire = contact ~= nil and not soldier.disarmed
 			and entry.npc:Query ("ShouldAttack", contact) ~= NpcSystem.ANSWER_NO
 		t = Add ("query", t)
-		if skip ~= "pick" then
-			local held = ply:GetActiveWeapon ()
-			soldier.wantWeapon = Arms.Pick (ply:GetWeapons (),
-				contact and ply:GetPos ():Distance (contact:GetPos ()) or Arms.IDLE_DISTANCE,
-				IsValid (held) and held or nil,
-				function (weapon)
-					local ammo = weapon:GetPrimaryAmmoType ()
-					return ammo < 0 or weapon:Clip1 () > 0 or ply:GetAmmoCount (ammo) > 0
-				end
-			)
-		end
-		t = Add ("pick", t)
 		if skip ~= "area" then
 			local area = navmesh.GetNavArea (ply:GetPos (), HL2Path.LIMITS.stepHeight * 2)
 			if area ~= soldier.navArea then
@@ -71,6 +59,8 @@ local function Look (Controller, skip, Add)
 			end
 		end
 		t = Add ("area", t)
+		if skip ~= "pick" then self:Arm (ply, soldier, contact) end
+		t = Add ("pick", t)
 		if skip ~= "ammo" then
 			for _, weapon in ipairs (ply:GetWeapons ()) do
 				local ammo = weapon:GetPrimaryAmmoType ()
