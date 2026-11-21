@@ -161,11 +161,22 @@ GMod's `INextBotPlayerInput` (win64 `server.dll`, vtable at the player's
   (`IsActualPosture(CROUCH)`) answers true, which the base always does (a native posture
   answers it). Live: a bot sent 600 units ran straight there at 200 u/s, upright, the Lua key
   path off for it.
-- **D. The war on it**: its look (0.2 s) sends the standing orders
+- **D. Done (Sandcastle `63645b1`). The war on it**: its look (0.2 s) sends the standing orders
   (`engine.Drive (ply, orders)`: target, gait, crouch and jump areas, hop,
   hurdle and lintel, door, look and its priority, enemy, pan, ranges, fire,
   weapon); `StartCommand/ws_aiwar_bots` and `player_body.lua`'s key path go.
   The 200 to 250 ms/s of `Drive` at 16v16 is what it removes.
+
+### What the key presses as standing orders measured
+
+pl_upward, 16v16 of bot players, a minute of combat, the probe's hooks alone
+(`.devtools/artifacts/aiwar_probe_16v16_drive_*`): `StartCommand/ws_aiwar_bots`
+33 ms/s from 209 (18 µs a call from 135); the looks' orders (`SendOrders`) 26
+ms/s, 238 µs each, of which `engine.Drive` 14 µs and the rest the weapon's
+ranges and state; the war 365 ± 8 ms/s from 458 ± 7; 64 ticks a second from 56.
+The bots ran at their class's speed, upright, and fought (1,080 shots, 22 kills).
+Next: the look's own cost (`Think/ws_aiwar_bots`, its route and footing work),
+which `PathFollower` on the native locomotion would take.
 
 ### What slices 1 and 2 measured
 
