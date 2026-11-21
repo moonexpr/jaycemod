@@ -48,7 +48,7 @@ local environment = setmetatable (
 		},
 		nextsoldier =
 		{
-			senses = { vision = {} },
+			senses = { sight = {} },
 			body = { player_body = {} },
 			locomotion =
 			{

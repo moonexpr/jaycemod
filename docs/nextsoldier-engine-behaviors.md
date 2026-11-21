@@ -307,8 +307,9 @@ component each time. `actor.intention`'s methods are `engine.*`'s with the actor
 A component slot that moves in a GMod update refuses only `Components` (the reason in
 `engine.componentsRefused`), never the rest of the binding.
 
-**Not yet.** The AI war's soldiers still see through `nextsoldier.senses.vision`, in Lua; moving
-them onto `actor.vision` is where the saving is. `GetPrimaryKnownThreat` takes its enemies
+**Not yet.** The AI war's bot players see through the binary's CLuaNextBotVision, as
+`base_nextbot2`'s NextBots do (`nextsoldier.senses.sight`), not through `actor.vision`, the
+engine's own IVision, which reads no enemy's motion for the war's aim. `GetPrimaryKnownThreat` takes its enemies
 from the engine's `IsEnemy` (teams), not a soldier's relations. A head's `AimHeadTowards` at an
 entity looks at where its eyes are when asked, not as it moves.
 

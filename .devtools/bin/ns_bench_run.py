@@ -216,7 +216,7 @@ return util.TableToJSON({
 	planned = soldier.planned ~= nil,
 	pinned = soldier.pin ~= nil,
 	round = WS.State(),
-	enemy = (function() local e = soldier.vision:Contact() return IsValid(e) and e:EntIndex() or nil end)(),
+	enemy = (function() local e = soldier.vision:Enemy() return IsValid(e) and e:EntIndex() or nil end)(),
 	distance = math.Round(pos:Distance(%(goal)s)),
 })
 """
