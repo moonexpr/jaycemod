@@ -124,6 +124,21 @@ local MIDDLING = Arms.Reach (SHOTGUN) + 1
 local FAR = Arms.Reach (MP5) + 1
 local BEYOND = Arms.Reach (CROSSBOW) + 1
 
+-- A weapon entity's fields are read through GMod's __index, in Lua: each look reads every weapon
+-- a bot carries several times, so what a weapon is (its class) is asked of it once.
+T.test ("a carried weapon is asked its class once, however often it is measured", function ()
+	for _, class in ipairs ({ "weapon_bmesa_mp5", "weapon_physgun" }) do
+		local asked = 0
+		local gun = { GetClass = function () asked = asked + 1 return class end }
+		for _ = 1, 3 do
+			Arms.Ranges (gun)
+			Arms.Reach (gun)
+			Arms.Pick ({ gun }, 500, gun, Usable)
+		end
+		T.eq (asked, 1, class)
+	end
+end)
+
 T.test ("every Black Mesa gun can be aimed, measured and approached", function ()
 	for _, name in ipairs ({ "glock", "357", "mp5", "shotgun", "crossbow", "rpg", "tau", "gluon", "hivehand" }) do
 		local gun = Carried ("weapon_bmesa_" .. name)
