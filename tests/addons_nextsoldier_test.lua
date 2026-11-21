@@ -150,7 +150,7 @@ T.test ("a host is held to the port before a soldier reads it", function ()
 	local nextbot = {}
 	for _, method in ipairs (Host.NEXTBOT:Methods ()) do nextbot [method] = function () end end
 	T.eq (Host.Install (nextbot),   nextbot, "a plain NextBot's host needs NEXTBOT alone")
-	T.eq (#Host.NEXTBOT:Methods (), 5,       "Movement, PathClearance, PathDebug, Marksmanship, SolidMask")
+	T.eq (#Host.NEXTBOT:Methods (), 6,       "Movement, PathClearance, PathDebug, Marksmanship, SolidMask, TeamOf")
 	T.eq (pcall (Host.Soldier),     false,   "a soldier asks for the rest, and is refused naming it")
 	Host.current, Host.soldier = kept, keptSoldier
 end)
