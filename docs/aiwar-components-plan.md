@@ -114,6 +114,52 @@ pl_upward with no Lua errors.
    and lead time; `player_body.lua`'s key path retired, `StartCommand` kept
    as the escape hatch.
 
+### Key presses as standing orders (slices 3 and 5, as built)
+
+Asked 2026-11-20: key presses as action code on think intervals, not per tick.
+Lua decides at a look's interval (0.2 s); native code, in each soldier's
+`Upkeep` (`main_nextsoldier.rs`, where `look.rs` already turns the head every
+tick), turns the standing orders into the tick's buttons. This *is* the SDK's
+`PlayerLocomotion::Approach` and `PlayerBody::AimHeadTowards`, which run every
+update because `SetButtonScale` holds for 0.01 s (GMod's slot 24).
+
+GMod's `INextBotPlayerInput` (win64 `server.dll`, vtable at the player's
+`+0x3348`, 25 slots; the SDK's pairs without `SpecialFire`), read 2026-11-20:
+
+| Slots | Button | Bit | Timer |
+|---|---|---|---|
+| 0/1 | Fire | `IN_ATTACK` 0x1 | +0x10 |
+| 2/3 | AltFire | jumps to 4/5 | |
+| 4/5 | Melee | `IN_ATTACK2` 0x800 | +0x18 |
+| 6/7 | Use | `IN_USE` 0x20 | +0x20 |
+| 8/9 | Reload | `IN_RELOAD` 0x2000 | +0x28 |
+| 10/11 | Forward | `IN_FORWARD` 0x8 | +0x30 |
+| 12/13 | Backward | `IN_BACK` 0x10 | +0x38 |
+| 14/15 | Left | `IN_MOVELEFT` 0x200 | +0x40 |
+| 16/17 | Right | `IN_MOVERIGHT` 0x400 | +0x48 |
+| 18/19 | Jump | `IN_JUMP` 0x2 | +0x50 |
+| 20/21 | Crouch | `IN_DUCK` 0x4 | +0x58 |
+| 22/23 | Walk | `IN_SPEED` 0x20000 | +0x60 |
+| 24 | `SetButtonScale (forward, right)` | +0x74, +0x78 | holds 0.01 s |
+
+- **A. Done 2026-11-20 (NextSoldier `141a9de`). Every button bound natively**: `player_input.rs` holds each slot to its
+  bit (or its jump, or the scale's fields) at bind; `engine.Press<X>Button`,
+  `Release<X>Button`, `SetButtonScale`.
+- **B. `player_body.Command` in Rust** (`body/drive.rs`, pure): the hand's
+  pan (marksmanship as it is), turning at `TURN_RATE`, stuck and wedged,
+  jump and crouch-jump, firing on target only and a semi-automatic's taps,
+  reload, chase and avoid, hurdles, lintels, doors. Its 22 LuaJIT tests
+  (`nextsoldier_player_body_test.lua`) are its contract, carried into Rust.
+- **C. Drive in `Upkeep`**: a soldier's standing orders run each tick beside
+  its head; position, velocity and ground read natively (as `reach.rs` reads
+  fields, from GMod's own Lua C functions), the aim point from its
+  `CLuaNextBotVision`'s estimate.
+- **D. The war on it**: its look (0.2 s) sends the standing orders
+  (`engine.Drive (ply, orders)`: target, gait, crouch and jump areas, hop,
+  hurdle and lintel, door, look and its priority, enemy, pan, ranges, fire,
+  weapon); `StartCommand/ws_aiwar_bots` and `player_body.lua`'s key path go.
+  The 200 to 250 ms/s of `Drive` at 16v16 is what it removes.
+
 ### What slices 1 and 2 measured
 
 `hostility = "teams"` (`world::by_teams`, TF2's `CTFBot::IsEnemy`; each body's
