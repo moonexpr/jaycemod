@@ -6,6 +6,7 @@ local Teams = gameplay.teams
 
 local SOURCE = T.ROOT .. "sv_teams.lua"
 local RUNNER = 21 -- ULX's team for a user group, as one server has it
+local GMOD_SPECTATOR = 1002 -- GMod's TEAM_SPECTATOR, not TF2's
 
 -- active: whether a game is on (WS.Active, and WS.TeamPlay: Gameplay mode);
 -- choice: whether players may pick a team (WS.MayPickTeam), as active by
@@ -60,6 +61,7 @@ local function Load (active, choice)
 			CreateConVar = function () return { GetBool = function () return true end } end,
 			FCVAR_NOTIFY = 256,
 			IsValid = function (v) return v ~= nil end,
+			TEAM_SPECTATOR = GMOD_SPECTATOR,
 			OBS_MODE_FIXED = 1,
 			OBS_MODE_ROAMING = 5
 		}, { __index = _G })
@@ -92,6 +94,7 @@ local function Player (own, current)
 	function ply:StripWeapons () self.stripped = true end
 	function ply:Alive () return self.alive == true end
 	function ply:KillSilent () self.alive = false end
+	function ply:Kill () self.alive = false end
 	return ply
 end
 
@@ -141,6 +144,26 @@ T.test ("unassigned and spectator teams use native fixed and roaming observer mo
 	T.eq (ply.observerMode, 1,                  "unassigned fixed observer")
 	world.ws.SetPlayerTeam (ply, Teams.SPECTATOR, true)
 	T.eq (ply.observerMode, 5, "spectator team roaming observer")
+end)
+
+-- GM:PlayerRequestTeam is asked in GMod's team numbers: base's changeteam,
+-- and Sandcastle's jointeam (logic_sc_teamrules), which takes the command's name.
+T.test ("a team request in GMod's numbers puts a player on that team, GMod's spectators TF2's", function ()
+	local world = Load (true)
+	local ply = Player (Teams.RED, Teams.RED)
+	ply.alive = true
+	world.ws.RequestTeam (ply, GMOD_SPECTATOR)
+	T.eq (ply:Team (),      Teams.SPECTATOR, "spectating")
+	T.eq (ply.observerMode, 5,               "roaming")
+	world.ws.RequestTeam (ply, Teams.BLUE)
+	T.eq (ply:Team (), Teams.BLUE, "on BLU")
+end)
+
+T.test ("a team request for a team no one may join changes nothing", function ()
+	local world = Load (true)
+	local ply = Player (Teams.UNASSIGNED, Teams.UNASSIGNED)
+	world.ws.RequestTeam (ply, RUNNER)
+	T.eq (ply:Team (), Teams.UNASSIGNED, "still unassigned")
 end)
 
 T.test ("without team choice, jointeam changes nothing", function ()
