@@ -58,6 +58,7 @@ def layout(tmp_path: Path) -> Layout:
     (shared / "garrysmod" / "addons" / "luadev").mkdir(parents=True)
     (shared / "garrysmod" / "gamemodes").mkdir()
     (shared / "garrysmod" / "data").mkdir()
+    (shared / "garrysmod" / "cfg").mkdir()
     (shared / "garrysmod" / "lua" / "bin").mkdir(parents=True)
     (shared / "garrysmod" / "lua" / "includes").mkdir()
     for source in SERVER_BINARIES.values():
@@ -109,6 +110,31 @@ def test_every_shared_entry_is_a_link_and_the_servers_own_folders_are_real(layou
         path = root / "garrysmod" / own
         assert path.is_dir() and not path.is_symlink(), own
     assert not (root / "garrysmod" / "console.log").exists(), "the server writes its own log"
+
+
+# The game's cfg/addonnomount.txt lists the Workshop addons the operator
+# turned off in the game; the server mounts every one it hosts, so its cfg is
+# its own folder of links to the game's files, that list left out.
+def test_the_servers_cfg_links_the_games_files_but_not_its_disabled_addons(layout):
+    cfg = layout.shared / "garrysmod" / "cfg"
+    (cfg / "mount.cfg").write_text('"mountcfg" {}')
+    (cfg / "addonnomount.txt").write_text('"addonnomount" { "1" "131759821" }')
+    root = build(layout)
+    own = root / "garrysmod" / "cfg"
+    assert own.is_dir() and not own.is_symlink()
+    assert (own / "mount.cfg").resolve() == cfg / "mount.cfg"
+    assert not (own / "addonnomount.txt").exists()
+
+
+def test_a_server_root_whose_cfg_was_a_link_gets_its_own_and_the_games_is_untouched(layout):
+    cfg = layout.shared / "garrysmod" / "cfg"
+    (cfg / "addonnomount.txt").write_text("the game's list")
+    (layout.root / "garrysmod").mkdir(parents=True)
+    (layout.root / "garrysmod" / "cfg").symlink_to(cfg)
+    root = build(layout)
+    assert not (root / "garrysmod" / "cfg").is_symlink()
+    assert not (root / "garrysmod" / "cfg" / "addonnomount.txt").exists()
+    assert (cfg / "addonnomount.txt").read_text() == "the game's list"
 
 
 # The game and the server each write clients' Lua errors to their own

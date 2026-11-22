@@ -185,7 +185,11 @@ PE_SIGNATURE = b"PE\0\0"
 SUBSYSTEM_OFFSET = 4 + 20 + 68
 CONSOLE_SUBSYSTEM = 3  # IMAGE_SUBSYSTEM_WINDOWS_CUI
 # garrysmod/ entries the server owns: never links into the operator's game
-OWN = ("addons", "data", "cache", "lua", "console.log", "clientside_errors.txt")
+OWN = ("addons", "data", "cache", "lua", "cfg", "console.log", "clientside_errors.txt")
+# cfg/ entries the server never takes from the game: addonnomount.txt lists the
+# Workshop addons the operator turned off in the game, and the server mounts
+# every one it hosts (+host_workshop_collection)
+GAME_ONLY_CFG = ("addonnomount.txt",)
 # The gamemodes folder, and the gamemode the server runs. An instance may run
 # another checkout's (a worktree's addons/sandcastle/gamemodes/sandcastle)
 # when GAMEMODE_ENV names its folder; the others keep the shared install's.
@@ -461,8 +465,11 @@ def build(layout: Layout) -> Path:
         if entry.name not in OWN and entry.name != GAMEMODES:
             link(game / entry.name, entry)
     place_gamemodes(layout, game / GAMEMODES)
-    for own in ("addons", "data", "cache", "lua", "lua/bin"):
+    for own in ("addons", "data", "cache", "lua", "lua/bin", "cfg"):
         own_dir(game / own)
+    for entry in (layout.shared / "garrysmod" / "cfg").iterdir():
+        if entry.name not in GAME_ONLY_CFG:
+            link(game / "cfg" / entry.name, entry)
     shared_lua = layout.shared / "garrysmod" / "lua"
     for entry in shared_lua.iterdir():
         if entry.name != "bin":
