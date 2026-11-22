@@ -185,7 +185,7 @@ T.test ("the rounds bindings load the feature on first use, never at file top le
 		tf_gamerules = wetsands,
 		team_round_timer = wetsands,
 		game_round_win = sandcastle,
-		tf_logic_competitive = sandcastle
+		tf_logic_competitive = wetsands
 	}
 	for file, folder in pairs (files) do
 		local source = Read (folder .. file .. ".lua")

@@ -1493,7 +1493,7 @@ T.test ("the fake implements every boss and Merasmus method, and none shadows an
 	end
 end)
 
-local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
+local ENTITIES = "addons/sandcastle/gamemodes/wetsands/entities/entities/"
 
 local function ReadFile (path)
 	local f = assert (io.open (path, "r"))

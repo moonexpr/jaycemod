@@ -3,7 +3,7 @@
 local T = dofile("tests/harness.lua")
 local Buildings = gameplay.buildings
 
-local DIR = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
+local DIR = "addons/sandcastle/gamemodes/wetsands/entities/entities/"
 local ASSEMBLING, RUNNING, BBOX = 462, 465, 2
 local SENTRY, SENTRY_BUILD = "models/buildables/sentry1.mdl", "models/buildables/sentry1_heavy.mdl"
 local TELEPORTER = "models/buildables/teleporter.mdl"

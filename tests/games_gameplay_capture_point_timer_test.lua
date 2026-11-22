@@ -130,7 +130,7 @@ T.test ("the 15, 10 and 5 second marks fire nothing", function ()
 end)
 
 -- Seam checks, read as text.
-local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
+local ENTITIES = "addons/sandcastle/gamemodes/wetsands/entities/entities/"
 
 local function Read (path)
 	local f = assert (io.open (path, "rb"))

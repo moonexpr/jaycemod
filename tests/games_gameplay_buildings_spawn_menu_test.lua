@@ -4,7 +4,7 @@
 local T = dofile("tests/harness.lua")
 local Teams = gameplay.teams
 
-local DIR = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
+local DIR = "addons/sandcastle/gamemodes/wetsands/entities/entities/"
 
 local function Load(file, world)
 	local ENT = {}

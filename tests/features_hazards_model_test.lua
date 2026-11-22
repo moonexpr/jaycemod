@@ -486,7 +486,7 @@ end)
 
 -- The bindings
 
-local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
+local ENTITIES = "addons/sandcastle/gamemodes/wetsands/entities/entities/"
 local BINDINGS =
 {
 	"tf_pumpkin_bomb.lua",

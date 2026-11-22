@@ -3,7 +3,7 @@
 local T = dofile("tests/harness.lua")
 local Buildings = gameplay.buildings
 
-local FILE = "addons/sandcastle/gamemodes/sandcastle/entities/weapons/weapon_wrench.lua"
+local FILE = "addons/sandcastle/gamemodes/wetsands/entities/weapons/weapon_wrench.lua"
 local RED, BLUE = 2, 3
 
 -- Enough of a Vector for a swing's line: added, and scaled.
