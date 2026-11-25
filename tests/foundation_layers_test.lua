@@ -196,6 +196,7 @@ local NEXTSOLDIER =
 	["locomotion/route_record"] = "nextsoldier",
 	["locomotion/route_walk"] = "nextsoldier",
 	["locomotion/flight"] = "nextsoldier",
+	["locomotion/airways"] = "nextsoldier",
 	["senses"] = "nextsoldier",
 	["senses/sight"] = "nextsoldier",
 	["behavior"] = "nextsoldier",
