@@ -92,6 +92,23 @@ T.test ("a graph written and read back is the same graph, byte for byte in layou
 	T.eq (back.nodes [2].hammerId,  2,                     "lookup table")
 end)
 
+-- NodeType_e (ai_node.h) and Capability_t (basecombatcharacter.h): air nodes link to air nodes
+-- only, each link flown by the centred hulls that fit (CAI_NetworkBuilder::ComputeConnection).
+T.test ("air nodes and flying links are the engine's", function ()
+	T.eq (Graph.NODE_AIR,     3, "NODE_AIR")
+	T.eq (Graph.CAP_MOVE_FLY, 4, "bits_CAP_MOVE_FLY")
+	local graph =
+	{
+		mapVersion = 1,
+		nodes = { { pos = P (0, 0, 72), type = Graph.NODE_AIR }, { pos = P (300, 0, 72), type = Graph.NODE_AIR } },
+		links = { { a = 1, b = 2, moves = { [1] = Graph.CAP_MOVE_FLY, [6] = Graph.CAP_MOVE_FLY } } }
+	}
+	local back = assert (Graph.Decode (Graph.Encode (graph)))
+	T.eq (back.nodes [2].type,      Graph.NODE_AIR,     "an air node")
+	T.eq (back.links [1].moves [6], Graph.CAP_MOVE_FLY, "flown by the tiny centred hull")
+	T.eq (back.links [1].moves [0], 0,                  "walked by no one")
+end)
+
 T.test ("the header alone can be read, to tell whether an installed graph fits the map", function ()
 	local data = Graph.Encode ({ mapVersion = 7, nodes = { { pos = P (0, 0) } }, links = {} })
 	local header = Graph.Decode (data, true)
