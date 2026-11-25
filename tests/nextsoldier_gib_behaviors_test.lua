@@ -782,4 +782,20 @@ T.test ("held by its main tree, any legs action waits until every holder has let
 	T.eq (plain:OnLegsHold (me, first).type,    Action.SUSPEND_FOR, "and held as any")
 end)
 
+T.test ("every legs action, the wait among them, answers being held and let go", function ()
+	local Registry = action_registry
+	T.eq (Registry.BaseOf ("LegsWait"), "Legs", "the wait is a legs action")
+	local order = Muster ()
+	local me = OnOrder (order)
+	T.eq (GIB.LegsPatrol:New ({ order = order }):OnLegsRelease (me, {}).type, Action.CONTINUE, "nothing to let go")
+	Registry.Register ("LegsLoiter", {}, "Legs")
+	T.eq (Registry.New ("LegsLoiter").name, "LegsLoiter", "a new legs action answers through Legs")
+	T.eq (Registry.Unanswered ().LegsLoiter, nil)
+	Registry.Responders ("Legs", { "OnLegsLoiter" })
+	T.eq (pcall (Registry.New, "LegsLoiter"),     false, "a responder added to the family binds every legs action")
+	T.eq (pcall (GIB.LegsWait.New, GIB.LegsWait), false, "the wait among them")
+	Registry.Responders ("Legs", {})
+	T.eq (GIB.LegsWait:New ().name, "LegsWait")
+end)
+
 T.finish ()

@@ -362,7 +362,11 @@ locomotion, vision, body, a battery), and `base_nextsoldier` on it, the soldier.
 one when the class sets `ClimbLedges`/`SprintJumps`), so any class on it can. The actions an
 engine runs are registered by name in `action_registry` (`lua/includes/modules/`, a global
 as `player_manager` is: `Register(name, class, base)`, `Get`, `New`, `Exists`, `GetAll`,
-`BaseOf`, `Pending`), which `nextsoldier.behavior.action`'s `Extend` goes through.
+`BaseOf`, `Pending`; `Responders(name, events)` the events every action deriving from name must
+answer, by a hook of a class in that family, beyond `nextsoldier.behavior.EVENTS` (the legs'
+`OnLegsHold`, `OnLegsRelease`), each file's list its own; `Unanswered`, `Check([name])`: an action
+leaving one is refused as it is made, and by `sh_init.lua` at load), which
+`nextsoldier.behavior.action`'s `Extend` goes through.
 What the soldier needs of the mode hosting it comes through `nextsoldier.host`;
 the gamemode's host is `gamemode/sh_nextsoldier_host.lua`, its one place of
 wiring. The gamemode may read NextSoldier's collections; never the reverse.
