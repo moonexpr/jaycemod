@@ -314,6 +314,8 @@ T.test ("nextbot_cscanner gives its actions every method of their port", functio
 	setfenv (chunk, env) ()
 	T.eq (ENT.Base,                 "base_nextbot2")
 	T.eq (type (ENT.InitialAction), "function")
+	T.eq (type (ENT.PhysicsSimulate), "function", "its motion controller: HL2's physics flyer")
+	T.eq (type (ENT.SetupFlight), "function")
 	for _, method in ipairs (Scanner.PORT:Methods ()) do
 		-- an entity's own, from the engine
 		if method ~= "Health" then T.eq (type (ENT [method]), "function", "it defines " .. method) end
