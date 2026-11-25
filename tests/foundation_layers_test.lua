@@ -202,6 +202,7 @@ local NEXTSOLDIER =
 	["behavior/battery"] = "nextsoldier",
 	["behavior/ctfbot"] = "nextsoldier",
 	["behavior/pathfollower"] = "nextsoldier",
+	["behavior/cscanner"] = "nextsoldier",
 	["behavior/group_identity"] = "nextsoldier",
 	["behavior/gib_behaviors"] = "nextsoldier",
 	["squad/orders"] = "nextsoldier",
