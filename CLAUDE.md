@@ -358,7 +358,8 @@ line, written by hand, and sends clients each. A file names its module
 Its entities are folder entities: `base_nextbot2` (`lua/entities/base_nextbot2/`), a NextBot
 base on the binary's engine (its root an action of ours, `ENT.Behavior`; its legs `ENT.Legs`;
 locomotion, vision, body, a battery), and `base_nextsoldier` on it, the soldier; `nextbot_cscanner`
-(`lua/entities/`), HL2's city scanner on `base_nextbot2`, flown by its own velocity. Jumping is
+(`lua/entities/`), HL2's city scanner on `base_nextbot2`, a physics flyer whose ground locomotion
+`engine.NextBotLocomotion` takes over (`CLuaLocomotion`'s place, `CLuaNextBotFlight`: it moves nothing). Jumping is
 `base_nextbot2`'s (`Hop(p)` commands one; a path's climbs, gaps and laid sprint jumps ask for
 one when the class sets `ClimbLedges`/`SprintJumps`), so any class on it can. The actions an
 engine runs are registered by name in `action_registry` (`lua/includes/modules/`, a global
