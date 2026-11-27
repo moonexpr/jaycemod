@@ -1,5 +1,6 @@
 .devtools/artifacts/
 __pycache__/
+.pytest_cache/
 .DS_Store
 
 # native modules build here (native/<crate>, an addon's native/)

@@ -194,8 +194,7 @@ of the file: `local Geometry = math.geometry`, never
 `T.require`) is for what has no global: a module's own parts, features' and
 glue modules (stored directly under `includes/`). The rule holds for the game's code, the tests and the
 tools alike: only the loader, the indexes and the test harness require a
-published module by name (`tests/foundation_index_test.lua`;
-`.devtools/bin/foundation_globals.py` rewrites old requires).
+published module by name (`tests/foundation_index_test.lua`).
 foundation's namespaces load in `shared_loader.lua` after every namespace
 their modules read. The harness publishes the globals before any test, as
 the game does.
