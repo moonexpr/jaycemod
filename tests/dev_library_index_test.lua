@@ -1,4 +1,4 @@
--- The dev workbench's index (.claude/rules/live-server.md) against its
+-- The dev workbench's index (the dev-workbench skill, .claude/skills/dev-workbench/SKILL.md) against its
 -- code, both ways: every dev.* function the workbench defines, and every
 -- console command it registers, is named in the index; and every dev.*
 -- name or command the index names is one the workbench has. An agent reads
@@ -6,7 +6,7 @@
 -- found, and a name it keeps after the code drops it is a wrong turn.
 local T = dofile ("tests/harness.lua")
 
-local INDEX = ".claude/rules/live-server.md"
+local INDEX = ".claude/skills/dev-workbench/SKILL.md"
 local WORKBENCH = "addons/sandcastle_dev/lua/sandcastle_dev/"
 -- dev.load and dev.require: the dev server's mount defines them
 local MOUNT = ".devtools/server_lua/sandcastle_dev.lua"

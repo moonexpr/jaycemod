@@ -440,7 +440,7 @@ or a `LIBRARIES` line; a native-only test seam is a `NATIVE_ONLY` line).
 
 A structure's behaviour goes in its metamethods first (indexing, assigning,
 calling to walk or parse, `tostring`), with named methods as proxies
-(`.claude/rules/lua-metamethods.md`); the structures are to become userdata
+(the `glua-style` skill's `references/lua-metamethods.md`); the structures are to become userdata
 handles in a binary module, which honour all of them. LuaJIT ignores
 `__len`, `__pairs` and `__gc` on plain tables, so define `__len` and keep
 `Size` working today. Build a structure from the smaller ones (`cache` on

@@ -22,7 +22,9 @@ These rules target beginner-level output and AI agents; experienced developers m
 2. For a full example of a compliant file, read `references/example-good.lua`.
 3. For the contrasting example, read `references/example-bad.lua`.
 4. For a compact rule summary in code form, read `references/style-rules.lua`.
-5. After writing code, verify it against the checklist at the bottom of this file.
+5. Before writing a structure's behaviour (indexing, assigning, calling, `tostring`, `__len`), read
+   `references/lua-metamethods.md`: every metamethod and what triggers it.
+6. After writing code, verify it against the checklist at the bottom of this file.
 
 ## Formatting
 
