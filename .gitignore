@@ -1,4 +1,4 @@
-.devtools/artifacts/
+.workbench/artifacts/
 __pycache__/
 .pytest_cache/
 .DS_Store
@@ -8,10 +8,10 @@ native/*/target/
 addons/*/native/target/
 
 # the dev workbench's quicksave slots (named scenarios are kept)
-.devtools/scenarios/*/quick_*.json
+.workbench/scenarios/*/quick_*.json
 
 # reference material kept beside the repo, never committed
 reference/**/*
 
 # an experiment's results stay beside it, out of git
-.devtools/experiments/*/results/
+.workbench/experiments/*/results/

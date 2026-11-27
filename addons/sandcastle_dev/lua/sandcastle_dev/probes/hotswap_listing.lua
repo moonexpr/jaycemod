@@ -68,5 +68,5 @@ local hotswapEnv = setmetatable (
 		concommand = { Add = function (name, fn) commands [name] = fn end },
 		IsValid = function (v) return v ~= nil end
 	}, { __index = _G })
-setfenv (assert (loadfile (".devtools/bin/server_root/hotswap.lua")), hotswapEnv) ()
+setfenv (assert (loadfile (".workbench/bin/server_root/hotswap.lua")), hotswapEnv) ()
 commands.ws_hotswap_feature (nil, nil, { feature })

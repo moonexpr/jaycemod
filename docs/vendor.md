@@ -41,5 +41,5 @@ tree, graph, matrix, state machine, GMA).
 ## Changes
 
 Only `sh_bspquery.lua`: its one `/* */` comment is `--[[ ]]`, so
-`.devtools/bin/check_lua.sh` can compile it with LuaJIT. Every file starts
+`.workbench/bin/check_lua.sh` can compile it with LuaJIT. Every file starts
 with a three-line header naming where it came from.

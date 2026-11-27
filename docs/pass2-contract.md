@@ -30,7 +30,7 @@ addons/sandcastle/gamemodes/sandcastle/
                                  that owns them. NOT auto-loaded: the module that uses it loads it
                                  with WS.require("foundation.<system>") (sh_core.lua)
   entities/entities/<class>.lua  one file per TF2 entity class
-tests/harness.lua, tests/*_test.lua   LuaJIT tests for foundation modules, loaded with T.require (.devtools/bin/run_lua_tests.sh)
+tests/harness.lua, tests/*_test.lua   LuaJIT tests for foundation modules, loaded with T.require (.workbench/bin/run_lua_tests.sh)
 ```
 
 New modules need no wiring: drop a correctly prefixed file into gamemode/ws/, or a module(...) file into gamemode/foundation/.
@@ -65,7 +65,7 @@ New modules need no wiring: drop a correctly prefixed file into gamemode/ws/, or
 | **B rounds** | entities: tf_gamerules, team_round_timer, team_control_point_master, team_control_point_round, game_round_win, NEW game_forcerespawn, NEW tf_logic_holiday; modules: sv_controlpoint.lua, cl_announcer.lua, NEW sv_rounds*/cl_rounds*/foundation/rounds* |
 | **C players** | entities: func_regenerate, func_respawnroom, func_respawnroomvisualizer, func_nobuild, ws_brush_volume, ws_inert_point, ws_pickup_base, ws_trigger_volume, item_*, filter_activator_tfteam, NEW misc (trigger_stun, trigger_add/remove_tf_player_condition, trigger_catapult if GMod lacks it, func_nogrenades, bot_hint_*/func_nav_*/func_tfbot_hint no-ops, entity_spawn_point/manager, tf_ammo_pack); modules: sv_world.lua, sh_core.lua, gamemode/init.lua, NEW sv_teams*/cl_teams*/foundation/teams, foundation/spawn, foundation/players |
 | **D spectator** | no custom observer entity or controller; GMod's native observer modes and player classes |
-| integrator | gamemode/shared.lua, gamemode/cl_init.lua, sh_soundscripts.lua, docs/, .devtools/ |
+| integrator | gamemode/shared.lua, gamemode/cl_init.lua, sh_soundscripts.lua, docs/, .workbench/ |
 
 ## Interfaces
 
@@ -102,11 +102,11 @@ Keys are snake_case with the `ws_` prefix, named for what they hold.
 ## Conventions
 
 - Behaviour comes from TF2's code: source-sdk-2013 at `~/Repositories/source-sdk-2013/src/game/` (server/, shared/, shared/tf/, server/tf/, client/tf/). Cite the C++ function a behaviour comes from in a short comment where the reason is not obvious. Keyvalues, inputs and outputs of every entity are in TF2's FGD: `$TF2/bin/tf.fgd` (also queryable via the tf2vscript MCP tool `entity_io`), where `$TF2="$HOME/Library/Application Support/CrossOver/Bottles/Team Fortress 2/drive_c/Steam/steamapps/common/Team Fortress 2"`.
-- Map data: `.devtools/bin/bsp_entities.py $TF2/tf/maps/<map>.bsp [--json | --class C | --io]` dumps any map's entities; use it to see how real maps use an entity before implementing it.
+- Map data: `.workbench/bin/bsp_entities.py $TF2/tf/maps/<map>.bsp [--json | --class C | --io]` dumps any map's entities; use it to see how real maps use an entity before implementing it.
 - TF2's own convar names and defaults (from the SDK) for TF2 settings; `ws_*` for Sandcastle-only settings.
 - Code style (from the operator's rules): pure logic goes in `foundation/<system>.lua` or `foundation/<system>/<part>.lua` (a `module(...)` loaded with `WS.require`) with a LuaJIT test written first and seen failing; no defensive fallbacks for states the code rules out; small functions with one job; comments only for constraints the code cannot show. Match the existing files: tabs, `local` helpers, INPUTS tables keyed by lowercased input name, `ENT:KeyValue` storing `On*` via `StoreOutput`.
-- Every Lua file must pass `luajit -b <file> /dev/null`; `.devtools/bin/run_lua_tests.sh` must pass.
-- Do not use the live game (`.devtools/bin/gmod_lua.py`) and do not launch or close Garry's Mod or Steam: the integrator tests in game after merging.
+- Every Lua file must pass `luajit -b <file> /dev/null`; `.workbench/bin/run_lua_tests.sh` must pass.
+- Do not use the live game (`.workbench/bin/gmod_lua.py`) and do not launch or close Garry's Mod or Steam: the integrator tests in game after merging.
 - Commit in small units on your branch: `git -c gpg.program=gpg-loopback commit -m "..."`. Never add Co-Authored-By or any Claude attribution. Do not push. Messages explain what and why.
 
 ## Census: TF2-only entity classes in the 49 installed pl_/plr_ maps

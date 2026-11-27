@@ -11,7 +11,7 @@ RCON, and instead of guessing from the source what the game does.
   `watch_events` and `listeners` follow long-running work. Every tool takes
   `instance` (1 by default). From a shell, `dt gmod/mcp TOOL name=value ...`
   makes the same call, so several can be batched through `ctx_batch_execute`.
-  What this repo's server runs is `.devtools/gmod.toml`.
+  What this repo's server runs is `.workbench/gmod.toml`.
 - **The dev workbench** (`addons/sandcastle_dev`, loaded only on the dev
   server). Its library is indexed below. Each function returns a table: call
   it with `lua_run`. Each console command prints the same table as JSON:
@@ -19,7 +19,7 @@ RCON, and instead of guessing from the source what the game does.
 
 ## To test a change
 
-Pass the LuaJIT tests first (`.devtools/bin/check/check_lua.sh --changed`). Then, on the
+Pass the LuaJIT tests first (`.workbench/bin/check/check_lua.sh --changed`). Then, on the
 server:
 
 1. Load the change with `dev.reload({ files = { "addons/..." } })`, which

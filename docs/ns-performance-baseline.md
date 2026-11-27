@@ -13,7 +13,7 @@ identifies causes only; solutions are for a later discussion.
 - Mid-game state: BLU owns cap_1 (minecart_path_44's OnPass outputs fired);
   the cart teleported to minecart_path_74, 272 u short of cap_2, the middle
   point. 18 of 30 soldiers fought within 1500 u of the cart.
-- Tools: `.devtools/bin/profile_server.lua` (wraps hooks, entity methods,
+- Tools: `.workbench/bin/profile_server.lua` (wraps hooks, entity methods,
   feature controller methods, module functions and NS actions; self and
   inclusive time per coroutine, worst single call), plus one-off probes run
   through `server_lua.py`, each named below. Wrapper overhead was measured at
@@ -167,7 +167,7 @@ Where Lua's time goes (15v15, JIT on, share of the server thread):
 - **Treatment B**, `ws_jit_enabled 0` (`ws/sv_jit.lua`): LuaJIT's compiler
   off for the whole server.
 
-Run with `.devtools/bin/experiment_2x2.lua`: 15v15 at mid-game on
+Run with `.workbench/bin/experiment_2x2.lua`: 15v15 at mid-game on
 pl_upward, 60 s blocks in ABBA order (control, A, B, AB, AB, B, A, control),
 the first 10 s of each block left out, CPU sampled twice per block. Times in
 ms.
@@ -387,7 +387,7 @@ payload a defender's front is the enemy cart, which starts deep inside the
 attackers' spawn room, so RED's direct lane and both flanks aimed there too.
 
 Attempts, each measured the same way (120 s from `mp_round_restart`,
-`.devtools/bin/capture_routes.lua`):
+`.workbench/bin/capture_routes.lua`):
 
 | | Lane plans | Legs | Not found | Lane expansions | Stops in enemy room |
 |---|---|---|---|---|---|
@@ -517,7 +517,7 @@ jumping); tours' second legs never failed. Soldiers' stuck re-routes were
 [wrefgtzweve/gmod_perfutils](https://github.com/wrefgtzweve/gmod_perfutils)
 (no license, so none of it can be copied into this repo; its ideas can be
 reimplemented). Three of its scripts were run on a live 15v15, 15 s each,
-from a copy in `.devtools/artifacts/perfutils/`.
+from a copy in `.workbench/artifacts/perfutils/`.
 
 | Script | What it measures | Here | Verdict |
 |---|---|---|---|
@@ -573,10 +573,10 @@ server.
 ## Treatment D: route searches replayed offline, and what failed searches teach
 
 Measuring a route-search change no longer needs a live war.
-`.devtools/bin/record_routes.lua` (through `server_lua.py`) records each Lua
+`.workbench/bin/record_routes.lua` (through `server_lua.py`) records each Lua
 route search with what its graph answered (areas untraversable, links
 uncrossable, spawn rooms, estimates, as engine floats) and saves the mesh;
-`.devtools/bin/route_replay.lua` replays the recording under plain LuaJIT
+`.workbench/bin/route_replay.lua` replays the recording under plain LuaJIT
 with the gamemode's own A* and cost strategies (`foundation.npc.route_record`).
 
 **Parity.** pl_upward, 120 s from a round restart, 47 searches: 47 replay
@@ -634,7 +634,7 @@ candidate; its cost was not measured yet.
 ## Native foundation against the Lua twins (2026-10-27)
 
 Every foundation module now has a whole native twin on the server
-(`docs/native-foundation-plan.md`). `.devtools/bin/aiwar_ab_bench.py` runs
+(`docs/native-foundation-plan.md`). `.workbench/bin/aiwar_ab_bench.py` runs
 the same war with the DLLs installed and without them, in alternating
 legs: pl_upward, 15v15 (30 soldiers), JIT on with its defaults, a fresh
 map and war each leg, 90 s of warm-up, then 60 s measured. Instance 1, on
@@ -740,18 +740,18 @@ deciding on it, and find why the second one's server died.
 ## Reproducing
 
 ```
-python3 .devtools/bin/server_lua.py -f .devtools/bin/profile_server.lua
-python3 .devtools/bin/server_lua.py 'return WSProfile.Start(60, WSProfile.ACTIONS)'
-python3 .devtools/bin/server_lua.py 'return WSProfile.Report(30)'
+python3 .workbench/bin/server_lua.py -f .workbench/bin/profile_server.lua
+python3 .workbench/bin/server_lua.py 'return WSProfile.Start(60, WSProfile.ACTIONS)'
+python3 .workbench/bin/server_lua.py 'return WSProfile.Report(30)'
 ```
 
 Route searches (treatment D), on the server, then offline:
 
 ```bash
-python3 .devtools/bin/server_lua.py -f .devtools/bin/record_routes.lua
-python3 .devtools/bin/server_lua.py 'return WSRouteRecord.Start(120, true)'
-python3 .devtools/bin/server_lua.py 'return WSRouteRecord.Save("pl_upward_restart")'
-luajit .devtools/bin/route_replay.lua RECORD.dat --reach 30
+python3 .workbench/bin/server_lua.py -f .workbench/bin/record_routes.lua
+python3 .workbench/bin/server_lua.py 'return WSRouteRecord.Start(120, true)'
+python3 .workbench/bin/server_lua.py 'return WSRouteRecord.Save("pl_upward_restart")'
+luajit .workbench/bin/route_replay.lua RECORD.dat --reach 30
 ```
 
 The recording lands in the server root's `garrysmod/data/ws_routes/`.
@@ -760,8 +760,8 @@ The native against Lua A/B (about 15 minutes; puts the DLL links back as
 they were, then change level to load them again):
 
 ```bash
-python3 .devtools/bin/aiwar_ab_bench.py --legs native,lua,native,lua
-python3 .devtools/bin/aiwar_ab_bench.py --legs native:npc,native:bot,native:npc,native:bot
+python3 .workbench/bin/aiwar_ab_bench.py --legs native,lua,native,lua
+python3 .workbench/bin/aiwar_ab_bench.py --legs native:npc,native:bot,native:npc,native:bot
 ```
 
 Experiments B to L were one-off probes run through `server_lua.py`; each

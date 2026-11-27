@@ -49,7 +49,7 @@ and `CKnownEntity::GetLastKnownPosition()`, not a table the war keeps
 
 ## The mapping
 
-Measured costs are the probe's (inclusive, wrapped; `.devtools/artifacts/aiwar_probe_16v16_vision_methods.txt`).
+Measured costs are the probe's (inclusive, wrapped; `.workbench/artifacts/aiwar_probe_16v16_vision_methods.txt`).
 
 ### The war's own hot paths
 
@@ -170,7 +170,7 @@ GMod's `INextBotPlayerInput` (win64 `server.dll`, vtable at the player's
 ### What the key presses as standing orders measured
 
 pl_upward, 16v16 of bot players, a minute of combat, the probe's hooks alone
-(`.devtools/artifacts/aiwar_probe_16v16_drive_*`): `StartCommand/ws_aiwar_bots`
+(`.workbench/artifacts/aiwar_probe_16v16_drive_*`): `StartCommand/ws_aiwar_bots`
 33 ms/s from 209 (18 µs a call from 135); the looks' orders (`SendOrders`) 26
 ms/s, 238 µs each, of which `engine.Drive` 14 µs and the rest the weapon's
 ranges and state; the war 365 ± 8 ms/s from 458 ± 7; 64 ticks a second from 56.
@@ -182,10 +182,10 @@ which `PathFollower` on the native locomotion would take.
 
 pl_upward, 27 bot players, 2026-11-20. Measured by leaving each part of a look
 out for 8 s and reading the calendar's own measure of its looks
-(`.devtools/bin/aiwar_look_probe.lua`'s `Ablate`; timing between lines charges
+(`.workbench/bin/aiwar_look_probe.lua`'s `Ablate`; timing between lines charges
 a part with whatever else ran in it): a look about 1.35 ms, of which steering
 about 500 µs, `SendOrders` 400, the weapon pick 280, the vision 250, the feel
-ahead 160. A soldier's tree (`.devtools/bin/aiwar_tree_probe.lua`) about 730
+ahead 160. A soldier's tree (`.workbench/bin/aiwar_tree_probe.lua`) about 730
 µs an update, `Objective:Update` 380 of it and the two monitors 110 to 150
 each. With the collector stopped the war fell only 6 %: the cost is calls
 into GMod (a first call about 2 µs, a repeat 0.25; every `ply:Method` through
@@ -213,7 +213,7 @@ team in the world's snapshot, from the host's `TeamOf`) and
 `vision:GetEnemyLastKnownPos`. On pl_upward, a minute of combat: 383
 contacts, every one across teams; `Look` 83 ms/s from 115, `FightsAgainst`
 gone; the war 393 ± 15 ms/s from 458 ± 7, with 28 bots against 31, so not
-like for like (`.devtools/artifacts/aiwar_probe_16v16_slice12_combat_*`). The
+like for like (`.workbench/artifacts/aiwar_probe_16v16_slice12_combat_*`). The
 worst ticks are `StandOnRoute`'s and `PlanRoute`'s (about 300 ms), and one
 tick of 2.8 s outside the war's share, not yet explained.
 

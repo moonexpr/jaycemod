@@ -2,7 +2,7 @@
 -- check_lua.sh runs one group at a time: every test in exactly one group,
 -- every source file claimed by one, and the resolver's rules.
 local T = dofile ("tests/harness.lua")
-local Suites = dofile (".devtools/bin/check/suites.lua")
+local Suites = dofile (".workbench/bin/check/suites.lua")
 
 local function Lines (command)
 	local pipe, lines = assert (io.popen (command)), {}

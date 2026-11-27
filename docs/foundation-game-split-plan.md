@@ -72,8 +72,8 @@ global namespaces are unchanged.
 ## Before merging into main
 
 1. Merge main into the branch again if it moved, then run
-   `.devtools/bin/foundation_rename.py` (it follows every rename above,
-   in order) and `.devtools/bin/check_lua.sh`.
+   `.workbench/bin/foundation_rename.py` (it follows every rename above,
+   in order) and `.workbench/bin/check_lua.sh`.
 2. After the merge, run the script once over main's uncommitted files.
    It cannot map `foundation.core.timers`, which became
    `games.timer.countdown` and `games.timer.interval`: fix those by hand.
@@ -184,7 +184,7 @@ Names that would read `x.x` are renamed (`cache.base`, `graph.search`,
 `tree.avl`), as is `math.random`. Tests follow their module:
 `tests/core_<old>_test.lua` becomes `tests/<namespace>_<module>_test.lua`.
 
-`.devtools/bin/foundation_rename.py` holds this table, moves the files
+`.workbench/bin/foundation_rename.py` holds this table, moves the files
 with `git mv` and rewrites every dotted and slashed name in the Lua files
 and the layers test. It refuses a destination that exists and finds
 nothing to do on a second run. Run it again over main's uncommitted files
@@ -260,7 +260,7 @@ clash with GMod's keys today.
   loader holds `for`, `while`, `pairs` or `file.Find`.
 - `tests/foundation_layers_test.lua`: keys renamed by the script; the
   layers keep their ranks.
-- `.devtools/bin/check_lua.sh` green at the end of each stage.
+- `.workbench/bin/check_lua.sh` green at the end of each stage.
 - In game, after each stage: the server loads a map with no Lua errors,
   and `lua_run print(list.queue, math.geometry, file.buffer)` prints three
   tables.

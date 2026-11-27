@@ -7,7 +7,7 @@ started by the maps' own entities and I/O. Everything in
 interfaces, conventions and commits.
 
 `sdk/` below means `~/Repositories/source-sdk-2013/src/game/`. Map dumps come
-from `.devtools/bin/bsp_entities.py "$TF2/tf/maps/<map>.bsp" --class C | --io`.
+from `.workbench/bin/bsp_entities.py "$TF2/tf/maps/<map>.bsp" --class C | --io`.
 
 ## 0. Decisions the operator should know
 
@@ -313,7 +313,7 @@ follows:
   - `self.npc = WS.Feature("npc"):Bind(self, self.Variant, self:Config())`;
   - applies the variant's `LOCOMOTION` to `self.loco`;
   - checks the nav mesh, printing one line per map:
-    `base_nextsoldier_npc: <map> has no usable navigation mesh; run .devtools/bin/nav_convert.py or nav_generate`.
+    `base_nextsoldier_npc: <map> has no usable navigation mesh; run .workbench/bin/nav_convert.py or nav_generate`.
 - `BehaveUpdate(interval)` calls `self.npc:Update(interval)`. There is no
   coroutine.
 - `BodyUpdate()` ports `CHeadlessHatmanBody::Update`: `move_x`/`move_y` from
@@ -347,7 +347,7 @@ calls `self:Detonate(trace)`, which subclasses override.
 
 ## 3. Tools (W2)
 
-`.devtools/bin/nav_convert.py MAP.bsp|MAP.nav... [--out DIR]`:
+`.workbench/bin/nav_convert.py MAP.bsp|MAP.nav... [--out DIR]`:
 
 - reads a loose `.nav`, or the one embedded in the BSP (lump 40, zip entry
   `maps/<map>.nav`, LZMA method 14, which Python's zipfile reads);
@@ -357,7 +357,7 @@ calls `self:Detonate(trace)`, which subclasses override.
 - writes sub-version 0 and the BSP's real size;
 - writes to `garrysmod/maps/<map>.nav` by default, the path in `gmod_lua.py`.
 
-`.devtools/bin/tf2_content.py model|sound|particle NAME...` and
+`.workbench/bin/tf2_content.py model|sound|particle NAME...` and
 `tf2_content.py lua FILE...` read the `tf2_misc_dir.vpk` tree, the soundscript
 manifest, and the particle names in the `.pcf` files. The same method already
 confirms that every model, soundscript, particle and `vgui/spellbook_*` icon
@@ -847,7 +847,7 @@ bomb heads 15 s and 1 per team, props 150 health).
 - **Bomb-rain scene:** as TF2, one of `scenes/bot/merasmus/low/
   bomb_attack_001..009.vcd` through `PlayScene` (a NextBot is a CBaseFlex):
   `Halloween.BombSuperMove<n>`, `Halloween.BombinomiconBombs` at 4.2 s and
-  `Halloween.MerasmusBombTaunt` at 6 s (`.devtools/bin/tf2_scene.py` reads
+  `Halloween.MerasmusBombTaunt` at 6 s (`.workbench/bin/tf2_scene.py` reads
   them from TF2's `scenes.image`, the only place TF2 ships them). The server
   must load TF2's `scenes.image` (tf2_misc.vpk ahead of GMod's HL2 packs in
   gameinfo.txt); a scene it lacks is reported once in the console. Prop separation and the area round the point
@@ -1083,7 +1083,7 @@ models' tests never need.
 | pkg | owns | depends on |
 |---|---|---|
 | **W1 npc framework** | foundation/npc.lua, foundation/npc/{actor,path,hover,spawner}.lua, foundation/npc/path/{ground,scatter}.lua, foundation/projectile.lua, foundation/projectile/grenade.lua; entities/{base_nextsoldier_npc,ws_projectile}.lua; features/npc (controller registry, spawner ticking, nav check; no view yet); tests/{npc,npc_path,npc_spawner,npc_hover,projectile}_test.lua, tests/fake_actor.lua | lands first |
-| **W2 tools** | .devtools/bin/{nav_convert,tf2_content}.py and their test_*.py | any time |
+| **W2 tools** | .workbench/bin/{nav_convert,tf2_content}.py and their test_*.py | any time |
 | **W3 combat and holiday** | foundation/{combat,holiday}.lua, foundation/holiday/halloween.lua, foundation/npc/{combatant,targeting}.lua, additions to foundation/players.lua; entities/{base_nextsoldier_combat,tf_logic_holiday}.lua; features/{combat,holiday}; tests/{combat,holiday,targeting}_test.lua, tests/fake_combatant.lua; deletes foundation/halloween.lua, ws/sv_halloween.lua, tests/halloween_entities_test.lua | W1 |
 | **W4 skeletons (P0)** | foundation/npc/zombie.lua; entities/{tf_zombie,tf_zombie_spawner,tf_projectile_spellspawnzombie}.lua; tests/zombie_test.lua | W1, W3 |
 | **W5 bosses** | foundation/npc/{halloween_boss,headless_hatman,eyeball_boss,tag}.lua, foundation/projectile/rocket.lua; entities/{halloween_base_boss,headless_hatman,eyeball_boss,teleport_vortex,tf_projectile_rocket}.lua; features/tag; the npc feature's view (boss bar); tests/{halloween_boss,headless_hatman,eyeball_boss,tag}_test.lua | W1, W3 |
@@ -1100,7 +1100,7 @@ parallel, because they meet only through the interfaces above: entity
 
 Every package must satisfy:
 
-- `.devtools/bin/run_lua_tests.sh` passes.
+- `.workbench/bin/run_lua_tests.sh` passes.
 - `luajit -b` passes on every changed file.
 - `luajit -bl <foundation file> | grep GGET` shows only the captured globals.
 - No bare meaningful integers anywhere, tests included.

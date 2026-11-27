@@ -11,13 +11,13 @@ questions in `docs/game-events-v2-handoff.md` §4 step 1, for the design in
 architecture. The scholar's verdicts follow at the end.
 
 **How the tests were run.** The live tests used the dedicated server
-(`.devtools/bin/srcds.py`, bottle "Steam"), GMod `VERSION` 260917, on
+(`.workbench/bin/srcds.py`, bottle "Steam"), GMod `VERSION` 260917, on
 koth_viaduct, with `sv_allowcslua 0` and **no client connected**. The probes
-are in `.devtools/bin/gev2/*.lua`, run by `.devtools/bin/gev2_probe.py`. Raw
-outputs are in `.devtools/artifacts/gev2-research/live/`. Wiki pages cached by
-the previous researcher are in `.devtools/artifacts/gev2-research/wiki/`. The
+are in `.workbench/bin/gev2/*.lua`, run by `.workbench/bin/gev2_probe.py`. Raw
+outputs are in `.workbench/artifacts/gev2-research/live/`. Wiki pages cached by
+the previous researcher are in `.workbench/artifacts/gev2-research/wiki/`. The
 client's Lua cache format was checked offline, read-only, with
-`.devtools/bin/gmod_lua_cache.py`.
+`.workbench/bin/gmod_lua_cache.py`.
 
 Each section is marked **[live]** (tested on the server), **[offline]**
 (checked against files on disk), or **[docs]** (taken from the wiki, source
@@ -150,13 +150,13 @@ or issues).
 - [docs] #1798's opening post: reading works "when the addon is mounted via
   SVN or Workshop". That is, `file.Read` reads the local mounted copy.
 - [docs] Wiki `include`
-  (`.devtools/artifacts/gev2-research/wiki/Global.include.txt`): "This
+  (`.workbench/artifacts/gev2-research/wiki/Global.include.txt`): "This
   function will try to load local client file if `sv_allowcslua` is
   **1**."
 - [docs] Wiki File_Search_Paths: `"LUA"` "automatically selects `lcl`, `lsv`
   or `LuaMenu`", and "Content from paths that appear first will override
   content from paths that appear last."
-- [live] `path` on the server: `.devtools/artifacts/gev2-research/live/path.txt`,
+- [live] `path` on the server: `.workbench/artifacts/gev2-research/live/path.txt`,
   lines 8 to 21 (the `--- LUA ---` block, in the order above).
 - [live] `sources.txt`: on the server, `file.Read` of
   `sandcastle/gamemode/shared.lua` through `LUA`, through `lsv`, and through
@@ -164,7 +164,7 @@ or issues).
   1535 bytes, `sha256 a4c6b4607fe7e1b9…`, which matches `shasum` of the file
   in the repo. Through `lcl`, `file.Read` returns `nil` on a dedicated
   server.
-- [offline] `python3 -I .devtools/bin/gmod_lua_cache.py verify` over the
+- [offline] `python3 -I .workbench/bin/gmod_lua_cache.py verify` over the
   operator's client cache: "entries 5374; name == sha256(text+NUL)[:20]:
   5374; header == sha256(text+NUL): 5374; unreadable: 0".
 - [docs] The layout claim comes from djsime1/gluapack:
@@ -270,9 +270,9 @@ or issues).
     (`ws/` `sh_` and `cl_`);
   - `grep -L AddCSLuaFile` over `entities/`: 49 of 98 files lack it;
   - no entity uses a folder layout.
-- [live] `.devtools/artifacts/gev2-research/live/reload_report.txt`: 188
+- [live] `.workbench/artifacts/gev2-research/live/reload_report.txt`: 188
   `AddCSLuaFile` lines with callers in each of the two gamemode refreshes
-  (lines 1-221 and 222-442); line 443 is the entity's no-argument call. Wrapper: `.devtools/bin/gev2/reload_arm.lua`.
+  (lines 1-221 and 222-442); line 443 is the entity's no-argument call. Wrapper: `.workbench/bin/gev2/reload_arm.lua`.
 - [live] `sources.txt`: "loaded features | rounds,capture,koth,gamemode".
 - [live] `live/rcon_replies.txt`: the late `AddCSLuaFile` replies.
 - [docs] Wiki `AddCSLuaFile` (cached `Global.AddCSLuaFile.txt`): the list of
@@ -344,7 +344,7 @@ editing addon code. Only `lua_refresh_file` was tested.
 
 **Evidence.**
 
-- [live] `.devtools/artifacts/gev2-research/live/reload_report.txt`:
+- [live] `.workbench/artifacts/gev2-research/live/reload_report.txt`:
   - lines 1-221 come from refreshing `sh_events.lua`, with `OnReloaded` at
     lines 61 and 221;
   - lines 222-442 come from refreshing `shared.lua`, with `OnReloaded` at
@@ -449,8 +449,8 @@ unreliable send beyond the 64 KB message limit.
 
 **Evidence.**
 
-- [live] `.devtools/artifacts/gev2-research/live/netcost.txt` (probe
-  `.devtools/bin/gev2/netcost.lua`) and `live/rcon_replies.txt` (the
+- [live] `.workbench/artifacts/gev2-research/live/netcost.txt` (probe
+  `.workbench/bin/gev2/netcost.lua`) and `live/rcon_replies.txt` (the
   70 × 1 KiB and the 65,530-byte cases).
 - [docs] Wiki `net.Start`: "Each net message has a length limit of 65,533
   bytes (approximately 64 KiB) and your net message will error and fail to
@@ -518,8 +518,8 @@ unreliable send beyond the 64 KB message limit.
 
 **Evidence.**
 
-- [live] `.devtools/artifacts/gev2-research/live/sources.txt` (probe
-  `.devtools/bin/gev2/sources.lua`): every line quoted above.
+- [live] `.workbench/artifacts/gev2-research/live/sources.txt` (probe
+  `.workbench/bin/gev2/sources.lua`): every line quoted above.
 - [live] The truncation check came back through RCON in this session:
   `93 @addons/…/scenario/control_points.lua`, `92 addons/…`, and `166 127
   .../d/d/…`.
@@ -580,10 +580,10 @@ At about 360 files of the same average size, `util.SHA256` would take about
 
 **Evidence.**
 
-- [live] `.devtools/artifacts/gev2-research/live/hashing.txt` (the second
+- [live] `.workbench/artifacts/gev2-research/live/hashing.txt` (the second
   run; the first is in this session's output) and `live/cachecost.txt`.
-- Probes: `.devtools/bin/gev2/hashing.lua` and
-  `.devtools/bin/gev2/cachecost.lua`.
+- Probes: `.workbench/bin/gev2/hashing.lua` and
+  `.workbench/bin/gev2/cachecost.lua`.
 
 **Confidence.** High for relative costs. Medium for absolute ones: the server
 runs under Wine on macOS, and a native Windows client would differ.

@@ -78,7 +78,7 @@ STools load in both.
   alternative to **baking**, not the base of this work.
 - Team state reaches clients as `NW2Int "ws_team"` (`ws/sv_world.lua:196`).
   NPC death ragdolls are clientside, built in `ws/cl_npc_ragdolls.lua`.
-  `.devtools/bin/vpk.py` / `tf2_content.py` already read VPKs, so an offline
+  `.workbench/bin/vpk.py` / `tf2_content.py` already read VPKs, so an offline
   bake tool can pull HL2 sheets and TF2 lightwarps without new readers.
 
 ## The strongest case against doing this as asked
@@ -131,7 +131,7 @@ addons/teamtint/
 addons/sandcastle/.../ws/sh_teamtint.lua       Sandcastle's answers: ws_team, the override gate
 tests/teamtint_{catalog,resolve,tuning}_test.lua   the pure modules
 tests/teamtint_{client,server}_test.lua        the runtime under stubbed GMod globals (wiring, not drawing)
-.devtools/bin/teamtint_bake.py (+ test_teamtint_bake.py)
+.workbench/bin/teamtint_bake.py (+ test_teamtint_bake.py)
 ```
 
 **Representation resolution, per entity, each time it changes**
@@ -279,7 +279,7 @@ threshold) are only a starting point, and look bad as finished masks.
   the team of every body type correctly.
 
 **Phase 4: ship.** Export the tuning to `data_static/` and the baked
-textures to `materials/teamtint/`. Run a GMA via `.devtools/bin/gma.py`.
+textures to `materials/teamtint/`. Run a GMA via `.workbench/bin/gma.py`.
 Measure the memory cost of the baked sheets (two teams × sheets ×
 mips) with `ws_analytics_memory`'s client counterpart, or `mat_texture_list`.
 
@@ -331,7 +331,7 @@ baked textures, and `DrawColorModify`.
 
 ## Testing
 
-- **LuaJIT** (`.devtools/bin/check_lua.sh`): the pure modules test first
+- **LuaJIT** (`.workbench/bin/check_lua.sh`): the pure modules test first
   (`teamtint_catalog`, `_resolve`, `_tuning`), through `tests/harness.lua`'s
   `T.MODULE_DIRS` as `responserules`' are. `teamtint_client_test` and
   `teamtint_server_test` load the addon under stubbed GMod globals and
@@ -339,7 +339,7 @@ baked textures, and `DrawColorModify`.
   views, overrides, the sweep after a full update, ragdolls, the bench,
   export, the tool, `teamtint_paint`, dupes, the permission hook. The
   stubs are not the engine, so they say nothing about how anything draws.
-- **Python** (`cd .devtools/bin && python3 -m pytest -q`):
+- **Python** (`cd .workbench/bin && python3 -m pytest -q`):
   `test_teamtint_bake.py` on VTFs built in the test: uncompressed and DXT
   round trips, the 7.3 resource layout, mip counts and sizes, the recolor
   inside and outside a mask, value lift, starter masks, the builtins, a
@@ -389,7 +389,7 @@ with the Combine on RED.
 2. **Tune the shading**: spawn soldiers (or start the war), open the tool's
    menu, pick a scope, drag the knobs; check views 3, 4 and 5. Export.
 3. **Paint masks** for each tintable sheet without a tint mask:
-   `python3 .devtools/bin/teamtint_bake.py decode <source> sheet.png`, paint
+   `python3 .workbench/bin/teamtint_bake.py decode <source> sheet.png`, paint
    white where the team colour goes (a starter:
    `teamtint_bake.py mask <source> mask.png --hue 180-260 --sat 0.05-0.6`),
    and keep the mask out of the addon (say `art/teamtint/masks/`): only the

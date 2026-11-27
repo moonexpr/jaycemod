@@ -67,10 +67,10 @@ module's header holds the rules and their tuning; in short:
 - Seeing them: the debug overlay's rooms part (`ns_rooms_debug`) draws each
   room's block, its doors, windows and the corridors, labelled with kind,
   indoors or out, and level; `ns_rooms_find` finds them again at once and
-  `ns_rooms_print` reports them. Off the server, `.devtools/bin/rooms_dump.lua`
-  dumps the map's room graph and `.devtools/bin/rooms_view.py` partitions it
+  `ns_rooms_print` reports them. Off the server, `.workbench/bin/rooms_dump.lua`
+  dumps the map's room graph and `.workbench/bin/rooms_view.py` partitions it
   with the same code and draws each level from above
-  (`.devtools/artifacts/rooms/<map>.png`), for tuning by eye.
+  (`.workbench/artifacts/rooms/<map>.png`), for tuning by eye.
 
 ### 2.2 What a team knows (`wartactics.intel`)
 

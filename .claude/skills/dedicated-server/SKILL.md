@@ -1,6 +1,6 @@
 ---
 name: dedicated-server
-description: This repo's own side of its Garry's Mod dedicated server — what .devtools/gmod.toml mounts, the Sandcastle and AI-war console commands, ULX's luadev chat commands, the navigation benches, the Linux builds of the native modules, and the in-game checks. Use with the gmod plugin's gmod-server skill (which starts, stops and drives any project's server: srcds, RCON, luadev, Watch, the MCP) when the work is Sandcastle's or Wetsands'.
+description: This repo's own side of its Garry's Mod dedicated server — what .workbench/gmod.toml mounts, the Sandcastle and AI-war console commands, ULX's luadev chat commands, the navigation benches, the Linux builds of the native modules, and the in-game checks. Use with the gmod plugin's gmod-server skill (which starts, stops and drives any project's server: srcds, RCON, luadev, Watch, the MCP) when the work is Sandcastle's or Wetsands'.
 ---
 
 # This repo's dedicated server
@@ -8,16 +8,16 @@ description: This repo's own side of its Garry's Mod dedicated server — what .
 The tools are the gmod plugin's (claude-config2's `plugins/gmod`): read its
 `gmod-server` skill for starting, stopping, RCON, Lua, Watch, benches' leases,
 added maps and live edits. Every `dt gmod/...` command run in this repo builds
-and drives the server `.devtools/gmod.toml` describes.
+and drives the server `.workbench/gmod.toml` describes.
 
 ## What the server runs
 
-`.devtools/gmod.toml`: the `sandcastle` gamemode (the shared install's
+`.workbench/gmod.toml`: the `sandcastle` gamemode (the shared install's
 `garrysmod/gamemodes/sandcastle`, which points to the main checkout; a worktree's
 runs with `GMOD_GAMEMODE_DIR` naming its folder), the repo's addons
 (foundation, NextSoldier, wartactics, the CS:S weapons, Model Viewer, the dev
 workbench, ULX luadev), the workbench's scenarios as `data/sandcastle_dev/scenarios`,
-this repo's server Lua (`.devtools/server_lua/`: `hotswap.lua`, and
+this repo's server Lua (`.workbench/server_lua/`: `hotswap.lua`, and
 `sandcastle_dev.lua`, which sets `DEBUG` and loads the workbench), the Workshop
 addons and the map pool, the hostages' voice pack, the native modules once
 built, and TF2's sound scripts. A map that stays after `dt gmod/add-map` moves
@@ -47,7 +47,7 @@ silent). Beside luadev's chat commands it gives `!lfile`, `!lent`, `!lwep`,
 each entity (an NPC's activity, animation, target and schedule; a NextSoldier's
 behaviour and group stacks) for its `cl_luadev_output_overlay` seconds.
 
-## Benches and trials: `.devtools/experiments/`
+## Benches and trials: `.workbench/experiments/`
 
 Each experiment is a folder with its scripts, a README stating its question and
 status, and its results in `results/` (ignored by git): the AI war's benches,
@@ -61,7 +61,7 @@ errands on a server leased from the plugin's `InstanceManager`.
 ## The Linux server's native modules
 
 Before `dt gmod/srcds start --runtime docker`, build the repo's modules for
-Linux (once, and after a change to a crate): `python3 .devtools/bin/native_linux.py`
+Linux (once, and after a change to a crate): `python3 .workbench/bin/native_linux.py`
 (each crate's `target/x86_64-unknown-linux-gnu/release/`, which `gmod.toml`'s
 `[native.linux64]` links). NextSoldier's engine binding does not run there yet
 (`nextsoldier.engine.refused` says why: it reads win64's `server.dll`).
@@ -69,13 +69,13 @@ Linux (once, and after a change to a crate): `python3 .devtools/bin/native_linux
 ## In-game checks
 
 ```bash
-python3 .devtools/experiments/ingame/ingame_tests.py --maps koth_viaduct   # starts and stops its own server
-python3 .devtools/experiments/ingame/ingame_one.py <check>                  # one check on the server already running
+python3 .workbench/experiments/ingame/ingame_tests.py --maps koth_viaduct   # starts and stops its own server
+python3 .workbench/experiments/ingame/ingame_one.py <check>                  # one check on the server already running
 ```
 
-The checks are `.devtools/experiments/ingame/ingame/checks/<name>.lua`; `ingame_tests.py`
+The checks are `.workbench/experiments/ingame/ingame/checks/<name>.lua`; `ingame_tests.py`
 writes `results/ingame-report-<date>.md` beside it. Run the LuaJIT suites of
-what changed first (`.devtools/bin/check/check_lua.sh --changed`): it is faster and
+what changed first (`.workbench/bin/check/check_lua.sh --changed`): it is faster and
 catches most things.
 
 ## Live Lua edits

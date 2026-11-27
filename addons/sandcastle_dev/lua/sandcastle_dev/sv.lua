@@ -5,7 +5,7 @@
 -- returns a table; the console commands print the same as JSON.
 --
 -- Only where DEBUG is set: the dev server's mount
--- (.devtools/bin/server_root/sandcastle_dev.lua) sets it and runs this file
+-- (.workbench/server_lua/sandcastle_dev.lua) sets it and runs this file
 -- with its loader (dev.load, dev.require). The addon has no autorun of its
 -- own, so a release build that carried it would still never run it. The
 -- pure parts are modules in lua/includes/modules/, tested under LuaJIT

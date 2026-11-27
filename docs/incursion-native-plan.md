@@ -1,6 +1,6 @@
 # Incursion, room classes and ambush hints in the game
 
-The room tooling (`.devtools/bin/incursion.py`, `classes.py`, `ambush.py`,
+The room tooling (`.workbench/bin/incursion.py`, `classes.py`, `ambush.py`,
 drawn by `incursion_view.py` and `classes_view.py`) settled how a map's
 rooms are classed from the incursion, how each team's spanning tree is
 grown over the rooms (for planning lanes), and where ambushes lie. This

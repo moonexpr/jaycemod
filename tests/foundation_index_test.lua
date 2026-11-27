@@ -207,7 +207,7 @@ end)
 -- its global, by require, WS.require or T.require alike.
 T.test ("no file requires a published module by name", function ()
 	local found = {}
-	for _, path in ipairs (Lines ("find addons tests .devtools/bin -name '*.lua'")) do
+	for _, path in ipairs (Lines ("find addons tests .workbench/bin -name '*.lua'")) do
 		if not path:match ("_index%.lua$") and not path:match ("_init%.lua$") and not path:match ("shared_loader%.lua$")
 			and path ~= "tests/harness.lua" then
 			local code = WithoutComments (Read (path))

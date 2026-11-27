@@ -10,7 +10,7 @@ Foundation phases 4 and 5 (`docs/foundation-simplification-plan.md` §8) are
 waiting on this task. §3 below states the exact condition that unblocks each
 of them.
 
-Baseline, measured 2026-10-11: `.devtools/bin/check_lua.sh` prints
+Baseline, measured 2026-10-11: `.workbench/bin/check_lua.sh` prints
 `compiled 460 files` and `TOTAL 1831 passed, 0 failed`.
 
 ---
@@ -20,7 +20,7 @@ Baseline, measured 2026-10-11: `.devtools/bin/check_lua.sh` prints
 ### 1.1 How a feature loads
 
 All paths below are under `addons/sandcastle/gamemodes/sandcastle/gamemode/` unless they
-start with `tests/` or `.devtools/`.
+start with `tests/` or `.workbench/`.
 
 - **A feature is a folder with up to three fixed files.** `foundation/features.lua:17`
   sets `ROOT = "features/"`. `:22` defines the parts `"sh"`, `"sv"` and `"cl"`.
@@ -102,7 +102,7 @@ Inside a realm, a controller keeps its state in two places:
 
 ### 1.4 How a feature is hot-swapped
 
-The hot-swap commands live in `.devtools/bin/server_root/hotswap.lua`.
+The hot-swap commands live in `.workbench/bin/server_root/hotswap.lua`.
 
 - **`ws_hotswap_module`** (`:35-41`) runs a `WS.require` module's file again
   under `CHUNK_ENV`. `module(...)` keeps the module's table, so every holder
@@ -434,13 +434,13 @@ That requires all three of the following:
   - `luajit tests/features_test.lua` (the `Realm`/`Ships`/`ClientFiles`
     cases);
   - `luajit tests/client_shipping_test.lua`;
-  - `.devtools/bin/check_lua.sh` with `0 failed`.
+  - `.workbench/bin/check_lua.sh` with `0 failed`.
 - **`init.lua` sends through `Features.ClientFiles`:** `git grep -n
   ClientFiles addons/sandcastle/gamemodes/sandcastle/gamemode/init.lua` prints one line,
   and `git grep -n "SendFeatureClientParts\|SendFoundation"` prints nothing.
 - **A client check, run with the operator present.** On the running server,
   do a `changelevel`, not a restart. Then, on a client started with
-  `.devtools/bin/gmod_client.py start`, run
+  `.workbench/bin/gmod_client.py start`, run
   `dt lua --realm cl 'print("ship", pcall(WS.require, "features.tag.model"), pcall(WS.require, "ws.sound_paths"))'`.
   The client's con log under `data/ws_tests/client/` must show `ship true
   table true table`. The client launches in the operator's game bottle, so
@@ -458,10 +458,10 @@ so clients must be shown to receive files from there) (phase 3a is already done,
 - **The structural tests pass:** every part is named by its root, no
   method is defined twice, wiring ids are unique, and every state field is
   declared.
-- **`.devtools/bin/check_lua.sh` prints `0 failed`,** with the passed count
+- **`.workbench/bin/check_lua.sh` prints `0 failed`,** with the passed count
   no lower than M3's.
 - **The live checks pass:** after `changelevel pl_badwater`, the `aiwar` and
-  `aiwar_sitting` in-game checks (`.devtools/bin/ingame/checks/aiwar.lua`)
+  `aiwar_sitting` in-game checks (`.workbench/bin/ingame/checks/aiwar.lua`)
   pass, and both `ws_hotswap_feature aiwar Think` and
   `ws_hotswap_feature aiwar Soldier.Move` print `swapped`.
 - **No name collides with phase 5's models.** Phase 5's incoming files are
@@ -474,7 +474,7 @@ so clients must be shown to receive files from there) (phase 3a is already done,
 ## 4. Phased plan
 
 Each phase is one commit. Write its tests first and watch them fail before
-writing the code. After each phase, `.devtools/bin/check_lua.sh` prints
+writing the code. After each phase, `.workbench/bin/check_lua.sh` prints
 `0 failed`, and the passed count goes up by exactly the number of new
 assertions. Commit with `git -c gpg.program=gpg-loopback commit`.
 
@@ -487,7 +487,7 @@ tables. OPEN: the client check (`ship true table true table` on a client after
 a changelevel) needs the operator present. Until it passes, foundation phase 4
 and any `cl_`/`sh_` part split (M5's `rounds/cl.lua`, `nbdebug/cl.lua`,
 `capture/cl.lua`) stay blocked, and so does phase 5 (it also needs M4). M2–M4 may proceed (reviewer, M1 gate).**
-The "prints nothing" grep is scoped to code: `git grep -n "SendFeatureClientParts\|SendFoundation" -- addon tests .devtools` (this doc quotes the names).
+The "prints nothing" grep is scoped to code: `git grep -n "SendFeatureClientParts\|SendFoundation" -- addon tests .workbench` (this doc quotes the names).
 
 **Tests first.**
 
@@ -643,7 +643,7 @@ gains a `FeatureParts` built on the fake `CompileFile`.
   place after a swap: the fake `Events` records zero `Listen` calls during
   the rerun.
 
-**Code.** In `.devtools/bin/server_root/hotswap.lua`:
+**Code.** In `.workbench/bin/server_root/hotswap.lua`:
 
 - change `:51-65`;
 - update the usage comment at `:8-13`.
@@ -725,7 +725,7 @@ following:
   shows the root at 300 lines or fewer and every part at 600 or fewer.
 - **Lazy loading still holds:** the `load` in-game check on `pl_badwater`
   still reports `aiwar` among `lacks` until `mp_aiwar_start`
-  (`.devtools/bin/ingame_tests.py:98-102`).
+  (`.workbench/bin/ingame_tests.py:98-102`).
   - **On the operator's running server,** do a `changelevel` and run
     `dt lua 'return WS.FeatureLoaded("aiwar")'`. It prints `false`.
   - **Use `ingame_tests.py` only with the operator's agreement,** because

@@ -61,7 +61,7 @@ Static measures of each room, from the graph alone:
 Sources and their costs: `docs/research/places-prior-art.md`. Every measure is
 a walk or a flood over 20 to 200 rooms, well under a millisecond.
 
-### 2.1b Places: buildings and grounds (`.devtools/bin/places.py` for now)
+### 2.1b Places: buildings and grounds (`.workbench/bin/places.py` for now)
 
 Above rooms, places group them by what they belong to, as a player reads a
 map (ctf_2fort's two forts, told apart by their wood and concrete and their
@@ -178,7 +178,7 @@ and shrinks by a ladder, each step held as occupation is:
   the war's analytics (`analysis.analytics`) and on the overlay's label.
 
 The classes a round starts with are computed today by the tooling, in
-Python (`.devtools/bin/places.py`, drawn by `rooms_view.py`, tests in
+Python (`.workbench/bin/places.py`, drawn by `rooms_view.py`, tests in
 `test_places.py`): occupation is then the spawns alone, each team's ways
 run from its spawns to the objectives (to the enemy's spawns on a map with
 none), and no room is an outpost. A way is every route at most a tenth

@@ -24,9 +24,9 @@ a second (TF2's `MaintainBotQuota`), never taking the last free slot. The
 war ending kicks them. An idle server (no humans for `sv_idle_delay`)
 pauses the war, bots included.
 
-Check it in game: `python3 .devtools/bin/ingame_one.py aiwar_bots` (on a
+Check it in game: `python3 .workbench/bin/ingame_one.py aiwar_bots` (on a
 second server: `--instance 2`); it is in `ingame_tests.py`'s plan on
-`pl_badwater`. `dt lua -f .devtools/bin/bot_status.lua` prints each bot's
+`pl_badwater`. `dt lua -f .workbench/bin/bot_status.lua` prints each bot's
 role, weapon, target, speed and contact.
 
 ## How it is built
@@ -69,7 +69,7 @@ native now, and a bot gives up one that has not answered in 5 s and asks again.
 
 ## What a bot player can be made to do
 
-Measured on the dev server (`.devtools/bin/bot_probe.lua`):
+Measured on the dev server (`.workbench/bin/bot_probe.lua`):
 
 - `StartCommand` runs for each bot every tick, and `SetupMove`, `Move`,
   `FinishMove`, `PlayerTick` too.

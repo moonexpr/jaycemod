@@ -36,9 +36,9 @@ It touches none of the uncommitted work in the tree.
 
 Baseline, measured 2026-10-10 by running the commands:
 
-- `.devtools/bin/check_lua.sh` prints `compiled 455 files` and
+- `.workbench/bin/check_lua.sh` prints `compiled 455 files` and
   `TOTAL 1805 passed, 0 failed`.
-- `.devtools/bin/run_lua_tests.sh` runs 123 test files.
+- `.workbench/bin/run_lua_tests.sh` runs 123 test files.
 
 ---
 
@@ -323,7 +323,7 @@ local Distance = require("foundation.geometry").Distance
 3, economy and loadout).
 
 `ws_hotswap_module` reruns a module inside its existing table
-(`.devtools/bin/server_root/hotswap.lua:35-41`, `tests/server_hotswap_test.lua:35`).
+(`.workbench/bin/server_root/hotswap.lua:35-41`, `tests/server_hotswap_test.lua:35`).
 A rerun replaces module-level functions, so every holder sees them. But
 `local Bank = {}; Bank.__index = Bank` (`economy.lua:20-21`) builds a *new*
 metatable, and live objects keep the old one.
@@ -400,7 +400,7 @@ Stage files by explicit path only. Commit with
 `git -c gpg.program=gpg-loopback commit`.
 
 Paths below are relative to `addons/sandcastle/gamemodes/sandcastle/gamemode/` unless they
-start with `tests/` or `.devtools/`.
+start with `tests/` or `.workbench/`.
 
 ### 7.1 Guard test, written first: `tests/foundation_layers_test.lua`
 
@@ -489,7 +489,7 @@ Cases:
 
 ### 7.4 Acceptance criteria (run them)
 
-1. `.devtools/bin/check_lua.sh | tail -2` prints `compiled 458 files`: 455,
+1. `.workbench/bin/check_lua.sh | tail -2` prints `compiled 458 files`: 455,
    plus `geometry.lua`, `geometry_test.lua` and `foundation_layers_test.lua`.
    It also prints `TOTAL <1805 + cases in the two new test files> passed, 0 failed`.
 2. These test files report exactly the same counts as before:
@@ -536,7 +536,7 @@ Each phase keeps the totals. Test files change only their `require` paths
 | **3** | The squad fix (`aiwar.lua`, `aiwar/orders.lua` and its tests) and the spawn-menu loadout work are committed | 3a: P6 inversions. Guard test: `KNOWN_INVERSIONS` becomes `{}`. 3b: P3/P4/P5 on `economy` and `loadout`: `foundation/refusal.lua` (Structures), a plain ledger, and classes as keys. | 3a: `luajit tests/foundation_layers_test.lua` passes with an empty `KNOWN_INVERSIONS`. 3b: `tests/economy_test.lua:34` and `tests/loadout_test.lua:60,224` assert the refusal *kind*, not the metatable (the type disappears; the behaviour asserted is the same). A new test proves that a loadout made before a rerun of `foundation.loadout` still has its refusals recognised (§9.2). | 7 refusal metatables, `Bank` and both loadout classes |
 | **3c** | none | Done in its own commit: `aiwar/{orders,soldier}` leave the `ns` category for PENDING → `features/aiwar` (Amendment 4), so `KNOWN_INVERSIONS` is `{}`. A mode-neutral NextSoldier tree is architect design, gated on a second NS host. | The guard passes with `KNOWN_INVERSIONS = {}` and fails when an NS module is made to require `foundation.aiwar`. | — |
 | — | **The multi-file controllers task** (separate) | It must (1) ship non-`sh`/`cl` feature files that clients need (`init.lua:19-30` ships only `CLIENT_PARTS`), (2) settle the part-file naming (phase 1 uses `model.lua` or the old basename), and (3) ship unprefixed `ws/*.lua` files. | n/a | n/a |
-| **4** | Multi-file shipping exists | Client-needed models, smallest dependency first: `capture/hud`; `rounds/{control_points,destruction,text}`; `rounds/arena`; the `payload` system; `hazards`; `haunting` bosses (before spells: `spells/spawn_boss` and `spells/skeleton_horde` require them); `spells` with `projectile/orb`; `holiday`, then `wheel`; `npc/boss_events`; `nbdebug` (`npc/debug`, both overlays); `nodegraph`; §3.3 plumbing into `ws/`. | A client joins a map using each moved feature and `dt lua` on the client loads each moved model. `.devtools/bin/ingame/checks/load.lua:40` lists only `foundation*` names, so extend it to report `features.*` models too. | 57 modules |
+| **4** | Multi-file shipping exists | Client-needed models, smallest dependency first: `capture/hud`; `rounds/{control_points,destruction,text}`; `rounds/arena`; the `payload` system; `hazards`; `haunting` bosses (before spells: `spells/spawn_boss` and `spells/skeleton_horde` require them); `spells` with `projectile/orb`; `holiday`, then `wheel`; `npc/boss_events`; `nbdebug` (`npc/debug`, both overlays); `nodegraph`; §3.3 plumbing into `ws/`. | A client joins a map using each moved feature and `dt lua` on the client loads each moved model. `.workbench/bin/ingame/checks/load.lua:40` lists only `foundation*` names, so extend it to report `features.*` models too. | 57 modules |
 | **5** | Phase 3a done, and multi-file has split `features/aiwar/sv.lua` | `aiwar`, `aiwar/{slots,spawns,scenario,scenario/*,soldier,orders}`, `ns/inspect`, `kill_feed` → `features/aiwar/`. | `tests/aiwar_controller_test.lua:535-613`, `aiwar_koth_test.lua:49` and `aiwar_arena_test.lua:125` still pass their `getmetatable(...) == X.Scenario` identity checks, now under the new names. | 11 modules |
 | **6** | none | Rename `spectate`'s `train` descriptor field to a generic objective (the scholar's note). Split `localization`'s KeyValues reader into a structure. Remove `PENDING` from the guard. | `PENDING` is empty. `tests/spectate_test.lua` asserts the same behaviour under the new field name. | — |
 

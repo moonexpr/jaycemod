@@ -60,7 +60,7 @@ there; the rest of foundation stays free of game nouns.
 
 ## What crossing costs
 
-`.devtools/bin/native_boundary_bench.lua`, local LuaJIT 2.1 on arm64, best of 5:
+`.workbench/bin/native_boundary_bench.lua`, local LuaJIT 2.1 on arm64, best of 5:
 
 | Case | JIT on | JIT off |
 |---|---|---|
@@ -173,7 +173,7 @@ both implementations (`record_routes.lua`, `route_replay.lua [--native]`).
 `native_bench.lua` on instance 1 (Rosetta and Wine, JIT on and off), every
 module with a case, 2026-10-29 on cp_ambush_event with the AI war running:
 ns an operation unless marked, or the time of one call where one call does
-the whole job. The raw run is `.devtools/artifacts/native_bench_server.txt`.
+the whole job. The raw run is `.workbench/artifacts/native_bench_server.txt`.
 
 | Module | Case | Lua (on / off) | Native (on / off) |
 |---|---|---|---|

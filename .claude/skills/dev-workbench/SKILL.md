@@ -6,7 +6,7 @@ description: Sandcastle's dev workbench on the dedicated server — reload chang
 # Dev workbench
 
 `addons/sandcastle_dev`, loaded only on the dev server (the mount
-`.devtools/server_lua/sandcastle_dev.lua` sets `DEBUG` and loads it on
+`.workbench/server_lua/sandcastle_dev.lua` sets `DEBUG` and loads it on
 every map). Every command is a `dev.*` Lua function that returns a table;
 the console commands print the same table as JSON. Drive it through the
 gmod MCP (`lua_run` for the functions, `rcon` for the commands). Errors
@@ -59,7 +59,7 @@ players by SteamID64.
 
 ### Scenarios
 
-Scenarios are saved states, kept per map under `.devtools/scenarios/`.
+Scenarios are saved states, kept per map under `.workbench/scenarios/`.
 
 | Function | Command | What |
 |---|---|---|
@@ -189,7 +189,7 @@ the `ULXLuaDevDescribe` hook the workbench answers.
 
 ## Scenario format
 
-`.devtools/scenarios/<map>/<name>.json` (the server writes it through
+`.workbench/scenarios/<map>/<name>.json` (the server writes it through
 `data/sandcastle_dev/scenarios`, linked by `gmod.toml`'s `[data]`; `quick_*` files
 are gitignored). Fields: `format`, `name` (a-z, 0-9, `_`, `-`),
 `description`, `map`, `schema`, `saved_at`, `state`. `state.sections`:

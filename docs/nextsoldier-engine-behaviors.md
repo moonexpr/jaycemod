@@ -26,7 +26,7 @@ suspending, the event walk, dead actions) is compiled in and running; our
 
 The vtables match the SDK's `NextBotBehavior.h` with Dota's `#ifdef` block out: 42
 slots for `INextBotEventResponder`, 91 for `Action<T>`, 9 for `IContextualQuery`.
-`.devtools/bin/pe_rtti.py` lists any class's vtables and slots from its RTTI.
+`.workbench/bin/pe_rtti.py` lists any class's vtables and slots from its RTTI.
 
 ## The mechanism: nothing is patched
 
@@ -78,7 +78,7 @@ query walk `ShouldRetreat`, and its `OnCommandString` suspends for what `command
 over everything it runs (`engine.Command(bot, "taunt")`, or the engine's `nb_command`).
 The rest of TF2's monitor waits on what it needs from the game.
 
-`.devtools/bin/ctfbot_check.lua` on `mvm_decoy` watches one go: given the bomb at 0.1 s,
+`.workbench/bin/ctfbot_check.lua` on `mvm_decoy` watches one go: given the bomb at 0.1 s,
 `ScenarioMonitor` suspends for `DeliverFlag`; told to taunt at 6 s, the monitor suspends
 over all of it and it resumes at 7.6 s; at about 33 s, 5,621 units on, the zone fires
 `OnCapture` and `ScenarioMonitor` resumes.
@@ -96,7 +96,7 @@ while it has the flag. GMod has no `PlayerLocomotion`, so its body is keys from
 `nextsoldier.body.player_body` through `StartCommand`, and its routes are planned on a
 `ws_bot_navigator`.
 
-`.devtools/bin/next_soldier_round_check.lua` is the assessment: `mp_winlimit 1`, one
+`.workbench/bin/next_soldier_round_check.lua` is the assessment: `mp_winlimit 1`, one
 player, on BLU. It writes to `data/ns_round_check.txt` as it goes. On instance 2, at
 commit 2f80dcbe, it captured three times in 408 s and won by `FLAG_CAPTURE_LIMIT`, then
 the rotation moved the map on. A map can load with its rounds off when nobody is
@@ -131,7 +131,7 @@ closures they alone made open again as they load.
 
 **Replanning, as TF2's.** A route is planned again every 1 to 2 seconds whether or not its goal
 moved, and `Path:Compute`'s answer tells a straight path it found (both ends in one area) from
-one it did not. `.devtools/bin/war_round_check.lua` plays a war to one capture, BLU against nobody.
+one it did not. `.workbench/bin/war_round_check.lua` plays a war to one capture, BLU against nobody.
 
 ## The rest on it
 
@@ -170,7 +170,7 @@ soldier's intention, which runs the model and sets the eyes, with no Lua in betw
 their way under its eyes: `Drive` turns where it walks into forward and side moves.
 
 `body/reach.rs` reads what it needs from `server.dll`, whose Lua methods are entries in static tables
-(`.devtools/bin/lua_glue.py` disassembles them): `EyePos`, `EyeAngles` and `Alive` give virtual
+(`.workbench/bin/lua_glue.py` disassembles them): `EyePos`, `EyeAngles` and `Alive` give virtual
 slots, `Team` a field, `SetEyeAngles` a function no vtable holds. A binary where these differ is
 refused at bind. The priorities' names and order are from memory of the SDK: GMod's binary holds
 only the `nb_head_aim_*` convars and the `LOOK_AT` debug category.
@@ -216,7 +216,7 @@ cohesion, filling a room when a squad assaults or ambushes one, and the set-up's
 
 On a live server (instance 3), on `srcds.py start --gamemode base` for the bare NextBots
 and player bots and the full gamemode for `base_nextsoldier`.
-`.devtools/bin/nextsoldier_engine_check.lua` repeats all but the map change.
+`.workbench/bin/nextsoldier_engine_check.lua` repeats all but the map change.
 
 - A child starts before its container; `SuspendFor` buries and `Done` resumes, with
   the right prior and next actions; `ChangeTo` replaces; dead actions are deleted.
@@ -281,7 +281,7 @@ and `actor.intention` (`CLuaIntention`). `nextsoldier.engine.Components(actor)` 
 `native/src/actor.rs` holds what was read from the binary and checks it at bind;
 `actor_bind.rs` is the binding.
 
-**What the binary showed** (`.devtools/bin/vtable_dis.py` disassembles a class's slots):
+**What the binary showed** (`.workbench/bin/vtable_dis.py` disassembles a class's slots):
 
 - INextBot hands out its components at slots 49 (body), 50 (intention) and 51 (vision), each
   made the first time it is asked: a `CLuaNextBot`'s vision, and all of a player's. Once made,
@@ -314,7 +314,7 @@ from the engine's `IsEnemy` (teams), not a soldier's relations. A head's `AimHea
 entity looks at where its eyes are when asked, not as it moves.
 
 **What was proved** on sandbox (instance 1, gm_construct), by
-`.devtools/bin/nextsoldier_components_check.lua`: two bare NextBots following paths (GMod's
+`.workbench/bin/nextsoldier_components_check.lua`: two bare NextBots following paths (GMod's
 `MoveToPos`) and a NextSoldier bot player get all three objects. The engine's vision recognizes
 the other bot and answers what it knows of it (`GetKnown`, `GetKnownEntities`,
 `GetClosestKnown`, `GetKnownCount`), sight and view (`IsAbleToSee`, `IsInFieldOfView`,

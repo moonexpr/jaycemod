@@ -582,10 +582,10 @@ Every package:
 
 ### 4.1 Acceptance, every package
 
-- `sh .devtools/bin/run_lua_tests.sh` exits 0, and every file reports
+- `sh .workbench/bin/run_lua_tests.sh` exits 0, and every file reports
   `0 failed`.
-- `sh .devtools/bin/check_lua.sh` compiles every file.
-- `python3 .devtools/bin/check_names.py` prints `ok`.
+- `sh .workbench/bin/check_lua.sh` compiles every file.
+- `python3 .workbench/bin/check_names.py` prints `ok`.
 - `luajit -b <file> /dev/null` succeeds for every changed Lua file.
 - `git diff --name-only origin/main...HEAD` lists only files the package
   owns.

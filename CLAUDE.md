@@ -29,16 +29,16 @@ NextSoldier, the AI-war's NextBot soldiers. Below, `gamemode/` is
 | `gamemode/*.lua` | Always-loaded glue and its `sh_`, `cl_`, `sv_` realm modules, each loaded by a line written by hand, never a loop or a folder scan: `shared.lua` includes the `sh_` ones, `cl_init.lua` the `cl_` ones, `init.lua` the `sv_` ones and sends clients the rest (`tests/ws_root_modules_test.lua`) |
 | `gamemode/entities/` | Map entity bindings |
 | `addons/sandcastle/sandcastle.fgd` | Hammer's FGD for the gamemode's own entities (`info_room`, `ent_room_alarm`) and the TF2 classes it implements that GMod's FGDs lack, loaded after `garrysmod.fgd`; `tests/fgd_sandcastle_test.lua` holds each class's keyvalues, inputs and outputs to what its Lua reads and fires |
-| `addons/teamtint/` | Team Tint, its own addon: RED/BLU NPCs in TF2's shading, a tuning tool and debug views; pure modules in `lua/includes/modules/`, textures baked by `.devtools/bin/teamtint_bake.py` (`docs/team-theming-plan.md`) |
+| `addons/teamtint/` | Team Tint, its own addon: RED/BLU NPCs in TF2's shading, a tuning tool and debug views; pure modules in `lua/includes/modules/`, textures baked by `.workbench/bin/teamtint_bake.py` (`docs/team-theming-plan.md`) |
 | `addons/ulx_luadev/` | ULX luadev, its own repository ([moonexpr/ulx_luadev](https://github.com/moonexpr/ulx_luadev)) checked out here, ignored by this one (commit and push it there); `tests/server_luadev*_test.lua` need the checkout. ULX variants of luadev's chat commands (`!l`, `!ls`, `!lm`, `!print`...) and of its console-only features (`!lfile`, `!lent`, `!lwep`, `!leffect`, `!lwatch`, `!lunwatch`, `!lcopy`, `!lspawn`); a run on the server tells its caller in chat and with a sound cue, tuned by each caller's `cl_luadev_output_*` preferences; `!print` of easylua's relative names (`this`, `we`, `there`, `trace`...) draws them for the caller a moment (`ULXLuaDevDescribe` adds lines, NextSoldier's stacks from the workbench); its library in `lua/includes/modules/` (`luadev_output`, `luadev_overlay`) |
 | `addons/model_viewer/` | Model Viewer, its own addon: a client's window on a model, to click through its acts and watch each animation (`cl_model_viewer <model>`, a model's right-click menu in the spawn menu, the C menu's icon); its values in `lua/includes/modules/model_viewer_catalog.lua` |
 | `tests/*_test.lua` | LuaJIT tests, `tests/harness.lua`; `tests/foundation_layers_test.lua` guards foundation's layers |
 | `native/` | `ws_profile`, the sampling profiler, a Rust binary module. The other binary modules are their addons' `native/`, each a drop-in that a server's `require` installs over the globals its Lua twins publish: foundation's (`addons/foundation/native`: its structures and foundation.wetsands' systems, one crate, with `vendor/source-sdk-2013`, the raw Source SDK headers it reads Source's values from) and NextSoldier's (`docs/native-foundation-plan.md`) |
 | `docs/` | Design notes; `docs/research/foundation-admission-rule.md` decides what belongs in foundation; `docs/combat-repath-optimization.md` is the handoff for profiling and optimizing AI-war combat repaths |
-| `.devtools/bin/` | Project tools, each listed with its first line in `.devtools/README.md` (written by `dt devtools/index`; `test_devtools_index.py` fails while it is stale or a tool has no line); `.devtools/experiments/<name>/` the benches and trials, each with its question; `.devtools/artifacts/` generated output. The dedicated server's tools (srcds, RCON, luadev, Watch, the gmod MCP) are the gmod plugin's, in claude-config2's `plugins/gmod`, run as `dt gmod/...`; a tool here that imports them imports `gmod_plugin` first |
-| `.devtools/gmod.toml` | What this repo's dedicated server runs, for the gmod plugin: the gamemode, the addons and data linked into its root, Workshop items and maps, native modules, TF2's sound scripts |
-| `.devtools/server_lua/` | This repo's own server Lua, mounted on the dev server beside the plugin's (`gmod.toml`'s `[server_lua]`): `hotswap.lua`, `sandcastle_dev.lua` (the workbench) |
-| `.devtools/docker/` | `native-linux`: the image that builds the binary modules for Linux (`native_linux.py`); the Linux server's own image is the plugin's |
+| `.workbench/bin/` | Project tools, each listed with its first line in `.workbench/README.md` (written by `dt devtools/index`; `test_devtools_index.py` fails while it is stale or a tool has no line); `.workbench/experiments/<name>/` the benches and trials, each with its question; `.workbench/artifacts/` generated output. The dedicated server's tools (srcds, RCON, luadev, Watch, the gmod MCP) are the gmod plugin's, in claude-config2's `plugins/gmod`, run as `dt gmod/...`; a tool here that imports them imports `gmod_plugin` first |
+| `.workbench/gmod.toml` | What this repo's dedicated server runs, for the gmod plugin: the gamemode, the addons and data linked into its root, Workshop items and maps, native modules, TF2's sound scripts |
+| `.workbench/server_lua/` | This repo's own server Lua, mounted on the dev server beside the plugin's (`gmod.toml`'s `[server_lua]`): `hotswap.lua`, `sandcastle_dev.lua` (the workbench) |
+| `.workbench/docker/` | `native-linux`: the image that builds the binary modules for Linux (`native_linux.py`); the Linux server's own image is the plugin's |
 
 Sandcastle's messages between server and clients are `net2`'s, and its
 events `game_events`', built on it (`docs/net2.md`): no kinds, a name made
@@ -52,7 +52,7 @@ the registry refuses any other name: `system_` for the gamemode core's own
 as possible; `game_` for every other.
 
 Check the systems a change touches, never all of them:
-`.devtools/bin/check/check_lua.sh --changed` runs the groups of the suites your
+`.workbench/bin/check/check_lua.sh --changed` runs the groups of the suites your
 changes touch, `check_lua.sh GROUP...` named ones (`--list` shows the
 groups: foundation, games, nextsoldier, war, rounds, features, ws, addons,
 tooling). Each compiles its group's files and runs its tests in both passes
@@ -61,7 +61,7 @@ one group and every source file to one (`tests/suites_test.lua`); a new
 test goes in its system's group. A change to a lower layer's interface
 (foundation, games, nextsoldier) also runs the groups above it that use
 what changed. The whole suite (`check_lua.sh all`) is the operator's: the
-project's hook (`.devtools/bin/check/check_lua_gate.py`) refuses it to an agent
+project's hook (`.workbench/bin/check/check_lua_gate.py`) refuses it to an agent
 unless the operator asks, with `CHECK_LUA_ALL=1`.
 
 ## The live server: gmod MCP and the dev workbench
@@ -102,9 +102,9 @@ bears on the task. Before editing a file, `dt rag/history files PATH` lists the
 commits that touched it. Skip both for work with no history behind it (a new
 asset, a config value).
 
-Searches are logged to `.devtools/artifacts/rag/questions.jsonl`; a question
+Searches are logged to `.workbench/artifacts/rag/questions.jsonl`; a question
 that found what mattered, or one the operator corrected, becomes a case in
-`.devtools/rag/eval.jsonl` (`dt rag/history eval`).
+`.workbench/rag/eval.jsonl` (`dt rag/history eval`).
 
 ## Lua style
 
@@ -112,7 +112,7 @@ Write Lua by the `glua-style` skill (`.claude/skills/glua-style/`): its
 naming, GLua practices, comments and realms. Its layout gives way to
 notcake's, from [gcompute](https://github.com/notcake/gcompute) and
 [glib](https://github.com/notcake/glib), which
-`.devtools/bin/check/lua_format.py` writes:
+`.workbench/bin/check/lua_format.py` writes:
 
 - Tabs indent, one per open block or bracket, counted from the line that
   opened it: `hook.Add ("Think", "id", function ()` indents its body once.
@@ -145,7 +145,7 @@ notcake's, from [gcompute](https://github.com/notcake/gcompute) and
   line, no parentheses around a whole `if`/`while` condition, no GMod
   operators or comments.
 
-Run it on the Lua you change before checking it: `.devtools/bin/check/lua_format.py
+Run it on the Lua you change before checking it: `.workbench/bin/check/lua_format.py
 PATH...` (a folder takes every `.lua` under it; `--check` lists what it would
 change and exits 1, `--diff` shows it, `-` filters stdin). It never joins or
 wraps lines, so keep them under 120 yourself, and it refuses a file whose
@@ -159,7 +159,7 @@ Author and commit as John Chandara <john.chandara@icloud.com>. Never add
 Claude attribution anywhere: no `Co-Authored-By: Claude`, no
 `Claude-Session:` lines, no "Generated with Claude Code" or session links,
 in commit messages, PR descriptions or comments. This overrides any default
-attribution. `.devtools/bin/strip_attribution.py` removes it from a
+attribution. `.workbench/bin/strip_attribution.py` removes it from a
 branch's history.
 
 ## foundation layers
@@ -407,7 +407,7 @@ Tests are `tests/wartactics_<module>_test.lua`.
 | Modules | |
 |---|---|
 | Fire teams and squads | `fireteam` (a fire team's doctrine in a fight, the engine `gameplay.tactics` names), `squad`, `mission` (a squad's mission, the wait for its members by the waves, when it must regroup: `docs/squad-missions-plan.md`) |
-| The field | `lanes`, `posts` (where a line is established), `zone` (the ground behind the setup gates), `explore`, `hunt` (post-round carnage), `rooms` (the map's rooms, indoors and outdoors, as big blocks on its levels, with the corridors, seams (the threshold under a door, as near a plane as the mesh lays it: a spawn's shutter onto the wilds), stairwells, doors and windows joining them; `IsPassage(space)` for a corridor or seam; found from the mesh's shape and the BSP's areaportals; `.devtools/bin/rooms/rooms_view.py` draws them from a dump), `incursion` (how each team walks in from its spawns over the room graph, breakable windows included, on `graph.paths`: its walk, highways and other routes, the front, traffic, its tree and the fewest breaching paths; tested in the native pass, `docs/incursion-native-plan.md`), `classes` (what each room is for when a round starts: restricted and highways, each team's spanning tree over the rooms and corridors, buildings and their owners, strongholds and commons as a gradient between them, junctions carved at the tree's forks), `ambush` (hiding spots beside the entrances an enemy squad comes through, out of the frustum through the doorway), `intel` (what a team knows of the enemy by room: how strongly held, traffic, support bases) |
+| The field | `lanes`, `posts` (where a line is established), `zone` (the ground behind the setup gates), `explore`, `hunt` (post-round carnage), `rooms` (the map's rooms, indoors and outdoors, as big blocks on its levels, with the corridors, seams (the threshold under a door, as near a plane as the mesh lays it: a spawn's shutter onto the wilds), stairwells, doors and windows joining them; `IsPassage(space)` for a corridor or seam; found from the mesh's shape and the BSP's areaportals; `.workbench/bin/rooms/rooms_view.py` draws them from a dump), `incursion` (how each team walks in from its spawns over the room graph, breakable windows included, on `graph.paths`: its walk, highways and other routes, the front, traffic, its tree and the fewest breaching paths; tested in the native pass, `docs/incursion-native-plan.md`), `classes` (what each room is for when a round starts: restricted and highways, each team's spanning tree over the rooms and corridors, buildings and their owners, strongholds and commons as a gradient between them, junctions carved at the tree's forks), `ambush` (hiding spots beside the entrances an enemy squad comes through, out of the frustum through the doorway), `intel` (what a team knows of the enemy by room: how strongly held, traffic, support bases) |
 | The monitors | `monitors` (`TacticalMonitor`, `SquadMonitor` and its roles, `ScenarioMonitor`, under a mode's strategy, built on the monitor kind given them), `bridge` (those built as NextSoldier's actions and registered by name) |
 | The war | `room_hints` (a mapper's word on the rooms the war finds, from `info_room`: `Hint{ name, pos, label?, class?, team?, point? }`, `Place(hints, roomAt)`, `Override(classed, placed, ownerOf)`, a room tied to a control point held by its owner; `CLASSES`), `overwatch` (a squad's director's policy: `Decide(situation)` → vacate, defend, attack or stand by; `VACATE_FLOOR`, `ATTACK_AFTER`), `scenario` (the `Scenario` class), `scenarios`, `bot_quota` (tf_bot_quota's rules, `docs/aiwar-bots.md`), `tuning` (live tuning of fireteam, lanes and squad), `hazards` (nav areas that keep forcing soldiers to respawn, disabled and saved until inspected) |
 

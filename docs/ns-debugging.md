@@ -197,13 +197,13 @@ A **danger** mark (Annotate) of the squad's team within a room's breadth of
 its point (768 units) has its leader call the fall back the same way, and the
 squad evacuates away from the mark: an object, or a place in the room. An
 evacuating member runs out by its way out and `EXIT_CLEARANCE` past it, clear
-of the room. `.devtools/bin/squad_member_check.lua` runs the orders and modes
+of the room. `.workbench/bin/squad_member_check.lua` runs the orders and modes
 on a server, kills two of four to see the fall back called, and returns it all
 as data.
 
 #### dev_3house: the room bench
 
-`dev_3house` (`.devtools/bin/dev_3house_map.py`, through hammer-mcp) is three
+`dev_3house` (`.workbench/bin/dev_3house_map.py`, through hammer-mcp) is three
 buildings on grass: RED's, the bench (one 768-square room, a 128-wide doorway
 in each wall, glass windows, in a walled court whose gateways, near the ends of
 its east and west walls, leave no line from either spawn to the bench or the
@@ -230,7 +230,7 @@ class the war has not, a second in a room, one in no room) is printed as the
 rooms are found. The script renders it top-down,
 from the side, through the bench's doors and inside a spawn room, and draws
 its plan, before it compiles. The nav mesh is built on the server by
-`.devtools/bin/dev_3house_nav.lua`, run twice: first it generates the mesh with
+`.workbench/bin/dev_3house_nav.lua`, run twice: first it generates the mesh with
 the shutters open and the fields passable; after the map reloads, it repairs
 it. The generator links a room's floor straight to the grass across a
 doorway's threshold (areas that do not touch), which the war's rooms read as
@@ -239,7 +239,7 @@ sills, which hides the windows from them. The repair cuts those links, removes
 what no walk from the seeds reaches, and saves the mesh, so the bench reads
 as a sealed indoor room with four doors and eight windows.
 
-`.devtools/bin/dev_3house_bench.lua` runs five RED followers on their legs,
+`.workbench/bin/dev_3house_bench.lua` runs five RED followers on their legs,
 feet free, through a room operation, stage by stage: spawn, muster (from
 RED's spawns into its stronghold, checking the placement: a place each, spaced apart, no two walks
 crossing, each resting at its own), mobilize (out through the shutter to the
@@ -252,13 +252,13 @@ BLU's side), rout (three of five killed) and remuster. Each stage sets up its
 own start, so any one runs alone (`NSRoomBench.Run("evacuate")`) or all in turn
 (`RunAll`; a run started ends one still going), and checks its result as data
 (`NSRoomBench.Report()`, or one stage in full, passed or not,
-`NSRoomBench.Show("muster")`). `.devtools/bin/assault_view.py` draws an
+`NSRoomBench.Show("muster")`). `.workbench/bin/assault_view.py` draws an
 assault's placements and paths from above, with no one moving, for an enemy
 marked at the bench's centre, rear, front, left and right
-(`NSRoomBench.Placements()`, into `.devtools/artifacts/maps/dev_3house_assault.png`). Like the war, it makes the forcefields
+(`NSRoomBench.Placements()`, into `.workbench/artifacts/maps/dev_3house_assault.png`). Like the war, it makes the forcefields
 passable: TF2's stop only players, and NextBots' movement takes them for walls.
 
-`.devtools/bin/dev_3house_trial.lua` puts the pieces together against a real
+`.workbench/bin/dev_3house_trial.lua` puts the pieces together against a real
 enemy, followers on their legs, armed, on both sides. `NSAssaultTrial.Start("ambush")`:
 six BLU lie in ambush inside the bench by the door RED's flow comes in by, and
 once they are laid, twelve RED leave their spawn for the staging point outside

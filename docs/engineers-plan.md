@@ -178,7 +178,7 @@ walking from the soldier.
 ## 5. Steps
 
 The work is one stream, done in order (see `feedback-focus-parallelism`).
-Each step ends with `.devtools/bin/check_lua.sh` green and a commit.
+Each step ends with `.workbench/bin/check_lua.sh` green and a commit.
 
 1. **The sidecar.** `nav_convert.py` keeps the attributes, with a Python
    test round-tripping a fixture `.nav`. `foundation.nav.tf_attributes` is

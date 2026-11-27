@@ -1,4 +1,4 @@
--- wartactics.ambush (.devtools/bin/test_ambush.py the reference): plain
+-- wartactics.ambush (.workbench/bin/test_ambush.py the reference): plain
 -- geometry over the incursion's crossings and walks, given here by hand.
 local T = dofile ("tests/harness.lua")
 local Ambush = wartactics.ambush

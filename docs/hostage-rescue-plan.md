@@ -29,8 +29,8 @@ CS:S's sides are RED (terrorists, who keep the hostages) and BLU
 | The AI war's scenario: BLU rescuers, RED's new HostageDefender | `features/aiwar/scenario/hostage.lua` | `aiwar_hostage_test` |
 | The controller and `hostage_entity` | `features/hostage/sv.lua`, `entities/entities/hostage_entity.lua` | live only |
 | CS:S spawns for RED and BLU | `features/aiwar/spawns.lua`, `sv_map.lua` | `aiwar_cs_spawns_test` |
-| An instance running a worktree's gamemode | `.devtools/bin/server_root.py` (`SANDCASTLE_GAMEMODE`) | `test_server_root.py` |
-| Watching a match | `.devtools/bin/hostage_watch.py`, `hostage_status.lua` | |
+| An instance running a worktree's gamemode | `.workbench/bin/server_root.py` (`SANDCASTLE_GAMEMODE`) | `test_server_root.py` |
+| Watching a match | `.workbench/bin/hostage_watch.py`, `hostage_status.lua` | |
 
 Squads: each team forms a squad for every hostage group (`war:SetSquadsMin`,
 raised to the group count, never lowered) and every squad owns one group.
@@ -214,7 +214,7 @@ Still open:
 ## The hostages' models
 
 Two Workshop addons, downloaded by steamcmd (`SERVER_DOWNLOADS` in
-`.devtools/bin/server_root.py`, so the server needs no operator subscription)
+`.workbench/bin/server_root.py`, so the server needs no operator subscription)
 and mounted from `cache/`:
 
 | Name | Item | Models |

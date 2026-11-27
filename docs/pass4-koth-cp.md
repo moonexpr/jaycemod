@@ -9,8 +9,8 @@ Model / Controller / Entity / View layers, `WS.Feature`).
 
 `sdk/` means `~/Repositories/source-sdk-2013/src/game/`. `$TF2` is
 `$HOME/Library/Application Support/CrossOver/Bottles/Team Fortress 2/drive_c/Steam/steamapps/common/Team Fortress 2`.
-Map facts come from `.devtools/bin/bsp_entities.py "$TF2/tf/maps/<map>.bsp" [--class C | --io]`
-and the new `.devtools/bin/map_census.py koth_ cp_` (section 1.3).
+Map facts come from `.workbench/bin/bsp_entities.py "$TF2/tf/maps/<map>.bsp" [--class C | --io]`
+and the new `.workbench/bin/map_census.py koth_ cp_` (section 1.3).
 
 Baseline on 757cd62: `check_names.py` ok (272 files), `check_lua.sh`
 compiles 272 files, 848 tests pass, 0 fail.
@@ -218,7 +218,7 @@ Needs:
 
 ### 1.3 Logic entities in the census
 
-Run `.devtools/bin/map_census.py koth_ cp_` (101 maps). Classes neither
+Run `.workbench/bin/map_census.py koth_ cp_` (101 maps). Classes neither
 Sandcastle nor GMod's `server.dll` provides:
 
 | class | maps | decision |
@@ -877,7 +877,7 @@ It asks for other changes in its report.
 | **K koth** | foundation/rounds/koth.lua; features/koth/{sv,cl}.lua; entities/tf_logic_koth.lua; tests/koth_test.lua | model and test: R's and C's models; controller and view: R+C merged |
 | **P payload** | foundation/rounds/payload.lua; features/payload/{sv,cl}.lua; deletes ws/{sv_payload,cl_payload,cl_hud}.lua; entities/{team_train_watcher,tf_logic_multiple_escort}.lua; foundation/payload.lua (callers of its duplicated point rules → master); features/editors/sv.lua (cart lines only); tests/payload_mode_test.lua (updates payload_test only where functions move) | R+C merged |
 | **M logic** | foundation/capture/point_timer.lua; entities/{tf_logic_cp_timer,trigger_ignite,tf_logic_on_holiday,filter_tf_condition,tf_logic_medieval}.lua; tests/{capture_point_timer,trigger_ignite}_test.lua (and a pure `foundation.hazards.ignite` part if the burn needs a rule beyond the trigger volume) | R+C merged |
-| **T tools** (written with this plan, left uncommitted for the integrator) | .devtools/bin/{map_census,test_map_census}.py | none |
+| **T tools** (written with this plan, left uncommitted for the integrator) | .workbench/bin/{map_census,test_map_census}.py | none |
 
 Merge order:
 1. R, then C, back to back.
@@ -889,9 +889,9 @@ interfaces, and merged once R and C are in.
 
 ### 7.1 Acceptance criteria (every package)
 
-- `.devtools/bin/check_lua.sh` passes: every file compiles, and every test
+- `.workbench/bin/check_lua.sh` passes: every file compiles, and every test
   passes.
-- `.devtools/bin/check_names.py` passes. No "TF2"/"tf2" appears in our
+- `.workbench/bin/check_names.py` passes. No "TF2"/"tf2" appears in our
   identifiers. Every Global2 or NW2 key read is set somewhere.
 - `luajit -bl <foundation file> | grep GGET` shows only the globals
   captured above `module(...)`.

@@ -19,7 +19,7 @@ written in Lua.
 The service reads `scripts/responserules/response_rules.txt` from the GAME
 path, which every mounted addon is on, and follows its `#include`s
 (relative to `scripts/`). The dedicated server links the addon into its
-`addons/` (`.devtools/bin/server_root.py`, `REPO_ADDONS`).
+`addons/` (`.workbench/bin/server_root.py`, `REPO_ADDONS`).
 
 Console: `responserules_reload` reads the files again (a refused file leaves
 the rules as they were and says why, with its file and line),

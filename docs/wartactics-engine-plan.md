@@ -33,7 +33,7 @@ The code under `addons/wartactics/` is a library, not an engine.
 
 ## 2. What it costs, measured
 
-`.devtools/bin/aiwar_tick_probe.lua` (`WarProbe.Start(60)`, then `Summary`,
+`.workbench/bin/aiwar_tick_probe.lua` (`WarProbe.Start(60)`, then `Summary`,
 `Hooks`, `Methods`) wraps the controller, the bot soldier and the war's
 hooks for a window. All figures: cp_dustbowl, bot players, single 60 s runs
 of different fights, so differences under about 30 ms/s are noise.
@@ -136,13 +136,13 @@ On `main`, pushed. Each has its tests, written first.
    belong in `features/npc/bot_steering.lua` beside `StandOnRoute`, not in
    the war's class.
 4. **Done 2026-11-12: the fixed benchmark** (`ba389f6f`).
-   `.devtools/bin/aiwar_bench.py --save NAME` saves a warmed war as a
+   `.workbench/bin/aiwar_bench.py --save NAME` saves a warmed war as a
    scenario; `--scenario NAME --conditions "a=convar 0;b=convar 1"` replays
    it for each replication and condition in turn (a b b a ...), measures a
    window with the probe's hooks alone, and reports each condition as the
    mean of its replications with a 95 % t interval, and the pass line (§8.6)
    on every replication. The scenario is
-   `.devtools/scenarios/cp_dustbowl/aiwar_bench_16v16.json` (32 bots, 29
+   `.workbench/scenarios/cp_dustbowl/aiwar_bench_16v16.json` (32 bots, 29
    alive when saved). 16v16 needs a server of 33 slots or more (the quota
    keeps one free): `srcds.py start --gamemode wetsands --map cp_dustbowl
    --maxplayers 34`. The baseline, five replications, asynchronous search:
@@ -288,7 +288,7 @@ fire-team table.
    §8.5's count of routes found and bots stuck.
 2. Done 2026-11-12: where the war's time goes at 16v16 (the probe's
    `Methods`, 30 s on the benchmark's scenario, 458 ± 25 ms/s; inclusive,
-   so nested rows overlap; `.devtools/artifacts/aiwar_probe_16v16.txt`):
+   so nested rows overlap; `.workbench/artifacts/aiwar_probe_16v16.txt`):
 
    | Where | ms/s | Calls | Mean |
    |---|---|---|---|

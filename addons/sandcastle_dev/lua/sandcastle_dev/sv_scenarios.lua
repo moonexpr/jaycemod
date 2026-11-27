@@ -1,5 +1,5 @@
 -- Scenarios: captured states saved as JSON under data/sandcastle_dev/
--- scenarios/<map>/<name>.json (linked to the repo's .devtools/scenarios by
+-- scenarios/<map>/<name>.json (linked to the repo's .workbench/scenarios by
 -- server_root.py), loaded back in place. A scenario of another map, or of a
 -- schema this workbench cannot migrate, is refused with what to do
 -- (sandcastle_dev_scenario).

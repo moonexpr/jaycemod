@@ -35,7 +35,7 @@ survey are in CLAUDE.md's foundation index).
 
 ### Benched, 2026-10-27
 
-`.devtools/bin/bench_foundation.lua` times each module against the code it
+`.workbench/bin/bench_foundation.lua` times each module against the code it
 replaced, copied as it was. Run on the dev server (ctf_2fort, empty, JIT on,
 the native twins: its DLL reloads on a map change) the best of five, in ns an
 operation:
@@ -71,7 +71,7 @@ What it says:
   Lua twin of `Nearest` beats the native by 3 to 10 times. With the JIT off
   (a thrashing server's interpreter, baseline H12) the native wins nearly
   everywhere, `box.Overlaps` and `Lowest` apart. The server's own JIT is on
-  for this run. Local results are in `.devtools/artifacts/bench-foundation-*.txt`.
+  for this run. Local results are in `.workbench/artifacts/bench-foundation-*.txt`.
 
 The operator's rule (a module is whole native on a server) holds in every
 row; the rows above 1.0 are the argument for letting a module stay Lua when

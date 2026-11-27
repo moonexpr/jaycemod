@@ -11,7 +11,7 @@ games on any map with a tool-gun tool (§4.3, preliminary). §8 is the
 implementation plan.
 
 Paths are relative to `addons/sandcastle/gamemodes/sandcastle/gamemode/` unless they
-start with `addons/`, `tests/`, `docs/` or `.devtools/`.
+start with `addons/`, `tests/`, `docs/` or `.workbench/`.
 
 ---
 
@@ -45,7 +45,7 @@ start with `addons/`, `tests/`, `docs/` or `.devtools/`.
 | Feature loader | `foundation/features.lua`, `ws/sh_core.lua:131-137` | `WS.Feature(name)` loads `features/<name>/` on first call, in either realm, and tells clients to load the client part. `WS.FeatureLoaded(name)` asks without loading. Entities ask in `Initialize`, so a map loads only what its entities pull in. Features never unload before map change. |
 | Round cleanup | `features/rounds/sv.lua:65,824,1403,1441` | Every round restart runs `game.CleanUpMap(false, CLEANUP_KEEPS)`, which keeps only the proxy and the two editors; any other entity created by Lua is removed. `SetUpMap` decides the rounds mode (a master makes it control points) and makes the tf_gamerules proxy for a map with an objective, once per map (`mapSetUp`). `EnsureRules` makes the proxy when a game is begun on a map without one. `features/capture/sv.lua:1019` rebuilds the point set on `PostCleanupMap`. |
 | Defaults | `addons/sandcastle/cfg/sandcastle_defaults.cfg` | Adds the three comfort convars. |
-| Tests | `tests/loadout_test.lua`, `tests/economy_test.lua` | The loadout model: slots, catalog, starters, buy, equip and clear, and the State round trip, with prices derived from `Loadout.PRICE`. The economy: opening, earning, spending and refusing to overdraw. The whole suite stands at `TOTAL 1800 passed, 0 failed` (`.devtools/bin/check_lua.sh`, 2026-10-10). `tests/player_attributes_test.lua`, `tests/wheel_test.lua`, `tests/editor_actions_test.lua` and `tests/editor_point_test.lua` cover the attributes and the editors. |
+| Tests | `tests/loadout_test.lua`, `tests/economy_test.lua` | The loadout model: slots, catalog, starters, buy, equip and clear, and the State round trip, with prices derived from `Loadout.PRICE`. The economy: opening, earning, spending and refusing to overdraw. The whole suite stands at `TOTAL 1800 passed, 0 failed` (`.workbench/bin/check_lua.sh`, 2026-10-10). `tests/player_attributes_test.lua`, `tests/wheel_test.lua`, `tests/editor_actions_test.lua` and `tests/editor_point_test.lua` cover the attributes and the editors. |
 
 ### 1.2 What the C menu has today
 
@@ -104,7 +104,7 @@ These are ranked by how much they undermine the direction. Numbers are kept stab
   - `ns_` for NextSoldier.
   - `sv_` only for names that already exist (`sv_gameplay_enabled`); nothing new takes it, and TF2's `sv_vote_*` names are not ported.
 
-  New names avoid a bare `ws_` where a Source domain fits, and nothing new uses `wetsand`. Check every new name with `.devtools/bin/check_engine_names.sh`. Every name proposed in this doc printed `free` on 2026-10-10.
+  New names avoid a bare `ws_` where a Source domain fits, and nothing new uses `wetsand`. Check every new name with `.workbench/bin/check_engine_names.sh`. Every name proposed in this doc printed `free` on 2026-10-10.
 
 ### 2.1 Modes: what "TF2 maps" and "Sandbox maps" mean here
 
@@ -170,7 +170,7 @@ A pure `foundation/gameplay_entities.lua` holds the gameplay-entity rule and the
 - `IsGameplay(class, facts)`, where `facts = { isPlayer, isAiWarSoldier, isPayloadCart }`. Class prefixes `team_`, `tf_`, `trigger_`, `func_respawnroom`, `item_teamflag` and `ws_` (Sandcastle's own map entities) are gameplay entities, as are players, AI war soldiers and payload carts. The prefixes are a constant list, `GAMEPLAY_PREFIXES`.
 - **Round logic, refused for every rank mid-match.** `ROUND_LOGIC_CLASSES` (`tf_gamerules`, `team_round_timer`, `team_control_point_master`, `team_control_point_round`) and `ROUND_LOGIC_PREFIXES` (`tf_logic_`). `SpawnAllowed(class, mode)` refuses them with `REASON_ROUND_LOGIC` in every Gameplay-family mode and allows them in Sandbox mode. The gate's `PlayerSpawnSENT` applies it after the rank check, so even an admin cannot drop a second rules entity into a running round. Placing these is the game builder's job (§4.3), which works in Sandbox mode and rebuilds them after every cleanup.
 
-Judgment call (§9): the round-logic rule is kept even though R13 may show that `gm_spawnsent` cannot reach these classes at all (they have no `SpawnFunction` of their own), because a spawned rules entity breaks the running round and the rule costs one table lookup per spawn. **Decision (operator, 2026-10-11): audit, with a hard block behind a convar.** Every admin spawn of a console-running entity (`point_servercommand`, `point_clientcommand`, `lua_run` and the like, one named list in the gate's model) is written to the admin log with who, what and where, whichever path reached it. A new convar, `mp_spawn_command_entities_block` (default 0; check the name with `.devtools/bin/check_engine_names.sh`), refuses them outright for everyone when set. Sandbox's own spawn commands do not reach engine entities today (gap 3), so the audit mostly guards addons that list them.
+Judgment call (§9): the round-logic rule is kept even though R13 may show that `gm_spawnsent` cannot reach these classes at all (they have no `SpawnFunction` of their own), because a spawned rules entity breaks the running round and the rule costs one table lookup per spawn. **Decision (operator, 2026-10-11): audit, with a hard block behind a convar.** Every admin spawn of a console-running entity (`point_servercommand`, `point_clientcommand`, `lua_run` and the like, one named list in the gate's model) is written to the admin log with who, what and where, whichever path reached it. A new convar, `mp_spawn_command_entities_block` (default 0; check the name with `.workbench/bin/check_engine_names.sh`), refuses them outright for everyone when set. Sandbox's own spawn commands do not reach engine entities today (gap 3), so the audit mostly guards addons that list them.
 
 **What admins lose with the Operator tab, and where it went.**
 
@@ -868,10 +868,10 @@ Every step follows the same rule: tests first, seen failing, then the model, the
 
 **Checks used below.**
 
-- **Unit:** `.devtools/bin/run_lua_tests.sh`, LuaJIT, exit 0.
-- **Totals:** `.devtools/bin/check_lua.sh` prints `TOTAL n passed, 0 failed` with no `FAIL` and no `NO SUMMARY` line, and `n` above the previous step's. The baseline on 2026-10-10 is `TOTAL 1800 passed, 0 failed`.
-- **Names:** `.devtools/bin/check_engine_names.sh NAME...` prints `NAME: free` for every new console name and exits 0. `.devtools/bin/check_names.py` exits 0, so every new hook and networked var has both ends.
-- **In-game:** a check file under `.devtools/bin/ingame/checks/`, run with `.devtools/bin/ingame_tests.py --maps <map>` (which starts its own dedicated server and writes a report under `.devtools/artifacts/`), or a stated manual check on a running server after a live reload of the changed chunks. Never restart the operator's server to load an edit.
+- **Unit:** `.workbench/bin/run_lua_tests.sh`, LuaJIT, exit 0.
+- **Totals:** `.workbench/bin/check_lua.sh` prints `TOTAL n passed, 0 failed` with no `FAIL` and no `NO SUMMARY` line, and `n` above the previous step's. The baseline on 2026-10-10 is `TOTAL 1800 passed, 0 failed`.
+- **Names:** `.workbench/bin/check_engine_names.sh NAME...` prints `NAME: free` for every new console name and exits 0. `.workbench/bin/check_names.py` exits 0, so every new hook and networked var has both ends.
+- **In-game:** a check file under `.workbench/bin/ingame/checks/`, run with `.workbench/bin/ingame_tests.py --maps <map>` (which starts its own dedicated server and writes a report under `.workbench/artifacts/`), or a stated manual check on a running server after a live reload of the changed chunks. Never restart the operator's server to load an edit.
 - **Constants, not numbers.** Every test reads its values from the model's named constants (`T.defined` first) or derives them (`price + 1`, `STARTING_MONEY - total`, a product of two catalog values). No test pins a price, a scale, a rate, a duration or a stat value. Only TF2 and GMod enums are pinned (such as `COND.STUNNED = 15`).
 
 ### Step 1. Play mode and permissions (P0)

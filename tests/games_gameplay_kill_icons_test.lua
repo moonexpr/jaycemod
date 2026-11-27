@@ -165,7 +165,7 @@ T.test("a boss's kill shows the boss, whatever it struck with", function()
 end)
 
 -- The layout the gamemode ships (ws/kill_icons_sheet.lua, written by
--- .devtools/bin/kill_icons_art.py) and the sheets it names, under content/.
+-- .workbench/bin/kill_icons_art.py) and the sheets it names, under content/.
 T.test("the shipped layout has every icon an alias or boss names, on sheets that exist", function()
 	local icons = Icons.Parse(T.require("includes.kill_icons_sheet").TEXT)
 	local names = { prop_physics = true }

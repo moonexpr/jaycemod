@@ -33,7 +33,7 @@ itself), the tactics engine, and the features that wire them to GMod. A test
 `CLAUDE.md` is the full index of the modules and their APIs.
 
 Built with Lua (GLua on GMod's LuaJIT), Rust for the native modules, and
-Python for the development tools in `.devtools/bin/`.
+Python for the development tools in `.workbench/bin/`.
 
 ## Running it
 
@@ -50,15 +50,15 @@ twins. To build them, `cargo build --release` in `native/foundation` and
 `native/wetsands`. `wetsands` reads values from the Source SDK 2013's
 headers, which aren't in this repository: clone
 [ValveSoftware/source-sdk-2013](https://github.com/ValveSoftware/source-sdk-2013)
-and run `.devtools/bin/vendor_source_sdk.sh PATH_TO_CLONE` first.
+and run `.workbench/bin/vendor_source_sdk.sh PATH_TO_CLONE` first.
 
 ## Tests
 
 You'll need LuaJIT, plus Cargo for the native pass.
 
-    .devtools/bin/check/check_lua.sh --list        # the test groups
-    .devtools/bin/check/check_lua.sh foundation    # one group, Lua then native
-    .devtools/bin/check/check_lua.sh --changed     # the groups your changes touch
+    .workbench/bin/check/check_lua.sh --list        # the test groups
+    .workbench/bin/check/check_lua.sh foundation    # one group, Lua then native
+    .workbench/bin/check/check_lua.sh --changed     # the groups your changes touch
 
 ## Plans
 

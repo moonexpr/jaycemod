@@ -1,5 +1,5 @@
 -- wartactics.incursion stands on graph.paths, native only: its walks are
--- tested in the native pass (.devtools/bin/test_incursion.py the reference).
+-- tested in the native pass (.workbench/bin/test_incursion.py the reference).
 local T = dofile ("tests/harness.lua")
 local Incursion = wartactics.incursion
 

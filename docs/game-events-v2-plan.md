@@ -34,9 +34,9 @@ design change itself; §1's scholar edits are still the writer's.
 
 | Measure | Value | Command |
 |---|---|---|
-| LuaJIT tests | 1357 passed, 0 failed | `.devtools/bin/check_lua.sh` |
+| LuaJIT tests | 1357 passed, 0 failed | `.workbench/bin/check_lua.sh` |
 | Lua files compiled | 365 | same |
-| Python harness tests | 134 passed | `cd .devtools/bin && python3 -m pytest -q` |
+| Python harness tests | 134 passed | `cd .workbench/bin && python3 -m pytest -q` |
 | `tests/events_test.lua` | 27 tests | `luajit tests/events_test.lua` |
 | Files the server sends clients | 191 | research §2 |
 | `E.Define` calls | 30 lines in 10 files (29 events plus `client_ready`) | `grep -rn 'Define("' addon --include='*.lua'` |
@@ -521,7 +521,7 @@ away.
    gate: A.6 item 13 plus the two defects of the FAIL. The criteria haven't
    changed.
 3. **On a pass, the director merges `gev2-phase-a-tools` into main**
-   (`--no-ff`, then both checks on main). It changes only `.devtools/bin/`,
+   (`--no-ff`, then both checks on main). It changes only `.workbench/bin/`,
    so the addon on main doesn't change. The client session then runs from
    main's own scripts, against the main the server loads.
 4. **The researcher runs T1, T2 and T4** (`gev2_client_session.sh`), as
@@ -570,8 +570,8 @@ Each answer below is already worked into the sections it names.
 ## 0. Before phase A (the director)
 
 1. **Commit the research inputs to main.** `docs/game-events-v2-research.md`,
-   `.devtools/bin/gev2/`, `.devtools/bin/gev2_probe.py` and
-   `.devtools/bin/gmod_lua_cache.py` are untracked at 38eb752. A worktree
+   `.workbench/bin/gev2/`, `.workbench/bin/gev2_probe.py` and
+   `.workbench/bin/gmod_lua_cache.py` are untracked at 38eb752. A worktree
    made from main won't have them, and phase A's live probes reuse
    `gev2_probe.py`. Commit them in one signed commit, together with this plan
    once it's approved.
@@ -685,8 +685,8 @@ them too):
     their feature" become the definition of the stop rules: a pure model,
     built and tested, which no runtime code calls.
   - The error line reads as in A.4.
-- **§5's generator is written in Lua,** as `.devtools/bin/gen_events_res.lua`,
-  run by `luajit`. It shares one scanner, `.devtools/bin/events_scan.lua`,
+- **§5's generator is written in Lua,** as `.workbench/bin/gen_events_res.lua`,
+  run by `luajit`. It shares one scanner, `.workbench/bin/events_scan.lua`,
   with the tests, which is what "the same scan" requires. The spec named a
   `.py` file.
 - **§6's order changes:**
@@ -712,10 +712,10 @@ them too):
 evaluator reruns them on the branch.
 
 ```sh
-.devtools/bin/check_lua.sh                      # exit 0; "TOTAL N passed, 0 failed"
-python3 .devtools/bin/check_names.py            # exit 0
-(cd .devtools/bin && python3 -m pytest -q)      # when any .devtools/bin/*.py changed; >= 134 passed
-.devtools/bin/check_totals.sh main              # (from A's first commit) exit 0: no commit's TOTAL below its parent's
+.workbench/bin/check_lua.sh                      # exit 0; "TOTAL N passed, 0 failed"
+python3 .workbench/bin/check_names.py            # exit 0
+(cd .workbench/bin && python3 -m pytest -q)      # when any .workbench/bin/*.py changed; >= 134 passed
+.workbench/bin/check_totals.sh main              # (from A's first commit) exit 0: no commit's TOTAL below its parent's
 git log --format='%G?' main..HEAD | sort -u     # prints only G
 git log --format=%B main..HEAD | grep -ciE 'co-authored-by|claude'   # prints 0
 git status --short                              # empty when reporting
@@ -748,7 +748,7 @@ commit. Phase A's switch commit is the one place this bites.
 
 **Names:**
 
-- New console names go through `.devtools/bin/check_engine_names.sh NAME...`,
+- New console names go through `.workbench/bin/check_engine_names.sh NAME...`,
   which must print `free`. It only reads files.
 - New convars are listed in `addons/sandcastle/cfg/sandcastle_defaults.cfg` at their
   default; `tests/cfg_defaults_test.lua` checks this.
@@ -761,11 +761,11 @@ commit. Phase A's switch commit is the one place this bites.
 
 **Live runs.**
 
-- Run servers only through `.devtools/bin/srcds.py` and
-  `.devtools/bin/ingame_tests.py`, in the bottle "Steam".
+- Run servers only through `.workbench/bin/srcds.py` and
+  `.workbench/bin/ingame_tests.py`, in the bottle "Steam".
 - **The bottle "Team Fortress 2" has one exception** (operator decision 2,
   extended by P6): the GMod client for T1 to T7, unattended. Only
-  `.devtools/bin/gmod_client.py` launches
+  `.workbench/bin/gmod_client.py` launches
   or closes it, with §3's safeguards. No server and no other process ever
   runs there, and nothing else launches or signals anything in that
   bottle.
@@ -773,7 +773,7 @@ commit. Phase A's switch commit is the one place this bites.
   criteria therefore run on main after the director merges it. Phase A's
   probes are the exception: they may run earlier by copying the modules they
   test into `garrysmod/data/ws_tests/`, as `gev2_probe.py` does.
-- Stop the server when done (`python3 .devtools/bin/srcds.py stop`).
+- Stop the server when done (`python3 .workbench/bin/srcds.py stop`).
 
 ---
 
@@ -841,20 +841,20 @@ which is the second agent.
 | `gamemode/init.lua` | `include("shared.lua")` moves above the two `AddCSLuaFile` lines, so the wrapper sees every send. |
 | Every `Fire` call with a third argument (`sh_core.lua:82`, `features/nbdebug/sv.lua` ×6 and any others the scan finds) | The argument becomes `{ to = ... }`. Behaviour is unchanged. |
 | The three sites whose event had a `Default` (`features/capture/sv.lua` `cappers`, `ws/sv_world.lua` `others` and `team`) | Each sends the value the default supplied, or the listener treats `nil` the same way. Behaviour is unchanged. |
-| `.devtools/bin/gmod_client.py`, `test_gmod_client.py` | New, A's second commit. It launches and closes the GMod client in the bottle "Team Fortress 2" for T1 to T5. §3's safeguards are its tested behaviour (A.5). |
-| `.devtools/bin/gev2_marker.py`, `test_gev2_marker.py` | New. It sets and restores the uncommitted marker lines that T1, T2 and E's client check put in an addon file (§3). |
-| `.devtools/bin/gev2_probe.py` | Gains `run --client NAME...`: the probe runs on every connected client (§3). Its output lands in `.devtools/artifacts/gev2-research/client/`. |
-| `.devtools/bin/srcds.py`, `test_srcds.py` | `start` gains `--no-lua-refresh`, which adds `-disableluarefresh` (T1). Nothing else changes, and it still refuses every bottle but "Steam". |
-| `.devtools/bin/gev2/client_t1.lua`, `client_t2.lua`, `client_t4.lua` | New client probes, written by the researcher for the early session. `client_t3.lua` is the programmer's, for A.6 item 15. |
-| `.devtools/bin/events_scan.lua` | New. The Lua site scanner (tokenizer-aware: strings and comments are never calls), used by the tests now and the generator in C. |
+| `.workbench/bin/gmod_client.py`, `test_gmod_client.py` | New, A's second commit. It launches and closes the GMod client in the bottle "Team Fortress 2" for T1 to T5. §3's safeguards are its tested behaviour (A.5). |
+| `.workbench/bin/gev2_marker.py`, `test_gev2_marker.py` | New. It sets and restores the uncommitted marker lines that T1, T2 and E's client check put in an addon file (§3). |
+| `.workbench/bin/gev2_probe.py` | Gains `run --client NAME...`: the probe runs on every connected client (§3). Its output lands in `.workbench/artifacts/gev2-research/client/`. |
+| `.workbench/bin/srcds.py`, `test_srcds.py` | `start` gains `--no-lua-refresh`, which adds `-disableluarefresh` (T1). Nothing else changes, and it still refuses every bottle but "Steam". |
+| `.workbench/bin/gev2/client_t1.lua`, `client_t2.lua`, `client_t4.lua` | New client probes, written by the researcher for the early session. `client_t3.lua` is the programmer's, for A.6 item 15. |
+| `.workbench/bin/events_scan.lua` | New. The Lua site scanner (tokenizer-aware: strings and comments are never calls), used by the tests now and the generator in C. |
 | `tests/events_unmigrated.lua` | New. The ratchet: `return { b1 = { ...paths }, b2 = { ...paths } }`, the files exempt from the site rules until B migrates them. The two blocks sit at least 5 lines apart, so B1's and B2's edits merge cleanly. |
-| `.devtools/bin/check_totals.sh BASE` | New, and A's first commit. For each commit in `BASE..HEAD`, it exports the tree (`git archive`) to a temp dir, runs its `check_lua.sh`, and prints `sha TOTAL subject`. It exits 1 if any commit's total is below its parent's. |
-| `.devtools/bin/expected_sent_files.sh` | New. Prints the sorted keys the server should send, from the tree: `gamemode/shared.lua`, `gamemode/cl_init.lua`, every `gamemode/foundation/**/*.lua`, `gamemode/features/*/{sh,cl}.lua`, `gamemode/ws/{sh_,cl_}*.lua`, and every `entities/{entities,weapons}/*.lua` with a line starting `AddCSLuaFile()`. |
-| `.devtools/bin/gev2/events_size.lua`, `events_sent.lua`, `events_scan_cost.lua` | New probes, run by `gev2_probe.py` (A.6). |
+| `.workbench/bin/check_totals.sh BASE` | New, and A's first commit. For each commit in `BASE..HEAD`, it exports the tree (`git archive`) to a temp dir, runs its `check_lua.sh`, and prints `sha TOTAL subject`. It exits 1 if any commit's total is below its parent's. |
+| `.workbench/bin/expected_sent_files.sh` | New. Prints the sorted keys the server should send, from the tree: `gamemode/shared.lua`, `gamemode/cl_init.lua`, every `gamemode/foundation/**/*.lua`, `gamemode/features/*/{sh,cl}.lua`, `gamemode/ws/{sh_,cl_}*.lua`, and every `entities/{entities,weapons}/*.lua` with a line starting `AddCSLuaFile()`. |
+| `.workbench/bin/gev2/events_size.lua`, `events_sent.lua`, `events_scan_cost.lua` | New probes, run by `gev2_probe.py` (A.6). |
 
 **The design change adds or reshapes these files.** It wins where a row
 above differs. Paths are under `addons/sandcastle/gamemodes/sandcastle/gamemode/`
-unless they start with `tests/` or `.devtools/`.
+unless they start with `tests/` or `.workbench/`.
 
 | File | Change |
 |---|---|
@@ -1469,7 +1469,7 @@ so the count stays:
 
 `tests/events_paths_test.lua` keeps its names, re-pointed at `FileKey`.
 
-`.devtools/bin/test_gmod_client.py` (pytest). The process table, the `lsof`
+`.workbench/bin/test_gmod_client.py` (pytest). The process table, the `lsof`
 output, the launcher, the clock and the signal call are injected, so no test
 starts or signals a real process:
 - `test_refuses_while_tf2_runs` (any `tf_win64.exe`, `tf.exe` or `hl2.exe`,
@@ -1493,14 +1493,14 @@ starts or signals a real process:
 - `test_the_watchdog_closes_the_client_at_its_time_limit`
 - `test_stop_reports_changed_cfg_files`
 
-`.devtools/bin/test_gev2_marker.py`:
+`.workbench/bin/test_gev2_marker.py`:
 - `test_refuses_a_file_with_uncommitted_changes`
 - `test_refuses_a_file_outside_addon`
 - `test_refuses_a_second_set_before_restore`
 - `test_restore_puts_back_the_exact_bytes`
 - `test_restore_after_a_failed_run_leaves_the_file_clean`
 
-`.devtools/bin/test_srcds.py` adds:
+`.workbench/bin/test_srcds.py` adds:
 - `test_no_lua_refresh_adds_disableluarefresh`
 
 ### A.6 Acceptance criteria
@@ -1522,7 +1522,7 @@ starts or signals a real process:
    is line 1 or the first non-comment line, and comes above both
    `AddCSLuaFile` lines.
 7. No convar, and nothing stops (operator decision 3):
-   - `grep -rn 'ws_events_check' addon tests .devtools/bin` prints
+   - `grep -rn 'ws_events_check' addon tests .workbench/bin` prints
      nothing (0 at 29a6070);
    - `git diff --quiet main -- addons/sandcastle/cfg/sandcastle_defaults.cfg` exits 0,
      and `luajit tests/cfg_defaults_test.lua` passes, because A adds no
@@ -1534,15 +1534,15 @@ starts or signals a real process:
    prints the B1 and B2 file counts of §B. Every file in it breaks a rule
    (that is the last sites test).
 9. **Live probes** (srcds on koth_viaduct, then
-   `python3 .devtools/bin/gev2_probe.py run events_size events_sent events_scan_cost`;
-   outputs land in `.devtools/artifacts/gev2-research/live/`):
+   `python3 .workbench/bin/gev2_probe.py run events_size events_sent events_scan_cost`;
+   outputs land in `.workbench/artifacts/gev2-research/live/`):
    - `events_size.txt`: for at least 20 events (every tag, one event at the
      cap and one a byte over), `Codec.Bytes(plan)` equals
      `net.BytesWritten()` after `Codec.Write`. The file ends
      `mismatches 0`, and the over-cap case reports `too_large` before any
      write.
    - `events_sent.txt`: the wrapper's keys. Then
-     `diff <(.devtools/bin/expected_sent_files.sh) <(sed -n '/^keys$/,$p' .devtools/artifacts/gev2-research/live/events_sent.txt | tail -n +2)`
+     `diff <(.workbench/bin/expected_sent_files.sh) <(sed -n '/^keys$/,$p' .workbench/artifacts/gev2-research/live/events_sent.txt | tail -n +2)`
      prints nothing. That's 191 at 38eb752, plus A's new `foundation/`
      files.
    - `events_scan_cost.txt`:
@@ -1552,7 +1552,7 @@ starts or signals a real process:
        1.0 ms;
      - the `SCREEN_BY_TIME` and `FILES_PER_TICK` chosen.
 10. **Post-merge smoke:**
-    `python3 .devtools/bin/ingame_tests.py --maps koth_viaduct` exits 0, and
+    `python3 .workbench/bin/ingame_tests.py --maps koth_viaduct` exits 0, and
     the report shows 0 Lua errors. The server's log has no `network error:`
     line, because no client joins.
 11. The drift work starts only after T1 and T2 are recorded (item 14).
@@ -1566,13 +1566,13 @@ starts or signals a real process:
     `grep -rn 'allowcslua' addon --include='*.lua'` prints nothing (0 at
     29a6070). No test asserts a report, because none is made.
 13. The client tools pass their tests:
-    `cd .devtools/bin && python3 -m pytest -q test_gmod_client.py test_gev2_marker.py test_srcds.py`
+    `cd .workbench/bin && python3 -m pytest -q test_gmod_client.py test_gev2_marker.py test_srcds.py`
     passes. `grep -hoE 'def test_[a-z0-9_]+' test_gmod_client.py test_gev2_marker.py test_srcds.py`
     contains every name A.5 gives for them.
 14. **The early client session** (§3: T1, T2 and T4), unattended:
     - the research file gains `## Client session` with each test's result,
-      and the outputs are under `.devtools/artifacts/gev2-research/client/`;
-    - `.devtools/artifacts/gev2-research/client/gmod_client.log` shows, for
+      and the outputs are under `.workbench/artifacts/gev2-research/client/`;
+    - `.workbench/artifacts/gev2-research/client/gmod_client.log` shows, for
       each launch, the preflight's findings, the one PID launched, and that
       PID (and only it) being closed;
     - after the session, no `gmod_win64.exe` runs
@@ -1586,7 +1586,7 @@ starts or signals a real process:
 15. **T3, after the merge:**
     1. start the server with `srcds.py start --map koth_viaduct`, and the
        client with `gmod_client.py start`;
-    2. `python3 .devtools/bin/gev2_probe.py run --client client_t3` writes
+    2. `python3 .workbench/bin/gev2_probe.py run --client client_t3` writes
        `client/client_t3.txt`, which ends `mismatches 0` for both
        directions;
     3. the client's log has 0 Lua errors (the command in E.3 item 4);
@@ -1743,11 +1743,11 @@ the other, and the architect evaluates B once both are in.
    `for t in merasmus eyeball_boss headless_hatman halloween_boss boss_events nbdebug_contract capture_points rounds_game gameplay gamemode npc_ragdoll nodegraph; do printf "$t "; luajit tests/${t}_test.lua | tail -1; done`.
 7. `grep -rn 'BossEvents.NAMES' addon --include='*.lua'` prints nothing.
 8. Post-merge smoke:
-   - B1: `python3 .devtools/bin/ingame_tests.py --maps koth_viaduct,cp_dustbowl`
+   - B1: `python3 .workbench/bin/ingame_tests.py --maps koth_viaduct,cp_dustbowl`
      exits 0, with 0 Lua errors.
    - B2: the same over the Halloween maps whose `bosses` step covers all
      three boss classes. To list them:
-     `cd .devtools/bin && python3 -c "import ingame_tests as t; [print(r.map, [s.args for s in r.steps if s.check == 'bosses']) for r in t.full_plan()]"`
+     `cd .workbench/bin && python3 -c "import ingame_tests as t; [print(r.map, [s.args for s in r.steps if s.check == 'bosses']) for r in t.full_plan()]"`
      (it reads the BSPs, read-only). The run exits 0 with 0 Lua errors.
 9. Every site names its kind:
    `grep -rnE 'Events\.(Fire|Listen|Ignore|Accept)\(' addon --include='*.lua' | grep -v 'ws/sh_events.lua'`
@@ -1771,8 +1771,8 @@ describes.
 - **Removed:** the `Define` and type-constructor shims, and the ratchet.
 - **Built:**
   - the generated `resource/sandcastle_events.res`;
-  - its generator `.devtools/bin/gen_events_res.lua`;
-  - the pre-commit hook `.devtools/bin/hooks/pre-commit`;
+  - its generator `.workbench/bin/gen_events_res.lua`;
+  - the pre-commit hook `.workbench/bin/hooks/pre-commit`;
   - the staleness test;
   - the `ws_events_print` / `ws_events_print_cl` commands.
 
@@ -1805,20 +1805,20 @@ the spec builds them. The operator confirmed it: build all three
 - **`tests/events_unmigrated.lua`:** deleted. `tests/events_sites_test.lua`
   loses its exemption parameter. The ratchet test becomes
   `no file is exempt from the site rules`, so the count stays.
-- **`.devtools/bin/events_scan.lua`** is extended to capture, for each
+- **`.workbench/bin/events_scan.lua`** is extended to capture, for each
   event:
   - its site's comment block, `file:line` and id;
   - each field with its trailing comment;
   - its `Listen` sites.
-- **`.devtools/bin/gen_events_res.lua [--check]`:** writes
+- **`.workbench/bin/gen_events_res.lua [--check]`:** writes
   `addons/sandcastle/gamemodes/sandcastle/resource/sandcastle_events.res` in §5's format,
   with events sorted by name. `--check` exits 1 if the file differs.
-- **`.devtools/bin/hooks/pre-commit`:** when a staged `.lua` file contains
+- **`.workbench/bin/hooks/pre-commit`:** when a staged `.lua` file contains
   `Events.Fire(`, `Events.Listen(` or `Events.Accept(`, it runs the
   generator and stages the file. It must not commit or sign, so the gpg
   rules are unaffected.
   - Enabling it is the operator's one-time step:
-    `git config core.hooksPath .devtools/bin/hooks`. The programmer doesn't
+    `git config core.hooksPath .workbench/bin/hooks`. The programmer doesn't
     change git config.
   - If `.git/hooks` holds an active hook, the report says so, because
     `core.hooksPath` would bypass it.
@@ -1842,7 +1842,7 @@ the spec builds them. The operator confirmed it: build all three
   is removed for report only: A built no stopping into the adapter.
 - **The aliases go** (the design change). `ws/sh_events.lua` loses
   `Events.Fire`, `Listen`, `Ignore` and `Accept`, and
-  `.devtools/bin/events_scan.lua` reports a bare call of any of them.
+  `.workbench/bin/events_scan.lua` reports a bare call of any of them.
 - **The kinds in the events file.** Each entry gains a `"kind"` line, and
   the header comment gives `system events: major 1`.
 - **The freeze.** `tests/events_system_frozen.lua` returns
@@ -1882,11 +1882,11 @@ the spec builds them. The operator confirmed it: build all three
 2. `grep -rnE '\bDefine\b|\bUInt\b|\bOptional\b|\bRecord\b' addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_events.lua`
    prints nothing, and `grep -rn '\.Define(' addon --include='*.lua'`
    prints nothing.
-3. `test ! -e tests/events_unmigrated.lua && ! grep -rn 'unmigrated' tests .devtools/bin`
+3. `test ! -e tests/events_unmigrated.lua && ! grep -rn 'unmigrated' tests .workbench/bin`
    succeeds.
-4. `luajit .devtools/bin/gen_events_res.lua --check` exits 0, and the file
+4. `luajit .workbench/bin/gen_events_res.lua --check` exits 0, and the file
    starts with
-   `// GENERATED by .devtools/bin/gen_events_res.lua from each Events.Fire; do not edit.`
+   `// GENERATED by .workbench/bin/gen_events_res.lua from each Events.Fire; do not edit.`
 5. The number of events in the file equals the number of distinct `Fire`
    names the scan reports (both printed by `gen_events_res.lua --count`).
 6. The staleness test bites. In a scratch export (`git archive HEAD | tar -x -C <scratch>`):
@@ -1898,7 +1898,7 @@ the spec builds them. The operator confirmed it: build all three
    2. `git add` the file;
    3. commit with `git -c gpg.program=gpg-loopback commit -m test`;
    4. `git show --stat HEAD` lists the `.res`.
-8. `.devtools/bin/check_engine_names.sh ws_events_print ws_events_print_cl`
+8. `.workbench/bin/check_engine_names.sh ws_events_print ws_events_print_cl`
    prints `free` for both.
 9. Post-merge smoke: `ingame_tests.py --maps koth_viaduct` exits 0. Then
    `srcds.py start --map koth_viaduct` and
@@ -2082,7 +2082,7 @@ lines are at 29a6070.
 4. `luajit tests/events_sites_test.lua` passes. The new events appear in the
    regenerated `.res`, and `gen_events_res.lua --check` exits 0.
 5. Post-merge:
-   `python3 .devtools/bin/ingame_tests.py --maps koth_viaduct,cp_dustbowl,pl_millstone_event`
+   `python3 .workbench/bin/ingame_tests.py --maps koth_viaduct,cp_dustbowl,pl_millstone_event`
    exits 0 with 0 Lua errors.
    - The `koth` and `cp_capture` checks gain a server-side listener record
      showing `teamplay_round_win` fired with a `team` field when the round
@@ -2145,7 +2145,7 @@ writer finishing the docs.
 ### E.1 Scope
 
 - **A new in-game check,**
-  `.devtools/bin/ingame/checks/events_stale.lua`, added to koth_viaduct's
+  `.workbench/bin/ingame/checks/events_stale.lua`, added to koth_viaduct's
   `MapRun` in `ingame_tests.py`, with `test_ingame_tests.py` updated. It
   stages staleness **without editing any addon file**:
   1. It replaces the drift record's sent and run references for
@@ -2180,7 +2180,7 @@ writer finishing the docs.
   architect then replaces steps 2 and 3 with a lazily compiled server
   module's case before E starts.
 - **A recovery check** (the design change):
-  `.devtools/bin/ingame/checks/events_recovery.lua`, added to
+  `.workbench/bin/ingame/checks/events_recovery.lua`, added to
   koth_viaduct's `MapRun` after `events_stale`. It uses a fake peer (a
   sender key with no client), touches no addon file, and asserts each line
   in the server log:
@@ -2224,18 +2224,18 @@ writer finishing the docs.
 ### E.3 Acceptance criteria
 
 1. The harness:
-   `python3 .devtools/bin/ingame_tests.py --maps pl_fifthcurve_event,pl_rumble_event,pl_millstone_event,pl_bloodwater,pl_terror_event,pl_hasslecastle,pl_sludgepit_event,plr_hacksaw_event,plr_hightower_event,pl_precipice_event_final,pl_coal_event,koth_viaduct,cp_granary,cp_dustbowl`
+   `python3 .workbench/bin/ingame_tests.py --maps pl_fifthcurve_event,pl_rumble_event,pl_millstone_event,pl_bloodwater,pl_terror_event,pl_hasslecastle,pl_sludgepit_event,plr_hacksaw_event,plr_hightower_event,pl_precipice_event_final,pl_coal_event,koth_viaduct,cp_granary,cp_dustbowl`
    exits 0.
    - Every row of the report's summary is PASS, with Lua errors 0.
    - The report's path is given in the programmer's report.
 2. The `events_stale` step on koth_viaduct is PASS in that same run.
-3. The per-commit checks pass, and `cd .devtools/bin && python3 -m pytest -q`
+3. The per-commit checks pass, and `cd .workbench/bin && python3 -m pytest -q`
    passes.
 4. **The client session** (operator decision 2; §3), unattended, on main
    after D merges. All of these are required:
    - T1 to T7 are recorded in the research file under
      `## Client session (E)`, each with its output under
-     `.devtools/artifacts/gev2-research/client/`.
+     `.workbench/artifacts/gev2-research/client/`.
    - T1 passes, or A.4 was re-planned when it failed in A.
    - T3's `client_t3.txt` ends `mismatches 0` for both directions.
    - `UNRELIABLE_MAX_BYTES` is set from T5: at most half the largest size
@@ -2246,8 +2246,8 @@ writer finishing the docs.
      `network error:` line for `gamemode/features/capture/cl.lua`, and the
      server's log has one line for that player.
    - Every client log has 0 Lua errors. For each
-     `.devtools/artifacts/gev2-research/client/client_console-*.log`,
-     `cd .devtools/bin && python3 -c "import ingame_tests as t, pathlib, sys; print(len(t.lua_errors(pathlib.Path(sys.argv[1]).read_text())))" <log>`
+     `.workbench/artifacts/gev2-research/client/client_console-*.log`,
+     `cd .workbench/bin && python3 -c "import ingame_tests as t, pathlib, sys; print(len(t.lua_errors(pathlib.Path(sys.argv[1]).read_text())))" <log>`
      prints 0.
    - The safeguards held. `gmod_client.log` shows every launch's
      preflight, one PID launched per launch, and that PID (and only it)
@@ -2327,11 +2327,11 @@ gmod_client.py stop                                   # close the client this to
   - The bottle is a constant, and the tool has no option for another one.
     `srcds.py` still refuses this bottle.
   - The tool records the client's PID and its start time in
-    `.devtools/artifacts/gmod_client.pid`. The client is the one
+    `.workbench/artifacts/gmod_client.pid`. The client is the one
     `gmod_win64.exe` process that wasn't running before the launch, found
     the way `srcds.py`'s `new_server` finds its server.
   - It appends what it found and did to
-    `.devtools/artifacts/gev2-research/client/gmod_client.log`.
+    `.workbench/artifacts/gev2-research/client/gmod_client.log`.
 - **The watchdog** is a detached supervisor, like `srcds.py`'s, that checks
   every 2 s. It closes the client when the operator's game starts (any of
   the names above, other than our PID), or when `--minutes` pass. So a
@@ -2345,7 +2345,7 @@ gmod_client.py stop                                   # close the client this to
     name or pattern.
 
   Then `stop` copies the client's log to
-  `.devtools/artifacts/gev2-research/client/client_console-<UTC time>.log`.
+  `.workbench/artifacts/gev2-research/client/client_console-<UTC time>.log`.
   `gmod_client.log` lists any `garrysmod/cfg/*.cfg` whose content changed
   during the run, so the operator can see whether GMod saved settings.
 
@@ -2361,13 +2361,13 @@ addon file that the server reads through main.
 
 **Running a probe on the client.** `gev2_probe.py run --client NAME`:
 
-1. copies `.devtools/bin/gev2/NAME.lua` to `data/ws_tests/gev2/`;
+1. copies `.workbench/bin/gev2/NAME.lua` to `data/ws_tests/gev2/`;
 2. over RCON, has the server `SendLua` each connected player a one-line
    loader, which `RunString`s the probe from the client's `data/` (the
    shared folder). This works with `sv_allowcslua 0`, which every test
    keeps;
 3. waits for the client to write `data/ws_tests/gev2/client_out/NAME.txt`,
-   and copies it to `.devtools/artifacts/gev2-research/client/`.
+   and copies it to `.workbench/artifacts/gev2-research/client/`.
 
 | Test | When | What it settles | What each result changes |
 |---|---|---|---|

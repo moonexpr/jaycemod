@@ -62,7 +62,7 @@ end
 
 T.test ("there are probes, and each begins with the comment line dev.probes shows", function ()
 	local names = ProbeFiles ()
-	T.eq (#names > 10, true, "the probes moved from .devtools/bin")
+	T.eq (#names > 10, true, "the probes moved from .workbench/bin")
 	for _, name in ipairs (names) do
 		local first = ReadFile (DIR .. name):match ("^[^\n]*")
 		T.eq (first:match ("^%-%- %S") ~= nil, true, name .. "'s first line is a comment saying what it asks")

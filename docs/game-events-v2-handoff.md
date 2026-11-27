@@ -128,13 +128,13 @@ These come from the operator's standing instructions; most are in
   - Gameplay settings use Source's `mp_`, `sv_` and `cl_`; TF2's own names
     are kept where TF2 defines them.
   - Internal ids (hooks, net messages, networked keys) keep `ws_`.
-  - Check every new console name with `.devtools/bin/check_engine_names.sh`.
+  - Check every new console name with `.workbench/bin/check_engine_names.sh`.
   - Every new convar goes into `addons/sandcastle/cfg/sandcastle_defaults.cfg` at its
     default (`tests/cfg_defaults_test.lua` enforces it).
 - **Commits:** small, signed with
   `git -c gpg.program=gpg-loopback commit -m "..."`. No Co-Authored-By, no
-  Claude attribution, no push. `.devtools/bin/check_lua.sh` and
-  `python3 .devtools/bin/check_names.py` pass before each commit, and the
+  Claude attribution, no push. `.workbench/bin/check_lua.sh` and
+  `python3 .workbench/bin/check_names.py` pass before each commit, and the
   test total never drops.
 - **Merging (director):**
   1. Check every commit is signed (`%G?` is `G`) and carries no
@@ -143,7 +143,7 @@ These come from the operator's standing instructions; most are in
   3. Run both checks on main.
   4. Keep a worktree until its agent is truly done: a removed worktree
      can't be resumed.
-- **The game:** run test servers only through `.devtools/bin/srcds.py`,
+- **The game:** run test servers only through `.workbench/bin/srcds.py`,
   which works in the CrossOver bottle **"Steam"** only. Never launch or
   kill anything in the bottle **"Team Fortress 2"**: the operator plays
   there, and a server in it once ended his game.
@@ -155,8 +155,8 @@ These come from the operator's standing instructions; most are in
     `GarrysModServer`, a symlinked root (`server_root.py`) whose
     `addons/`, `data/` and `cache/` are its own; it mounts DrGBase from the
     operator's Workshop download, so the AI war can be checked there.
-- **Layout:** reusable scripts go in `.devtools/bin/`, reports in
-  `.devtools/artifacts/`, docs in `docs/`. The scratchpad holds data only.
+- **Layout:** reusable scripts go in `.workbench/bin/`, reports in
+  `.workbench/artifacts/`, docs in `docs/`. The scratchpad holds data only.
 - **Escalate only product questions** to the operator. Technical calls
   belong to the architect, then the programmer.
 
