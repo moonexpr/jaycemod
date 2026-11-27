@@ -81,8 +81,10 @@ on when a round's win conditions or the time limit are met), turn them off
 over RCON: `mp_timelimit 0; mp_winlimit 0; mp_maxrounds 0`. Each map sets
 them again as it loads (`sandcastle_defaults.cfg`, the rounds feature), so
 set them again after any `changelevel`, and a `changelevel` puts the
-rotation back. Others share the dev server: check `game.GetMap()` before
-work that depends on the map.
+rotation back: the MCP's `change_map` with `after="mp_timelimit 0;
+mp_winlimit 0; mp_maxrounds 0"` does both. Others share the dev server: the
+status line ending every MCP answer says which map is up, and `servers` who
+is on which instance.
 
 ## History search
 
