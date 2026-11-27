@@ -314,8 +314,14 @@ T.test ("nextbot_cscanner gives its actions every method of their port", functio
 	setfenv (chunk, env) ()
 	T.eq (ENT.Base,                 "base_nextbot2")
 	T.eq (type (ENT.InitialAction), "function")
-	T.eq (type (ENT.PhysicsSimulate), "function", "its motion controller: HL2's physics flyer")
+	-- GMod runs no Lua motion controller for a nextbot (the Wine smoke run): its think pushes
+	T.eq (type (ENT.Push),                 "function", "HL2's physics flyer's push, applied each think")
+	T.eq (rawget (ENT, "PhysicsSimulate"), nil,        "no motion controller that never runs")
 	T.eq (type (ENT.SetupFlight), "function")
+	-- the native body's frame takes a crouch inside the hull (Frame::new): a flyer never crouches,
+	-- but a player's 36 over a centred hull 4 high refuses it as it spawns (the live smoke run's)
+	local _, maxs = ENT:_Hull ()
+	T.eq (ENT.CrouchHeight ~= nil and ENT.CrouchHeight > 0 and ENT.CrouchHeight < maxs.z, true, "a crouch inside its hull")
 	for _, method in ipairs (Scanner.PORT:Methods ()) do
 		-- an entity's own, from the engine
 		if method ~= "Health" then T.eq (type (ENT [method]), "function", "it defines " .. method) end

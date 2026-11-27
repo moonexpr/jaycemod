@@ -25,6 +25,7 @@ T.test ("its values are HL2's", function ()
 	T.eq (Flight.BOUNCE,      0.5,  "VelocityToAvoidObstacles")
 	T.eq (Flight.LIFT,       50)
 	T.eq (Flight.LIFT_FLOOR, 0.1)
+	T.eq (Flight.THINK_INTERVAL, 0.1, "CAI_BaseNPC::NPCThink's next think at normal efficiency")
 end)
 
 T.test ("ExponentialDecay is mathlib's", function ()
