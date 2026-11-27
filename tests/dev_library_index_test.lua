@@ -9,7 +9,7 @@ local T = dofile ("tests/harness.lua")
 local INDEX = ".claude/rules/live-server.md"
 local WORKBENCH = "addons/sandcastle_dev/lua/sandcastle_dev/"
 -- dev.load and dev.require: the dev server's mount defines them
-local MOUNT = ".devtools/bin/server_root/sandcastle_dev.lua"
+local MOUNT = ".devtools/server_lua/sandcastle_dev.lua"
 
 -- dev.harness's, dev.scenario's and dev.vprof's functions are defined on these locals
 local TABLES = { H = "dev.harness", S = "dev.scenario", V = "dev.vprof" }

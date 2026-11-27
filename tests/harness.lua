@@ -167,6 +167,10 @@ end
 -- of the module then runs against the native one (run_lua_tests.sh's
 -- second pass).
 T.NATIVE = os.getenv ("WS_NATIVE") == "1"
+-- The server Lua the gmod plugin gives every root (claude-config2's plugins/gmod), found
+-- through the dt drawer it installs, or GMOD_PLUGIN: tests of this repo's addons against it
+T.GMOD_SERVER_LUA = (os.getenv ("GMOD_PLUGIN") or (os.getenv ("HOME") .. "/.local/bin/devtools/../../plugins/gmod"))
+	.. "/bin/server_root/"
 if T.NATIVE then
 	for _, crate in ipairs ({ "foundation", "nextsoldier" }) do
 		local loaded = T.native (crate)

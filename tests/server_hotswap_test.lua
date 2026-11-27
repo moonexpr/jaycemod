@@ -1,4 +1,4 @@
--- The dedicated server's hotswap.lua (.devtools/bin/server_root/): code
+-- The dedicated server's hotswap.lua (.devtools/server_lua/): code
 -- edited while the server runs, loaded without a restart. A module
 -- (WS.require) runs again and keeps its table, so its functions update
 -- where every holder has them; a feature's root runs again, with its parts,
@@ -60,7 +60,7 @@ local function Load (files, features)
 			IsValid = function (v) return v ~= nil end,
 			print = function (text) fake.printed [#fake.printed + 1] = text end
 		}, { __index = _G })
-	setfenv (assert (loadfile (".devtools/bin/server_root/hotswap.lua")), env) ()
+	setfenv (assert (loadfile (".devtools/server_lua/hotswap.lua")), env) ()
 	return commands, CHUNK_ENV, function () return hooksAdded end, fake
 end
 

@@ -135,7 +135,7 @@ return
 		},
 		sources =
 		{
-			"tests/harness.lua", "tests/suites.lua", "tests/fixtures/", "addons/sandcastle_dev/", "addons/ulx_luadev/", ".devtools/bin/",
+			"tests/harness.lua", "tests/suites.lua", "tests/fixtures/", "addons/sandcastle_dev/", "addons/ulx_luadev/", ".devtools/bin/", ".devtools/server_lua/", ".devtools/gmod.toml",
 			"addons/sandcastle/cfg/", G .. "cl_init.lua"
 		}
 	}

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the repo's binary modules for GMod's Linux server (srcds.py --runtime docker).
 
-  native_linux.py        build every crate server_root.py links a linux64 build of
+  native_linux.py        build every crate the server links a linux64 build of (gmod.toml's [native.linux64])
 
 Each crate is built in a container (DOCKERFILE_DIR, made the first time it is
 missing) on Ubuntu 22.04, the server image's: a module linked against a newer
@@ -9,7 +9,7 @@ glibc than the server's may not load there. The repo is mounted at its own
 path (NextSoldier's crate reads foundation's by a relative path), the build
 runs as the operator, and cargo keeps its downloads in .devtools/artifacts.
 The output lands in each crate's target/x86_64-unknown-linux-gnu/release/,
-where server_root.py's LINUX_NATIVE_BINARIES links it from.
+where the server's root links it from (.devtools/gmod.toml's [native.linux64]).
 """
 from __future__ import annotations
 
@@ -19,15 +19,20 @@ import sys
 from pathlib import Path
 from typing import Callable, List
 
-from server_root import LINUX_NATIVE_BINARIES, LINUX_TARGET, REPO
+import gmod_plugin  # noqa: F401  (the gmod plugin's tools on sys.path)
+from project import Project
 
+REPO = Path(__file__).resolve().parents[2]
+LINUX_TARGET = "x86_64-unknown-linux-gnu"
+# the modules the server links, built for Linux: name in its lua/bin -> the build's output
+LINUX_NATIVE_BINARIES = Project.load(REPO).native.get("linux64", {})
 DOCKERFILE_DIR = REPO / ".devtools" / "docker" / "native-linux"
 IMAGE = "sandcastle-native-linux:1"  # its tag goes up with every change to the Dockerfile
 CARGO_HOME = REPO / ".devtools" / "artifacts" / "docker" / "cargo"
 
 
 def crates() -> List[Path]:
-    """The crates whose linux64 builds server_root.py links, in its order:
+    """The crates whose linux64 builds the server links, in the config's order:
     each output is <crate>/target/<target>/release/lib<name>.so."""
     return [path.parents[3] for path in LINUX_NATIVE_BINARIES.values() if LINUX_TARGET in path.parts]
 

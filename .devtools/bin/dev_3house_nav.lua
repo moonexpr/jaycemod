@@ -15,7 +15,7 @@
 --      is.
 --
 -- To build it anew, remove maps/dev_3house.nav and change to the map again.
---   python3 .devtools/bin/instances.py dev_3house - < .devtools/bin/dev_3house_nav.lua
+--   dt gmod/instances dev_3house - < .devtools/bin/dev_3house_nav.lua
 -- Each building's rooms (spawn room, stronghold, lobby), the bench, and the grass either side of it.
 local SEEDS = { Vector (-2560, 0, 9), Vector (-1888, 0, 9), Vector (-1344, 0, 9), Vector (0, 0, 9), Vector (1344, 0, 9),
 	Vector (1888, 0, 9), Vector (2560, 0, 9), Vector (-900, 400, 1), Vector (900, -400, 1) }

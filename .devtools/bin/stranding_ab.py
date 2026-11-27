@@ -3,7 +3,7 @@ war on one map for a set time, every recovery (a soldier stranded, off the
 mesh or out of the world, put back) counted by its reason, once with each
 checkout's gamemode. Same map, convars and time each leg; the server is
 restarted between legs so each runs its own gamemode (server_root's
-SANDCASTLE_GAMEMODE).
+GMOD_GAMEMODE_DIR).
 
     python3 .devtools/bin/stranding_ab.py --instance 3 --port 27045 --map cp_sunshine --minutes 10 \\
         main=/path/to/main/gamemodes/sandcastle worktree=/path/to/worktree/gamemodes/sandcastle
@@ -53,7 +53,7 @@ def lua(instance: int, code: str) -> str:
 def leg(instance: int, port: int, name: str, gamemode: str, map_name: str, minutes: float) -> dict:
     run("dt", "srcds", "--instance", str(instance), "stop")
     time.sleep(5)
-    env = dict(os.environ, SANDCASTLE_GAMEMODE=gamemode)
+    env = dict(os.environ, GMOD_GAMEMODE_DIR=gamemode)
     print(run("dt", "srcds", "--instance", str(instance), "start", "--map", map_name, "--port", str(port), env=env).splitlines()[-1], flush=True)
     for convar, value in CONVARS.items():
         run("dt", "rcon", "--instance", str(instance), f"{convar} {value}")

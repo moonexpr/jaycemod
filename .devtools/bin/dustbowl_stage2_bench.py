@@ -17,6 +17,7 @@ import sys
 import time
 from pathlib import Path
 
+import gmod_plugin  # noqa: F401  (the gmod plugin's tools on sys.path)
 import instances
 from server_root import Instance
 

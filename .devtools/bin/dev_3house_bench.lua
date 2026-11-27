@@ -24,11 +24,11 @@
 --   remuster   from outside the bench's west door to the rally point, each at its place
 --
 -- Load it, run a stage or all, then read the report:
---   python3 .devtools/bin/instances.py dev_3house - < .devtools/bin/dev_3house_bench.lua
---   python3 .devtools/bin/instances.py dev_3house 'return NSRoomBench.Run("evacuate")'
---   python3 .devtools/bin/instances.py dev_3house 'return NSRoomBench.RunAll()'
---   python3 .devtools/bin/instances.py dev_3house 'return NSRoomBench.Report()'
---   python3 .devtools/bin/instances.py dev_3house 'return NSRoomBench.Show("muster")'
+--   dt gmod/instances dev_3house - < .devtools/bin/dev_3house_bench.lua
+--   dt gmod/instances dev_3house 'return NSRoomBench.Run("evacuate")'
+--   dt gmod/instances dev_3house 'return NSRoomBench.RunAll()'
+--   dt gmod/instances dev_3house 'return NSRoomBench.Report()'
+--   dt gmod/instances dev_3house 'return NSRoomBench.Show("muster")'
 local Legs = nextsoldier.behavior.group_identity
 local Rooms = wartactics.rooms
 

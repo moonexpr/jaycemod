@@ -1,219 +1,66 @@
 ---
 name: dedicated-server
-description: Run, drive and stop Sandcastle's Garry's Mod dedicated server under CrossOver (srcds.py, RCON, luadev, lua_watch, in-game checks, a test client). Use when asked to start or restart the server, change its map, run console commands or Lua on it, read its console log, push live Lua edits to it, run the in-game checks, or connect a GMod client to it.
+description: This repo's own side of its Garry's Mod dedicated server — what .devtools/gmod.toml mounts, the Sandcastle and AI-war console commands, ULX's luadev chat commands, the navigation benches, the Linux builds of the native modules, and the in-game checks. Use with the gmod plugin's gmod-server skill (which starts, stops and drives any project's server: srcds, RCON, luadev, Watch, the MCP) when the work is Sandcastle's or Wetsands'.
 ---
 
-# Dedicated server
+# This repo's dedicated server
 
-Every tool is in `.devtools/bin/` and documents itself in its module
-docstring; read that before changing how you use one. Run them from the
-repo root with `python3`.
+The tools are the gmod plugin's (claude-config2's `plugins/gmod`): read its
+`gmod-server` skill for starting, stopping, RCON, Lua, Watch, benches' leases,
+added maps and live edits. Every `dt gmod/...` command run in this repo builds
+and drives the server `.devtools/gmod.toml` describes.
 
-## Never
+## What the server runs
 
-- **Never run a server in the CrossOver bottle "Steam".** The
-  operator plays there, and a server in that bottle once killed their game.
-  Servers run only in the bottle "GModServer" (`srcds.py`'s `BOTTLE`, which
-  refuses any other). Don't launch `srcds_win64.exe` or wine by hand.
-- **Never kill wine processes by name or pattern** (`pkill wine`,
-  `killall`, `wineserver -k`, `wineboot`). `srcds.py stop` signals only the
-  processes it recorded in `.devtools/artifacts/srcds.pid`.
-- **Never start the GMod client** except through `gmod_client.py`, which
-  refuses while TF2 or another GMod runs and closes its client if the
-  operator's game starts.
-- Don't use port 27015: it belongs to the operator's own game. The server
-  uses 27025.
-- **Don't start, stop or change the map of a server from the shell to run
-  a bench or test.** A bench leases a server from the instance manager
-  (below), which owns that lifecycle.
+`.devtools/gmod.toml`: the `sandcastle` gamemode (the shared install's
+`garrysmod/gamemodes/sandcastle`, which points to the main checkout; a worktree's
+runs with `GMOD_GAMEMODE_DIR` naming its folder), the repo's addons
+(foundation, NextSoldier, wartactics, the CS:S weapons, Model Viewer, the dev
+workbench, ULX luadev), the workbench's scenarios as `data/sandcastle_dev/scenarios`,
+this repo's server Lua (`.devtools/server_lua/`: `hotswap.lua`, and
+`sandcastle_dev.lua`, which sets `DEBUG` and loads the workbench), the Workshop
+addons and the map pool, the hostages' voice pack, the native modules once
+built, and TF2's sound scripts. A map that stays after `dt gmod/add-map` moves
+to its `[maps]`. Club Random runs on the same instances with its own config:
+a start from one project takes away what the other linked.
 
-## Benches lease servers
+## Useful after a map loads
 
-A test-managing program (a bench, a runner) asks `instances.py`'s
-`InstanceManager` for a server on a map and gets a `GameServer` for as
-long as it holds the lease. The manager reuses a running instance no one
-holds, changing its map if it must, or starts one (the main server alone
-unless the caller lists more), and stops on release only what it started.
-Benches are asyncio tasks; leases are shared among a process's tasks and,
-by lease files (`srcds[-n].lease`), among processes.
+- `ws_defaults_apply` puts every loaded Sandcastle convar back to its default
+  (`addons/sandcastle/cfg/sandcastle_defaults.cfg`; `exec` can't read an addon's cfg).
+- `mp_aiwar_start` / `mp_aiwar_end` start and end the AI war. The war's admin
+  and NextSoldier commands (`ns_*_print`, `mp_aiwar_slots_print`) print to the
+  server console.
+- To keep the server on one map: `mp_timelimit 0; mp_winlimit 0; mp_maxrounds 0`
+  (CLAUDE.md), again after any `changelevel`.
 
-```python
-pool = instances.InstanceManager.default()
-async with pool.lease("dev_watchtower_ns_locomotion", owner="my_bench") as server:
-    reply = await server.lua("return game.GetMap()")   # also rcon, change_map
-```
+## ULX's luadev commands
 
-The navigation benches: `ns_bench_map.py` builds a bench map (a region of
-a shipped map, decompiled with BSPSource and cordoned off with hammer-mcp),
-and `ns_bench_run.py <bench>` runs its errands on a leased server and
-writes a report to `.devtools/artifacts/benches/<bench>/`.
+`addons/ulx_luadev`, its own repository (github.com/moonexpr/ulx_luadev), checked
+out here and untracked. A run on the server answers its caller in chat and with a
+sound cue; each caller tunes them on its own client with
+`cl_luadev_output_maxlines` (1; 0: none), `_maxchars` (120; 0: uncut), `_timeout`
+(10 s) and the sounds `_success`, `_error`, `_progress`, `_neutral` (empty:
+silent). Beside luadev's chat commands it gives `!lfile`, `!lent`, `!lwep`,
+`!leffect`, `!lwatch`, `!lunwatch`, `!lcopy` and `!lspawn`. `!print this` (or
+`we`, `there`, `trace`, `me`...) also shows its caller a box and lines describing
+each entity (an NPC's activity, animation, target and schedule; a NextSoldier's
+behaviour and group stacks) for its `cl_luadev_output_overlay` seconds.
 
-## Start, command, stop
+## The navigation benches
 
-By hand, for playing or looking around, not for benches:
+`ns_bench_map.py` builds a bench map (a region of a shipped map, decompiled with
+BSPSource and cordoned off with hammer-mcp), and `ns_bench_run.py <bench>` runs
+its errands on a server leased from the plugin's `InstanceManager` and writes a
+report to `.devtools/artifacts/benches/<bench>/`.
 
-From anywhere in the repo, `dt` runs the server tools by short name (its
-project drawer is `.devtools/bin/dt/`; `dt list` shows them): `dt srcds`,
-`dt rcon`, `dt lua`, `dt watch` and `dt gmod` (one gmod MCP tool's text).
+## The Linux server's native modules
 
-```bash
-dt srcds start --map pl_upward      # waits until the map is up
-dt rcon 'status'              # any console command
-dt rcon 'changelevel koth_viaduct'
-dt srcds stop
-dt srcds console                    # follow the console, in color, in iTerm
-```
-
-**A new Workshop map, to try it out**, with no restart: `dt add_map`
-downloads the item, lists it in `.devtools/artifacts/added_maps.json` (so a
-later build keeps it, on every instance), mounts it on the running server and
-changes to it. With players on the server it mounts the map and leaves them
-where they are, unless `--change`; a server a bench has leased is left alone.
-A map that stays moves to `SERVER_MAPS` in `server_root.py`. A map may come
-with no nav mesh: `mp_nav_generate` builds one.
-
-In game it is `ulx addmap <item> [map] [change]`, `!addmap` in chat
-(superadmins): alone on the server the map changes; with others on, only when
-asked. Lua cannot download an item, so the command writes a request to the watch
-log and `add_map.py --serve`, which `srcds.py` starts with each server and which
-ends with it, answers in chat. In-game replies say if no worker answered: run
-`dt add_map --serve` (its output: `.devtools/artifacts/add_map[-n].log`).
-
-```bash
-dt add_map 3632274158           # an item id or its Workshop link
-dt add_map ITEM --map gm_b      # an item of several maps: which to change to
-dt add_map ITEM --change        # change map though players are on it
-dt add_map --instance 2 ITEM    # a second server's
-```
-
-**A second server beside the first** (when another agent is testing on
-it): `--instance 2` before the action, on every command for that server.
-
-```bash
-dt srcds --instance 2 start --map pl_goldrush --port 27035
-dt rcon --instance 2 'changelevel pl_upward'
-dt lua --instance 2 'return game.GetMap()'
-dt srcds --instance 2 stop
-```
-
-**GMod's Linux server, in Docker**, in place of CrossOver: `--runtime docker`
-on `start`; `rcon`, `lua`, `stop` and `console` read the runtime from the
-launch record. Build the repo's modules for Linux first (once, and after a
-change to a crate):
-
-```bash
-python3 .devtools/bin/native_linux.py        # each crate's target/x86_64-unknown-linux-gnu/release/
-dt srcds start --runtime docker --map pl_upward
-```
-
-The container (`srcds_docker.py`, image `.devtools/docker/srcds`) installs or
-updates GMod's 64-bit Linux server into the volume `sandcastle-srcds-gmod` at
-every start (the first one downloads it, so `start` waits up to 20 minutes
-more), mounts TF2 from the operator's install, builds the root
-(`server_root.py`'s Linux platform) into its own volume, and publishes the
-game port at `--ip` and luadev's on 127.0.0.1. Not there yet:
-NextSoldier's engine binding (`nextsoldier.engine.refused` says why: it reads
-win64's `server.dll`), `ulx addmap` (no worker is started), and luadev's
-socket until a linux64 LuaSocket is put at
-`.devtools/artifacts/docker/gmsv_luasocket_linux64.dll`.
-
-**HolyLib's vprof on the Linux server**, for the dev workbench's `dev.vprof`
-(`dev_vprof_*`): fetch HolyLib's pinned release once, then start with
-`--holylib`. The root links its `.vdf` and `gmsv_holylib_linux64.so`, and the
-server starts with every HolyLib module off but vprof
-(`-holylib_startdisabled -holylib_enable_vprof 1`). A start without
-`--holylib` takes the links away again. CrossOver refuses it: on Windows,
-HolyLib's vprof shows no hooks.
-
-```bash
-python3 .devtools/bin/holylib.py fetch       # .devtools/artifacts/holylib/, each file held to its SHA-256
-dt srcds start --runtime docker --holylib --map pl_upward
-dt srcds rcon 'dev_vprof_status'
-```
-
-Instance *n* runs from its own root, `GarrysModServer-n` (its own
-`console.log`, `data/` and `cache/`), with its own launch record and log
-(`.devtools/artifacts/srcds-n.pid`, `srcds-n.log`) and its own luadev port.
-Its default game port is 27015 + 10·(n−1). Pick a free one with `--port`
-when that's taken. Never stop or change the map of another agent's instance.
-
-`start` takes `--map` (default `gm_construct`), `--port` (27025),
-`--maxplayers`, `--ip` (default `0.0.0.0`, every interface, so the operator
-can join from another machine on the tailnet and the server can log on to
-Steam, which it cannot when bound to the tailnet address alone; `--ip 127.0.0.1` keeps it to
-this Mac, which a client in the other bottle cannot reach) and
-`--no-lua-refresh` (adds `-disableluarefresh`), `--no-p2p` (leaves out
-`-p2p`: by default the server is public, anyone can join with
-`connect p2p:<steamid64>`, the `address` `status` shows, through Steam's
-relays with no port forwarded; the main server's ID is its game server
-token's and stays, an anonymous login's changes each start)
-and `--console` (opens the
-iTerm window, profile "Dark", that `console` opens). It first builds the
-server's own GMod root (`server_root.py`). The server runs the gamemode
-that the shared install's `garrysmod/gamemodes/sandcastle` points to, which
-is the main checkout, not a worktree. Workshop addons (DrGBase), luadev
-access on LAN and `ulx addmap` come from `server_root/`'s autorun; ULX's luadev commands are
-`addons/ulx_luadev`, their own repository (github.com/moonexpr/ulx_luadev) checked out there,
-which Sandcastle does not track, linked into the server's addons. A run on the server answers its
-caller in chat and with a sound cue; each caller tunes them on its own client with
-`cl_luadev_output_maxlines` (1; 0: none), `_maxchars` (120; 0: uncut), `_timeout` (10 s) and the
-sounds `_success`, `_error`, `_progress`, `_neutral` (empty: silent); the console goes by those
-defaults. Beside luadev's chat commands it gives `!lfile`, `!lent`,
-`!lwep`, `!leffect`, `!lwatch`, `!lunwatch`, `!lcopy` and `!lspawn` (luadev's console-only
-`lua_send_*`, `lua_watch` and easylua's helpers). `!print this` (or `we`, `there`, `trace`, `me`...)
-also shows it to its caller for its `cl_luadev_output_overlay` seconds: a box and lines describing each
-entity (an NPC's activity, animation, target and schedule; a NextSoldier's behaviour and group
-stacks), a line to each position.
-
-Useful after a map loads:
-
-- `ws_defaults_apply` puts every loaded Sandcastle convar back to its
-  default (`addons/sandcastle/cfg/sandcastle_defaults.cfg`; `exec` can't read an
-  addon's cfg).
-- `mp_aiwar_start` / `mp_aiwar_end` start and end the AI war. The war's
-  admin and NextSoldier commands (`ns_*_print`, `mp_aiwar_slots_print`)
-  print to the server console.
-
-## Logs and artifacts
-
-| What | Where |
-|------|-------|
-| Everything the console printed, as the supervisor read it | `.devtools/artifacts/srcds.log` |
-| The RCON password | `.devtools/artifacts/rcon_password` |
-| The main server's Steam game server token (`+sv_setsteamaccount`; other instances log on anonymously) | `.devtools/artifacts/steam_account_token` |
-| The processes `start` launched | `.devtools/artifacts/srcds.pid` |
-
-Read logs with `tail` or a filtering command, not whole: they grow long.
-
-## Running Lua
-
-- On the dedicated server, use `server_lua.py` (see the `server-lua`
-  skill): `dt lua 'print(game.GetMap())'`.
-  It runs the chunk through luadev and prints its output and return values.
-  Don't use `srcds.py rcon 'lua_run ...'`: its output only reaches the logs.
-- `gmod_lua.py` is **not** for the dedicated server. It runs Lua in the
-  game the operator is playing, through luadev's socket on 127.0.0.1:27099,
-  and reads its results from the shared install's `data/`. The server's
-  `data/` is its own.
-
-## Live Lua edits
-
-GMod's Lua auto refresh never fires under CrossOver on macOS. Keep the
-watcher running in the background while editing:
-
-```bash
-python3 .devtools/bin/lua_watch.py      # run_in_background
-```
-
-It sends `lua_refresh_file` for each edited `.lua` file to the server (and
-to a game the operator is playing). A **new** file only loads on the next
-map change: `srcds.py rcon 'changelevel <map>'`. Remember, too, that each
-map loads only the systems its entities pull in.
-
-The watcher's refresh does nothing for `foundation/` modules and feature
-parts (they are compiled, not included). For those, and to keep the game
-where it is, use the dev workbench's `dev.reload` (the `dev-workbench`
-skill).
+Before `dt gmod/srcds start --runtime docker`, build the repo's modules for
+Linux (once, and after a change to a crate): `python3 .devtools/bin/native_linux.py`
+(each crate's `target/x86_64-unknown-linux-gnu/release/`, which `gmod.toml`'s
+`[native.linux64]` links). NextSoldier's engine binding does not run there yet
+(`nextsoldier.engine.refused` says why: it reads win64's `server.dll`).
 
 ## In-game checks
 
@@ -222,31 +69,14 @@ python3 .devtools/bin/ingame_tests.py --maps koth_viaduct   # starts and stops i
 python3 .devtools/bin/ingame_one.py <check>                  # one check on the server already running
 ```
 
-The checks are `.devtools/bin/ingame/checks/<name>.lua`. `ingame_tests.py`
-writes `.devtools/artifacts/ingame-report-<date>.md`. Run the LuaJIT suites
-of what changed first (`.devtools/bin/check_lua.sh --changed`): it is faster
-and catches most things.
+The checks are `.devtools/bin/ingame/checks/<name>.lua`; `ingame_tests.py`
+writes `.devtools/artifacts/ingame-report-<date>.md`. Run the LuaJIT suites of
+what changed first (`.devtools/bin/check_lua.sh --changed`): it is faster and
+catches most things.
 
-## A client on the server
+## Live Lua edits
 
-```bash
-python3 .devtools/bin/gmod_client.py check                  # exit 0: a launch is allowed
-python3 .devtools/bin/gmod_client.py start --minutes 20     # connects to 127.0.0.1:27025
-python3 .devtools/bin/gmod_client.py stop
-```
-
-If `check` refuses, tell the operator why and stop there. Don't work around
-it.
-
-## When it goes wrong
-
-- **`start` times out:** read the end of `srcds.log`. The server needs a
-  terminal for stdin (the supervisor gives it a pty). It runs secure, on
-  Steam, with the Workshop; it once crashed in `steamclient64.dll` mounting
-  the Workshop, which `-insecure -noworkshop -nosteam` avoided: if that is
-  back, those flags are the way round it.
-- **`stop` leaves something running:** report it to the operator. Don't
-  widen the kill.
-- **A Wine console window opens (raw ANSI codes):** the server root's
-  `srcds_win64.exe` should be `server_root.py`'s console-program copy, not a
-  link. Run `server_root.py` and start again.
+`dt gmod/lua-watch` refreshes edited files of `addons/sandcastle`. It does
+nothing for foundation modules and feature parts (they are compiled, not
+included): for those, and to keep the game where it is, use the dev
+workbench's `dev.reload` (the `dev-workbench` skill).

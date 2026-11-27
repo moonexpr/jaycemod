@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import bsp_entities
+import gmod_plugin  # noqa: F401  (the gmod plugin's tools on sys.path)
 import srcds
 
 __all__ = [

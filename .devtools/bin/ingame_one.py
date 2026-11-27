@@ -14,6 +14,7 @@ import sys
 import time
 
 import ingame_tests as it
+import gmod_plugin  # noqa: F401  (the gmod plugin's tools on sys.path)
 import srcds
 
 RESULT_TIMEOUT = 120

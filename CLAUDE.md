@@ -35,8 +35,10 @@ NextSoldier, the AI-war's NextBot soldiers. Below, `gamemode/` is
 | `tests/*_test.lua` | LuaJIT tests, `tests/harness.lua`; `tests/foundation_layers_test.lua` guards foundation's layers |
 | `native/` | `ws_profile`, the sampling profiler, a Rust binary module. The other binary modules are their addons' `native/`, each a drop-in that a server's `require` installs over the globals its Lua twins publish: foundation's (`addons/foundation/native`: its structures and foundation.wetsands' systems, one crate, with `vendor/source-sdk-2013`, the raw Source SDK headers it reads Source's values from) and NextSoldier's (`docs/native-foundation-plan.md`) |
 | `docs/` | Design notes; `docs/research/foundation-admission-rule.md` decides what belongs in foundation; `docs/combat-repath-optimization.md` is the handoff for profiling and optimizing AI-war combat repaths |
-| `.devtools/bin/` | Project tools; `.devtools/artifacts/` generated output |
-| `.devtools/docker/` | The images the tools build: `srcds` (GMod's Linux server, `srcds.py --runtime docker`), `native-linux` (the binary modules' Linux builds, `native_linux.py`) |
+| `.devtools/bin/` | Project tools; `.devtools/artifacts/` generated output. The dedicated server's tools (srcds, RCON, luadev, Watch, the gmod MCP) are the gmod plugin's, in claude-config2's `plugins/gmod`, run as `dt gmod/...`; a tool here that imports them imports `gmod_plugin` first |
+| `.devtools/gmod.toml` | What this repo's dedicated server runs, for the gmod plugin: the gamemode, the addons and data linked into its root, Workshop items and maps, native modules, TF2's sound scripts |
+| `.devtools/server_lua/` | This repo's own server Lua, mounted on the dev server beside the plugin's (`gmod.toml`'s `[server_lua]`): `hotswap.lua`, `sandcastle_dev.lua` (the workbench) |
+| `.devtools/docker/` | `native-linux`: the image that builds the binary modules for Linux (`native_linux.py`); the Linux server's own image is the plugin's |
 
 Sandcastle's messages between server and clients are `net2`'s, and its
 events `game_events`', built on it (`docs/net2.md`): no kinds, a name made
@@ -65,8 +67,8 @@ unless the operator asks, with `CHECK_LUA_ALL=1`.
 ## The live server: gmod MCP and the dev workbench
 
 Test a change on the running dev server, and find your way around the code
-by asking it, through the `gmod` MCP (`.devtools/bin/gmod_mcp.py`, tools
-`mcp__gmod__*`; `dt gmod TOOL name=value` from a shell) and the dev
+by asking it, through the `gmod` MCP (the gmod plugin's, tools
+`mcp__plugin_gmod_gmod__*`; `dt gmod/mcp TOOL name=value` from a shell) and the dev
 workbench (`addons/sandcastle_dev`): load the change with
 `dev.reload({ files = { ... } })`, never a restart, then check it as
 returned data. The steps, the navigation tricks and the indexed dev library

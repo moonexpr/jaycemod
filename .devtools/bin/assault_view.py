@@ -17,7 +17,7 @@ points: where the member walks, not the steps of its route.
 
 Writes .devtools/artifacts/maps/dev_3house_assault.png.
 
-    python3 .devtools/bin/instances.py dev_3house - < .devtools/bin/dev_3house_bench.lua
+    dt gmod/instances dev_3house - < .devtools/bin/dev_3house_bench.lua
     python3 .devtools/bin/assault_view.py [--json FILE] [--out FILE]
 """
 import argparse
@@ -232,7 +232,8 @@ def main() -> None:
     if args.json:
         text = args.json.read_text()
     else:
-        done = subprocess.run([sys.executable, str(REPO / ".devtools/bin/instances.py"), "dev_3house",
+        import gmod_plugin
+        done = subprocess.run([sys.executable, str(gmod_plugin.BIN / "instances.py"), "dev_3house",
                                "return NSRoomBench.Placements()"], capture_output=True, text=True, cwd=REPO)
         text = done.stdout + done.stderr
     Draw(Parse(text), args.out)

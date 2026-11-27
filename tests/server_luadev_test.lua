@@ -1,4 +1,4 @@
--- The dedicated server's luadev access (.devtools/bin/server_root/): on a
+-- The dedicated server's luadev access (the gmod plugin's bin/server_root/): on a
 -- LAN server, where Steam authenticates nobody, luadev's policy without its
 -- authentication gate; and the ULX variants of luadev's aowl commands. Both
 -- run here against fakes of luadev, ULX and the GMod globals they call.
@@ -9,7 +9,7 @@ local T = dofile ("tests/harness.lua")
 local sentByModules = {}
 AddCSLuaFile = function (path) sentByModules [#sentByModules + 1] = path or "itself" end
 
-local DIR = ".devtools/bin/server_root/"
+local DIR = T.GMOD_SERVER_LUA
 local ULX_LUADEV = "addons/ulx_luadev/lua/ulx/modules/sh/luadev.lua"
 
 -- what a client's copy of ulx_luadev made its preferences, set once ulx_module is defined

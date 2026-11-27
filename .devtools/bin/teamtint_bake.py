@@ -39,6 +39,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 import numpy as np
 from PIL import Image
 
+import gmod_plugin  # noqa: F401  (the gmod plugin's tools on sys.path)
 from vpk import Vpk
 
 # VTF image formats (VTFImageFormat)

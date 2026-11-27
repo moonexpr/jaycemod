@@ -3,14 +3,15 @@
 Two tools reach the running dev server. Use them instead of Bash loops over
 RCON, and instead of guessing from the source what the game does.
 
-- **The gmod MCP** (`.devtools/bin/gmod_mcp.py`, registered in `.mcp.json`,
-  tools `mcp__gmod__*`). `lua_run` runs Lua on the server; `return` a value
+- **The gmod MCP** (the gmod plugin's, from claude-config2's
+  `plugins/gmod`, tools `mcp__plugin_gmod_gmod__*`). `lua_run` runs Lua on the server; `return` a value
   to see it. `rcon` runs console commands. `lua_errors`, `console_messages`,
   `console_log` and `game_events` read what happened. `breakpoint_set`,
   `breakpoint_hits`, `debug_state`, `debug_eval` and `debug_resume` debug.
   `watch_events` and `listeners` follow long-running work. Every tool takes
-  `instance` (1 by default). From a shell, `dt gmod TOOL name=value ...`
+  `instance` (1 by default). From a shell, `dt gmod/mcp TOOL name=value ...`
   makes the same call, so several can be batched through `ctx_batch_execute`.
+  What this repo's server runs is `.devtools/gmod.toml`.
 - **The dev workbench** (`addons/sandcastle_dev`, loaded only on the dev
   server). Its library is indexed below. Each function returns a table: call
   it with `lua_run`. Each console command prints the same table as JSON:
@@ -46,9 +47,10 @@ Ask the running game:
   end under the Monitor tool.
 
 Lua sent to realm `cl` or `sh` reaches every client, but clients never
-answer. If the server is down, use the `dedicated-server` skill. For the
-scenario format, migrations and limits, use the `dev-workbench` skill; for
-luadev and Watch, the `server-lua` skill.
+answer. If the server is down, and for luadev and Watch, use the gmod
+plugin's `gmod-server` skill (this repo's own commands on it are the
+`dedicated-server` skill). For the scenario format, migrations and limits,
+use the `dev-workbench` skill.
 
 ## The dev library
 
@@ -130,8 +132,8 @@ The engine's own profiler, read as data through [HolyLib](https://github.com/Rap
 `vprof` library: the server thread's time by budget group and by scope, the engine's C++ (NextBots,
 physics, networking) beside the Lua (`GMOD`: `CLuaGamemode::Call (<hook>)`, `CScriptedEntity::Call
 (...)`). It names the time the LuaJIT sampler charges to the hook dispatcher. Needs HolyLib on the
-server: `srcds.py start --runtime docker --holylib` after `holylib.py fetch` (the `dedicated-server`
-skill); without it each refuses. Times are ms; per frame is per tick.
+server: `dt gmod/srcds start --runtime docker --holylib` after `dt gmod/holylib fetch` (the
+`gmod-server` skill); without it each refuses. Times are ms; per frame is per tick.
 `.devtools/bin/profile_server.lua`'s `WSProfile.Start(s, scope, { vprof = true })` puts each wrapped
 function in a scope of its own (group `WSProfile`), so they land in the same tree.
 

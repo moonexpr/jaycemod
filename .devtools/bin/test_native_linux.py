@@ -1,11 +1,23 @@
 """native_linux.py: the repo's binary modules built for GMod's Linux server,
-in a container on the server image's Ubuntu, where server_root.py links
-them from. Nothing here runs docker: each command is checked as data."""
+in a container on the server image's Ubuntu, where the server's root links
+them from (gmod.toml). Nothing here runs docker: each command is checked as data."""
 import subprocess
 
 import native_linux
-from native_linux import DOCKERFILE_DIR, IMAGE, build_command, crates, ensure_image
-from server_root import LINUX_NATIVE_BINARIES, LINUX_TARGET, REPO
+from native_linux import DOCKERFILE_DIR, IMAGE, LINUX_NATIVE_BINARIES, LINUX_TARGET, REPO, build_command, crates, \
+    ensure_image
+
+
+def test_every_win64_module_has_a_linux64_build_named_as_gmod_requires_it():
+    from project import Project
+
+    def module(name, suffix):
+        return name.removeprefix("gmsv_").removesuffix(suffix)
+    native = Project.load(REPO).native
+    assert {module(name, "_win64.dll") for name in native["win64"]} <= \
+        {module(name, "_linux64.dll") for name in native["linux64"]}
+    for name, path in native["linux64"].items():
+        assert name.endswith("_linux64.dll") and path.suffix == ".so" and LINUX_TARGET in path.parts, name
 
 
 def test_every_crate_server_root_links_a_linux_build_of_is_built():
@@ -59,6 +71,7 @@ def test_the_dockerfile_is_where_the_image_is_built_from():
 
 def test_the_builder_runs_the_server_images_ubuntu():
     builder = (DOCKERFILE_DIR / "Dockerfile").read_text()
-    server = (native_linux.REPO / ".devtools/docker/srcds/Dockerfile").read_text()
+    import gmod_plugin
+    server = (gmod_plugin.PLUGIN / "docker/srcds/Dockerfile").read_text()
     assert "FROM ubuntu:22.04" in builder and "steamcmd/steamcmd:ubuntu-22" in server, \
         "a module built on a newer glibc than the server's may not load there"

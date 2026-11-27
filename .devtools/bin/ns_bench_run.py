@@ -33,6 +33,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+import gmod_plugin  # noqa: F401  (the gmod plugin's tools on sys.path)
 import instances
 import server_lua
 from server_root import Instance

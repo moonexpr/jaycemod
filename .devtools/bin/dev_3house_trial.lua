@@ -25,9 +25,9 @@
 -- with BLU dead or the room called clear (BLU fled), lost with RED fallen back or dead, or at TIMEOUT.
 --
 -- Load it, start a trial, then read its log:
---   python3 .devtools/bin/instances.py dev_3house - < .devtools/bin/dev_3house_trial.lua
---   python3 .devtools/bin/instances.py dev_3house 'return NSAssaultTrial.Start("ambush")'
---   python3 .devtools/bin/instances.py dev_3house 'return NSAssaultTrial.Report()'
+--   dt gmod/instances dev_3house - < .devtools/bin/dev_3house_trial.lua
+--   dt gmod/instances dev_3house 'return NSAssaultTrial.Start("ambush")'
+--   dt gmod/instances dev_3house 'return NSAssaultTrial.Report()'
 local Legs = nextsoldier.behavior.group_identity
 local Ambushes = nextsoldier.squad.behaviors.ambush
 local Occupations = nextsoldier.squad.behaviors.occupy
