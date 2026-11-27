@@ -1,5 +1,5 @@
 -- What WS.NavLinkCrossable refuses on the running map, and what that cuts
--- off (dt lua -f .devtools/bin/nav_reach.lua): the links refused, level
+-- off (dt gmod/lua 'return dev.probe("nav_reach")'): the links refused, level
 -- ones and drops; and from each team's spawn areas, the areas reached over
 -- every link against those reached over crossable links alone, with a few
 -- of the areas lost.

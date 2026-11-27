@@ -4,7 +4,7 @@
 -- searches between seeded random area pairs run through each, and each
 -- pair's status, expansions and route compared, with the time each took.
 --
---   dt lua -f .devtools/bin/navsearch_live_check.lua      defines WSNavSearchCheck
+--   dt gmod/lua 'return dev.probe("navsearch_live_check")'      defines WSNavSearchCheck
 --   dt lua 'return WSNavSearchCheck.Run(40)'              40 pairs: a report
 --
 -- Builds both meshes in one call (a hitch of up to a second): a dev server's

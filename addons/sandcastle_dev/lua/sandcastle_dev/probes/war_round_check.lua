@@ -1,7 +1,7 @@
 -- An AI war round on a CTF map as data a map change does not lose: BLU's bots against nobody,
 -- to one capture. Written to data/ns_war_round.txt as it happens: the flags, each bot held still
 -- and what it was running, each recovery, and the win.
---   dt gmod lua_run instance=N code="$(cat .devtools/bin/war_round_check.lua)"
+--   dt gmod/mcp lua_run instance=N code='return dev.probe("war_round_check")'
 local BLU_SIZE = 8
 local FILE = "ns_war_round.txt"
 local STILL_SPEED, STILL_SECONDS, HELD_SECONDS = 30, 3, 5

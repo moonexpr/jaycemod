@@ -1,7 +1,7 @@
 -- npc_ctfbot on a live server on an MvM map, as returned data: it is spawned by the
 -- bomb and given it, its engine stack recorded each time it changes, told to taunt
 -- partway, and watched to the capture.
---   dt gmod lua_run instance=N code="$(cat .devtools/bin/ctfbot_check.lua)"
+--   dt gmod/mcp lua_run instance=N code='return dev.probe("ctfbot_check")'
 --   dt gmod lua_run instance=N code='return NSCtfbotCheck.Report()'
 local E = nextsoldier.engine
 local flagEnt = ents.FindByClass ("item_teamflag") [1]

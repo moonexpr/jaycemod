@@ -7,7 +7,7 @@
 -- fresh controller holds. Diff the output before and after splitting a
 -- controller: a split must not change which methods swap.
 --
---   luajit .devtools/bin/hotswap_listing.lua capture   (from the repo root)
+--   luajit sandcastle_dev/probes/hotswap_listing.lua capture   (from the repo root)
 local T = dofile ("tests/harness.lua")
 
 local feature = assert (arg [1], "usage: hotswap_listing.lua <feature>")

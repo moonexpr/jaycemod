@@ -1,7 +1,7 @@
 -- How a bot player's head goes with its feet, each tick, as data: how far its eyes are off
 -- the way it moves, how they swing, how fast it goes and how it stalls.
 --   (next_soldier_round_check.lua first: this watches NSRoundCheck.bot)
---   dt gmod lua_run instance=N code="$(cat .devtools/bin/next_soldier_head_check.lua)"
+--   dt gmod/mcp lua_run instance=N code='return dev.probe("next_soldier_head_check")'
 --   dt gmod lua_run instance=N code='return NSHeadCheck.Report()'
 local MOVING = 50
 local STALL = 30

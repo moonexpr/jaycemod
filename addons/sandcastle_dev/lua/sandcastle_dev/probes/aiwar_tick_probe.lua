@@ -1,7 +1,7 @@
 -- What the AI war costs the server thread, measured for a window and then
 -- taken off again, run through server_lua.py:
 --
---   server_lua.py -f .devtools/bin/aiwar_tick_probe.lua   defines WarProbe
+--   dt gmod/lua 'return dev.probe("aiwar_tick_probe")'   defines WarProbe
 --   server_lua.py 'return WarProbe.Start(60)'             wrap, measure 60 s, unwrap
 --   server_lua.py 'return WarProbe.Summary()'             the war's share, with its interval
 --   server_lua.py 'return WarProbe.Hooks()'               each of its hooks

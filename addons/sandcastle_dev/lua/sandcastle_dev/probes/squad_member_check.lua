@@ -4,7 +4,7 @@
 -- (stationary, panicked), to muster again and lose half of them, the first leading (its leader
 -- calls the fall back: "Fall back!" in the chat and console), and dissolved, each read back as data.
 -- Leaves nothing behind. Run it, wait for its steps, then read the result:
---   dt gmod/instances MAP - < .devtools/bin/squad_member_check.lua
+--   dt gmod/instances MAP - < sandcastle_dev/probes/squad_member_check.lua
 --   dt gmod/instances MAP 'return NSSquadCheck'
 local Legs = nextsoldier.behavior.group_identity
 local STEP = 1.5

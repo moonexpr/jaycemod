@@ -1,5 +1,5 @@
 -- The AI war's bot soldiers at a glance (features/aiwar/sv_bots.lua), on
--- the dev server: dt lua -f .devtools/bin/bot_status.lua. Defines the global
+-- the dev server: dt gmod/lua 'return dev.probe("bot_status")'. Defines the global
 -- BotStatus() and returns its report: each bot's team, life, enlistment,
 -- role, weapon, distance to its move target, speed, contact, whether it may
 -- fire, kills and deaths, health.

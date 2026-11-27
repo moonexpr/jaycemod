@@ -1,7 +1,7 @@
 -- What a soldier's behaviour tree costs, by action and method, for a window and then put back,
 -- run through dt lua:
 --
---   dt lua -f .devtools/bin/aiwar_tree_probe.lua    defines TreeProbe
+--   dt gmod/lua 'return dev.probe("aiwar_tree_probe")'    defines TreeProbe
 --   dt lua 'return TreeProbe.Start(15)'             every registered action's methods timed 15 s
 --   dt lua 'return TreeProbe.Report(25)'            the most demanding, and the engine's share
 --

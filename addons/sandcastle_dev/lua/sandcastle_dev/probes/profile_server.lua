@@ -1,6 +1,6 @@
 -- A function profiler for the dedicated server, run through server_lua.py:
 --
---   server_lua.py -f .devtools/bin/profile_server.lua      defines WSProfile
+--   dt gmod/lua 'return dev.probe("profile_server")'      defines WSProfile
 --   server_lua.py 'WSProfile.Start(60)'                     wrap, measure 60 s, unwrap
 --   server_lua.py 'WSProfile.Start(60, WSProfile.COARSE)'   hooks and entities only
 --   server_lua.py 'WSProfile.Start(60, WSProfile.ACTIONS)'  and NS actions, events, queries

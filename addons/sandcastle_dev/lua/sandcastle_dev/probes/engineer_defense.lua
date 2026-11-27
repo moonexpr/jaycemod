@@ -2,7 +2,7 @@
 -- level-3 sentries) fortify the room of a control point against the AI war's BLU squad. Run on the
 -- dev server through server_lua.py:
 --
---   dt lua -f .devtools/bin/engineer_defense.lua           defines ENGDEF
+--   dt gmod/lua 'return dev.probe("engineer_defense")'           defines ENGDEF
 --   dt lua 'return ENGDEF.Start({ point = "cap_red_1" })'   engineers out, fortifying, the war on
 --   dt lua 'return ENGDEF.Status()'                        one line: the round, works, engineers, BLU
 --   dt lua 'return ENGDEF.Report()'                        what happened since Start

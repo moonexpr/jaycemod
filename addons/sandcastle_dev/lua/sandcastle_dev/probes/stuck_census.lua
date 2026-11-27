@@ -1,9 +1,9 @@
 -- A census of who gets stuck, for `dt lua [--instance N] -f
--- .devtools/bin/stuck_census.lua`: installs (again: starts over) a sampler
+-- sandcastle_dev/probes/stuck_census.lua`: installs (again: starts over) a sampler
 -- that every SAMPLE seconds looks at each bot soldier with a route to walk
 -- and each hostage following a rescuer farther than FOLLOW_FAR, and records
 -- one that moved less than MOVED in WINDOW seconds, with where. Read it with
--- .devtools/bin/stuck_report.lua.
+-- sandcastle_dev/probes/stuck_report.lua.
 local SAMPLE, WINDOW, MOVED, FOLLOW_FAR = 2, 8, 32, 150
 
 StuckCensus = { started = CurTime (), events = {}, rounds = 0, map = game.GetMap () }

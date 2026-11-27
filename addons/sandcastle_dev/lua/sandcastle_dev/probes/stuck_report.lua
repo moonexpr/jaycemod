@@ -1,5 +1,5 @@
--- What the stuck census (.devtools/bin/stuck_census.lua) has seen, for
--- `dt lua [--instance N] -f .devtools/bin/stuck_report.lua`: as JSON, the
+-- What the stuck census (sandcastle_dev/probes/stuck_census.lua) has seen, for
+-- `dt gmod/lua [--instance N] 'return dev.probe("stuck_report")'`: as JSON, the
 -- minutes it has run, the rounds begun, and each time someone stayed stuck,
 -- longest first.
 local census = StuckCensus

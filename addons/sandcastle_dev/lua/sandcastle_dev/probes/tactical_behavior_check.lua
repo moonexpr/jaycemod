@@ -2,7 +2,7 @@
 -- the war on BLU start a bench war; they form one squad with its feet held; it is given a lane job,
 -- a contact, its lanes off and on, a post and a rally marked; back on their legs, the last out ends the war.
 -- Leaves nothing behind. Run it, wait, then read the result:
---   dt gmod/instances MAP - < .devtools/bin/tactical_behavior_check.lua
+--   dt gmod/instances MAP - < sandcastle_dev/probes/tactical_behavior_check.lua
 --   dt gmod/instances MAP 'return NSTacticalCheck'
 local STEP = 3
 local COUNT = 3

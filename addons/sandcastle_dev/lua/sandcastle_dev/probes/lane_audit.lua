@@ -1,4 +1,4 @@
--- Audits the AI war's lanes on the running server (dt lua -f .devtools/bin/lane_audit.lua):
+-- Audits the AI war's lanes on the running server (dt gmod/lua 'return dev.probe("lane_audit")'):
 -- every waypoint and every leg between two, as a soldier would walk it.
 --   solid:   the waypoint is inside a brush (a soldier's hull cannot stand there)
 --   offmesh: no nav area under the waypoint

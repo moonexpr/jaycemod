@@ -5,11 +5,11 @@
 -- an operation that cheap could beat.
 --
 -- Under plain LuaJIT (the native twins from the built the native foundation):
---   luajit .devtools/bin/native_bench.lua [module ...]
+--   luajit .devtools/experiments/foundation-bench/native_bench.lua [module ...]
 -- On the dedicated server (native twins installed over the globals, the Lua
 -- twins compiled beside them; the floor is unmeasured there, as GMod has no
 -- package.loadlib for the probe):
---   dt lua -f .devtools/bin/native_bench.lua
+--   dt lua -f .devtools/experiments/foundation-bench/native_bench.lua
 --   dt lua 'return WSNativeBench.Run()'           or Run({ "tree.heap" })
 -- Prints ns per operation, best of ROUNDS, JIT on and off.
 local ROUNDS = 5

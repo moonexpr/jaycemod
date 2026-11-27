@@ -39,7 +39,7 @@ import gmod_plugin  # noqa: E402  (the gmod plugin's tools on sys.path)
 
 BIN = gmod_plugin.BIN  # server_lua.py, srcds.py
 ARTIFACTS = Path(__file__).resolve().parent / "results"
-PROBE = REPO / ".devtools/bin/aiwar_tick_probe.lua"
+PROBE = REPO / "addons/sandcastle_dev/lua/sandcastle_dev/probes/aiwar_tick_probe.lua"
 READY_TIMEOUT = 300
 # Student's t at 95 %, two-sided, by degrees of freedom; 1.96 beyond.
 T95 = (12.71, 4.30, 3.18, 2.78, 2.57, 2.45, 2.36, 2.31, 2.26, 2.23, 2.20, 2.18, 2.16, 2.14, 2.13,

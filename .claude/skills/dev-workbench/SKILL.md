@@ -109,7 +109,7 @@ physics, networking) beside the Lua (`GMOD`: `CLuaGamemode::Call (<hook>)`, `CSc
 (...)`). It names the time the LuaJIT sampler charges to the hook dispatcher. Needs HolyLib on the
 server: `dt gmod/srcds start --runtime docker --holylib` after `dt gmod/holylib fetch` (the
 `gmod-server` skill); without it each refuses. Times are ms; per frame is per tick.
-`.devtools/bin/profile_server.lua`'s `WSProfile.Start(s, scope, { vprof = true })` puts each wrapped
+The `profile_server` probe's `WSProfile.Start(s, scope, { vprof = true })` puts each wrapped
 function in a scope of its own (group `WSProfile`), so they land in the same tree.
 
 | Function | Command | What |
@@ -122,6 +122,26 @@ function in a scope of its own (group `WSProfile`), so they land in the same tre
 | `dev.vprof.counters()` | `dev_vprof_counters` | VProf's counters by name |
 | `dev.vprof.window(seconds, opts)` | `dev_vprof_window <seconds> [rows] [scripts] [sample]` | VProf over a window from nothing; `sample` runs the LuaJIT sampler (wsprofile) over the same window. Asynchronous: the report lands in `dev.last_vprof` (`lua` the sampler's) |
 | `dev.vprof.cancel()` | `dev_vprof_cancel` | End a window early, stopping what it started |
+
+### Probes
+
+Lua that asks the running game one question and answers it as data, in
+`sandcastle_dev/probes/<name>.lua`, read from disk each time it runs (an edit needs no reload);
+its first comment line says what it asks.
+
+| Function | Command | What |
+|---|---|---|
+| `dev.probe(name, ...)` | `dev_probe <name>` | Run a probe with the arguments given; what it returns (a probe that defines a global, as `profile_server`'s `WSProfile`, returns nothing: call the global next) |
+| `dev.probes()` | `dev_probes` | Every probe, `{ name, about }` |
+
+The probes: the AI war's costs (`aiwar_look_probe`, `aiwar_tick_probe`, `aiwar_tree_probe`), its
+bots and rounds (`bot_probe`, `bot_status`, `war_round_check`, `lane_audit`, `stuck_census` then
+`stuck_report`), MvM's bomb carrier (`ctfbot_check`, `ctfbot_demo`), the engineers' defence
+(`engineer_defense`), the Path Follower stool's modes (`squad_member_check`,
+`tactical_behavior_check`), NextSoldier on the engine (`next_soldier_head_check`,
+`next_soldier_round_check`, `nextsoldier_components_check`, `nextsoldier_engine_check`), the nav
+mesh and its searches (`nav_reach`, `navsearch_live_check`), what hotswap would list
+(`hotswap_listing`) and the function profiler (`profile_server`). `dev_probes` says what each asks.
 
 ### Entities
 

@@ -2,7 +2,7 @@
 -- carries it to the zone, and after a pause does it again, each change of its engine
 -- stack and the capture said in chat. Sandbox mode, so a watcher can fly: no round or
 -- wave comes between it and the bomb.
---   dt gmod lua_run instance=N code="$(cat .devtools/bin/ctfbot_demo.lua)"
+--   dt gmod/mcp lua_run instance=N code='return dev.probe("ctfbot_demo")'
 --   dt gmod lua_run instance=N code='NSCtfbotDemo.Stop() return "stopped"'
 if NSCtfbotDemo then NSCtfbotDemo.Stop () end
 local PAUSE = 6

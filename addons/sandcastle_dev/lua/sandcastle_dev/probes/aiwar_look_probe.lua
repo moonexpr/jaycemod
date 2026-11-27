@@ -1,7 +1,7 @@
 -- What each part of a war bot's look costs (features/aiwar/sv_bots.lua's Controller:Look), for a
 -- window and then put back, run through dt lua:
 --
---   dt lua -f .devtools/bin/aiwar_look_probe.lua    defines LookProbe
+--   dt gmod/lua 'return dev.probe("aiwar_look_probe")'    defines LookProbe
 --   dt lua 'return LookProbe.Start(15)'             its look swapped for a timed copy for 15 s
 --   dt lua 'return LookProbe.Report()'              each part's ms/s and µs a look
 --   dt lua 'return LookProbe.Ablate(8)'             each part left out for 8 s in turn
