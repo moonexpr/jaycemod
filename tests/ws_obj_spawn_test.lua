@@ -2,7 +2,7 @@
 -- when it is refused (who it is for: games_gameplay_buildings_spawn_menu_test).
 local T = dofile("tests/harness.lua")
 
-local DIR = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
+local DIR = "addons/sandcastle/gamemodes/wetsands/entities/entities/"
 local RED = 2
 local PRICES = gameplay.buildings.SPAWN_PRICE
 local PRICE = PRICES.sentry

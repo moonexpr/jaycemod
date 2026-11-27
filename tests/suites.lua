@@ -34,7 +34,8 @@ return
 		sources =
 		{
 			G .. "includes/gameplay/", G .. "includes/npc/", G .. "includes/system/",
-			G .. "includes/extensions/", E .. "entities/tf_projectile_", E .. "entities/ent_projectile_"
+			G .. "includes/extensions/", E .. "entities/tf_projectile_", E .. "entities/ent_projectile_",
+			W .. "entities/tf_projectile_", W .. "entities/ent_projectile_"
 		}
 	},
 	{
@@ -75,6 +76,7 @@ return
 			G .. "features/payload/", G .. "features/arena/", G .. "features/mvm/", G .. "features/gamemode/",
 			"tests/fake_objective.lua", "tests/fake_points.lua",
 			E .. "entities/team_", E .. "entities/tf_logic_", E .. "entities/game_", E .. "entities/func_respawnroom",
+			W .. "entities/tf_logic_", W .. "entities/game_",
 			E .. "entities/func_capturezone", E .. "entities/trigger_capture_area", E .. "entities/item_teamflag",
 			E .. "entities/info_observer_point", G .. "hud/", G .. "includes/modules/round_manager.lua", G .. "includes/modules/game_timer.lua",
 			G .. "includes/modules/net2.lua", G .. "includes/modules/game_events.lua", G .. "includes/modules/hit_audit.lua", G .. "includes/modules/gesture.lua", G .. "gestures/",

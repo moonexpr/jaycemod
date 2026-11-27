@@ -6,7 +6,7 @@ local T = dofile("tests/harness.lua")
 local function Projectile()
 	local ENT = {}
 	local env = setmetatable({ ENT = ENT, AddCSLuaFile = function() end, CLIENT = false }, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/entities/entities/ws_projectile.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/wetsands/entities/entities/ws_projectile.lua")), env)()
 	ENT.Remove = function(self) self.removed = true end
 	ENT.GetClass = function() return "tf_projectile_pipe" end
 	return ENT
@@ -28,8 +28,8 @@ T.test("a projectile spawned with no config is removed and refused by name", fun
 end)
 
 -- The TF2 Weapon Pack ships these two classes; its weapons spawn them by name.
-T.test("Sandcastle's rocket and pipe leave TF2's class names to the weapon pack", function()
-	local dir = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
+T.test("Wetsands' rocket and pipe leave TF2's class names to the weapon pack", function()
+	local dir = "addons/sandcastle/gamemodes/wetsands/entities/entities/"
 	for _, name in ipairs({ "pipe", "rocket" }) do
 		T.eq(io.open(dir .. "tf_projectile_" .. name .. ".lua"), nil, "no tf_projectile_" .. name)
 		T.eq(io.open(dir .. "ent_projectile_" .. name .. ".lua") ~= nil, true, "ent_projectile_" .. name)
