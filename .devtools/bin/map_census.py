@@ -14,6 +14,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import source_tools  # noqa: F401  (claude-config2's source readers on sys.path)
 from bsp_entities import parse_entity_lump, read_entity_lump
 
 REPO = Path(__file__).resolve().parents[2]

@@ -25,6 +25,7 @@ import sys
 from pathlib import Path
 from typing import Iterable, List, Mapping, Set, Tuple
 
+import source_tools  # noqa: F401  (claude-config2's source readers on sys.path)
 import bsp_entities
 from tf2_content import Kind, Vpk, references_in_lua
 

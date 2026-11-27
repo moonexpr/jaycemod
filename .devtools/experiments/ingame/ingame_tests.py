@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
 sys.path.append(str(Path(__file__).resolve().parents[2] / "bin"))  # this repo's tools: bsp_entities, gmod_plugin
+import source_tools  # noqa: E402,F401  (claude-config2's source readers on sys.path)
 import bsp_entities  # noqa: E402
 import gmod_plugin  # noqa: E402  (the gmod plugin's tools on sys.path)
 import srcds  # noqa: E402

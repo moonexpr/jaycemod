@@ -37,6 +37,7 @@ import sys
 import capstone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import source_tools  # noqa: F401  (claude-config2's source readers on sys.path)
 import elf_vtables  # noqa: E402
 import pe_rtti  # noqa: E402
 

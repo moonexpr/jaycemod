@@ -1,5 +1,5 @@
 -- games.world.nav_attributes: TF2's per-area nav attributes, read from the
--- sidecar .devtools/bin/nav_convert.py writes beside a converted mesh.
+-- sidecar nav_convert (claude-config2's dt source/nav-convert) writes beside a converted mesh.
 local T = dofile ("tests/harness.lua")
 local Attributes = world.nav_attributes
 

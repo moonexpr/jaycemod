@@ -1,5 +1,6 @@
 import unittest
 
+import source_tools  # noqa: F401  (claude-config2's source readers on sys.path)
 from bsp_entities import Entity
 from map_census import Census, Provided, entity_classes
 
