@@ -1,4 +1,4 @@
--- cp_5gorge, captured by .devtools/bin/capture_nav_section.lua.
+-- cp_5gorge, captured by .devtools/experiments/routes/capture_nav_section.lua.
 -- columns: by row (y), then column (x), each cell's solids from the top: a top
 -- and its bottom, the lowest a top alone. areas: id, extent, the corners' heights
 -- (north-west, north-east, south-east, south-west), attributes, then links by side.

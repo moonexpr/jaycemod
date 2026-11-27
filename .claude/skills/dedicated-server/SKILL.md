@@ -47,12 +47,16 @@ silent). Beside luadev's chat commands it gives `!lfile`, `!lent`, `!lwep`,
 each entity (an NPC's activity, animation, target and schedule; a NextSoldier's
 behaviour and group stacks) for its `cl_luadev_output_overlay` seconds.
 
-## The navigation benches
+## Benches and trials: `.devtools/experiments/`
 
-`ns_bench_map.py` builds a bench map (a region of a shipped map, decompiled with
-BSPSource and cordoned off with hammer-mcp), and `ns_bench_run.py <bench>` runs
-its errands on a server leased from the plugin's `InstanceManager` and writes a
-report to `.devtools/artifacts/benches/<bench>/`.
+Each experiment is a folder with its scripts, a README stating its question and
+status, and its results in `results/` (ignored by git): the AI war's benches,
+the foundation bench, dev_3house's room operations, the navigation benches, the
+dustbowl stage-2 bench, the stranding A/B, the hostage survey, the route
+records, and the in-game checks. The navigation benches: `ns-bench/ns_bench_map.py`
+builds a bench map (a region of a shipped map, decompiled with BSPSource and
+cordoned off with hammer-mcp), and `ns-bench/ns_bench_run.py <bench>` runs its
+errands on a server leased from the plugin's `InstanceManager`.
 
 ## The Linux server's native modules
 
@@ -65,12 +69,12 @@ Linux (once, and after a change to a crate): `python3 .devtools/bin/native_linux
 ## In-game checks
 
 ```bash
-python3 .devtools/bin/ingame_tests.py --maps koth_viaduct   # starts and stops its own server
-python3 .devtools/bin/ingame_one.py <check>                  # one check on the server already running
+python3 .devtools/experiments/ingame/ingame_tests.py --maps koth_viaduct   # starts and stops its own server
+python3 .devtools/experiments/ingame/ingame_one.py <check>                  # one check on the server already running
 ```
 
-The checks are `.devtools/bin/ingame/checks/<name>.lua`; `ingame_tests.py`
-writes `.devtools/artifacts/ingame-report-<date>.md`. Run the LuaJIT suites of
+The checks are `.devtools/experiments/ingame/ingame/checks/<name>.lua`; `ingame_tests.py`
+writes `results/ingame-report-<date>.md` beside it. Run the LuaJIT suites of
 what changed first (`.devtools/bin/check_lua.sh --changed`): it is faster and
 catches most things.
 

@@ -17,7 +17,7 @@ points: where the member walks, not the steps of its route.
 
 Writes .devtools/artifacts/maps/dev_3house_assault.png.
 
-    dt gmod/instances dev_3house - < .devtools/bin/dev_3house_bench.lua
+    dt gmod/instances dev_3house - < .devtools/experiments/dev-3house/dev_3house_bench.lua
     python3 .devtools/bin/assault_view.py [--json FILE] [--out FILE]
 """
 import argparse
