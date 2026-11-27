@@ -56,9 +56,9 @@ and run `.devtools/bin/vendor_source_sdk.sh PATH_TO_CLONE` first.
 
 You'll need LuaJIT, plus Cargo for the native pass.
 
-    .devtools/bin/check_lua.sh --list        # the test groups
-    .devtools/bin/check_lua.sh foundation    # one group, Lua then native
-    .devtools/bin/check_lua.sh --changed     # the groups your changes touch
+    .devtools/bin/check/check_lua.sh --list        # the test groups
+    .devtools/bin/check/check_lua.sh foundation    # one group, Lua then native
+    .devtools/bin/check/check_lua.sh --changed     # the groups your changes touch
 
 ## Plans
 

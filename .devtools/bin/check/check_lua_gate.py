@@ -25,10 +25,10 @@ QUOTED = re.compile(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"")
 
 REASON = (
     "Run the suites of the systems you changed, not all of them: "
-    "`.devtools/bin/check_lua.sh --changed` (the groups your changes touch), "
-    "`.devtools/bin/check_lua.sh GROUP...` (named groups), "
+    "`.devtools/bin/check/check_lua.sh --changed` (the groups your changes touch), "
+    "`.devtools/bin/check/check_lua.sh GROUP...` (named groups), "
     "or `luajit tests/<name>_test.lua` for one file. "
-    "The groups: `luajit .devtools/bin/suites.lua list`. "
+    "The groups: `luajit .devtools/bin/check/suites.lua list`. "
     "Only when the operator asks for the whole suite: prefix the command with CHECK_LUA_ALL=1."
 )
 

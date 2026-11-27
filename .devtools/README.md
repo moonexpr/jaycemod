@@ -9,28 +9,24 @@
 | `bin/aiwar_look_probe.lua` | What each part of a war bot's look costs (features/aiwar/sv_bots.lua's Controller:Look), for a |
 | `bin/aiwar_tick_probe.lua` | What the AI war costs the server thread, measured for a window and then |
 | `bin/aiwar_tree_probe.lua` | What a soldier's behaviour tree costs, by action and method, for a window and then put back, |
-| `bin/ambush.py` | Ambush hints: hiding spots beside the entrances an enemy squad comes through. |
-| `bin/assault_view.py` | Draw an assault's placements on dev_3house's bench, one panel for each enemy position. |
 | `bin/bot_probe.lua` | What a player bot (player.CreateNextBot) can be made to do from |
 | `bin/bot_status.lua` | The AI war's bot soldiers at a glance (features/aiwar/sv_bots.lua), on |
-| `bin/check_engine_names.sh` | Whether Garry's Mod already defines a console name: searches the strings of |
-| `bin/check_lua.sh` | Check groups of the test suites (tests/suites.lua, one group a major |
-| `bin/check_lua_gate.py` | A PreToolUse hook (.claude/settings.json) that keeps an agent's Lua checks |
-| `bin/check_names.py` | Check Sandcastle's own names in Lua: no TF2 in them, and every hook and networked var has both ends. |
-| `bin/check_totals.sh` | check_totals.sh BASE: the LuaJIT test total never drops, commit by commit. |
-| `bin/classes.py` | Room classes from the incursion: what each room is for when a round starts (docs/places-plan.md §2.3). |
-| `bin/classes_view.py` | Class a dumped map's rooms from the incursion (classes.py) and draw them from above. |
+| `bin/check/check_engine_names.sh` | Whether Garry's Mod already defines a console name: searches the strings of |
+| `bin/check/check_lua.sh` | Check groups of the test suites (tests/suites.lua, one group a major |
+| `bin/check/check_lua_gate.py` | A PreToolUse hook (.claude/settings.json) that keeps an agent's Lua checks |
+| `bin/check/check_names.py` | Check Sandcastle's own names in Lua: no TF2 in them, and every hook and networked var has both ends. |
+| `bin/check/check_totals.sh` | check_totals.sh BASE: the LuaJIT test total never drops, commit by commit. |
+| `bin/check/lua_format.py` | Format Lua (GLua) the way notcake formats gcompute and glib. |
+| `bin/check/run_lua_tests.sh` | Run the given test files (tests/*_test.lua) under LuaJIT from the repo |
+| `bin/check/suites.lua` | The test suites grouped by major system: tests/suites.lua names each |
 | `bin/ctfbot_check.lua` | npc_ctfbot on a live server on an MvM map, as returned data: it is spawned by the |
 | `bin/ctfbot_demo.lua` | npc_ctfbot to watch in game, on a server on an MvM map: it is spawned by the bomb, |
 | `bin/engineer_defense.lua` | The engineers' defence bench: RED's engineers (npc_pathfollower on their legs, armed, building |
 | `bin/gamemode_art.py` | Render the gamemode's menu art from its SVG master. |
 | `bin/gmod_plugin.py` | Puts the gmod plugin's tools on sys.path, for this repo's benches and probes |
 | `bin/hotswap_listing.lua` | Prints what `ws_hotswap_feature <feature>` would list on the server |
-| `bin/incursion.py` | Incursion: how each team walks into the map from its spawns (docs/places-plan.md §2.1). |
-| `bin/incursion_view.py` | Draw each team's incursion routes over a dumped map's rooms, the baseline traffic. |
 | `bin/kill_icons_art.py` | Draw HL2's weapons as TF2 kill icons, in PhotoCraft. |
 | `bin/lane_audit.lua` | Audits the AI war's lanes on the running server (dt lua -f .devtools/bin/lane_audit.lua): |
-| `bin/lua_format.py` | Format Lua (GLua) the way notcake formats gcompute and glib. |
 | `bin/map_census.py` | Census of the entity classes TF2 maps use that Sandcastle does not provide. |
 | `bin/map_view.py` | Render a view of a .vmf to a PNG, through hammer-mcp's render_vmf_view. |
 | `bin/native_bench.lua` | Whether a native twin of a foundation module pays: each module's cases run |
@@ -43,13 +39,18 @@
 | `bin/nextsoldier_components_check.lua` | actor.body, actor.vision and actor.intention (addons/nextsoldier/native, actor_bind.rs) on a |
 | `bin/nextsoldier_engine_check.lua` | What the engine does with Actions addons/nextsoldier/native builds, checked on a live |
 | `bin/ns_fixture_map.py` | Build ns_fixture, the NextSoldier pathing fixture map, through hammer-mcp. |
-| `bin/places.py` | What each room is for when a round starts (docs/places-plan.md §2.3). |
-| `bin/places_diff.py` | The rooms whose starting class changes between a revision of places.py and the working tree's, on a dump: |
 | `bin/profile_server.lua` | A function profiler for the dedicated server, run through server_lua.py: |
 | `bin/publish_public.sh` | Publishes main to the public mirror (moonexpr/sandcastle-public) without |
-| `bin/rooms_dump.lua` | The running map's room graph and windows (the AI war controller's |
-| `bin/rooms_view.py` | Partition a dumped room graph with wartactics.rooms and draw it from above. |
-| `bin/run_lua_tests.sh` | Run the given test files (tests/*_test.lua) under LuaJIT from the repo |
+| `bin/rooms/ambush.py` | Ambush hints: hiding spots beside the entrances an enemy squad comes through. |
+| `bin/rooms/assault_view.py` | Draw an assault's placements on dev_3house's bench, one panel for each enemy position. |
+| `bin/rooms/classes.py` | Room classes from the incursion: what each room is for when a round starts (docs/places-plan.md §2.3). |
+| `bin/rooms/classes_view.py` | Class a dumped map's rooms from the incursion (classes.py) and draw them from above. |
+| `bin/rooms/incursion.py` | Incursion: how each team walks into the map from its spawns (docs/places-plan.md §2.1). |
+| `bin/rooms/incursion_view.py` | Draw each team's incursion routes over a dumped map's rooms, the baseline traffic. |
+| `bin/rooms/places.py` | What each room is for when a round starts (docs/places-plan.md §2.3). |
+| `bin/rooms/places_diff.py` | The rooms whose starting class changes between a revision of places.py and the working tree's, on a dump: |
+| `bin/rooms/rooms_dump.lua` | The running map's room graph and windows (the AI war controller's |
+| `bin/rooms/rooms_view.py` | Partition a dumped room graph with wartactics.rooms and draw it from above. |
 | `bin/sdk_layout.py` | The Source SDK's NextBot classes laid out by a compiler, for both of GMod's ABIs, to |
 | `bin/sound_pack.py` | Install a sound replacement pack's .wav files under a content sound/ folder, |
 | `bin/source_tools.py` | Puts claude-config2's Source and GMod format readers on sys.path (its |
@@ -57,7 +58,6 @@
 | `bin/strip_attribution.py` | Rewrite a branch's history without Claude or Copilot attribution. |
 | `bin/stuck_census.lua` | A census of who gets stuck, for `dt lua [--instance N] -f |
 | `bin/stuck_report.lua` | What the stuck census (.devtools/bin/stuck_census.lua) has seen, for |
-| `bin/suites.lua` | The test suites grouped by major system: tests/suites.lua names each |
 | `bin/tactical_behavior_check.lua` | The Path Follower stool's Tactical mode on a live server, read back as data: followers put in |
 | `bin/teamtint_bake.py` | Bake Team Tint's team textures, and the addon's own (addons/teamtint). |
 | `bin/tf2_server_content.py` | Extract the TF2 models a dedicated GMod server needs, for the in-game harness. |

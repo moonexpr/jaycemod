@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Class a dumped map's rooms from the incursion (classes.py) and draw them from above.
 
-    python3 .devtools/bin/classes_view.py .devtools/artifacts/rooms/MAP.graph.json
+    python3 .devtools/bin/rooms/classes_view.py .devtools/artifacts/rooms/MAP.graph.json
 
 Each level from above: every room filled by its class (rooms_view.py's
 colours), a stronghold or commons paler the farther down its gradient

@@ -5,10 +5,10 @@
 -- any prefix; a changed file to the groups whose sources claim it most
 -- closely. check_lua.sh runs through it:
 --
---   luajit .devtools/bin/suites.lua list             the groups, a line each
---   luajit .devtools/bin/suites.lua tests GROUP...   their test files
---   luajit .devtools/bin/suites.lua files GROUP...   the Lua files to compile
---   luajit .devtools/bin/suites.lua changed          the groups the changes touch:
+--   luajit .devtools/bin/check/suites.lua list             the groups, a line each
+--   luajit .devtools/bin/check/suites.lua tests GROUP...   their test files
+--   luajit .devtools/bin/check/suites.lua files GROUP...   the Lua files to compile
+--   luajit .devtools/bin/check/suites.lua changed          the groups the changes touch:
 --     uncommitted, staged, untracked, and committed since the upstream
 --
 -- dofile'd (no arguments), it returns the module: New(manifest, tests).

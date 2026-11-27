@@ -3,7 +3,7 @@
 # root, then again with the native twins installed (WS_NATIVE=1); nonzero if
 # any fail. check_lua.sh hands it a group's tests (tests/suites.lua).
 #   run_lua_tests.sh tests/math_box_test.lua ...
-cd "$(dirname "$0")/../.." || exit 2
+cd "$(dirname "$0")/../../.." || exit 2
 if [ $# -eq 0 ]; then
 	echo "usage: run_lua_tests.sh TEST_FILE... (a group's: check_lua.sh GROUP...)" >&2
 	exit 2

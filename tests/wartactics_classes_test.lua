@@ -1,4 +1,4 @@
--- wartactics.classes (.devtools/bin/classes.py and places.py the reference).
+-- wartactics.classes (.devtools/bin/rooms/classes.py and places.py the reference).
 -- The stages over the spaces are plain Lua, tested in both passes; the
 -- gradient and the junctions walk the incursion's graph.paths, native only.
 local T = dofile ("tests/harness.lua")

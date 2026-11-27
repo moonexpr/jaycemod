@@ -6,7 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-SCRIPT = Path(__file__).resolve().parent / "check_lua_gate.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "bin" / "check" / "check_lua_gate.py"
 
 
 def decide(command, tool="Bash"):
@@ -21,11 +21,11 @@ def decide(command, tool="Bash"):
 
 def test_every_suite_at_once_is_denied():
     for command in [
-        ".devtools/bin/check_lua.sh all",
-        "sh .devtools/bin/check_lua.sh all 2>&1 | tail -3",
-        "cd /x && ./.devtools/bin/check_lua.sh all",
-        ".devtools/bin/run_lua_tests.sh",
-        ".devtools/bin/run_lua_tests.sh 2>&1 | tail",
+        ".devtools/bin/check/check_lua.sh all",
+        "sh .devtools/bin/check/check_lua.sh all 2>&1 | tail -3",
+        "cd /x && ./.devtools/bin/check/check_lua.sh all",
+        ".devtools/bin/check/run_lua_tests.sh",
+        ".devtools/bin/check/run_lua_tests.sh 2>&1 | tail",
         "for t in tests/*_test.lua; do luajit $t; done",
     ]:
         decision = decide(command)
@@ -35,10 +35,10 @@ def test_every_suite_at_once_is_denied():
 
 def test_groups_and_single_tests_pass():
     for command in [
-        ".devtools/bin/check_lua.sh foundation war",
-        ".devtools/bin/check_lua.sh --changed",
-        ".devtools/bin/check_lua.sh --list",
-        ".devtools/bin/run_lua_tests.sh tests/math_box_test.lua",
+        ".devtools/bin/check/check_lua.sh foundation war",
+        ".devtools/bin/check/check_lua.sh --changed",
+        ".devtools/bin/check/check_lua.sh --list",
+        ".devtools/bin/check/run_lua_tests.sh tests/math_box_test.lua",
         "luajit tests/wetsands_navsearch_test.lua",
         "git log --oneline -3",
     ]:
@@ -50,18 +50,18 @@ def test_naming_them_is_not_running_them():
         "git commit -q -F - <<'EOF'\nSubject\n\ncheck_lua.sh all is the operator's; a loop over tests/*_test.lua too\nEOF",
         'git commit -m "check_lua.sh all now refuses agents; run_lua_tests.sh takes files"',
         "grep -rn 'check_lua.sh all' docs",
-        "cat > notes.md <<EOF\n.devtools/bin/run_lua_tests.sh\nEOF\necho done",
+        "cat > notes.md <<EOF\n.devtools/bin/check/run_lua_tests.sh\nEOF\necho done",
     ]:
         assert decide(command) is None, command
 
 
 def test_a_run_after_a_heredoc_is_still_seen():
-    decision = decide("cat > x <<'EOF'\nnothing\nEOF\n.devtools/bin/check_lua.sh all")
+    decision = decide("cat > x <<'EOF'\nnothing\nEOF\n.devtools/bin/check/check_lua.sh all")
     assert decision is not None and decision[0] == "deny"
 
 
 def test_the_operators_word_lets_the_whole_suite_through():
-    assert decide("CHECK_LUA_ALL=1 .devtools/bin/check_lua.sh all") is None
+    assert decide("CHECK_LUA_ALL=1 .devtools/bin/check/check_lua.sh all") is None
 
 
 def test_other_tools_pass():

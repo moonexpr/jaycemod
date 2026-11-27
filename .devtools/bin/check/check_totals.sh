@@ -7,7 +7,7 @@
 # marked (parent). Exit 1 if any commit's passed total is below its first
 # parent's, or its check_lua.sh fails; 2 on a usage or git error.
 # The working copy is never read: only committed trees are judged.
-cd "$(dirname "$0")/../.." || exit 2
+cd "$(dirname "$0")/../../.." || exit 2
 base=$1
 if [ -z "$base" ]; then
 	echo "usage: check_totals.sh BASE" >&2
@@ -26,7 +26,9 @@ total() {
 	if [ ! -f "$scratch/$1.total" ]; then
 		mkdir "$scratch/$1"
 		git archive "$1" | tar -x -C "$scratch/$1" || exit 2
-		out=$(sh "$scratch/$1/.devtools/bin/check_lua.sh" all 2>&1)
+		check="$scratch/$1/.devtools/bin/check/check_lua.sh"  # before the move to check/: bin/check_lua.sh
+		[ -f "$check" ] || check="$scratch/$1/.devtools/bin/check_lua.sh"
+		out=$(sh "$check" all 2>&1)
 		code=$?
 		line=$(echo "$out" | grep -E '^TOTAL [0-9]+ passed, [0-9]+ failed' | tail -1)
 		passed=$(echo "$line" | awk '{ print $2 }')

@@ -645,7 +645,7 @@ local function Route (a, b, closed)
 end
 
 -- An assault's placements on the bench, planned for an enemy marked at each of ENEMY_AT, no one
--- moving: JSON for .devtools/bin/assault_view.py, which draws them, each member's legs as the nav
+-- moving: JSON for .devtools/bin/rooms/assault_view.py, which draws them, each member's legs as the nav
 -- mesh routes them (graph.pathfinder over its areas). Each case: the room (block,
 -- entry, doors, windows), the enemy and the ring round it, and each member's start, its place in
 -- the stack, its assault point and its place in the room.

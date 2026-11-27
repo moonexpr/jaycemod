@@ -4,10 +4,10 @@ import shutil
 import subprocess
 from pathlib import Path
 
-SCRIPT = Path(__file__).resolve().parent / "check_totals.sh"
+SCRIPT = Path(__file__).resolve().parents[1] / "bin" / "check" / "check_totals.sh"
 
 FAKE_CHECK_LUA = """#!/bin/sh
-cd "$(dirname "$0")/../.." || exit 2
+d=$(dirname "$0"); while [ ! -f "$d/counts" ]; do d="$d/.."; done; cd "$d" || exit 2  # bin/ or bin/check/
 read passed failed < counts
 echo "compiled 1 files"
 echo "TOTAL $passed passed, $failed failed"
@@ -28,13 +28,16 @@ def commit(repo, counts, subject):
     return git(repo, "rev-parse", "--short", "HEAD").strip()
 
 
-def scratch_repo(tmp_path):
+def scratch_repo(tmp_path, check_lua_in=".devtools/bin/check"):
+    """A repo with check_totals.sh in bin/check/, and the fake check_lua.sh where each commit keeps it:
+    bin/check/ since the move, bin/ before it."""
     repo = tmp_path / "repo"
-    bin_dir = repo / ".devtools" / "bin"
-    bin_dir.mkdir(parents=True)
-    shutil.copy(SCRIPT, bin_dir / "check_totals.sh")
-    (bin_dir / "check_lua.sh").write_text(FAKE_CHECK_LUA)
-    (bin_dir / "check_lua.sh").chmod(0o755)
+    check_dir = repo / ".devtools" / "bin" / "check"
+    check_dir.mkdir(parents=True)
+    shutil.copy(SCRIPT, check_dir / "check_totals.sh")
+    (repo / check_lua_in).mkdir(parents=True, exist_ok=True)
+    (repo / check_lua_in / "check_lua.sh").write_text(FAKE_CHECK_LUA)
+    (repo / check_lua_in / "check_lua.sh").chmod(0o755)
     git(repo, "init", "-q", "-b", "main")
     commit(repo, "5 0", "the base")
     git(repo, "checkout", "-qb", "work")
@@ -42,7 +45,7 @@ def scratch_repo(tmp_path):
 
 
 def run(repo):
-    return subprocess.run([str(repo / ".devtools" / "bin" / "check_totals.sh"), "main"],
+    return subprocess.run([str(repo / ".devtools" / "bin" / "check" / "check_totals.sh"), "main"],
                           cwd=repo, capture_output=True, text=True)
 
 
@@ -81,3 +84,10 @@ def test_judges_each_commits_own_tree_not_the_working_copy(tmp_path):
     commit(repo, "6 0", "add a test")
     (repo / "counts").write_text("1 0\n")  # uncommitted, and lower
     assert run(repo).returncode == 0
+
+
+def test_a_commit_from_before_the_move_to_check_runs_its_own_bin_check_lua(tmp_path):
+    repo = scratch_repo(tmp_path, check_lua_in=".devtools/bin")
+    commit(repo, "6 0", "a test more")
+    done = run(repo)
+    assert done.returncode == 0, done.stdout + done.stderr

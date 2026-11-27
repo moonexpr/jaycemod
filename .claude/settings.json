@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.devtools/bin/check_lua_gate.py\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.devtools/bin/check/check_lua_gate.py\""
           }
         ]
       }

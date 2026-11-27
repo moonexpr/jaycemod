@@ -2,7 +2,7 @@
 -- RoomGraph, what wartactics.rooms.Partition is given) as JSON, with each
 -- team's spawn areas and the objectives' areas, for rooms_view.py to
 -- partition, class and draw off the server:
---     dt lua -f .devtools/bin/rooms_dump.lua > .devtools/artifacts/rooms/<map>.graph.json
+--     dt lua -f .devtools/bin/rooms/rooms_dump.lua > .devtools/artifacts/rooms/<map>.graph.json
 -- Area ids are keys as strings; everything else is as the graph holds it.
 -- A team's spawn areas: those its func_respawnroom holds (the npc
 -- controller's SpawnRooms), and those its spawn points stand on

@@ -10,4 +10,4 @@ small known map, a stage at a time, and how do armed assaults on a held building
 | `dev_3house_bench.lua` | The room-operations bench, stage by stage |
 | `dev_3house_trial.lua` | Armed assault trials, RED on BLU |
 
-`.devtools/bin/assault_view.py` draws the bench's placements. Status: open.
+`.devtools/bin/rooms/assault_view.py` draws the bench's placements. Status: open.

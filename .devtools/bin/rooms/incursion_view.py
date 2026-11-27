@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Draw each team's incursion routes over a dumped map's rooms, the baseline traffic.
 
-    python3 .devtools/bin/incursion_view.py .devtools/artifacts/rooms/MAP.graph.json
+    python3 .devtools/bin/rooms/incursion_view.py .devtools/artifacts/rooms/MAP.graph.json
 
 Each level from above, as rooms_view.py draws it: every area tinted by the
 side whose walk reaches it first (the front, incursion.Front), the rooms'

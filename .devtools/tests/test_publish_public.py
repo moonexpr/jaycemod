@@ -2,7 +2,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-SCRIPT = Path(__file__).with_name("publish_public.sh")
+SCRIPT = Path(__file__).resolve().parents[1] / "bin" / "publish_public.sh"
 
 KEPT = "addons/sandcastle/init.lua"
 EXCLUDED = [

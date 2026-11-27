@@ -131,7 +131,7 @@ def lua_files(roots: list[Path]) -> list[Path]:
 
 
 def main(argv: list[str]) -> int:
-    repo = Path(__file__).resolve().parents[2]
+    repo = Path(__file__).resolve().parents[3]
     roots = [Path(a) for a in argv] or [repo / "addons", repo / "tests"]
     sources = [LuaSource.parse(str(f), f.read_text(errors="replace")) for f in lua_files(roots)]
     f = check(sources)

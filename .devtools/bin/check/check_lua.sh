@@ -10,8 +10,8 @@
 #   check_lua.sh --list      the groups
 #   check_lua.sh all         every group (the operator's: an agent's hook
 #                            refuses it unless the operator asks)
-cd "$(dirname "$0")/../.." || exit 2
-SUITES=".devtools/bin/suites.lua"
+cd "$(dirname "$0")/../../.." || exit 2
+SUITES=".devtools/bin/check/suites.lua"
 usage() {
 	echo "usage: check_lua.sh GROUP... | --changed | --list | all" >&2
 	echo "the groups:" >&2
@@ -48,7 +48,7 @@ echo "compiled $count files"
 (cd addons/foundation/native && cargo build --release --quiet) || status=1
 (cd addons/nextsoldier/native && cargo build --release --quiet) || status=1
 # shellcheck disable=SC2086
-out=$(.devtools/bin/run_lua_tests.sh $tests 2>&1) || status=1
+out=$(.devtools/bin/check/run_lua_tests.sh $tests 2>&1) || status=1
 echo "$out" | grep -E '^FAIL'
 # a test file without its summary (it died, or never called T.finish) is missing from the totals: name it
 echo "$out" | awk '/^== / { if (file && !summed) print "NO SUMMARY " file; file = substr($0, 4); summed = 0 } / passed, / { summed = 1 } END { if (file && !summed) print "NO SUMMARY " file }'

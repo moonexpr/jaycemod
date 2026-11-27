@@ -75,7 +75,7 @@ python3 .devtools/experiments/ingame/ingame_one.py <check>                  # on
 
 The checks are `.devtools/experiments/ingame/ingame/checks/<name>.lua`; `ingame_tests.py`
 writes `results/ingame-report-<date>.md` beside it. Run the LuaJIT suites of
-what changed first (`.devtools/bin/check_lua.sh --changed`): it is faster and
+what changed first (`.devtools/bin/check/check_lua.sh --changed`): it is faster and
 catches most things.
 
 ## Live Lua edits

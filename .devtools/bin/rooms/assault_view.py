@@ -18,7 +18,7 @@ points: where the member walks, not the steps of its route.
 Writes .devtools/artifacts/maps/dev_3house_assault.png.
 
     dt gmod/instances dev_3house - < .devtools/experiments/dev-3house/dev_3house_bench.lua
-    python3 .devtools/bin/assault_view.py [--json FILE] [--out FILE]
+    python3 .devtools/bin/rooms/assault_view.py [--json FILE] [--out FILE]
 """
 import argparse
 import json
@@ -30,7 +30,8 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[3]
+sys.path.append(str(REPO / ".devtools/bin"))  # this repo's tools: gmod_plugin
 OUT = REPO / ".devtools" / "artifacts" / "maps" / "dev_3house_assault.png"
 # A panel's side in pixels, the margin round what it draws, and the caption's height under it.
 PANEL, MARGIN, CAPTION = 420, 24, 28

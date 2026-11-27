@@ -52,7 +52,7 @@ the registry refuses any other name: `system_` for the gamemode core's own
 as possible; `game_` for every other.
 
 Check the systems a change touches, never all of them:
-`.devtools/bin/check_lua.sh --changed` runs the groups of the suites your
+`.devtools/bin/check/check_lua.sh --changed` runs the groups of the suites your
 changes touch, `check_lua.sh GROUP...` named ones (`--list` shows the
 groups: foundation, games, nextsoldier, war, rounds, features, ws, addons,
 tooling). Each compiles its group's files and runs its tests in both passes
@@ -61,7 +61,7 @@ one group and every source file to one (`tests/suites_test.lua`); a new
 test goes in its system's group. A change to a lower layer's interface
 (foundation, games, nextsoldier) also runs the groups above it that use
 what changed. The whole suite (`check_lua.sh all`) is the operator's: the
-project's hook (`.devtools/bin/check_lua_gate.py`) refuses it to an agent
+project's hook (`.devtools/bin/check/check_lua_gate.py`) refuses it to an agent
 unless the operator asks, with `CHECK_LUA_ALL=1`.
 
 ## The live server: gmod MCP and the dev workbench
@@ -112,7 +112,7 @@ Write Lua by the `glua-style` skill (`.claude/skills/glua-style/`): its
 naming, GLua practices, comments and realms. Its layout gives way to
 notcake's, from [gcompute](https://github.com/notcake/gcompute) and
 [glib](https://github.com/notcake/glib), which
-`.devtools/bin/lua_format.py` writes:
+`.devtools/bin/check/lua_format.py` writes:
 
 - Tabs indent, one per open block or bracket, counted from the line that
   opened it: `hook.Add ("Think", "id", function ()` indents its body once.
@@ -145,7 +145,7 @@ notcake's, from [gcompute](https://github.com/notcake/gcompute) and
   line, no parentheses around a whole `if`/`while` condition, no GMod
   operators or comments.
 
-Run it on the Lua you change before checking it: `.devtools/bin/lua_format.py
+Run it on the Lua you change before checking it: `.devtools/bin/check/lua_format.py
 PATH...` (a folder takes every `.lua` under it; `--check` lists what it would
 change and exits 1, `--diff` shows it, `-` filters stdin). It never joins or
 wraps lines, so keep them under 120 yourself, and it refuses a file whose
@@ -407,7 +407,7 @@ Tests are `tests/wartactics_<module>_test.lua`.
 | Modules | |
 |---|---|
 | Fire teams and squads | `fireteam` (a fire team's doctrine in a fight, the engine `gameplay.tactics` names), `squad`, `mission` (a squad's mission, the wait for its members by the waves, when it must regroup: `docs/squad-missions-plan.md`) |
-| The field | `lanes`, `posts` (where a line is established), `zone` (the ground behind the setup gates), `explore`, `hunt` (post-round carnage), `rooms` (the map's rooms, indoors and outdoors, as big blocks on its levels, with the corridors, seams (the threshold under a door, as near a plane as the mesh lays it: a spawn's shutter onto the wilds), stairwells, doors and windows joining them; `IsPassage(space)` for a corridor or seam; found from the mesh's shape and the BSP's areaportals; `.devtools/bin/rooms_view.py` draws them from a dump), `incursion` (how each team walks in from its spawns over the room graph, breakable windows included, on `graph.paths`: its walk, highways and other routes, the front, traffic, its tree and the fewest breaching paths; tested in the native pass, `docs/incursion-native-plan.md`), `classes` (what each room is for when a round starts: restricted and highways, each team's spanning tree over the rooms and corridors, buildings and their owners, strongholds and commons as a gradient between them, junctions carved at the tree's forks), `ambush` (hiding spots beside the entrances an enemy squad comes through, out of the frustum through the doorway), `intel` (what a team knows of the enemy by room: how strongly held, traffic, support bases) |
+| The field | `lanes`, `posts` (where a line is established), `zone` (the ground behind the setup gates), `explore`, `hunt` (post-round carnage), `rooms` (the map's rooms, indoors and outdoors, as big blocks on its levels, with the corridors, seams (the threshold under a door, as near a plane as the mesh lays it: a spawn's shutter onto the wilds), stairwells, doors and windows joining them; `IsPassage(space)` for a corridor or seam; found from the mesh's shape and the BSP's areaportals; `.devtools/bin/rooms/rooms_view.py` draws them from a dump), `incursion` (how each team walks in from its spawns over the room graph, breakable windows included, on `graph.paths`: its walk, highways and other routes, the front, traffic, its tree and the fewest breaching paths; tested in the native pass, `docs/incursion-native-plan.md`), `classes` (what each room is for when a round starts: restricted and highways, each team's spanning tree over the rooms and corridors, buildings and their owners, strongholds and commons as a gradient between them, junctions carved at the tree's forks), `ambush` (hiding spots beside the entrances an enemy squad comes through, out of the frustum through the doorway), `intel` (what a team knows of the enemy by room: how strongly held, traffic, support bases) |
 | The monitors | `monitors` (`TacticalMonitor`, `SquadMonitor` and its roles, `ScenarioMonitor`, under a mode's strategy, built on the monitor kind given them), `bridge` (those built as NextSoldier's actions and registered by name) |
 | The war | `room_hints` (a mapper's word on the rooms the war finds, from `info_room`: `Hint{ name, pos, label?, class?, team?, point? }`, `Place(hints, roomAt)`, `Override(classed, placed, ownerOf)`, a room tied to a control point held by its owner; `CLASSES`), `overwatch` (a squad's director's policy: `Decide(situation)` → vacate, defend, attack or stand by; `VACATE_FLOOR`, `ATTACK_AFTER`), `scenario` (the `Scenario` class), `scenarios`, `bot_quota` (tf_bot_quota's rules, `docs/aiwar-bots.md`), `tuning` (live tuning of fireteam, lanes and squad), `hazards` (nav areas that keep forcing soldiers to respawn, disabled and saved until inspected) |
 

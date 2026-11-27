@@ -11,8 +11,8 @@ white with a red edge, each room's block (its areas' extent) outlined, and
 each room labelled (R indoors, O outdoors, S a stairwell) with the doors as
 black dots and the windows as cyan diamonds.
 
-    dt lua -f .devtools/bin/rooms_dump.lua > .devtools/artifacts/rooms/MAP.graph.json
-    python3 .devtools/bin/rooms_view.py .devtools/artifacts/rooms/MAP.graph.json
+    dt lua -f .devtools/bin/rooms/rooms_dump.lua > .devtools/artifacts/rooms/MAP.graph.json
+    python3 .devtools/bin/rooms/rooms_view.py .devtools/artifacts/rooms/MAP.graph.json
 
 The picture goes to .devtools/artifacts/rooms/<map>.png beside the graph,
 and a summary of what was found is printed.
@@ -30,7 +30,7 @@ from PIL import Image, ImageDraw, ImageFont
 import ambush
 import places
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[3]
 
 # Lua the harness runs: the graph (a Lua file returning it and the windows)
 # partitioned, one line per fact, tab-separated. A door carries the level it

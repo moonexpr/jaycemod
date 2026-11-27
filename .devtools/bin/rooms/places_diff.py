@@ -1,5 +1,5 @@
 """The rooms whose starting class changes between a revision of places.py and the working tree's, on a dump:
-    python3 .devtools/bin/places_diff.py .devtools/artifacts/rooms/<map>.graph.json [REV]
+    python3 .devtools/bin/rooms/places_diff.py .devtools/artifacts/rooms/<map>.graph.json [REV]
 REV is HEAD by default. Each line: room, old class and team, new, its place, level and centre."""
 import subprocess
 import sys

@@ -1,5 +1,5 @@
 -- The test suites by major system, which check_lua.sh runs a group at a
--- time (.devtools/bin/suites.lua resolves them; tests/suites_test.lua holds
+-- time (.devtools/bin/check/suites.lua resolves them; tests/suites_test.lua holds
 -- every test to exactly one group and every source file to a claim).
 --   tests:   a test's name (tests/<name>_test.lua), or a prefix ending in *;
 --            the closest pattern wins, an exact name before any prefix
