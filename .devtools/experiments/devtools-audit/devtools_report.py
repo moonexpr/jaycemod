@@ -46,7 +46,7 @@ from reportlab.platypus import (  # noqa: E402
     TableStyle,
 )
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[3]
 BIN = REPO / ".devtools" / "bin"
 TODAY = "2026-11-13"
 
